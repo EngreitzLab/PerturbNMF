@@ -14,7 +14,7 @@ set -euo pipefail
 
 PIPELINE_DIR="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF"
 cd "$PIPELINE_DIR"
-export PYTHONPATH="$PIPELINE_DIR/src:$PYTHONPATH"
+export PYTHONPATH="$PIPELINE_DIR/src:${PYTHONPATH:-}"
 
 LOG_DIR="tests/output/torch-cNMF/batch/Inference/logs"
 mkdir -p "$LOG_DIR"

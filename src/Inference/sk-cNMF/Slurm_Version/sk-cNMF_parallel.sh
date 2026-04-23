@@ -49,7 +49,7 @@ mkdir -p "$LOG_DIR"
 echo "Activating conda base environment..."
 eval "$(conda shell.bash hook)"
 conda activate sk-cNMF
-export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:$PYTHONPATH"
+export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
 echo "Python version: $(python --version)"

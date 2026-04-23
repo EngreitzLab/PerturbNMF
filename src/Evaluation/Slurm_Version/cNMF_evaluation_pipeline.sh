@@ -40,7 +40,7 @@ mkdir -p "$LOG_DIR/Evaluation/logs"
 echo "Activating conda environment..."
 eval "$(conda shell.bash hook)"
 conda activate NMF_Benchmarking
-export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:$PYTHONPATH"
+export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
 
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
