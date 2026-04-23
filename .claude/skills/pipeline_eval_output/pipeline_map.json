@@ -1,0 +1,141 @@
+{
+  "pipeline_name": "cNMF_benchmarking",
+  "pipeline_path": "/oak/stanford/groups/engreitz/Users/ymo/Tools/cNMF_benchmarking/cNMF_benchmarking_pipeline",
+  "generated_at": "2026-03-08",
+  "mermaid_diagram": "flowchart TD\n    A[\"Input: counts.h5ad\\n(cells x genes)\"] --> B[\"Stage 1a: sk-cNMF Inference\\n(CPU, scikit-learn)\"]\n    A --> C[\"Stage 1b: torch-cNMF Inference\\n(GPU, PyTorch)\"]\n    B --> D[\"Output: cNMF_{K}_{thresh}.h5mu\\n(MuData with scores + loadings)\"]\n    C --> D\n    D --> E[\"Stage 2: Evaluation\\n(6 metrics)\"]\n    E --> F[\"Output: Eval/{K}_{thresh}/\\n(CSV results per metric)\"]\n    D --> G[\"Stage 3: Perturbation Calibration\\n(U-test, CRT, Matched DE)\"]\n    G --> H[\"Output: Calibration results\\n(p-value distributions)\"]\n    F --> I[\"Stage 4a: K Selection Plots\"]\n    F --> J[\"Stage 4b: Program Analysis Plots\"]\n    F --> K[\"Stage 4c: Perturbed Gene Plots\"]\n    I --> L[\"Output: PDFs + PNGs\"]\n    J --> L\n    K --> L\n    M[\"Guide Annotation TSV\"] --> E\n    N[\"GWAS Data (OpenTargets)\"] --> E\n    O[\"Normalized Counts .h5ad\"] --> E\n    P[\"Reference GTF\"] --> B\n    P --> C",
+  "stages": [
+    {
+      "name": "inference_skcnmf",
+      "script": "Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py",
+      "conda_env": "sk-cNMF",
+      "slurm_defaults": {
+        "partition": "engreitz,owners,bigmem",
+        "mem": "786G",
+        "time": "14:00:00",
+        "cpus": 10,
+        "gpu": false
+      },
+      "parameters": [
+        {"name": "--counts_fn", "type": "str", "required": true, "default": null},
+        {"name": "--output_directory", "type": "str", "required": true, "default": null},
+        {"name": "--run_name", "type": "str", "required": true, "default": null},
+        {"name": "--species", "type": "str", "required": true, "default": null},
+        {"name": "--K", "type": "int_list", "required": false, "default": [30,50,60,80,100,200,250,300]},
+        {"name": "--numiter", "type": "int", "required": false, "default": 10},
+        {"name": "--numhvgenes", "type": "int", "required": false, "default": 5451},
+        {"name": "--seed", "type": "int", "required": false, "default": 14},
+        {"name": "--init", "type": "str", "required": false, "default": "random", "choices": ["random", "nndsvd", "nndsvda", "nndsvdar"]},
+        {"name": "--loss", "type": "str", "required": false, "default": "frobenius", "choices": ["frobenius", "kullback-leibler", "itakura-saito"]},
+        {"name": "--algo", "type": "str", "required": false, "default": "mu", "choices": ["mu", "cd"]},
+        {"name": "--max_NMF_iter", "type": "int", "required": false, "default": 500},
+        {"name": "--tol", "type": "float", "required": false, "default": 10000.0},
+        {"name": "--sel_thresh", "type": "float_list", "required": false, "default": [2.0]},
+        {"name": "--nmf_seeds_path", "type": "str", "required": false, "default": null},
+        {"name": "--num_gene", "type": "int", "required": false, "default": 300},
+        {"name": "--run_factorize", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--run_refit", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--run_complie_annotation", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--check_format", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--parallel_running", "type": "flag", "required": false, "action": "store_true"}
+      ],
+      "inputs": ["counts.h5ad or .h5mu"],
+      "outputs": ["cNMF_{K}_{thresh}.h5mu", "loading/cNMF_scores_{K}_{thresh}.txt", "loading/cNMF_loadings_{K}_{thresh}.txt", "Annotation/{K}.xlsx"],
+      "expected_outputs": ["loading/cNMF_scores_30_2.0.txt"]
+    },
+    {
+      "name": "inference_torchcnmf",
+      "script": "Inference/torch-cNMF/Slurm_Version/torch-cNMF_inference_pipeline.py",
+      "conda_env": "torch-cNMF",
+      "slurm_defaults": {
+        "partition": "engreitz,owners,gpu",
+        "mem": "96G",
+        "time": "05:00:00",
+        "cpus": 10,
+        "gpu": true
+      },
+      "parameters": [
+        {"name": "--counts_fn", "type": "str", "required": true, "default": null},
+        {"name": "--output_directory", "type": "str", "required": true, "default": null},
+        {"name": "--run_name", "type": "str", "required": true, "default": null},
+        {"name": "--species", "type": "str", "required": true, "default": null},
+        {"name": "--K", "type": "int_list", "required": false, "default": [30,50,60,80,100,200,250,300]},
+        {"name": "--numiter", "type": "int", "required": false, "default": 10},
+        {"name": "--numhvgenes", "type": "int", "required": false, "default": 5451},
+        {"name": "--algo", "type": "str", "required": false, "default": "mu", "choices": ["mu", "halsvar"]},
+        {"name": "--mode", "type": "str", "required": false, "default": "batch", "choices": ["batch", "online", "dataloader"]},
+        {"name": "--tol", "type": "float", "required": false, "default": 0.0001},
+        {"name": "--use_gpu", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--fp_precision", "type": "str", "required": false, "default": "float", "choices": ["float", "double"]},
+        {"name": "--remove_noncoding", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--densify", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--run_factorize", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--run_refit", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--run_complie_annotation", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--check_format", "type": "flag", "required": false, "action": "store_true"}
+      ],
+      "inputs": ["counts.h5ad or .h5mu"],
+      "outputs": ["cNMF_{K}_{thresh}.h5mu", "loading/", "Annotation/"],
+      "expected_outputs": []
+    },
+    {
+      "name": "evaluation",
+      "script": "Evaluation/Slurm_Version/cNMF_evaluation_pipeline.py",
+      "conda_env": "NMF_Benchmarking",
+      "slurm_defaults": {
+        "partition": "engreitz,owners",
+        "mem": "96G",
+        "time": "05:00:00",
+        "cpus": 20,
+        "gpu": false
+      },
+      "parameters": [
+        {"name": "--out_dir", "type": "str", "required": true, "default": null},
+        {"name": "--run_name", "type": "str", "required": true, "default": null},
+        {"name": "--gwas_data_path", "type": "str", "required": true, "default": null},
+        {"name": "--K", "type": "int_list", "required": false, "default": [30,50,60,80,100,200,250,300]},
+        {"name": "--sel_thresh", "type": "float_list", "required": false, "default": [0.4,0.8,2.0]},
+        {"name": "--X_normalized_path", "type": "str", "required": false, "default": null},
+        {"name": "--guide_annotation_path", "type": "str", "required": false, "default": null},
+        {"name": "--organism", "type": "str", "required": false, "default": "human"},
+        {"name": "--FDR_method", "type": "str", "required": false, "default": "StoreyQ"},
+        {"name": "--n_top", "type": "int", "required": false, "default": 300},
+        {"name": "--Perform_categorical", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--Perform_perturbation", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--Perform_geneset", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--Perform_trait", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--Perform_explained_variance", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--Perform_motif", "type": "flag", "required": false, "action": "store_true"},
+        {"name": "--check_format", "type": "flag", "required": false, "action": "store_true"}
+      ],
+      "inputs": ["cNMF_{K}_{thresh}.h5mu", "GWAS data", "normalized counts", "guide annotation"],
+      "outputs": ["Eval/{K}_{thresh}/ containing per-metric CSV files"],
+      "expected_outputs": []
+    },
+    {
+      "name": "plotting_k_selection",
+      "script": "Interpretation/Slurm_Version/cNMF_k_selection.py",
+      "conda_env": "NMF_Benchmarking",
+      "slurm_defaults": {
+        "partition": "engreitz,owners",
+        "mem": "64G",
+        "time": "02:00:00",
+        "cpus": 4,
+        "gpu": false
+      },
+      "parameters": [
+        {"name": "--output_directory", "type": "str", "required": true, "default": null},
+        {"name": "--run_name", "type": "str", "required": true, "default": null},
+        {"name": "--eval_folder_name", "type": "str", "required": true, "default": null},
+        {"name": "--save_folder_name", "type": "str", "required": true, "default": null},
+        {"name": "--K", "type": "int_list", "required": false, "default": [30,50,60,80,100,200,250,300]},
+        {"name": "--sel_threshs", "type": "float_list", "required": false, "default": [0.4,0.8,2.0]},
+        {"name": "--samples", "type": "str_list", "required": false, "default": ["D0","sample_D1","sample_D2","sample_D3"]},
+        {"name": "--pval", "type": "float", "required": false, "default": 0.05},
+        {"name": "--groupby", "type": "str", "required": false, "default": "sample"}
+      ],
+      "inputs": ["Eval results from Stage 2", "cNMF output directory"],
+      "outputs": ["PDF/PNG plots in save_folder_name"],
+      "expected_outputs": []
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+name: Matched_cell_programDE
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  # R version
+  - r-base>=4.2
+
+  # Core R packages
+  - r-optparse
+  - r-matrix
+  - r-matchit
+  - r-cobalt
+  - r-sandwich
+  - r-lmtest
+
+  # Parquet support
+  - r-nanoparquet
+
+  # Additional dependencies that might be needed
+  # Note: r-twopartm not available in conda, will install from CRAN
+  - r-mass          # Often required by statistical packages
+  - r-survival      # Often required by twopartm
+
+  # Build tools (in case any packages need compilation)
+  - make
+  - gcc_linux-64
+  - gxx_linux-64
+  - gfortran_linux-64

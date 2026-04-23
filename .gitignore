@@ -1,0 +1,22 @@
+# Large reference data (3.3GB — not tracked in git)
+# Run setup_resources.sh or manually symlink to populate
+src/Evaluation/Resources/
+
+# Test output (generated)
+tests/output/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store

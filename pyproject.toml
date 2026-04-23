@@ -1,0 +1,9 @@
+[project]
+name = "perturbnmf"
+version = "0.1.0"
+description = "cNMF pipeline for single-cell perturbation data"
+requires-python = ">=3.9"
+
+[tool.pytest.ini_options]
+testpaths = ["tests/Script"]
+pythonpath = ["src"]
