@@ -14,8 +14,8 @@ flowchart TD
     C --> D
     D --> E["Stage 2: Evaluation\n(6 metrics)"]
     E --> F["Output: Evaluation/{K}_{thresh}/\n(CSV results per metric)"]
-    D --> G["Stage 3: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
-    G --> H["Output: Calibration results\n(p-value distributions)"]
+    E --> G["Stage 3: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
+    G --> F
     F --> I["Stage 4a: K Selection Plots"]
     F --> J["Stage 4b: Program Analysis Plots"]
     F --> K["Stage 4c: Perturbed Gene Plots"]
@@ -25,8 +25,8 @@ flowchart TD
     M["Guide Annotation TSV"] --> E
     N["GWAS Data (OpenTargets)"] --> E
     O["Normalized Counts .h5ad"] --> E
-    P["Reference GTF"] --> B
-    P --> C
+    P["Reference GTF (optional)"] -.-> B
+    P -.-> C
 ```
 
 See also: `flowchart.png` in the repo root for a visual overview.
