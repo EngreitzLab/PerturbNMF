@@ -26,7 +26,7 @@ echo "Node: $(hostname)"
 echo "Python: $(which python)"
 echo ""
 
-python -m pytest tests/Script/Inference/test_inference_parallel.py -v --tb=short \
+python -m pytest tests/Script/Inference/test_inference_parallel_sklearn.py -v --tb=short \
     2>&1 | tee "${LOG_DIR}/test_parallel.out"
 
 echo ""

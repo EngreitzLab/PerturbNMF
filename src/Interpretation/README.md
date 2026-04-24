@@ -150,3 +150,27 @@ save_folder/
     ├── individual_programs/
     └── merged_reports.pdf
 ```
+
+## 4. Annotation (`Annotation/`)
+
+LLM-driven gene program annotation pipeline (ported from ProgExplorer). Uses STRING enrichment, PubTator3 literature mining, and Claude AI to generate structured biological annotations for each gene program.
+
+### Usage
+
+```bash
+# Full pipeline via SLURM
+sbatch Annotation/Slurm_Version/run_annotation.sh --config Annotation/configs/pipeline_config.yaml
+
+# Or directly
+python Annotation/src/run_pipeline.py --config Annotation/configs/pipeline_config.yaml
+```
+
+### Preprocessing utilities
+
+```bash
+# Convert cNMF gene_spectra_score TSV to long-format CSV
+python Annotation/src/convert_spectra_to_csv.py input.txt -o output.csv
+
+# Merge per-timepoint regulator results
+python Annotation/src/compile_regulators.py /path/to/data --days D0 D1 D2 D3
+```

@@ -31,8 +31,8 @@ and summarizes results.
 
 | Test File | Backend | Runs on | Tests | Command |
 |-----------|---------|---------|-------|---------|
-| `tests/Script/Inference/test_inference.py` | sk-cNMF | CPU (direct or SLURM) | 9 (end-to-end + output assertion) | `python -m pytest tests/Script/Inference/test_inference.py -v --tb=short` |
-| `tests/Script/Inference/test_inference_parallel.py` | sk-cNMF | CPU (direct or SLURM) | 2 (per-K factorize + merge) | `python -m pytest tests/Script/Inference/test_inference_parallel.py -v --tb=short` |
+| `tests/Script/Inference/test_inference_sklearn.py` | sk-cNMF | CPU (direct or SLURM) | 9 (end-to-end + output assertion) | `python -m pytest tests/Script/Inference/test_inference_sklearn.py -v --tb=short` |
+| `tests/Script/Inference/test_inference_parallel_sklearn.py` | sk-cNMF | CPU (direct or SLURM) | 2 (per-K factorize + merge) | `python -m pytest tests/Script/Inference/test_inference_parallel_sklearn.py -v --tb=short` |
 | `tests/Script/Inference/test_inference_torch.py` | torch-cNMF | GPU (SLURM) | 2 per mode (batch/minibatch/dataloader) | `sbatch tests/Script/Inference/run_gpu_test_{batch,minibatch,dataloader}.sh` |
 | `tests/Script/Inference/test_inference_parallel_torch.py` | torch-cNMF | GPU (SLURM) | 2 (per-K factorize + merge) | `sbatch tests/Script/Inference/run_gpu_test_parallel.sh` |
 | `tests/Script/Inference/test_edge_cases.py` | torch-cNMF | GPU (SLURM) | 13 edge cases | `sbatch tests/Script/Inference/run_gpu_test_edge_cases.sh` |
@@ -67,8 +67,8 @@ All SLURM scripts are in `tests/Script/Inference/` and `tests/Script/Evaluation/
 
 | Script | What it runs | Partition |
 |--------|-------------|-----------|
-| `Inference/run_inference_test.sh` | sk-cNMF end-to-end | engreitz,owners (CPU) |
-| `Inference/run_test_parallel.sh` | sk-cNMF parallel | engreitz,owners (CPU) |
+| `Inference/run_inference_test_sklearn.sh` | sk-cNMF end-to-end | engreitz,owners (CPU) |
+| `Inference/run_test_parallel_sklearn.sh` | sk-cNMF parallel | engreitz,owners (CPU) |
 | `Inference/run_gpu_test_batch.sh` | torch batch mode | gpu,owners (GPU) |
 | `Inference/run_gpu_test_minibatch.sh` | torch minibatch mode | gpu,owners (GPU) |
 | `Inference/run_gpu_test_dataloader.sh` | torch dataloader mode | gpu,owners (GPU) |
@@ -129,17 +129,17 @@ Run directly on the current node (CPU only, ~30 seconds each):
 cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
 
 # End-to-end:
-eval "$(conda shell.bash hook)" && conda activate sk-cNMF && python -m pytest tests/Script/Inference/test_inference.py -v --tb=short
+eval "$(conda shell.bash hook)" && conda activate sk-cNMF && python -m pytest tests/Script/Inference/test_inference_sklearn.py -v --tb=short
 
 # Parallel mode:
-eval "$(conda shell.bash hook)" && conda activate sk-cNMF && python -m pytest tests/Script/Inference/test_inference_parallel.py -v --tb=short
+eval "$(conda shell.bash hook)" && conda activate sk-cNMF && python -m pytest tests/Script/Inference/test_inference_parallel_sklearn.py -v --tb=short
 ```
 
 Or submit via SLURM:
 
 ```bash
-sbatch tests/Script/Inference/run_inference_test.sh
-sbatch tests/Script/Inference/run_test_parallel.sh
+sbatch tests/Script/Inference/run_inference_test_sklearn.sh
+sbatch tests/Script/Inference/run_test_parallel_sklearn.sh
 ```
 
 ### Step 4: Submit torch-cNMF tests (if selected)
@@ -185,13 +185,13 @@ tests/
 │   ├── create_mini_dataset.py
 │   ├── Inference/
 │   │   ├── conftest.py
-│   │   ├── test_inference.py
-│   │   ├── test_inference_parallel.py
+│   │   ├── test_inference_sklearn.py
+│   │   ├── test_inference_parallel_sklearn.py
 │   │   ├── test_inference_torch.py
 │   │   ├── test_inference_parallel_torch.py
 │   │   ├── test_edge_cases.py
-│   │   ├── run_inference_test.sh
-│   │   ├── run_test_parallel.sh
+│   │   ├── run_inference_test_sklearn.sh
+│   │   ├── run_test_parallel_sklearn.sh
 │   │   ├── run_gpu_test_batch.sh
 │   │   ├── run_gpu_test_minibatch.sh
 │   │   ├── run_gpu_test_dataloader.sh

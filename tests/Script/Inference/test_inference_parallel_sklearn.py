@@ -11,7 +11,7 @@ This test validates:
 
 Run with:
     conda activate sk-cNMF
-    python -m pytest tests/Script/Inference/test_inference_parallel.py -v
+    python -m pytest tests/Script/Inference/test_inference_parallel_sklearn.py -v
 
 Output saved to: tests/output/sk-cNMF-parallel/
 """

@@ -3,7 +3,7 @@ End-to-end smoke tests for sk-cNMF inference pipeline.
 
 Run with:
     conda activate sk-cNMF
-    python -m pytest tests/Script/Inference/test_inference.py -v
+    python -m pytest tests/Script/Inference/test_inference_sklearn.py -v
 
 Tests are ordered sequentially — each step depends on the previous.
 """

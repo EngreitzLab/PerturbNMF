@@ -27,8 +27,8 @@ echo "Python: $(which python)"
 echo "Date: $(date)"
 echo ""
 
-python -m pytest tests/Script/Inference/test_inference.py -v --tb=short \
-    2>&1 | tee "${LOG_DIR}/test_inference.out"
+python -m pytest tests/Script/Inference/test_inference_sklearn.py -v --tb=short \
+    2>&1 | tee "${LOG_DIR}/test_inference_sklearn.out"
 
 echo ""
 echo "=== sk-cNMF inference test done ==="

@@ -62,7 +62,7 @@ def reformat_data_for_CRT(mdata, mdata_guide, covariates=None, log_covariates=No
         for key in log_covariates:
             covar_dict[f'log_{key}'] = np.log1p(adata.obs[key])
 
-    adata.obsm["covar"] = pd.DataFrame(covar_dict)
+    adata.obsm["covar"] = pd.DataFrame(covar_dict, index=adata.obs_names)
 
     return adata
 

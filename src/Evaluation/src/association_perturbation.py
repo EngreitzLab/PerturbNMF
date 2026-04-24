@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 import pandas as pd
 
-from scipy import stats
+from scipy import sparse, stats
 from statsmodels.stats.multitest import multipletests
 
 from joblib import Parallel, delayed
@@ -182,7 +182,10 @@ def compute_perturbation_association(
     # Otherwise, grab a MuData for all those guides assigned to the reference targets
     else:
         reference_guide_idx = guide_metadata.index.get_indexer(guide_metadata.loc[guide_metadata.Target.isin(reference_targets)].index.values)
-        reference_data = mdata[prog_key][np.any(mdata[prog_key].obsm[guide_assignments_key][:,reference_guide_idx].astype(bool), axis=1)]
+        assign_mat = mdata[prog_key].obsm[guide_assignments_key]
+        if sparse.issparse(assign_mat):
+            assign_mat = assign_mat.toarray()
+        reference_data = mdata[prog_key][np.any(assign_mat[:,reference_guide_idx].astype(bool), axis=1)]
 
     # Get the rest of the guides to test against the reference
     test_guides = guide_metadata.loc[~guide_metadata.Target.isin(reference_targets)].index.values
@@ -202,7 +205,7 @@ def compute_perturbation_association(
 
             # Grab data for the current target
             test_guide_idx = guide_metadata.index.get_indexer(guide_metadata.index[guide_metadata['Target']==target])
-            test_data = mdata[prog_key][mdata[prog_key].obsm[guide_assignments_key][:,test_guide_idx].any(-1).astype(bool)]
+            test_data = mdata[prog_key][assign_mat[:,test_guide_idx].any(-1).astype(bool)]
 
             # Run test for every program
             Parallel(n_jobs=n_jobs, backend='threading')(delayed(compute_perturbation_association_)(
@@ -228,7 +231,7 @@ def compute_perturbation_association(
             else:
                 # Grab data for the current guide
                 test_guide_idx = guide_metadata.index.get_loc(guide)
-                test_data = mdata[prog_key][mdata[prog_key].obsm[guide_assignments_key][:,test_guide_idx].astype(bool)]
+                test_data = mdata[prog_key][assign_mat[:,test_guide_idx].astype(bool)]
 
                 # Run test for every program
                 Parallel(n_jobs=n_jobs, backend='threading')(delayed(compute_perturbation_association_)(
@@ -261,16 +264,17 @@ def compute_perturbation_association(
     # Return only the evaluations if not in inplace mode
     if not inplace: return test_stats_df
     else:
-        init_array = np.empty(mdata[prog_key].shape[1], len(test_stats_df['{}_name'.format(level_key)].unique()))
+        init_array = np.empty((mdata[prog_key].shape[1], len(test_stats_df['{}_name'.format(level_key)].unique())))
         init_array[:] = np.nan
 
         stats, pvals = init_array.copy(), init_array.copy()
 
         for level_idx, level_name in enumerate(test_stats_df['{}_name'.format(level_key)].unique()):
-            stats[:, level_idx] = test_stats_df.loc[test_stats_df['{}_name'.format(level_key)]==level_name, 'stat'][mdata[prog_key].var_names].values
-            pvals[:, level_idx] = test_stats_df.loc[test_stats_df['{}_name'.format(level_key)]==level_name, 'pval'][mdata[prog_key].var_names].values
+            level_df = test_stats_df[test_stats_df['{}_name'.format(level_key)]==level_name].set_index('program_name')
+            stats[:, level_idx] = level_df.loc[mdata[prog_key].var_names, 'stat'].values
+            pvals[:, level_idx] = level_df.loc[mdata[prog_key].var_names, 'pval'].values
         mdata[prog_key].varm['perturbation_association_{}_stat'.format(level_key)] = stats
         mdata[prog_key].varm['perturbation_association_{}_pval'.format(level_key)] = pvals
-        mdata[prog_key].uns['perturbation_association_{}_names'.format(level_key)] = test_stats_df['{}_name'.format(level_key)].unique().values
+        mdata[prog_key].uns['perturbation_association_{}_names'.format(level_key)] = test_stats_df['{}_name'.format(level_key)].unique()
         
 	
