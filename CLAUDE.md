@@ -14,17 +14,17 @@ flowchart TD
     C --> D
     D --> E["Stage 2: Evaluation\n(6 metrics)"]
     E --> F["Output: Evaluation/{K}_{thresh}/\n(CSV results per metric)"]
-    E --> G["Stage 3: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
+    E --> G["Stage 2b: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
     G --> F
-    F --> I["Stage 4a: K Selection Plots"]
-    F --> J["Stage 4b: Program Analysis Plots"]
-    F --> K["Stage 4c: Perturbed Gene Plots"]
+    F --> I["Stage 3a: K Selection Plots"]
+    F --> J["Stage 3b: Program Analysis Plots"]
+    F --> K["Stage 3c: Perturbed Gene Plots"]
     I --> L["Output: PDFs + PNGs"]
     J --> L
     K --> L
-    F --> Q["Stage 4d: Annotation\n(LLM-driven gene program annotation)"]
+    F --> Q["Stage 3d: Annotation\n(LLM-driven gene program annotation)"]
     Q --> L
-    F --> S["Stage 4e: Excel Summarization"]
+    F --> S["Stage 3e: Excel Summarization"]
     S --> L
     M["Guide Annotation TSV"] --> E
     N["GWAS Data (OpenTargets)"] --> E
