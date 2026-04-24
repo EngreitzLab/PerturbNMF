@@ -4,12 +4,32 @@
 
 This pipeline runs consensus Non-negative Matrix Factorization (cNMF) on single-cell perturbation data (CRISPR screens), then evaluates, calibrates, and visualizes the resulting gene programs. It is designed for HPC (SLURM) execution on Stanford's Sherlock cluster.
 
-## Pipeline Stages (in order)
+## Pipeline Structure
 
-1. **Inference** — Run cNMF factorization (sk-cNMF on CPU or torch-cNMF on GPU)
-2. **Evaluation** — Statistical tests on discovered programs (categorical association, perturbation association, gene set enrichment, GWAS trait enrichment, explained variance, motif enrichment)
-3. **Interpretation** — K-selection plots, per-program analysis, per-perturbed-gene analysis
-4. **Calibration** — U-test or CRT calibration of perturbation association using non-targeting guides as null
+```mermaid
+flowchart TD
+    A["Input: counts.h5ad\n(cells x genes)"] --> B["Stage 1a: sk-cNMF Inference\n(CPU, scikit-learn)"]
+    A --> C["Stage 1b: torch-cNMF Inference\n(GPU, PyTorch)"]
+    B --> D["Output: cNMF_{K}_{thresh}.h5mu\n(MuData with scores + loadings)"]
+    C --> D
+    D --> E["Stage 2: Evaluation\n(6 metrics)"]
+    E --> F["Output: Evaluation/{K}_{thresh}/\n(CSV results per metric)"]
+    D --> G["Stage 3: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
+    G --> H["Output: Calibration results\n(p-value distributions)"]
+    F --> I["Stage 4a: K Selection Plots"]
+    F --> J["Stage 4b: Program Analysis Plots"]
+    F --> K["Stage 4c: Perturbed Gene Plots"]
+    I --> L["Output: PDFs + PNGs"]
+    J --> L
+    K --> L
+    M["Guide Annotation TSV"] --> E
+    N["GWAS Data (OpenTargets)"] --> E
+    O["Normalized Counts .h5ad"] --> E
+    P["Reference GTF"] --> B
+    P --> C
+```
+
+See also: `flowchart.png` in the repo root for a visual overview.
 
 ## HPC Environment
 
