@@ -16,6 +16,8 @@ flowchart TD
     I --> L["Output: PDFs + PNGs"]
     J --> L
     K --> L
+    D --> Q["Stage 5: Annotation\n(LLM-driven gene program annotation)"]
+    Q --> R["Output: HTML reports + JSON"]
     M["Guide Annotation TSV"] --> E
     N["GWAS Data (OpenTargets)"] --> E
     O["Normalized Counts .h5ad"] --> E
