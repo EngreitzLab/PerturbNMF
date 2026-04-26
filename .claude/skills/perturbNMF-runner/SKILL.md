@@ -35,7 +35,7 @@ Present the full pipeline flow to the user in order, then ask which stage they w
 |    | — sk-cNMF | `inference-sk` | `sk-cNMF` | No | CPU-based NMF (scikit-learn) |
 |    | — torch-cNMF | `inference-torch` | `torch-cNMF` | Yes | GPU-based NMF (PyTorch) |
 | **Stage 2: Evaluation & Calibration** | | | | | |
-| 2a | Evaluation | `evaluation` | `NMF_Benchmarking` | No | 6 statistical metrics on programs |
+| 2a | Evaluation | `evaluation` | `NMF_Benchmarking` | No | 9 evaluation metrics on programs |
 | 2b | Perturbation Calibration (pick one) | | | | |
 |    | — U-test | `u-test-calibration` | `NMF_Benchmarking` | No | U-test perturbation calibration |
 |    | — CRT | `crt-calibration` | `programDE` | No | Conditional randomization test |
@@ -191,13 +191,14 @@ Extract these fields from the config to populate evaluation parameters:
 
 **Step C: Determine which tests to run.**
 
-Test flags (ask which to enable):
-- `--Perform_categorical` -- Kruskal-Wallis + Dunn's test
-- `--Perform_perturbation` -- perturbation association (**requires guide data; skip for bulk RNA-seq**)
-- `--Perform_geneset` -- gene set enrichment (Reactome + GO)
+Test flags (ask which to enable — 9 metrics total):
+- `--Perform_categorical` -- categorical association (Kruskal-Wallis + Dunn's test)
+- `--Perform_perturbation` -- perturbation sensitivity (**requires guide data; skip for bulk RNA-seq**)
+- `--Perform_motif` -- TF motif enrichment
 - `--Perform_trait` -- GWAS trait enrichment (requires `--gwas_data_path`)
+- `--Perform_geneset` -- GO geneset enrichment + geneset enrichment (Reactome, MsigDB)
 - `--Perform_explained_variance` -- explained variance per K (needs `--X_normalized_path`)
-- `--Perform_motif` -- TF motif enrichment (WIP)
+- Reconstruction error and stability metrics are computed automatically (no flag needed)
 
 **When to skip `--Perform_perturbation`:**
 - The data is bulk RNA-seq (no single-cell guide assignments)

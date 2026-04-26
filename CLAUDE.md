@@ -10,7 +10,7 @@ This pipeline runs consensus Non-negative Matrix Factorization (cNMF) on single-
 flowchart TD
     A["Input: counts.h5ad\n(cells x genes)"] --> B["Stage 1: Inference\n(sk-cNMF CPU or torch-cNMF GPU)"]
     B --> D["Output: cNMF_{K}_{thresh}.h5mu\n(MuData with scores + loadings)"]
-    D --> E["Stage 2: Evaluation\n(6 metrics)"]
+    D --> E["Stage 2: Evaluation\n(9 metrics)"]
     E --> F["Output: Evaluation/{K}_{thresh}/\n(CSV results per metric)"]
     E --> G["Stage 2b: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
     G --> F
