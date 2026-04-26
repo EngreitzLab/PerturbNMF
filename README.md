@@ -31,50 +31,47 @@ End-to-end pipeline for running and evaluating (with visualization) consensus No
 
 ## Components
 
-### Inference
+### Stage 1: Inference
+Run cNMF to decompose the cell × gene matrix into gene programs. Pick one:
 - **sk-cNMF**: CPU-based implementation using scikit-learn
 - **torch-cNMF**: GPU-accelerated implementation using PyTorch
 
+### Stage 2: Evaluation & Calibration
+Evaluate the quality of inferred gene programs using comprehensive metrics, with perturbation calibration as part of the evaluation process.
 
-### Perturbation calibration
-- For each dataset, perform a calibration test to generate a null distribution with non-targeting guides, and test if the p-value calculation is well calibrated. 
-    - generate fake p-values by randomly selecting some non-targeting guides to be targeting, perform a perturbation test. 
-    - the fake p-values vs uniform p-value distribution qqplot, the fake p-values need to be aligned in diagonal 
-    - Then, the real p-values vs the uniform p-value distribution qqplot, the real p-values need to be rarer
-		1. If pass, proceed to downstream analysis 
-		2. If failed, change the p-value calculation method
-
-
-### Evaluation
-Comprehensive evaluation metrics including:
+**Evaluation metrics:**
 - Categorical association analysis
 - Perturbation sensitivity testing (default U-test)
 - Motif & geneset enrichment
-- Trait enrichment analysis
-- GO enrichment analysis
-- Genesets enrichment analysis
+- Trait enrichment analysis (GWAS/OpenTargets)
+- GO & geneset enrichment analysis
 - Explained variance calculation
 - Reconstruction error
-- stability metrics
+- Stability metrics
 
-### Interpretation
-Quality control and analysis visualization tools:
-- K-selection plots for optimal K selection
-- Compare Model plots for comparing sk-cNMF vs torch-cNMF results
-- Program quality control plots visualization
-- Perturbed gene analysis visualization
-- Excel summarization of results
+**Perturbation calibration** (pick one method):
+- **U-test**: Mann-Whitney U-test for perturbation association
+- **CRT**: Conditional randomization test
+- **Matched Cell DE**: Matched cell differential expression
 
-### Annotation
-LLM-driven gene program annotation pipeline (ported from ProgExplorer). Uses STRING enrichment, PubTator3 literature mining, and Claude AI to generate structured biological annotations for each gene program.
+Calibration validates that p-value calculations are well-calibrated by generating a null distribution from non-targeting guides:
+1. Generate fake p-values by randomly selecting non-targeting guides as targeting, then perform perturbation testing
+2. The fake p-values vs uniform distribution QQ-plot should align on the diagonal
+3. The real p-values vs uniform distribution QQ-plot should show enrichment (rarer than expected)
+4. If calibrated → proceed to downstream analysis. If not → change the p-value calculation method.
+
+### Stage 3: Visualization & Reporting
+- **K-selection plots** for optimal K selection
+- **Program analysis plots** for per-program quality control
+- **Perturbed gene analysis** visualization
+- **Annotation**: LLM-driven gene program annotation (STRING enrichment, PubTator3 literature mining, Claude AI)
+- **Excel summarization** of results
 
 See [`src/Interpretation/README.md`](src/Interpretation/README.md) for detailed usage.
 
 ## Usage
-1. Run inference using either sk-cNMF or torch-cNMF
-2. Perform the perturbation sensitivity test and test if p-values are well calibrated
-3. Evaluate results using the evaluation pipeline
-4. Generate plots for analysis and quality control and compile results into Excel summary tables
-5. (Optional) Run annotation pipeline for LLM-based gene program interpretation
+1. **Inference** — Run cNMF using either sk-cNMF (CPU) or torch-cNMF (GPU)
+2. **Evaluation & Calibration** — Evaluate program quality and calibrate perturbation p-values
+3. **Visualization & Reporting** — Generate plots, annotations, and Excel summaries
 
 See individual component READMEs for detailed usage instructions.
