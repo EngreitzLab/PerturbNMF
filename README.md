@@ -36,7 +36,7 @@ Run cNMF to decompose the cell × gene matrix into gene programs. Pick one:
 - **sk-cNMF**: CPU-based implementation using scikit-learn
 - **torch-cNMF**: GPU-accelerated implementation using PyTorch
 
-### Stage 2: Evaluation & Calibration
+### Stage 2: Evaluation 
 Evaluate the quality of inferred gene programs using comprehensive metrics, with perturbation calibration as part of the evaluation process.
 
 **Evaluation metrics:**
@@ -60,7 +60,7 @@ Calibration validates that p-value calculations are well-calibrated by generatin
 3. The real p-values vs uniform distribution QQ-plot should show enrichment (rarer than expected)
 4. If calibrated → proceed to downstream analysis. If not → change the p-value calculation method.
 
-### Stage 3: Visualization & Reporting
+### Stage 3: Interpretation
 - **K-selection plots** for optimal K selection
 - **Program analysis plots** for per-program quality control
 - **Perturbed gene analysis** visualization
