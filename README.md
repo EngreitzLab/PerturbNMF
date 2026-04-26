@@ -75,10 +75,3 @@ See [`src/Calibration/README.md`](src/Calibration/README.md) for detailed method
 - **Excel summarization** of results
 
 See [`src/Interpretation/README.md`](src/Interpretation/README.md) for detailed parameters and output format.
-
-## Usage
-1. **Inference** — Run cNMF using either sk-cNMF (CPU) or torch-cNMF (GPU)
-2. **Evaluation & Calibration** — Evaluate program quality and calibrate perturbation p-values
-3. **Visualization & Reporting** — Generate plots, annotations, and Excel summaries
-
-See individual component READMEs for detailed usage instructions.
