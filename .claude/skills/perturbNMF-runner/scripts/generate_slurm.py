@@ -33,17 +33,27 @@ STAGES = {
         "gpu": False,
     },
     "k-selection": {
-        "script": "src/Interpretation/Slurm_Version/cNMF_k_selection.py",
+        "script": "src/Interpretation/Plotting/Slurm_Version/cNMF_k_selection.py",
         "conda_env": "torch-cNMF",
         "gpu": False,
     },
     "program-analysis": {
-        "script": "src/Interpretation/Slurm_Version/cNMF_program_analysis.py",
+        "script": "src/Interpretation/Plotting/Slurm_Version/cNMF_program_analysis.py",
         "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
     "perturbed-gene": {
-        "script": "src/Interpretation/Slurm_Version/cNMF_perturbed_gene_analysis.py",
+        "script": "src/Interpretation/Plotting/Slurm_Version/cNMF_perturbed_gene_analysis.py",
+        "conda_env": "NMF_Benchmarking",
+        "gpu": False,
+    },
+    "annotation": {
+        "script": "src/Interpretation/Annotation/Slurm_Version/run_annotation.py",
+        "conda_env": "progexplorer",
+        "gpu": False,
+    },
+    "excel-summary": {
+        "script": "src/Interpretation/Summary_table/src/Compile_excel_sheet.py",
         "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
