@@ -12,8 +12,8 @@ import sys
 import textwrap
 
 PIPELINE_ROOT = "/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF"
-SKILL_SCRIPTS = os.path.join(PIPELINE_ROOT, ".claude/skills/cnmf-runner/scripts")
-EMAIL = "ymo@stanford.edu"
+SKILL_SCRIPTS = os.path.join(PIPELINE_ROOT, ".claude/skills/perturbNMF-runner/scripts")
+DEFAULT_EMAIL = "ymo@stanford.edu"
 
 # Stage definitions: script path (relative), conda env, whether GPU is needed
 STAGES = {
@@ -131,13 +131,14 @@ def generate_script(args, passthrough_args):
 
     if needs_gpu:
         lines.append('#SBATCH --gres=gpu:1')
-        lines.append('#SBATCH -C GPU_SKU:V100S_PCIE')
+        gpu_sku = args.gpu_sku if args.gpu_sku else 'V100S_PCIE'
+        lines.append(f'#SBATCH -C GPU_SKU:{gpu_sku}')
 
     lines.extend([
         '',
         '# Email notifications',
         '#SBATCH --mail-type=BEGIN,END,FAIL',
-        f'#SBATCH --mail-user={EMAIL}',
+        f'#SBATCH --mail-user={args.email}',
         '',
         '# Configuration',
         f'OUT_DIR="{args.output_dir}"',
@@ -314,6 +315,15 @@ def main():
     parser.add_argument(
         '--gpu', action='store_true',
         help='Request GPU resources (auto-set for torch stages)'
+    )
+    parser.add_argument(
+        '--gpu_sku', type=str, default=None,
+        help='GPU SKU constraint (e.g., V100S_PCIE, L40S, H100_SXM5, A100_SXM4). '
+             'Default: V100S_PCIE'
+    )
+    parser.add_argument(
+        '--email', type=str, default=DEFAULT_EMAIL,
+        help=f'Email for SLURM notifications (default: {DEFAULT_EMAIL})'
     )
     parser.add_argument(
         '--log_dir', type=str, default=None,

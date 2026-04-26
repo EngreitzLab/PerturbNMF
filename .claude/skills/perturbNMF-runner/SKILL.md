@@ -1,20 +1,20 @@
 ---
-name: cnmf-runner
-description: Interactive cNMF pipeline runner. Guides users through configuring and submitting cNMF inference, evaluation, plotting, and calibration jobs on SLURM. Triggers on keywords like cNMF, NMF, inference, evaluation, calibration, SLURM, submit job, run pipeline, K selection, perturbation, gene programs, matched cell DE, program DE.
+name: perturbNMF-runner
+description: Interactive PerturbNMF pipeline runner. Guides users through configuring and submitting PerturbNMF inference, evaluation, calibration, plotting, annotation, and summarization jobs on SLURM. Triggers on keywords like PerturbNMF, cNMF, NMF, inference, evaluation, calibration, SLURM, submit job, run pipeline, K selection, perturbation, gene programs, matched cell DE, program DE, annotation, excel summary.
 user_invocable: true
 ---
 
-# cNMF Pipeline Runner
+# PerturbNMF Pipeline Runner
 
-You are an interactive assistant for running the cNMF benchmarking pipeline on Stanford Sherlock HPC. Guide the user step-by-step through data validation, parameter selection, resource estimation, SLURM script generation, and job submission.
+You are an interactive assistant for running the PerturbNMF pipeline on Stanford Sherlock HPC. Guide the user step-by-step through data validation, parameter selection, resource estimation, SLURM script generation, and job submission.
 
 ## Constants
 
 ```
 PIPELINE_ROOT=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
-SKILL_DIR=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/cnmf-runner
+SKILL_DIR=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/perturbNMF-runner
 CONDA_BASE=/oak/stanford/groups/engreitz/Users/ymo/miniforge3
-EMAIL=ymo@stanford.edu
+DEFAULT_EMAIL=ymo@stanford.edu
 GWAS_DATA=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz
 REFERENCE_GTF=/oak/stanford/groups/engreitz/Users/opushkar/genome/IGVFFI9573KOZR.gtf.gz
 ```
@@ -25,26 +25,43 @@ When the user wants to run any pipeline stage, follow this conversational flow:
 
 ### Step 1: Identify the Stage
 
-Ask the user which stage they want to run (or infer from context):
+Present the full pipeline flow to the user in order, then ask which stage they want to run (or infer from context):
 
-| Stage | generate_slurm.py `--stage` value | Conda Env | GPU |
-|-------|-----------------------------------|-----------|-----|
-| sk-cNMF Inference | `inference-sk` | `sk-cNMF` | No |
-| torch-cNMF Inference | `inference-torch` | `torch-cNMF` | Yes (V100S) |
-| Evaluation | `evaluation` | `NMF_Benchmarking` | No |
-| K-selection Plot | `k-selection` | `torch-cNMF` | No |
-| Program Analysis Plot | `program-analysis` | `NMF_Benchmarking` | No |
-| Perturbed Gene Plot | `perturbed-gene` | `NMF_Benchmarking` | No |
-| U-test Calibration | `u-test-calibration` | `NMF_Benchmarking` | No |
-| CRT Calibration | `crt-calibration` | `programDE` | No |
-| Matched Cell DE | `matched-cell-de` | `programDE` | No |
+**PerturbNMF Pipeline Stages:**
+
+| # | Stage | `--stage` value | Conda Env | GPU | Description |
+|---|-------|-----------------|-----------|-----|-------------|
+| **Stage 1: Inference** (pick one) | | | | | |
+| 1a | sk-cNMF Inference | `inference-sk` | `sk-cNMF` | No | CPU-based NMF (scikit-learn) |
+| 1b | torch-cNMF Inference | `inference-torch` | `torch-cNMF` | Yes | GPU-based NMF (PyTorch) |
+| **Stage 2: Evaluation & Calibration** | | | | | |
+| 2a | Evaluation | `evaluation` | `NMF_Benchmarking` | No | 6 statistical metrics on programs |
+| 2b | Perturbation Calibration (pick one) | | | | |
+|    | — U-test | `u-test-calibration` | `NMF_Benchmarking` | No | U-test perturbation calibration |
+|    | — CRT | `crt-calibration` | `programDE` | No | Conditional randomization test |
+|    | — Matched Cell DE | `matched-cell-de` | `programDE` | No | Matched cell differential expression |
+| **Stage 3: Visualization & Reporting** | | | | | |
+| 3a | K-Selection Plot | `k-selection` | `torch-cNMF` | No | Stability/error across K values |
+| 3b | Program Analysis Plot | `program-analysis` | `NMF_Benchmarking` | No | Per-program detailed plots |
+| 3c | Perturbed Gene Plot | `perturbed-gene` | `NMF_Benchmarking` | No | Per-gene analysis plots |
+| 3d | Annotation | `annotation` | `progexplorer` | No | LLM-driven gene program annotation |
+| 3e | Excel Summarization | `excel-summary` | `NMF_Benchmarking` | No | Compile results into Excel report |
+
+**Pipeline flow:**
+```
+Input (.h5ad) → Stage 1 (Inference: pick 1a or 1b)
+             → Stage 2a (Evaluation) → Stage 2b (Calibration: pick U-test, CRT, or Matched Cell DE)
+             → Stage 3 (Plots + Annotation + Summary)
+```
+
+Each stage depends on the previous one. Stage 1 produces `.h5mu` files, Stage 2 produces evaluation CSVs, and Stage 3 produces PDFs/PNGs/Excel reports.
 
 ### Step 2: Get Data Path & Validate
 
 Ask for the input data file path. Then run validation:
 
 ```bash
-eval "$(conda shell.bash hook)" && conda activate sk-cNMF && python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/cnmf-runner/scripts/validate_data.py --counts_fn "<path>"
+eval "$(conda shell.bash hook)" && conda activate sk-cNMF && python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/perturbNMF-runner/scripts/validate_data.py --counts_fn "<path>"
 ```
 
 Add `--categorical_key`, `--guide_names_key`, etc. if user specifies non-default keys.
@@ -64,6 +81,7 @@ Present parameters in two tiers. First collect the common ones, then explicitly 
 | **Output directory** | (required) | (required) | Where results are saved |
 | **Run name** | (required) | (required) | Convention: `MMDDYY_<description>` |
 | **Species** | (required) | (required) | `human` or `mouse` |
+| **Email** | `ymo@stanford.edu` | `ymo@stanford.edu` | Email for SLURM job notifications |
 | `--K` | `30 50 60 80 100 200 250 300` | `5 7 10` | K values (number of programs) |
 | `--numiter` | `10` | `10` | Number of NMF replicates per K |
 | `--numhvgenes` | `5451` | `2000` | Highly variable genes to use |
@@ -335,7 +353,7 @@ python3 SKILL_DIR/scripts/generate_slurm.py \
   [--preprocess_assignment_key target_assignment] \
   [--preprocess_names_key target_names] \
   --log_dir <save_dir>/logs \
-  --script_output_path <script_save_path> \
+  --script_output_path <out_dir>/script/<run_name>_crt.sh \
   -- \
   --out_dir <out_dir> \
   --run_name <run_name> \
@@ -357,6 +375,70 @@ If no preprocessing is needed (standard guide keys), omit the `--preprocess_*` f
 #### Matched Cell DE
 
 Runs via R script `run_matching_de_batch.R`. Key parameters: `--input`, `--output_dir`, `--cell_metadata`, `--cnmf_usages`, `--gene_perturbations_sparse`, `--gene_batch_file`, `--perturbation_names`, `--condition`, `--script_dir`. Supports gene propagation via `--gene_spectra_tpm` and direct gene-level DE via `--de_level genes` with `--gene_expression`.
+
+### Step 3b: GPU Selection (torch-cNMF only)
+
+When the user selects torch-cNMF inference, recommend a GPU based on their dataset size. Follow this flow:
+
+**Step A: Check available GPUs on Sherlock.**
+
+Run this command to see current GPU availability:
+```bash
+sinfo -p gpu,owners -o "%P %G %f %a" | grep GPU_SKU | sort -u
+```
+
+**Step B: Estimate VRAM requirement.**
+
+The dominant VRAM cost is the data matrix plus W and H factor matrices:
+```
+VRAM ≈ (cells × genes × 8 bytes)       # data matrix (float64)
+      + (cells × max_K × 8 bytes)       # W matrix (usage)
+      + (max_K × genes × 8 bytes)       # H matrix (spectra)
+      + 50% overhead                     # workspace, gradients, buffers
+```
+
+Simplified tiers:
+
+| Cells | HVGs | Max K | Est. VRAM | Recommended GPU |
+|-------|------|-------|-----------|-----------------|
+| <20k | ≤3000 | ≤50 | <2 GB | Any GPU works (RTX 2080Ti 11GB) |
+| 20k–50k | ≤5000 | ≤100 | 2–6 GB | RTX 2080Ti (11GB) or RTX 3090 (24GB) |
+| 50k–100k | ≤5000 | ≤200 | 6–12 GB | RTX 3090 (24GB) or V100S (32GB) |
+| 100k–200k | ≤5000 | ≤300 | 12–24 GB | V100S (32GB) or A100 (40GB) |
+| 200k–500k | ≤5000 | ≤300 | 24–48 GB | A100 (40/80GB) or L40S (48GB) |
+| >500k | any | any | >48 GB | H100 (80GB) or consider sk-cNMF (CPU) |
+
+**Step C: Present the GPU options table.**
+
+Show the user the available GPUs on Sherlock with their specs:
+
+| GPU | VRAM | SLURM `--gpu_sku` | Partitions | Notes |
+|-----|------|-------------------|------------|-------|
+| RTX 2080Ti | 11 GB | `RTX_2080Ti` | gpu, owners | Oldest, most available |
+| TITAN Xp | 12 GB | `TITAN_Xp` | gpu, owners | Legacy |
+| P100 | 16 GB | `P100_PCIE` | gpu, owners | Legacy |
+| RTX 3090 | 24 GB | `RTX_3090` | gpu, owners | Good mid-range |
+| P40 | 24 GB | `P40` | owners | Legacy |
+| V100S | 32 GB | `V100S_PCIE` | gpu, owners | Previous default |
+| V100 (SXM2) | 16/32 GB | `V100_SXM2` | gpu, owners | Check VRAM variant |
+| A100 (PCIE) | 40 GB | `A100_PCIE` | owners | High-end |
+| A100 (SXM4) | 40/80 GB | `A100_SXM4` | owners | High-end, check VRAM |
+| A40 | 48 GB | `A40` | owners | Good for large datasets |
+| L40S | 48 GB | `L40S` | gpu, owners | New gen, widely available |
+| H100 (SXM5) | 80 GB | `H100_SXM5` | gpu, owners | Fastest, limited availability |
+
+**Step D: Recommend and confirm.**
+
+Based on the VRAM estimate, recommend a GPU. Present your recommendation like:
+
+> Your dataset has **X cells × Y HVGs**, max K = Z.
+> Estimated VRAM: ~**N GB**.
+> Recommended GPU: **GPU_NAME (VRAM GB)** (`--gpu_sku GPU_SKU`).
+> [Alternative: GPU_NAME2 if faster/more available]
+>
+> Would you like to use this GPU, or pick a different one?
+
+Pass the confirmed GPU SKU to `generate_slurm.py` via the `--gpu_sku` flag. If the user doesn't specify, default to `V100S_PCIE` for backward compatibility.
 
 ### Step 4: Estimate Resources
 
@@ -412,14 +494,15 @@ Present the recommendation and ask user to confirm or adjust.
 Run the generator. Use `--` to separate generator args from passthrough pipeline args:
 
 ```bash
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/cnmf-runner/scripts/generate_slurm.py \
+python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/perturbNMF-runner/scripts/generate_slurm.py \
   --stage <stage_value> \
   --job_name <run_name> \
   --output_dir <out_dir> \
   --run_name <run_name> \
   --cpus <N> --mem <MG> --time <HH:MM:SS> --partition <parts> \
-  [--gpu] \
-  --script_output_path <out_dir>/<run_name>/<run_name>.sh \
+  [--gpu] [--gpu_sku <GPU_SKU>] \
+  --email <user_email> \
+  --script_output_path <out_dir>/script/<run_name>.sh \
   -- \
   [all stage-specific args for the pipeline script...]
 ```
@@ -459,13 +542,13 @@ After inference completes (or when the user has existing .h5mu output), generate
 **For all .h5mu files in the adata directory (recommended):**
 
 ```bash
-eval "$(conda shell.bash hook)" && conda activate sk-cNMF && python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/cnmf-runner/scripts/generate_h5mu_structure.py dummy --adata_dir <out_dir>/<run_name>/Inference/adata
+eval "$(conda shell.bash hook)" && conda activate sk-cNMF && python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/perturbNMF-runner/scripts/generate_h5mu_structure.py dummy --adata_dir <out_dir>/<run_name>/Inference/adata
 ```
 
 **For a single .h5mu file:**
 
 ```bash
-eval "$(conda shell.bash hook)" && conda activate sk-cNMF && python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/cnmf-runner/scripts/generate_h5mu_structure.py <out_dir>/<run_name>/Inference/adata/cNMF_<K>_<sel_thresh>.h5mu
+eval "$(conda shell.bash hook)" && conda activate sk-cNMF && python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/perturbNMF-runner/scripts/generate_h5mu_structure.py <out_dir>/<run_name>/Inference/adata/cNMF_<K>_<sel_thresh>.h5mu
 ```
 
 This produces `_structure.txt` files alongside each `.h5mu` file (e.g., `cNMF_50_0_5_structure.txt` next to `cNMF_50_0_5.h5mu`).
@@ -490,7 +573,7 @@ After inference completes, guide the user through the next stages:
 ## Important Notes
 
 - Always use `eval "$(conda shell.bash hook)"` before conda activate in any Bash command
-- For torch-cNMF, the generator auto-adds `--gres=gpu:1` and `-C GPU_SKU:V100S_PCIE`
+- For torch-cNMF, the generator auto-adds `--gres=gpu:1` and `-C GPU_SKU:<selected_sku>` (default: `V100S_PCIE` if user doesn't specify; use Step 3b to recommend the right GPU)
 - The pipeline saves config YAMLs automatically; no need to create them manually
 - Run name convention: `MMDDYY_<short_description>`
 - Output MuData files are at `<out_dir>/<run_name>/Inference/adata/cNMF_<K>_<sel_thresh>.h5mu` with corresponding `_structure.txt` summaries

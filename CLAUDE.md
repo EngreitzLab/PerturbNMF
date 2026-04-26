@@ -75,4 +75,4 @@ eval "$(conda shell.bash hook)" && conda activate <env_name> && <command>
 
 ## Interactive Skill
 
-Use the `cnmf-runner` skill (say "run cNMF", "submit inference", etc.) for guided, interactive pipeline execution. It validates data, recommends SLURM resources, generates scripts, and submits jobs.
+Use the `perturbNMF-runner` skill (say "run PerturbNMF", "run cNMF", "submit inference", etc.) for guided, interactive pipeline execution. It validates data, recommends SLURM resources, generates scripts, and submits jobs.
