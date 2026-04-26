@@ -18,47 +18,47 @@ DEFAULT_EMAIL = "ymo@stanford.edu"
 # Stage definitions: script path (relative), conda env, whether GPU is needed
 STAGES = {
     "inference-sk": {
-        "script": "Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py",
+        "script": "src/Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py",
         "conda_env": "sk-cNMF",
         "gpu": False,
     },
     "inference-torch": {
-        "script": "Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py",
+        "script": "src/Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py",
         "conda_env": "torch-cNMF",
         "gpu": True,
     },
     "evaluation": {
-        "script": "Evaluation/Slurm_Version/cNMF_evaluation_pipeline.py",
+        "script": "src/Evaluation/Slurm_Version/cNMF_evaluation_pipeline.py",
         "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
     "k-selection": {
-        "script": "Interpretation/Slurm_Version/cNMF_k_selection.py",
+        "script": "src/Interpretation/Slurm_Version/cNMF_k_selection.py",
         "conda_env": "torch-cNMF",
         "gpu": False,
     },
     "program-analysis": {
-        "script": "Interpretation/Slurm_Version/cNMF_program_analysis.py",
+        "script": "src/Interpretation/Slurm_Version/cNMF_program_analysis.py",
         "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
     "perturbed-gene": {
-        "script": "Interpretation/Slurm_Version/cNMF_perturbed_gene_analysis.py",
+        "script": "src/Interpretation/Slurm_Version/cNMF_perturbed_gene_analysis.py",
         "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
     "u-test-calibration": {
-        "script": "Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py",
+        "script": "src/Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py",
         "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
     "crt-calibration": {
-        "script": "Calibration/Slurm_version/CRT/CRT.py",
+        "script": "src/Calibration/Slurm_version/CRT/CRT.py",
         "conda_env": "programDE",
         "gpu": False,
     },
     "matched-cell-de": {
-        "script": "Calibration/Slurm_version/Matched_cell_programDE/run_matching_de_batch.R",
+        "script": "src/Calibration/Slurm_version/Matched_cell_programDE/run_matching_de_batch.R",
         "conda_env": "programDE",
         "gpu": False,
         "interpreter": "Rscript",
