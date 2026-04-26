@@ -32,8 +32,8 @@ Present the full pipeline flow to the user in order, then ask which stage they w
 | # | Stage | `--stage` value | Conda Env | GPU | Description |
 |---|-------|-----------------|-----------|-----|-------------|
 | **Stage 1: Inference** (pick one) | | | | | |
-| 1a | sk-cNMF Inference | `inference-sk` | `sk-cNMF` | No | CPU-based NMF (scikit-learn) |
-| 1b | torch-cNMF Inference | `inference-torch` | `torch-cNMF` | Yes | GPU-based NMF (PyTorch) |
+|    | — sk-cNMF | `inference-sk` | `sk-cNMF` | No | CPU-based NMF (scikit-learn) |
+|    | — torch-cNMF | `inference-torch` | `torch-cNMF` | Yes | GPU-based NMF (PyTorch) |
 | **Stage 2: Evaluation & Calibration** | | | | | |
 | 2a | Evaluation | `evaluation` | `NMF_Benchmarking` | No | 6 statistical metrics on programs |
 | 2b | Perturbation Calibration (pick one) | | | | |
@@ -49,8 +49,8 @@ Present the full pipeline flow to the user in order, then ask which stage they w
 
 **Pipeline flow:**
 ```
-Input (.h5ad) → Stage 1 (Inference: pick 1a or 1b)
-             → Stage 2a (Evaluation) → Stage 2b (Calibration: pick U-test, CRT, or Matched Cell DE)
+Input (.h5ad) → Stage 1 (Inference: sk-cNMF or torch-cNMF)
+             → Stage 2a (Evaluation) → Stage 2b (Calibration: U-test, CRT, or Matched Cell DE)
              → Stage 3 (Plots + Annotation + Summary)
 ```
 

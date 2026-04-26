@@ -8,10 +8,8 @@ This pipeline runs consensus Non-negative Matrix Factorization (cNMF) on single-
 
 ```mermaid
 flowchart TD
-    A["Input: counts.h5ad\n(cells x genes)"] --> B["Stage 1a: sk-cNMF Inference\n(CPU, scikit-learn)"]
-    A --> C["Stage 1b: torch-cNMF Inference\n(GPU, PyTorch)"]
+    A["Input: counts.h5ad\n(cells x genes)"] --> B["Stage 1: Inference\n(sk-cNMF CPU or torch-cNMF GPU)"]
     B --> D["Output: cNMF_{K}_{thresh}.h5mu\n(MuData with scores + loadings)"]
-    C --> D
     D --> E["Stage 2: Evaluation\n(6 metrics)"]
     E --> F["Output: Evaluation/{K}_{thresh}/\n(CSV results per metric)"]
     E --> G["Stage 2b: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
@@ -30,7 +28,6 @@ flowchart TD
     N["GWAS Data (OpenTargets)"] --> E
     O["Normalized Counts .h5ad"] --> E
     P["Reference GTF (optional)"] -.-> B
-    P -.-> C
 ```
 
 See also: `flowchart.png` in the repo root for a visual overview.
