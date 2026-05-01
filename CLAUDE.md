@@ -15,7 +15,7 @@ flowchart TD
     E --> G["Stage 2b: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
     G --> F
     F --> I["Stage 3a: Plotting\n(K-selection, Program analysis, Perturbation analysis)"]
-    I --> L["Output: PDFs + PNGs"]
+    I --> L["Output: PDFs + HTML report"]
     F --> S["Stage 3b: Excel Summarization"]
     S --> L
     F --> Q["Stage 3c: Annotation\n(LLM-driven gene program annotation)"]
