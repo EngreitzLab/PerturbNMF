@@ -31,9 +31,9 @@ from Evaluation.src import (
 
 
 # Helper method to reformat data 
-def _assign_guide(mdata):
-    mdata[args.data_key].obsm[args.guide_assignment] = mdata[args.data_key].obsm[args.guide_assignment].toarray()
-    mdata[args.prog_key].obsm[args.guide_assignment] = mdata[args.prog_key].obsm[args.guide_assignment].toarray()
+def _assign_guide(mdata, mdata_guide):
+    mdata[args.data_key].obsm[args.guide_assignment_key] = mdata[args.data_key].obsm[args.guide_assignment_key].toarray()
+    mdata[args.prog_key].obsm[args.guide_assignment_key] = mdata[args.prog_key].obsm[args.guide_assignment_key].toarray()
 
 
 # Compute Real Perturbation Tests
@@ -46,11 +46,11 @@ def compute_real_perturbation_tests():
         df_target_non = df_target[df_target["targeting"] == False]
         reference_targets = df_target_non.index.values.tolist()
     else:
-        refference_targets = args.guide_annotation_key
+        reference_targets = args.guide_annotation_key
 
     test_stats_real_df = []
 
-    for sel_thresh in args.sel_threshs:
+    for sel_thresh in args.sel_thresh:
         for k in args.components:
             print(f"Processing K={k}, sel_thresh={sel_thresh}")
 
@@ -110,7 +110,7 @@ def compute_fake_perturbation_tests():
 
     test_stats_fake_dfs = []
 
-    for sel_thresh in args.sel_threshs:
+    for sel_thresh in args.sel_thresh:
         for k in args.components:
             print(f"Processing K={k}, sel_thresh={sel_thresh}")
 
@@ -131,22 +131,22 @@ def compute_fake_perturbation_tests():
 
                 # Randomly make number_guide non-targeting guides "targeting"
                 guide_target_ = guide_target.copy()
-                selected_guides = np.random.choice(guide_target_[args.guide_names],args.number_guide,replace=False)
+                selected_guides = np.random.choice(guide_target_[args.guide_names_key],args.number_guide,replace=False)
                 guide_target_.loc[guide_target_.guide_names.isin(selected_guides),'type'] = 'targeting' # type is a col with targeting / non-targeting
 
                 # Filter to only non-targeting guides that exist in both datasets
-                valid_guide_mask = np.isin(mdata[args.prog_key].uns[args.guide_names],guide_target_[args.guide_names].values)
+                valid_guide_mask = np.isin(mdata[args.prog_key].uns[args.guide_names_key],guide_target_[args.guide_names_key].values)
                 valid_indices = np.where(valid_guide_mask)[0]
 
-                print(f"  Found {len(valid_indices)} valid non-targeting guides out of " f"{len(mdata[args.prog_key].uns[args.guide_names])} total")
+                print(f"  Found {len(valid_indices)} valid non-targeting guides out of " f"{len(mdata[args.prog_key].uns[args.guide_names_key])} total")
 
                 if len(valid_indices) == 0:
                     raise ValueError("No valid guides found")
 
                 _mdata = mdata.copy()
-                _mdata[args.prog_key].obsm[args.guide_assignment] = mdata[args.prog_key].obsm[args.guide_assignment][:, non_targeting_idx]
-                _mdata[args.prog_key].uns[args.guide_names] = mdata[args.prog_key].uns[args.guide_names][non_targeting_idx]
-                _mdata[args.prog_key].uns[args.guide_targets] = guide_target_.loc[guide_target_.guide_names.isin(mdata[args.prog_key].uns[args.guide_names]),'type'].values
+                _mdata[args.prog_key].obsm[args.guide_assignment_key] = mdata[args.prog_key].obsm[args.guide_assignment_key][:, non_targeting_idx]
+                _mdata[args.prog_key].uns[args.guide_names_key] = mdata[args.prog_key].uns[args.guide_names_key][non_targeting_idx]
+                _mdata[args.prog_key].uns[args.guide_targets_key] = guide_target_.loc[guide_target_.guide_names.isin(mdata[args.prog_key].uns[args.guide_names_key]),'type'].values
 
                 # Run perturbation association for each sample
                 for samp in _mdata[args.data_key].obs[args.categorical_key].unique():
@@ -194,7 +194,7 @@ def load_real_perturbation_tests():
 
     test_stats_real_df = []
 
-    for sel_thresh in args.sel_threshs:
+    for sel_thresh in args.sel_thresh:
         for k in args.components:
             for samp in ['D0', 'D4', 'D7']:  # Update with actual sample names
                 thresh_str = str(sel_thresh).replace('.', '_')
@@ -343,8 +343,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # either change the array here or run each component in parallel
-    if args.K is None:
-        args.K = [30, 50, 60, 80, 100, 200, 250, 300]
+    if args.components is None:
+        args.components = [30, 50, 60, 80, 100, 200, 250, 300]
 
     if args.sel_thresh is None:
         args.sel_thresh = [0.4, 0.8, 2.0]
@@ -370,7 +370,7 @@ if __name__ == "__main__":
         test_stats_real_df = compute_real_perturbation_tests()
 
     # Compute fake perturbation tests
-    if args.compute_real_perturbation_tests:
+    if args.compute_fake_perturbation_tests:
 
         test_stats_fake_df = compute_fake_perturbation_tests()
 
