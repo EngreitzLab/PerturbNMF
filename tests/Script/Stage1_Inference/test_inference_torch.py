@@ -4,13 +4,13 @@ End-to-end smoke tests for torch-cNMF inference pipeline (GPU).
 Tests three learning modes: batch, minibatch, and dataloader.
 
 Run via SLURM:
-    sbatch tests/Script/run_gpu_test_batch.sh
-    sbatch tests/Script/run_gpu_test_minibatch.sh
-    sbatch tests/Script/run_gpu_test_dataloader.sh
+    sbatch tests/Script/Stage1_Inference/run_gpu_test_batch.sh
+    sbatch tests/Script/Stage1_Inference/run_gpu_test_minibatch.sh
+    sbatch tests/Script/Stage1_Inference/run_gpu_test_dataloader.sh
 
 Or directly on a GPU node:
     conda activate torch-nmf-dl
-    python -m pytest tests/Script/Inference/test_inference_torch.py -v
+    python -m pytest tests/Script/Stage1_Inference/test_inference_torch.py -v
 """
 
 import os
@@ -26,9 +26,9 @@ from .conftest import (
 )
 
 from torch_cnmf import cNMF
-from Inference.src.format_checking import check_data_format
-from Inference.src.run_cNMF import run_cnmf_consensus, compile_results
-from Inference.src.plot_diagnostics import generate_all_plots
+from Stage1_Inference.src.format_checking import check_data_format
+from Stage1_Inference.src.run_cNMF import run_cnmf_consensus, compile_results
+from Stage1_Inference.src.plot_diagnostics import generate_all_plots
 
 
 # ---------------------------------------------------------------------------

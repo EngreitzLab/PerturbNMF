@@ -3,7 +3,7 @@ import sys
 sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
 
 import muon as mu
-from Interpretation.Plotting.src.Program_expression_weighted_plots import (
+from Stage3_Interpretation.A_Plotting.src.Program_expression_weighted_plots import (
     compute_program_expression_by_condition,
     plot_program_heatmap_weighted,
     plot_program_heatmap_expression_scaled,

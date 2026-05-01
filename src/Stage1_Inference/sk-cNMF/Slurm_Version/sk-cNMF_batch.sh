@@ -50,7 +50,7 @@ echo "Python path: $(which python)"
 
 # Run the Python script
 echo "Running Python script..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py\
+python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py\
         --counts_fn  "/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Data/raw.h5ad"\
         --output_directory "$OUT_DIR" \
         --init "random" \

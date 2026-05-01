@@ -10,11 +10,11 @@ This test validates:
   2. rename_all_NMF correctly merges them into Inference_all/
 
 Run via SLURM:
-    sbatch tests/Script/run_gpu_test_parallel.sh
+    sbatch tests/Script/Stage1_Inference/run_gpu_test_parallel.sh
 
 Or directly on a GPU node:
     conda activate torch-nmf-dl
-    python -m pytest tests/Script/Inference/test_inference_parallel_torch.py -v
+    python -m pytest tests/Script/Stage1_Inference/test_inference_parallel_torch.py -v
 
 Output saved to: tests/output/torch-cNMF-parallel/
 """
@@ -27,7 +27,7 @@ import numpy as np
 from .conftest import TEST_K, TEST_NUMITER, TEST_NUMHVGENES, TEST_SEL_THRESH, TEST_SEED, PERSISTENT_OUTPUT
 
 from torch_cnmf import cNMF
-from Inference.src.run_cNMF import rename_all_NMF
+from Stage1_Inference.src.run_cNMF import rename_all_NMF
 
 
 # ---------- shared state ----------

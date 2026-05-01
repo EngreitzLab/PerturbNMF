@@ -1,0 +1,1058 @@
+{
+  "program_id": "6",
+  "timestamp": "2026-04-28T15:32:43.628810",
+  "program_context": {
+    "program_id": "6",
+    "top_genes": "GRID2;ADCY2;SNTG2;SHANK2;DLGAP1;CADM2;ASIC2;CSMD2;ENSG00000279668;GALNT17",
+    "positive_regulators": "SETDB1,CTR9,PSMD4,SUPT20H,TAF10",
+    "negative_regulators": "G3BP1,WDR77,DGCR8,GTF2H4,MRPL32",
+    "day": "D0",
+    "cell_types": "iPSC-derived endothelial/mesoderm differentiation",
+    "go_enrichment": "Chemical Synaptic Transmission (GO:0007268);Modulation Of Chemical Synaptic Transmission (GO:0050804);Regulation Of Trans-Synaptic Signaling (GO:0099177);Calcium Ion Transmembrane Import Into Cytosol (GO:0097553);Anterograde Trans-Synaptic Signaling (GO:0098916);Synaptic Transmission, Glutamatergic ",
+    "other_enrichment": "Neuronal System R-HSA-112316;Protein-protein Interactions At Synapses R-HSA-6794362;Neurexins And Neuroligins R-HSA-6794361;Transmission Across Chemical Synapses R-HSA-112315;Synaptic Adhesion-Like Molecules R-HSA-8849932;Myogenesis R-HSA-525793;Neurotransmitter Receptors And Postsynaptic Signal Tra"
+  },
+  "search_queries": [
+    {
+      "query": "GRID2 AND SHANK2 AND synaptic transmission",
+      "strategy": "gene_pair",
+      "target": "co-regulation of GRID2 and SHANK2 in synaptic function"
+    },
+    {
+      "query": "SETDB1 AND (GRID2 OR SHANK2) AND transcriptional regulation",
+      "strategy": "regulator_target",
+      "target": "how SETDB1 regulates synaptic genes like GRID2 and SHANK2"
+    },
+    {
+      "query": "DLGAP1 AND CADM2 AND postsynaptic density",
+      "strategy": "gene_pair",
+      "target": "functional relationship between DLGAP1 and CADM2 at synapses"
+    },
+    {
+      "query": "G3BP1 AND DGCR8 AND neuronal differentiation",
+      "strategy": "regulator_target",
+      "target": "how negative regulators G3BP1 and DGCR8 control neuronal programs"
+    },
+    {
+      "query": "(chemical synaptic transmission[MeSH] OR glutamatergic synapses) AND endothelial cells",
+      "strategy": "pathway_context",
+      "target": "synaptic transmission pathways in endothelial or vascular contexts"
+    },
+    {
+      "query": "ADCY2 AND ASIC2 AND calcium signaling",
+      "strategy": "gene_pair",
+      "target": "co-regulation of ADCY2 and ASIC2 in calcium-dependent processes"
+    },
+    {
+      "query": "CTR9 AND TAF10 AND (neuronal OR synaptic) gene expression",
+      "strategy": "regulator_target",
+      "target": "transcriptional control of synaptic genes by CTR9 and TAF10"
+    },
+    {
+      "query": "neurexins AND neuroligins AND (endothelial differentiation OR vascular development)",
+      "strategy": "broad_context",
+      "target": "synaptic adhesion molecules in endothelial or vascular development"
+    }
+  ],
+  "papers": [
+    {
+      "pmid": 33347690,
+      "title": "Learning and reaction times in mouse touchscreen tests are differentially impacted by mutations in genes encoding postsynaptic interacting proteins SYNGAP1, NLGN3, DLGAP1, DLGAP2 and SHANK2.",
+      "abstract": "The postsynaptic terminal of vertebrate excitatory synapses contains a highly conserved multiprotein complex that comprises neurotransmitter receptors, cell-adhesion molecules, scaffold proteins and enzymes, which are essential for brain signalling and plasticity underlying behaviour. Increasingly, mutations in genes that encode postsynaptic proteins belonging to the PSD-95 protein complex, continue to be identified in neurodevelopmental disorders (NDDs) such as autism spectrum disorder, intellectual disability and epilepsy. These disorders are highly heterogeneous, sharing genetic aetiology and comorbid cognitive and behavioural symptoms. Here, by using genetically engineered mice and innovative touchscreen-based cognitive testing, we sought to investigate whether loss-of-function mutations in genes encoding key interactors of the PSD-95 protein complex display shared phenotypes in associative learning, updating of learned associations and reaction times. Our genetic dissection of mice with loss-of-function mutations in Syngap1, Nlgn3, Dlgap1, Dlgap2 and Shank2 showed that distinct components of the PSD-95 protein complex differentially regulate learning, cognitive flexibility and reaction times in cognitive processing. These data provide insights for understanding how human mutations in these genes lead to the manifestation of diverse and complex phenotypes in NDDs.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "SYNGAP1": [
+          "Syngap1",
+          "SYNGAP1"
+        ],
+        "NLGN3": [
+          "Nlgn3",
+          "NLGN3"
+        ],
+        "DLGAP1": [
+          "Dlgap1",
+          "DLGAP1"
+        ],
+        "DLGAP2": [
+          "DLGAP2",
+          "Dlgap2"
+        ],
+        "SHANK2": [
+          "Shank2",
+          "SHANK2"
+        ],
+        "DLG4": [
+          "PSD-95"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "SHANK2": [
+          "Learning and reaction times in mouse touchscreen tests are differentially impacted by mutations in genes encoding postsynaptic interacting proteins SYNGAP1, NLGN3, DLGAP1, DLGAP2 and SHANK2..",
+          "Our genetic dissection of mice with loss-of-function mutations in Syngap1, Nlgn3, Dlgap1, Dlgap2 and Shank2 showed that distinct components of the PSD-95 protein complex differentially regulate learning, cognitive flexibility and reaction times in cognitive processing."
+        ],
+        "DLGAP1": [
+          "Learning and reaction times in mouse touchscreen tests are differentially impacted by mutations in genes encoding postsynaptic interacting proteins SYNGAP1, NLGN3, DLGAP1, DLGAP2 and SHANK2..",
+          "Our genetic dissection of mice with loss-of-function mutations in Syngap1, Nlgn3, Dlgap1, Dlgap2 and Shank2 showed that distinct components of the PSD-95 protein complex differentially regulate learning, cognitive flexibility and reaction times in cognitive processing."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:33347690 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 36231770,
+      "title": "Genetic Analysis Implicates Dysregulation of SHANK2 in Renal Cell Carcinoma Progression.",
+      "abstract": "SH3 and multiple ankyrin repeat domains (SHANK) is a family of scaffold proteins that were first identified to be involved in balancing synaptic transmission via regulation of intracellular signalling crosstalk and have been linked to various cancers. However, the role of the SHANK genes in renal cell carcinoma (RCC) remains to be elucidated. In this study, we aimed to evaluate whether genetic variants in SHANK family genes affect the risk of RCC and survival of patients. A genetic association study was conducted using logistic regression and Cox regression analyses, followed by the correction for a false discovery rate (FDR), in 630 patients with RCC and controls. A pooled analysis was further performed to summarise the clinical relevance of SHANK gene expression in RCC. After adjustment for known risk factors and the FDR, the SHANK2 rs10792565 T allele was found to be associated with an increased risk of RCC (adjusted odds ratio = 1.79, 95% confidence interval = 1.32-2.44, p = 1.96 x 10-4, q = 0.030), whereas no significant association was found with RCC survival. A pooled analysis of 19 independent studies, comprising 1509 RCC and 414 adjacent normal tissues, showed that the expression of SHANK2 was significantly lower in RCC than in normal tissues (p < 0.001). Furthermore, low expression of SHANK2 was correlated with an advanced stage and poor prognosis for patients with clear cell and papillary RCC. This study suggests that SHANK2 rs10792565 is associated with an increased risk of RCC and that SHANK2 may play a role in RCC progression.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "SHANK2": [
+          "SHANK",
+          "SHANK2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "SHANK2": [
+          "Genetic Analysis Implicates Dysregulation of SHANK2 in Renal Cell Carcinoma Progression..",
+          "After adjustment for known risk factors and the FDR, the SHANK2 rs10792565 T allele was found to be associated with an increased risk of RCC (adjusted odds ratio = 1.79, 95% confidence interval = 1.32-2.44, p = 1.96 x 10-4, q = 0.030), whereas no significant association was found with RCC survival."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:36231770 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 39073001,
+      "title": "Adenylyl cyclase 2 expression and function in neurological diseases.",
+      "abstract": "Adenylyl cyclases (Adcys) catalyze the formation of cAMP, a secondary messenger essential for cell survival and neurotransmission pathways in the CNS. Adcy2, one of ten Adcy isoforms, is highly expressed in the CNS. Abnormal Adcy2 expression and mutations have been reported in various neurological disorders in both rodents and humans. However, due to the lack of genetic tools, loss-of-function studies of Adcy2 are scarce. In this review, we summarize recent findings on Adcy2 expression and function in neurological diseases. Specifically, we first introduce the biochemistry, structure, and function of Adcy2 briefly. Next, the expression and association of Adcy2 in human patients and rodent models of neurodegenerative diseases (Alzheimer's disease and Parkinson's disease), psychiatric disorders (Tourette syndrome, schizophrenia, and bipolar disorder), and other neurological conditions (stress-associated disorders, stroke, epilepsy, and Lesch-Nyhan Syndrome) are elaborated. Furthermore, we discuss the pros and cons of current studies as well as key questions that need to be answered in the future. We hope to provide a focused review on Adcy2 that promotes future research in the field.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "ADCY2": [
+          "Adcy2",
+          "Adenylyl cyclase 2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "ADCY2": [
+          "We hope to provide a focused review on Adcy2 that promotes future research in the field.",
+          "Adcy2, one of ten Adcy isoforms, is highly expressed in the CNS."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:39073001 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 35637702,
+      "title": "Bioinformatic Analysis of Prognostic Value of SNTG2 with Immune Implications in Lung Adenocarcinoma.",
+      "abstract": "Background: Lung cancer is the most morbid and fatal cancer in the world, and nearly 85% of lung cancer is non-small cell lung cancer (NSCLC). Besides traditional chemotherapies, molecular targeted therapies and immunotherapies are increasing rapidly, but the treatment is still unsatisfactory. The study is to identify a new diagnostic and prognostic biomarker. Methods: Data including mRNA expression and clinical information of lung adenocarcinoma (LUAD) patients were downloaded from The Cancer Genome Atlas (TCGA) database. Receiver operating characteristic (ROC) curve was constructed to assess the diagnostic value of syntrophin-gamma2 (SNTG2) expression and Kaplan-Meier (KM) survival curves were used to compare the survival disparities. The protein-protein interaction (PPI) network was analysed by Search Tool for the Retrieval of Interacting Genes/Proteins (STRING) and the connections between SNTG2 and immune cell infiltration were found with Tumor Immunoassay Resource (TIMER). Genetic mutation in SNTG2 and its association with overall survival (OS) were evaluated by cBioPortal. The relationship between SNTG2 and methylation and its association with overall survival were evaluated by MethSurv. Chi square and Mann-Whitney tests were used for statistical analyses. Xiantao Academic Online Website was used for online analysis. Results: Our results revealed that SNTG2 mRNA expression was lower in LUAD tissues than in both adjacent and non-adjacent normal tissues and low SNTG2 mRNA expression was verified to be correlated with histological grade, clinical stage, first therapy outcome and poor overall survival of LUAD. Next, ROC curve revealed diagnostic and prognostic value of SNTG2 for LUAD patients. Moreover, SNTG2 presented correlation with immune cell infiltration and immune checkpoints. Then, we revealed CC chemokine ligand 14 (CCL14), a co-expression gene with SNTG2, which has consistent influence with SNTG2. Furthermore, hypomethylation was found to be associated with high SNTG2 expression. Conclusion: We revealed a potential diagnostic and prognostic indicator in LUAD and analyzed its influence on immunotherapy.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "SNTG2": [
+          "syntrophin-gamma2",
+          "SNTG2"
+        ],
+        "CCL14": [
+          "CC chemokine ligand 14",
+          "CCL14"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "SNTG2": [
+          "Bioinformatic Analysis of Prognostic Value of SNTG2 with Immune Implications in Lung Adenocarcinoma..",
+          "Receiver operating characteristic (ROC) curve was constructed to assess the diagnostic value of syntrophin-gamma2 (SNTG2) expression and Kaplan-Meier (KM) survival curves were used to compare the survival disparities."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:35637702 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 33604983,
+      "title": "Associations between the CADM2 gene, substance use, risky sexual behavior, and self-control: A phenome-wide association study.",
+      "abstract": "Risky behaviors, such as substance use and unprotected sex, are associated with various physical and mental health problems. Recent genome-wide association studies indicated that variation in the cell adhesion molecule 2 (CADM2) gene plays a role in risky behaviors and self-control. In this phenome-wide scan for risky behavior, it was tested if underlying common vulnerability could be (partly) explained by pleiotropic effects of this gene and how large the effects were. Single nucleotide polymorphism (SNP)-level and gene-level association tests within four samples (25 and Up, Spit for Science, Netherlands Twin Register, and UK Biobank and meta-analyses over all samples (combined sample of 362,018 participants) were conducted to test associations between CADM2, substance- and sex-related risk behaviors, and various measures related to self-control. We found significant associations between the CADM2 gene, various risky behaviors, and different measures of self-control. The largest effect sizes were found for cannabis use, sensation seeking, and disinhibition. Effect sizes ranged from 0.01% to 0.26% for single top SNPs and from 0.07% to 3.02% for independent top SNPs together, with sufficient power observed only in the larger samples and meta-analyses. In the largest cohort, we found indications that risk-taking proneness mediated the association between CADM2 and latent factors for lifetime smoking and regular alcohol use. This study extends earlier findings that CADM2 plays a role in risky behaviors and self-control. It also provides insight into gene-level effect sizes and demonstrates the feasibility of testing mediation. These findings present a good starting point for investigating biological etiological pathways underlying risky behaviors.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CADM2": [
+          "cell adhesion molecule 2",
+          "CADM2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "CADM2": [
+          "Recent genome-wide association studies indicated that variation in the cell adhesion molecule 2 (CADM2) gene plays a role in risky behaviors and self-control.",
+          "Associations between the CADM2 gene, substance use, risky sexual behavior, and self-control: A phenome-wide association study.."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:33604983 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 39309008,
+      "title": "The lncRNA CADM2-AS1 promotes gastric cancer metastasis by binding with miR-5047 and activating NOTCH4 translation.",
+      "abstract": "Background: Multi-organ metastasis has been the main cause of death in patients with Gastric cancer (GC). The prognosis for patients with metastasized GC is still very poor. Long noncoding RNAs (lncRNAs) always been reported to be closely related to cancer metastasis. Methods: In this paper, the aberrantly expressed lncRNA CADM2-AS1 was identified by lncRNA-sequencing in clinical lymph node metastatic GC tissues. Besides, the role of lncRNA CADM2-AS1 in cancer metastasis was detected by Transwell, Wound healing, Western Blot or other assays in vitro and in vivo. Further mechanism study was performed by RNA FISH, Dual-luciferase reporter assay and RT-qPCR. Finally, the relationship among lncRNA CADM2-AS1, miR-5047 and NOTCH4 in patient tissues was detected by RT-qPCR. Results: In this paper, the aberrantly expressed lncRNA CADM2-AS1 was identified by lncRNA-sequencing in clinical lymph node metastatic GC tissues. Besides, the role of lncRNA CADM2-AS1 in cancer metastasis was detected in vitro and in vivo. The results shown that overexpression of the lncRNA CADM2-AS1 promoted GC metastasis, while knockdown inhibited it. Further mechanism study proved that lncRNA CADM2-AS1 could sponge and silence miR-5047, which targeting mRNA was NOTCH4. Elevated expression of lncRNA CADM2-AS1 facilitate GC metastasis by up-regulating NOTCH4 mRNA level consequently. What's more, the relationship among lncRNA CADM2-AS1, miR-5047 and NOTCH4 was further detected and verified in metastatic GC patient tissues. Conclusions: LncRNA CADM2-AS1 promoted metastasis in GC by targeting the miR-5047/NOTCH4 signaling axis, which may be a potential target for GC metastasis.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CADM2": [
+          "CADM2",
+          "CADM2-"
+        ],
+        "MIR5047": [
+          "miR-5047"
+        ],
+        "NOTCH4": [
+          "NOTCH4"
+        ]
+      },
+      "relations": [
+        {
+          "gene1": "CADM2",
+          "gene2": "NOTCH4",
+          "type": "Positive_Correlation",
+          "score": 0.9991
+        }
+      ],
+      "evidence_sentences": {
+        "CADM2": [
+          "The lncRNA CADM2-AS1 promotes gastric cancer metastasis by binding with miR-5047 and activating NOTCH4 translation..",
+          "Methods: In this paper, the aberrantly expressed lncRNA CADM2-AS1 was identified by lncRNA-sequencing in clinical lymph node metastatic GC tissues."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:39309008 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 34866525,
+      "title": "N6-methyladenosine (m6A)-mediated lncRNA DLGAP1-AS1enhances breast canceradriamycin resistance through miR-299-3p/WTAP feedback loop.",
+      "abstract": "Chemotherapy resistance is identified as an obstacle for breast cancer (BC) therapy, and, besides, increasing evidence indicates that long-noncoding RNAs (lncRNAs) participate in the regulation of BC adriamycin (ADR) resistance. Here, our work shows that lncRNA DLGAP1 antisense RNA 1 (DLGAP1-AS1) is up-regulated in ADR-resistant BC cells (MCF-7/ADR). Clinically, higher DLGAP1-AS1 expression was closely correlated to poorer clinical prognosis. Results showed that DLGAP1-AS1 promoted the ADR IC50 and proliferation of ADR-resistant cells. Moreover, N6-methyladenosine (m6A) methyltransferase WT1 associated protein (WTAP) binds to the m6A modified site of DLGAP1-AS1 and motivates its stability. Mechanistically, DLGAP1-AS1 sponged miR-299-3p through 3'-untranslated region (3'-UTR) binding, which in turn relieved the repression of WTAP and thus upregulated WTAP expression. In conclusion, above findings conclude that lncRNA DLGAP1-AS1 promotes BC ADR-resistance through WTAP/DLGAP1-AS1/miR-299-3p feedback loop.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "DLGAP1": [
+          "DLGAP1"
+        ],
+        "WTAP": [
+          "WTAP"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "DLGAP1": [
+          "Results showed that DLGAP1-AS1 promoted the ADR IC50 and proliferation of ADR-resistant cells.",
+          "Moreover, N6-methyladenosine (m6A) methyltransferase WT1 associated protein (WTAP) binds to the m6A modified site of DLGAP1-AS1 and motivates its stability."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:34866525 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 36376892,
+      "title": "Long noncoding RNA DLGAP1-AS2 promotes tumorigenesis and metastasis by regulating the Trim21/ELOA/LHPP axis in colorectal cancer.",
+      "abstract": "BACKGROUND: Long noncoding RNAs (lncRNAs) have driven research focused on their effects as oncogenes or tumor suppressors involved in carcinogenesis. However, the functions and mechanisms of most lncRNAs in colorectal cancer (CRC) remain unclear. METHODS: The expression of DLGAP1-AS2 was assessed by quantitative RT-PCR in multiple CRC cohorts. The impacts of DLGAP1-AS2 on CRC growth and metastasis were evaluated by a series of in vitro and in vivo assays. Furthermore, the underlying mechanism of DLGAP1-AS2 in CRC was revealed by RNA pull down, RNA immunoprecipitation, RNA sequencing, luciferase assays, chromatin immunoprecipitation, and rescue experiments. RESULTS: We discovered that DLGAP1-AS2 promoted CRC tumorigenesis and metastasis by physically interacting with Elongin A (ELOA) and inhibiting its protein stability by promoting tripartite motif containing 21 (Trim21)-mediated ubiquitination modification and degradation of ELOA. In particular, we revealed that DLGAP1-AS2 decreases phospholysine phosphohistidine inorganic pyrophosphate phosphatase (LHPP) expression by inhibiting ELOA-mediated transcriptional activating of LHPP and thus blocking LHPP-dependent suppression of the AKT signaling pathway. In addition, we also demonstrated that DLGAP1-AS2 was bound and stabilized by cleavage and polyadenylation specificity factor (CPSF2) and cleavage stimulation factor (CSTF3). CONCLUSIONS: The discovery of DLGAP1-AS2, a promising prognostic biomarker, reveals a new dimension into the molecular pathogenesis of CRC and provides a prospective treatment target for this disease.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "DLGAP1": [
+          "DLGAP1"
+        ],
+        "TRIM21": [
+          "Trim21"
+        ],
+        "ELOA": [
+          "ELOA",
+          "Elongin A"
+        ],
+        "LHPP": [
+          "LHPP",
+          "phospholysine phosphohistidine inorganic pyrophosphate phosphatase"
+        ],
+        "AKT1": [
+          "AKT"
+        ],
+        "CPSF2": [
+          "CPSF2"
+        ],
+        "CSTF3": [
+          "CSTF3"
+        ]
+      },
+      "relations": [
+        {
+          "gene1": "LHPP",
+          "gene2": "DLGAP1",
+          "type": "Negative_Correlation",
+          "score": 0.9875
+        },
+        {
+          "gene1": "AKT1",
+          "gene2": "DLGAP1",
+          "type": "Positive_Correlation",
+          "score": 0.9512
+        }
+      ],
+      "evidence_sentences": {
+        "DLGAP1": [
+          "Long noncoding RNA DLGAP1-AS2 promotes tumorigenesis and metastasis by regulating the Trim21/ELOA/LHPP axis in colorectal cancer..",
+          "In particular, we revealed that DLGAP1-AS2 decreases phospholysine phosphohistidine inorganic pyrophosphate phosphatase (LHPP) expression by inhibiting ELOA-mediated transcriptional activating of LHPP and thus blocking LHPP-dependent suppression of the AKT signaling pathway."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:36376892 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 39177810,
+      "title": "Late development of OCD-like phenotypes in Dlgap1 knockout mice.",
+      "abstract": "RATIONALE: Despite variants in the Dlgap1 gene having the two lowest p-value in a genome-wide association study of obsessive compulsive disorder (OCD), previous studies reported the absence of OCD-like phenotypes in Dlgap1 knockout (KO) mice. Since these studies observed behavioral phenotypes only for a short period, development of OCD-like phenotypes in these mice at older ages was still plausible. OBJECTIVE: To examine the presence or absence of development of OCD-like phenotypes in Dlgap1 KO mice and their responsiveness to fluvoxamine. METHODS AND RESULTS: Newly produced Dlgap1 KO mice were observed for a year. Modified SHIRPA primary screen in 2-month-old homozygous mutant mice showed only weak signs of anxiety, stress conditions and aggression. At older ages, however, these mutant mice exhibited excessive self-grooming characterized by increased scratching which led to skin lesions. A significant sex difference was observed in this scratching behavior. The penetrance of skin lesions reached 50% at 6-7 months of age and 90% at 12 months of age. In the open-field test performed just after the appearance of these lesions, homozygous mutant mice spent significantly less time in the center, an anxiety-like behavior, than did their wild-type and heterozygous littermates, none and less than 10% of which showed skin lesions at 1 year, respectively. The skin lesions and excessive self-grooming were significantly alleviated by two-week treatment with fluvoxamine. CONCLUSION: Usefulness of Dlgap1 KO mice as a tool for investigating the pathogenesis of OCD-like phenotypes and its translational relevance was suggested.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "DLGAP1": [
+          "Dlgap1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "DLGAP1": [
+          "Late development of OCD-like phenotypes in Dlgap1 knockout mice..",
+          "RATIONALE: Despite variants in the Dlgap1 gene having the two lowest p-value in a genome-wide association study of obsessive compulsive disorder (OCD), previous studies reported the absence of OCD-like phenotypes in Dlgap1 knockout (KO) mice."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:39177810 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 37316943,
+      "title": "Shank2 identifies a subset of glycinergic neurons involved in altered nociception in an autism model.",
+      "abstract": "BACKGROUND: Autism Spectrum Disorders (ASD) patients experience disturbed nociception in the form of either hyposensitivity to pain or allodynia. A substantial amount of processing of somatosensory and nociceptive stimulus takes place in the dorsal spinal cord. However, many of these circuits are not very well understood in the context of nociceptive processing in ASD. METHODS: We have used a Shank2-/- mouse model, which displays a set of phenotypes reminiscent of ASD, and performed behavioural and microscopic analysis to investigate the role of dorsal horn circuitry in nociceptive processing of ASD. RESULTS: We determined that Shank2-/- mice display increased sensitivity to formalin pain and thermal preference, but a sensory specific mechanical allodynia. We demonstrate that high levels of Shank2 expression identifies a subpopulation of neurons in murine and human dorsal spinal cord, composed mainly by glycinergic interneurons and that loss of Shank2 causes the decrease in NMDAR in excitatory synapses on these inhibitory interneurons. In fact, in the subacute phase of the formalin test, glycinergic interneurons are strongly activated in wild type (WT) mice but not in Shank2-/- mice. Consequently, nociception projection neurons in laminae I are activated in larger numbers in Shank2-/- mice. LIMITATIONS: Our investigation is limited to male mice, in agreement with the higher representation of ASD in males; therefore, caution should be applied to extrapolate the findings to females. Furthermore, ASD is characterized by extensive genetic diversity and therefore the findings related to Shank2 mutant mice may not necessarily apply to patients with different gene mutations. Since nociceptive phenotypes in ASD range between hyper- and hypo-sensitivity, diverse mutations may affect the circuit in opposite ways. CONCLUSION: Our findings prove that Shank2 expression identifies a new subset of inhibitory interneurons involved in reducing the transmission of nociceptive stimuli and whose unchecked activation is associated with pain hypersensitivity. We provide evidence that dysfunction in spinal cord pain processing may contribute to the nociceptive phenotypes in ASD.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "SHANK2": [
+          "Shank2"
+        ],
+        "GRIN1": [
+          "NMDAR"
+        ]
+      },
+      "relations": [
+        {
+          "gene1": "Grin1",
+          "gene2": "Shank2",
+          "type": "Positive_Correlation",
+          "score": 0.9812
+        }
+      ],
+      "evidence_sentences": {
+        "SHANK2": [
+          "Shank2 identifies a subset of glycinergic neurons involved in altered nociception in an autism model..",
+          "METHODS: We have used a Shank2-/- mouse model, which displays a set of phenotypes reminiscent of ASD, and performed behavioural and microscopic analysis to investigate the role of dorsal horn circuitry in nociceptive processing of ASD."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:37316943 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 36121088,
+      "title": "Long non-coding RNA DLGAP1-AS1 and DLGAP1-AS2:Two novel oncogenes in multiple cancers.",
+      "abstract": "BACKGROUND: The change of lncRNA expression is known to affect the progression of tumors. This has fueled numerous investigations aiming at the mystery of lncRNA. Clear lncRNA has been the hotspot of antisense RNAs research. More and more lncRNAs have been proven to take effect as oncogenes of multitudinous cancers and accelerate tumor progression. This review elucidates the pathophysiological functions of lncRNA DLGAP1-AS1 and lncRNA DLGAP1-AS2 in a variety of tumors. METHODS: Via systematic analysis and in-depth study about relevant articles in PubMed, this article analyzes and summarizes the mechanism of antisense transcripts DLGAP1-AS1 and DLGAP1-AS2 in tumor development. RESULTS: DLGAP1-AS1 and DLGAP1-AS2 can exert their effect as oncogenes on various cancers. The expression of DLGAP1-AS1 is aberrantly high in various tumors, including GC, BC, HCC, glioblastoma and CRC. Concurrently, in LC, RC, HCC, GC, glioma and CCA, DLGAP1-AS2 is also discovered to be highly expressed. And they have a strong pertinence with a poor prognosis. The disorder of DLGAP1-AS1 and DLGAP1-AS2 in different tumors has different malignant impacts on tumors, not only to invasion, apoptosis, multiplication and EMT of tumor cells but also to drug resistance and radioresistance. In addition, DLGAP1-AS2 was revealed to have the ability to predict the prognosis of WT and RCC (Tables 1 and 3). CONCLUSION: The regulatory effects of DLGAP1-AS1 and DLGAP1-AS2 on tumors make them possible to be clinical markers for the early diagnosis of tumors and effective therapeutic targets.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "DLGAP1": [
+          "DLGAP1"
+        ],
+        "DLGAP1-AS2": [
+          "DLGAP1-AS2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "DLGAP1": [
+          "CONCLUSION: The regulatory effects of DLGAP1-AS1 and DLGAP1-AS2 on tumors make them possible to be clinical markers for the early diagnosis of tumors and effective therapeutic targets.",
+          "Long non-coding RNA DLGAP1-AS1 and DLGAP1-AS2:Two novel oncogenes in multiple cancers.."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:36121088 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 39901236,
+      "title": "MSC-exosomes pretreated by Danshensu extracts pretreating to target the hsa-miR-27a-5p and STAT3-SHANK2 to enhanced antifibrotic therapy.",
+      "abstract": "BACKGROUND: Peritoneal fibrosis (PF) is a serious complication commonly associated with prolonged peritoneal dialysis. Mesenchymal stem cells (MSCs) and their exosomes (Exo) have shown significant therapeutic promise in treating fibrotic conditions. Danshensu (DSS), a bioactive compound from the traditional Chinese herb Danshen reverses fibrosis. This study aims to investigate a novel strategy to enhance the therapeutic efficacy against PF by DSS preconditioning MSCs-derived exosomes (DSS-Exo). METHODS: The in vitro studies included the effects of DSS duration on MSCs, and the characterization of DSS-Exo and Exo, followed by the assessment of RNA and protein expression levels of peritoneal fibrosis markers and inflammatory cytokines levels after treating human peritoneal mesothelial (HMrSV5) cells. In vivo experiments were conducted on a PF mouse model to observe cell morphology, collagen deposition, fibrosis localization, and to evaluate peritoneal functions such as filtration rate, urea nitrogen clearance, peritoneal thickness, and protein leakage. Mechanistic insights were gained through the analysis of the STAT3/HIF-1alpha/VEGF signaling pathway, tissue dual-fluorescence localization,chromatin immunoprecipitation sequencing (ChIP-seq), and dual-luciferase reporter (DLR) assays. Additionally, the differential expression of miRNAs between DSS-Exo and Exo was explored and validation of key miRNA. RESULTS: DSS-Exo significantly upregulated E-cadherin, downregulated VEGFA, alpha-SMA, CTGF and Fibronectin expression in HMrSV5 cells compared to untreated Exo. In vivo studies revealed that DSS-Exo enhanced the ability of Exo to improve peritoneal function,such as the peritoneal filtration rate and urea nitrogen, glucose clearance, while reducing peritoneal thickness and protein leakage, and cell morphology, reduce collagen deposition, and decrease the degree of fibrosis. Mechanistically, these exosomes inhibited the STAT3/HIF-1alpha/VEGF signaling pathway within peritoneal mesothelial tissues. Furthermore, ChIP-seq and DLR demonstrated that DSS-Exo affected STAT3 directly binds to SHANK2 promoter regions, forming hydrogen bonds between 5 key amino acids such as GLN-344, HIS-332 and 6 key bases such as DG-258, DG-261. miRNA profiling identified DSS-Exo increased hsa-miR-27a-5p_R-1 to regulated STAT3-SHANK2 and modulating the EMT. CONCLUSION: This study highlighted the innovative use of Danshensu in enhancing MSC-derived exosome therapy for PF. The identification of the hsa-miR-27a-5p_R-1-STAT3-SHANK2 axis may reveal new molecular mechanisms underlying fibrosis, further research is needed to fully elucidate its impact on PF. The integration of Danshensu from traditional Chinese medicine into modern MSC exosome therapy represents a promising frontier in the development of novel treatments for fibrotic diseases.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "ALB": [
+          "hsa"
+        ],
+        "MIR27A": [
+          "miR-27a-",
+          "miR-27a"
+        ],
+        "STAT3": [
+          "STAT3"
+        ],
+        "SHANK2": [
+          "SHANK2"
+        ],
+        "HIF1A": [
+          "HIF-1alpha"
+        ],
+        "VEGFA": [
+          "VEGF",
+          "VEGFA"
+        ],
+        "CDH1": [
+          "E-cadherin"
+        ],
+        "ACTA2": [
+          "alpha-SMA"
+        ],
+        "CCN2": [
+          "CTGF"
+        ],
+        "FN1": [
+          "Fibronectin"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "SHANK2": [
+          "Furthermore, ChIP-seq and DLR demonstrated that DSS-Exo affected STAT3 directly binds to SHANK2 promoter regions, forming hydrogen bonds between 5 key amino acids such as GLN-344, HIS-332 and 6 key bases such as DG-258, DG-261.",
+          "MSC-exosomes pretreated by Danshensu extracts pretreating to target the hsa-miR-27a-5p and STAT3-SHANK2 to enhanced antifibrotic therapy.."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:39901236 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 35136251,
+      "title": "Transcriptomics and sequencing analysis of gene expression profiling for major depressive disorder.",
+      "abstract": "BACKGROUND: Major depressive disorder (MDD) is a common psychiatric disorder characterized by constant sadness and a lack of interest in work and social interactions. Maintaining the transcriptome levels via the controlled regulation of mRNA processing and transport is essential to alleviating MDD. Various molecular phenotypes such as aberrant RNA splicing and stability are identified as critical determinants of MDD. AIM: This study aims to compare the mRNA expression profiles between major depressive disorder non-suicide (MDD), major depressive disorder suicide (MDD-S), and control groups using RNA-Seq. MATERIALS AND METHODS: A transcriptomics and sequencing analysis of gene expression profiling was conducted in 9 patients with MDD, 10 patients with MDD-S, and 10 control patients. RESULTS: A comparison of the sample groups revealed that the PRKACB gene was upregulated in patients with MDD. At the same time, GRM3, DLGAP1, and GRIA2 were downregulated in these patients-these genes are majorly involved in the glutamatergic pathway. Five genes (GRIA1, CAMK2D, PPP3CA, MAPK10, and PPP2R2A) of the dopaminergic pathway were downregulated in patients with the MDD-S condition when compared with the MDD and control groups. Cholinergic synapses were altered in patients with MDD when compared to the control group due to the presence of dysregulated genes (KCNQ5, PLCB4, ADCY9, CAMK2D, PIK3CA, and GNG2). CONCLUSION: The results provide a new understanding of the etiology of depression in humans and identify probable depression-associated biomarkers.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "PRKACB": [
+          "PRKACB"
+        ],
+        "GRM3": [
+          "GRM3"
+        ],
+        "DLGAP1": [
+          "DLGAP1"
+        ],
+        "GRIA2": [
+          "GRIA2"
+        ],
+        "GRIA1": [
+          "GRIA1"
+        ],
+        "CAMK2D": [
+          "CAMK2D"
+        ],
+        "PPP3CA": [
+          "PPP3CA"
+        ],
+        "MAPK10": [
+          "MAPK10"
+        ],
+        "PPP2R2A": [
+          "PPP2R2A"
+        ],
+        "KCNQ5": [
+          "KCNQ5"
+        ],
+        "PLCB4": [
+          "PLCB4"
+        ],
+        "ADCY9": [
+          "ADCY9"
+        ],
+        "PIK3CA": [
+          "PIK3CA"
+        ],
+        "GNG2": [
+          "GNG2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "DLGAP1": [
+          "At the same time, GRM3, DLGAP1, and GRIA2 were downregulated in these patients-these genes are majorly involved in the glutamatergic pathway."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:35136251 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 38700702,
+      "title": "Expanding the clinical phenotype of SHANK2-related disorders: childhood apraxia of speech in a patient with a novel SHANK2 pathogenic variant.",
+      "abstract": "",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "SHANK2": [
+          "SHANK2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "SHANK2": [
+          "Expanding the clinical phenotype of SHANK2-related disorders: childhood apraxia of speech in a patient with a novel SHANK2 pathogenic variant.."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:38700702 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 32425815,
+      "title": "Modulation of Stem Cells as Therapeutics for Severe Mental Disorders and Cognitive Impairments.",
+      "abstract": "Severe mental illnesses (SMI) such as schizophrenia and bipolar disorder affect 2-4% of the world population. Current medications and diagnostic methods for mental illnesses are not satisfying. In animal studies, stem cell therapy is promising for some neuropsychiatric disorders and cognitive/social deficits, not only treating during development (targeting modulation and balancing) but also following neurodegeneration (cell replacement and regenerating support). We believe that novel interventions such as modulation of particular cell populations to develop cell-based treatment can improve cognitive and social functions in SMI. With pathological synaptic/myelin damage, oligodendrocytes seem to play a role. In this review, we have summarized oligodendrogenesis mechanisms and some related calcium signals in neural cells and stem/progenitor cells. The related benefits from endogenous stem/progenitor cells within the brain and exogenous stem cells, including multipotent mesenchymal-derived stromal cells (MSC), fetal neural stem cells (NSC), pluripotent stem cells (PSC), and differentiated progenitors, are discussed. These also include stimulating mechanisms of oligodendrocyte proliferation, maturation, and myelination, responsive to the regenerative effects by both endogenous stem cells and transplanted cells. Among the mechanisms, calcium signaling regulates the neuronal/glial progenitor cell (NPC/GPC)/oligodendrocyte precursor cell (OPC) proliferation, migration, and differentiation, dendrite development, and synaptic plasticity, which are involved in many neuropsychiatric diseases in human. On the basis of numerous protein annotation and protein-protein interaction databases, a total of 119 calcium-dependent/activated proteins that are related to neuropsychiatry in human are summarized in this investigation. One of the advanced methods, the calcium/cation-channel-optogenetics-based stimulation of stem cells and transplanted cells, can take advantage of calcium signaling regulations. Intranasal-to-brain delivery of drugs and stem cells or local delivery with the guidance of brain imaging techniques may provide a unique new approach for treating psychiatric disorders. It is also expected that preconditioning stem cell therapy following precise brain imaging as pathological confirmation has high potential if translated to cell clinic use. Generally, modulable cell transplantation followed by stimulations should provide paracrine protection, synaptic modulation, and myelin repair for the brain in SMI.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:32425815 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 39469896,
+      "title": "Neural Influences on Tumor Progression Within the Central Nervous System.",
+      "abstract": "For decades, researchers have studied how brain tumors, the immune system, and drugs interact. With the advances in cancer neuroscience, which centers on defining and therapeutically targeting nervous system-cancer interactions, both within the local tumor microenvironment (TME) and on a systemic level, the subtle relationship between neurons and tumors in the central nervous system (CNS) has been deeply studied. Neurons, as the executors of brain functional activities, have been shown to significantly influence the emergence and development of brain tumors, including both primary and metastatic tumors. They engage with tumor cells via chemical or electrical synapses, directly regulating tumors or via intricate coupling networks, and also contribute to the TME through paracrine signaling, secreting proteins that exert regulatory effects. For instance, in a study involving a mouse model of glioblastoma, the authors observed a 42% increase in tumor volume when neuronal activity was stimulated, compared to controls (p < 0.01), indicating a direct correlation between neural activity and tumor growth. These thought-provoking results offer promising new strategies for brain tumor therapies, highlighting the potential of neuronal modulation to curb tumor progression. Future strategies may focus on developing drugs to inhibit or neutralize proteins and other bioactive substances secreted by neurons, break synaptic connections and interactions between infiltrating cells and tumor cells, as well as disrupt electrical coupling within glioma cell networks. By harnessing the insights gained from this research, we aspire to usher in a new era of brain tumor therapies that are both more potent and precise.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:39469896 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36675155,
+      "title": "Synapse Dysfunctions in Multiple Sclerosis.",
+      "abstract": "Multiple sclerosis (MS) is a chronic neuroinflammatory disease of the central nervous system (CNS) affecting nearly three million humans worldwide. In MS, cells of an auto-reactive immune system invade the brain and cause neuroinflammation. Neuroinflammation triggers a complex, multi-faceted harmful process not only in the white matter but also in the grey matter of the brain. In the grey matter, neuroinflammation causes synapse dysfunctions. Synapse dysfunctions in MS occur early and independent from white matter demyelination and are likely correlates of cognitive and mental symptoms in MS. Disturbed synapse/glia interactions and elevated neuroinflammatory signals play a central role. Glutamatergic excitotoxic synapse damage emerges as a major mechanism. We review synapse/glia communication under normal conditions and summarize how this communication becomes malfunctional during neuroinflammation in MS. We discuss mechanisms of how disturbed glia/synapse communication can lead to synapse dysfunctions, signaling dysbalance, and neurodegeneration in MS.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:36675155 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 38247839,
+      "title": "Astroglial Cells: Emerging Therapeutic Targets in the Management of Traumatic Brain Injury.",
+      "abstract": "Traumatic Brain Injury (TBI) represents a significant health concern, necessitating advanced therapeutic interventions. This detailed review explores the critical roles of astrocytes, key cellular constituents of the central nervous system (CNS), in both the pathophysiology and possible rehabilitation of TBI. Following injury, astrocytes exhibit reactive transformations, differentiating into pro-inflammatory (A1) and neuroprotective (A2) phenotypes. This paper elucidates the interactions of astrocytes with neurons, their role in neuroinflammation, and the potential for their therapeutic exploitation. Emphasized strategies encompass the utilization of endocannabinoid and calcium signaling pathways, hormone-based treatments like 17beta-estradiol, biological therapies employing anti-HBGB1 monoclonal antibodies, gene therapy targeting Connexin 43, and the innovative technique of astrocyte transplantation as a means to repair damaged neural tissues.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "GJA1": [
+          "Connexin 43"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:38247839 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36530954,
+      "title": "The biological alterations of synapse/synapse formation in sepsis-associated encephalopathy.",
+      "abstract": "Sepsis-associated encephalopathy (SAE) is a common complication caused by sepsis, and is responsible for increased mortality and poor outcomes in septic patients. Neurological dysfunction is one of the main manifestations of SAE patients. Patients may still have long-term cognitive impairment after hospital discharge, and the underlying mechanism is still unclear. Here, we first outline the pathophysiological changes of SAE, including neuroinflammation, glial activation, and blood-brain barrier (BBB) breakdown. Synapse dysfunction is one of the main contributors leading to neurological impairment. Therefore, we summarized SAE-induced synaptic dysfunction, such as synaptic plasticity inhibition, neurotransmitter imbalance, and synapses loss. Finally, we discuss the alterations in the synapse, synapse formation, and mediators associated with synapse formation during SAE. In this review, we focus on the changes in synapse/synapse formation caused by SAE, which can further understand the synaptic dysfunction associated with neurological impairment in SAE and provide important insights for exploring appropriate therapeutic targets of SAE.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:36530954 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 38020711,
+      "title": "Progress in cancer neuroscience.",
+      "abstract": "Cancer of the central nervous system (CNS) can crosstalk systemically and locally in the tumor microenvironment and has become a topic of attention for tumor initiation and advancement. Recently studied neuronal and cancer interaction fundamentally altered the knowledge about glioma and metastases, indicating how cancers invade complex neuronal networks. This review systematically discussed the interactions between neurons and cancers and elucidates new therapeutic avenues. We have overviewed the current understanding of direct or indirect communications of neuronal cells with cancer and the mechanisms associated with cancer invasion. Besides, tumor-associated neuronal dysfunction and the influence of cancer therapies on the CNS are highlighted. Furthermore, interactions between peripheral nervous system and various cancers have also been discussed separately. Intriguingly and importantly, it cannot be ignored that exosomes could mediate the \"wireless communications\" between nervous system and cancer. Finally, promising future strategies targeting neuronal-brain tumor interactions were reviewed. A great deal of work remains to be done to elucidate the neuroscience of cancer, and future more research should be directed toward clarifying the precise mechanisms of cancer neuroscience, which hold enormous promise to improve outcomes for a wide range of malignancies.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:38020711 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 37873460,
+      "title": "Decoding transcriptomic signatures of Cysteine String Protein alpha-mediated synapse maintenance.",
+      "abstract": "Synapse maintenance is essential for generating functional circuitry and decrement in this process is a hallmark of neurodegenerative disease. While we are beginning to understand the basis of synapse formation, much less is known about synapse maintenance in vivo . Cysteine string protein alpha (CSPalpha), encoded by the Dnajc5 gene, is a synaptic vesicle chaperone that is necessary for synapse maintenance and linked to neurodegeneration. To investigate the transcriptional changes associated with synapse maintenance, we performed single nucleus transcriptomics on the cortex of young CSPalpha knockout (KO) mice and littermate controls. Through differential expression and gene ontology analysis, we observed that both neurons and glial cells exhibit unique signatures in CSPalpha KO brain. Significantly all neurons in CSPalpha KO brains show strong signatures of repression in synaptic pathways, while upregulating autophagy related genes. Through visualization of synapses and autophagosomes by electron microscopy, we confirmed these alterations especially in inhibitory synapses. By imputing cell-cell interactions, we found that neuron-glia interactions were specifically increased in CSPalpha KO mice. This was mediated by synaptogenic adhesion molecules, including the classical Neurexin1-Neuroligin 1 pair, suggesting that communication of glial cells with neurons is strengthened in CSPalpha KO mice in an attempt to achieve synapse maintenance. Together, this study reveals unique cellular and molecular transcriptional changes in CSPalpha KO cortex and provides new insights into synapse maintenance and neurodegeneration. Significance statement: Synapse maintenance is important for maintaining neuronal circuitry throughout life. However, little is known about molecules that affect synapse maintenance in vivo . CSPalpha, encoded by the Dnajc5 gene, is a synaptic vesicle chaperone that is linked to synapse maintenance and neurodegeneration. Here, we show by performing single nucleus transcriptomics of CSPalpha KO cortex that synapse instability is related to repression in synaptic pathways and elevation of autophagy in neurons. However, we find a heterogeneity of glial responses. Additionally, interactions between neurons and glia are increased in CSPalpha KO, mediated by synaptogenic adhesion molecules. This study provides a novel perspective on into synapse maintenance and reveals unique cellular and molecular transcriptional changes in CSPalpha KO brains.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "DNAJC5": [
+          "Dnajc5"
+        ],
+        "NRXN1": [
+          "Neurexin1"
+        ],
+        "NLGN1": [
+          "Neuroligin 1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:37873460 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 21124998,
+      "title": "The genetic basis of non-syndromic intellectual disability: a review.",
+      "abstract": "Intellectual disability (ID), also referred to as mental retardation (MR), is frequently the result of genetic mutation. Where ID is present together with additional clinical symptoms or physical anomalies, there is often sufficient information available for the diagnosing physician to identify a known syndrome, which may then educe the identification of the causative defect. However, where co-morbid features are absent, narrowing down a specific gene can only be done by 'brute force' using the latest molecular genetic techniques. Here we attempt to provide a systematic review of genetic causes of cases of ID where no other symptoms or co-morbid features are present, or non-syndromic ID. We attempt to summarize commonalities between the genes and the molecular pathways of their encoded proteins. Since ID is a common feature of autism, and conversely autistic features are frequently present in individuals with ID, we also look at possible overlaps in genetic etiology with non-syndromic ID.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:21124998 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 37492720,
+      "title": "Structure, function, and pathology of Neurexin-3.",
+      "abstract": "Neurexin-3 is primarily localized in the presynaptic membrane and forms complexes with various ligands located in the postsynaptic membrane. Neurexin-3 has important roles in synapse development and synapse functions. Neurexin-3 mediates excitatory presynaptic differentiation by interacting with leucine-rich-repeat transmembrane neuronal proteins. Meanwhile, neurexin-3 modulates the expression of presynaptic alpha-amino-3-hydroxy-5-methyl-4-isoxazole propionic acid receptors and gamma-aminobutyric acid A receptors by interacting with neuroligins at excitatory and inhibitory synapses. Numerous studies have documented the potential contribution of neurexin-3 to neurodegenerative and neuropsychiatric disorders, such as Alzheimer's disease, addiction behaviors, and other diseases, which raises hopes that understanding the mechanisms of neurexin-3 may hold the key to developing new strategies for related illnesses. This review comprehensively covers the literature to provide current knowledge of the structure, function, and clinical role of neurexin-3.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "NRXN3": [
+          "neurexin-3",
+          "Neurexin-3"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:37492720 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 39468399,
+      "title": "Role of Hippocampal Glutamatergic Synaptic Alterations in Sevoflurane-Induced Cognitive Dysfunction in Aged Mice.",
+      "abstract": "AIMS: Perioperative neurocognitive disorders (PND), including postoperative delirium (POD) and postoperative cognitive dysfunction (POCD), are common following anesthesia and surgery in older patients and significantly increase morbidity and mortality. However, the underlying mechanism of PND is unclear. Our study aims to analyze the differentially expressed genes (DEGs) in excitatory neurons and investigate the role of hippocampal glutamatergic synaptic alterations in sevoflurane-induced cognitive dysfunction in aged mice. METHODS: We performed single-nucleus RNA sequencing (snRNA-seq) technology to examine the alterations of excitatory neurons in hippocampus induced by sevoflurane in aged mice. Gene Ontology (GO) and Kyoto Encyclopedia of Genes and Genomes (KEGG) analysis of DEGs were performed in excitatory neurons. At last, immunofluorescence staining was used to validate sevoflurane-induced alternation of glutamatergic synapses in the hippocampus of aged mice. RESULTS: This study demonstrates that DEGs in excitatory neurons are associated with reduction of glutamatergic synapses and cognitive dysfunction. After immunofluorescence staining validation, we also confirmed that sevoflurane anesthesia decreased the density of glutamatergic synapses in the hippocampus of aged mice. CONCLUSIONS: Our findings demonstrated a key role of hippocampal glutamatergic synaptic alterations in sevoflurane-induced cognitive dysfunction in aged mice.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:39468399 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 37363320,
+      "title": "Neuron-astrocyte omnidirectional signaling in neurological health and disease.",
+      "abstract": "Astrocytes are an abundantly distributed population of glial cells in the central nervous system (CNS) that perform myriad functions in the normal and injured/diseased brain. Astrocytes exhibit heterogeneous phenotypes in response to various insults, a process known as astrocyte reactivity. The accuracy and precision of brain signaling are primarily based on interactions involving neurons, astrocytes, oligodendrocytes, microglia, pericytes, and dendritic cells within the CNS. Astrocytes have emerged as a critical entity within the brain because of their unique role in recycling neurotransmitters, actively modulating the ionic environment, regulating cholesterol and sphingolipid metabolism, and influencing cellular crosstalk in diverse neural injury conditions and neurodegenerative disorders. However, little is known about how an astrocyte functions in synapse formation, axon specification, neuroplasticity, neural homeostasis, neural network activity following dynamic surveillance, and CNS structure in neurological diseases. Interestingly, the tripartite synapse hypothesis came to light to fill some knowledge gaps that constitute an interaction of a subpopulation of astrocytes, neurons, and synapses. This review highlights astrocytes' role in health and neurological/neurodegenerative diseases arising from the omnidirectional signaling between astrocytes and neurons at the tripartite synapse. The review also recapitulates the disruption of the tripartite synapse with a focus on perturbations of the homeostatic astrocytic function as a key driver to modulate the molecular and physiological processes toward neurodegenerative diseases.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:37363320 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36203007,
+      "title": "Molecular pathways of major depressive disorder converge on the synapse.",
+      "abstract": "Major depressive disorder (MDD) is a psychiatric disease of still poorly understood molecular etiology. Extensive studies at different molecular levels point to a high complexity of numerous interrelated pathways as the underpinnings of depression. Major systems under consideration include monoamines, stress, neurotrophins and neurogenesis, excitatory and inhibitory neurotransmission, mitochondrial dysfunction, (epi)genetics, inflammation, the opioid system, myelination, and the gut-brain axis, among others. This review aims at illustrating how these multiple signaling pathways and systems may interact to provide a more comprehensive view of MDD's neurobiology. In particular, considering the pattern of synaptic activity as the closest physical representation of mood, emotion, and conscience we can conceptualize, each pathway or molecular system will be scrutinized for links to synaptic neurotransmission. Models of the neurobiology of MDD will be discussed as well as future actions to improve the understanding of the disease and treatment options.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:36203007 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 37762403,
+      "title": "The Glycosaminoglycan Side Chains and Modular Core Proteins of Heparan Sulphate Proteoglycans and the Varied Ways They Provide Tissue Protection by Regulating Physiological Processes and Cellular Behaviour.",
+      "abstract": "This review examines the roles of HS-proteoglycans (HS-PGs) in general, and, in particular, perlecan and syndecan as representative examples and their interactive ligands, which regulate physiological processes and cellular behavior in health and disease. HS-PGs are essential for the functional properties of tissues both in development and in the extracellular matrix (ECM) remodeling that occurs in response to trauma or disease. HS-PGs interact with a biodiverse range of chemokines, chemokine receptors, protease inhibitors, and growth factors in immune regulation, inflammation, ECM stabilization, and tissue protection. Some cell regulatory proteoglycan receptors are dually modified hybrid HS/CS proteoglycans (betaglycan, CD47). Neurexins provide synaptic stabilization, plasticity, and specificity of interaction, promoting neurotransduction, neurogenesis, and differentiation. Ternary complexes of glypican-1 and Robbo-Slit neuroregulatory proteins direct axonogenesis and neural network formation. Specific neurexin-neuroligin complexes stabilize synaptic interactions and neural activity. Disruption in these interactions leads to neurological deficits in disorders of functional cognitive decline. Interactions with HS-PGs also promote or inhibit tumor development. Thus, HS-PGs have complex and diverse regulatory roles in the physiological processes that regulate cellular behavior and the functional properties of normal and pathological tissues. Specialized HS-PGs, such as the neurexins, pikachurin, and Eyes-shut, provide synaptic stabilization and specificity of neural transduction and also stabilize the axenome primary cilium of phototoreceptors and ribbon synapse interactions with bipolar neurons of retinal neural networks, which are essential in ocular vision. Pikachurin and Eyes-Shut interactions with an alpha-dystroglycan stabilize the photoreceptor synapse. Novel regulatory roles for HS-PGs controlling cell behavior and tissue function are expected to continue to be uncovered in this fascinating class of proteoglycan.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "SDC1": [
+          "syndecan"
+        ],
+        "TGFBR3": [
+          "betaglycan"
+        ],
+        "CD47": [
+          "CD47"
+        ],
+        "GPC1": [
+          "glypican-1"
+        ],
+        "EGFLAM": [
+          "Pikachurin",
+          "pikachurin"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:37762403 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 33561120,
+      "title": "VER/VEGF receptors regulate AMPA receptor surface levels and glutamatergic behavior.",
+      "abstract": "Several intracellular trafficking pathways contribute to the regulation of AMPA receptor (AMPAR) levels at synapses and the control of synaptic strength. While much has been learned about these intracellular trafficking pathways, a major challenge is to understand how extracellular factors, such as growth factors, neuropeptides and hormones, impinge on specific AMPAR trafficking pathways to alter synaptic function and behavior. Here, we identify the secreted ligand PVF-1 and its cognate VEGF receptor homologs, VER-1 and VER-4, as regulators of glutamate signaling in C. elegans. Loss of function mutations in ver-1, ver-4, or pvf-1, result in decreased cell surface levels of the AMPAR GLR-1 and defects in glutamatergic behavior. Rescue experiments indicate that PVF-1 is expressed and released from muscle, whereas the VERs function in GLR-1-expressing neurons to regulate surface levels of GLR-1 and glutamatergic behavior. Additionally, ver-4 is unable to rescue glutamatergic behavior in the absence of pvf-1, suggesting that VER function requires endogenous PVF-1. Inducible expression of a pvf-1 rescuing transgene suggests that PVF-1 can function in the mature nervous system to regulate GLR-1 signaling. Genetic double mutant analysis suggests that the VERs act together with the VPS-35/retromer recycling complex to promote cell surface levels of GLR-1. Our data support a genetic model whereby PVF-1/VER signaling acts with retromer to promote recycling and cell surface levels of GLR-1 to control behavior.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "PVF-1": [
+          "pvf-1",
+          "PVF-1"
+        ],
+        "VER-1": [
+          "VER-1",
+          "ver-1"
+        ],
+        "VER-4": [
+          "ver-4",
+          "VER-4"
+        ],
+        "GLR-1": [
+          "GLR-1"
+        ],
+        "VPS-35": [
+          "VPS-35"
+        ]
+      },
+      "relations": [
+        {
+          "gene1": "glr-1",
+          "gene2": "ver-4",
+          "type": "Negative_Correlation",
+          "score": 0.5234
+        },
+        {
+          "gene1": "ver-1",
+          "gene2": "glr-1",
+          "type": "Positive_Correlation",
+          "score": 0.5477
+        },
+        {
+          "gene1": "pvf-1",
+          "gene2": "glr-1",
+          "type": "Positive_Correlation",
+          "score": 0.9961
+        }
+      ],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:33561120 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 35835709,
+      "title": "Probing the molecular and cellular pathological mechanisms of schizophrenia using human induced pluripotent stem cell models.",
+      "abstract": "With recent advancements in psychiatric genomics, as a field, \"stem cell-based disease modelers\" were given the exciting yet daunting task of translating the extensive list of disease-associated risks into biologically and clinically relevant information in order to deliver therapeutically meaningful leads and insights. Despite their limitations, human induced pluripotent stem cell (iPSCs) based models have greatly aided our understanding of the molecular and cellular mechanisms underlying the complex etiology of brain disorders including schizophrenia (SCZ). In this review, we summarize the major findings from studies in the past decade which utilized iPSC models to investigate cell type-specific phenotypes relevant to idiopathic SCZ and disease penetrant alleles. Across cell type differences, several biological themes emerged, serving as potential neurodevelopmental mechanisms of SCZ, including oxidative stress and mitochondrial dysfunction, depletion of progenitor pools and insufficient differentiation potential of these progenitors, and structural and functional deficits of neurons and other supporting cells. Here, we discuss both the recent progress as well as challenges and improvements needed for future studies utilizing iPSCs as a model for SCZ and other neuropsychiatric disorders.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:35835709 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 33981287,
+      "title": "The Role of Vascular Cells in Pancreatic Beta-Cell Function.",
+      "abstract": "Insulin-producing beta-cells constitute the majority of the cells in the pancreatic islets. Dysfunction of these cells is a key factor in the loss of glucose regulation that characterizes type 2 diabetes. The regulation of many of the functions of beta-cells relies on their close interaction with the intra-islet microvasculature, comprised of endothelial cells and pericytes. In addition to providing islet blood supply, cells of the islet vasculature directly regulate beta-cell activity through the secretion of growth factors and other molecules. These factors come from capillary mural pericytes and endothelial cells, and have been shown to promote insulin gene expression, insulin secretion, and beta-cell proliferation. This review focuses on the intimate crosstalk of the vascular cells and beta-cells and its role in glucose homeostasis and diabetes.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "INS": [
+          "Insulin",
+          "insulin"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['GRID2', 'ADCY2', 'SNTG2', 'SHANK2', 'DLGAP1'] in PMID:33981287 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    }
+  ],
+  "statistics": {
+    "total_papers": 30,
+    "total_queries": 8
+  }
+}

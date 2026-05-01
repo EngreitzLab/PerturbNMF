@@ -3,7 +3,7 @@ End-to-end smoke tests for sk-cNMF inference pipeline.
 
 Run with:
     conda activate sk-cNMF
-    python -m pytest tests/Script/Inference/test_inference_sklearn.py -v
+    python -m pytest tests/Script/Stage1_Inference/test_inference_sklearn.py -v
 
 Tests are ordered sequentially — each step depends on the previous.
 """
@@ -17,9 +17,9 @@ import cnmf
 
 from .conftest import TEST_K, TEST_NUMITER, TEST_NUMHVGENES, TEST_SEL_THRESH, TEST_SEED
 
-from Inference.src.format_checking import check_data_format, check_mdata_format
-from Inference.src.run_cNMF import run_cnmf_consensus, compile_results
-from Inference.src.plot_diagnostics import generate_all_plots
+from Stage1_Inference.src.format_checking import check_data_format, check_mdata_format
+from Stage1_Inference.src.run_cNMF import run_cnmf_consensus, compile_results
+from Stage1_Inference.src.plot_diagnostics import generate_all_plots
 
 
 # ---------- shared state across ordered tests ----------

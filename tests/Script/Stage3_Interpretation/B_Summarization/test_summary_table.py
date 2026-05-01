@@ -10,7 +10,7 @@ from pathlib import Path
 PIPELINE_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 sys.path.insert(0, str(PIPELINE_ROOT / "src"))
 
-from Interpretation.Summary_table.src import (
+from Stage3_Interpretation.B_Summarization.src import (
     compile_Program_loading_score_sheet_flat,
     Compile_GO_sheet,
     Compile_Geneset_sheet,
@@ -21,7 +21,7 @@ from Interpretation.Summary_table.src import (
     Compile_Summary_sheet,
     check_program_name_match,
 )
-from Interpretation.Summary_table.src.Compile_excel_sheet import (
+from Stage3_Interpretation.B_Summarization.src.Compile_excel_sheet import (
     Compute_regulator_zscore,
     softmax_with_temperature,
     compute_joint_distribution,

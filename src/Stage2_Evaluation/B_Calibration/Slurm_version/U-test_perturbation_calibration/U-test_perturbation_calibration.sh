@@ -51,7 +51,7 @@ echo "Python path: $(which python)"
 
 # Run the Python script
 echo "Running Python script..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py \
+python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/B_Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py \
         --out_dir "$OUT_DIR" \
         --run_name "$RUN_NAME" \
         --mdata_guide_path "/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Data/withguide.h5ad" \

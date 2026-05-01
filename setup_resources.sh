@@ -2,7 +2,7 @@
 # Setup script: creates the Evaluation/Resources directory
 # Run this once after cloning the repo on Sherlock
 RESOURCES_SRC="/oak/stanford/groups/engreitz/Users/ymo/Tools/cNMF_benchmarking/cNMF_benchmarking_pipeline/Evaluation/Resources"
-RESOURCES_DST="$(dirname "$0")/src/Evaluation/Resources"
+RESOURCES_DST="$(dirname "$0")/src/Stage2_Evaluation/Resources"
 
 if [ -d "$RESOURCES_DST" ] || [ -L "$RESOURCES_DST" ]; then
     echo "Resources already exist at $RESOURCES_DST"

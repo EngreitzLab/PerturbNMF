@@ -1,70 +1,20 @@
-# Advanced Parameters & CRT Calibration Reference
-
-Read this file when the user needs Tier 2 advanced parameters or CRT calibration details.
+# Calibration Stage (CRT / U-test / Matched Cell DE)
 
 ---
 
-## Tier 2 Advanced Parameters (Inference)
-
-Present these after Tier 1 is collected. Ask: "Do you want to change any of these advanced parameters, or use the defaults?"
-
-### Both sk-cNMF and torch-cNMF
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--loss` | `frobenius` | NMF loss function |
-| `--nmf_seeds_path` | None | Custom NMF seeds file (text file with one integer per line) |
-| `--num_gene` | `300` | Top genes for annotation |
-| `--gene_names_key` | None | Column in adata.var with gene names for compiled results (e.g. `symbol`) |
-
-### torch-cNMF only
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--n_jobs` | `-1` | Parallel jobs (-1 = all cores) |
-| `--densify` | off | Densify sparse matrix before factorization |
-| `--fp_precision` | `float` | `float` (32-bit) or `double` (64-bit) |
-| `--alpha_usage` | `0.0` | Regularization for usage matrix (W) |
-| `--alpha_spectra` | `0.0` | Regularization for spectra matrix (H) |
-| `--l1_ratio_usage` | `0.0` | L1 vs L2 ratio for usage (0=L2, 1=L1) |
-| `--l1_ratio_spectra` | `0.0` | L1 vs L2 ratio for spectra |
-| `--minibatch_shuffle` | off | Shuffle cells in minibatch mode |
-| `--remove_noncoding` | off | Remove non-coding genes |
-| `--sk_cd_refit` | off | Use sklearn coordinate descent for refitting |
-
-### torch-cNMF batch mode
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--batch_max_epoch` | `500` | Max epochs for batch NMF |
-| `--batch_hals_tol` | `0.05` | HALS tolerance |
-| `--batch_hals_max_iter` | `200` | Max HALS inner iterations |
-
-### torch-cNMF minibatch mode
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--minibatch_max_epoch` | `20` | Max epochs through data |
-| `--minibatch_size` | `5000` | Minibatch size |
-| `--minibatch_max_iter` | `200` | Max iterations per minibatch |
-| `--minibatch_usage_tol` | `0.05` | Usage update tolerance |
-| `--minibatch_spectra_tol` | `0.05` | Spectra update tolerance |
-
----
-
-## CRT Calibration Details
+## CRT Calibration
 
 ### Step A: Determine guide data format
 
-Check the h5mu structure to identify how guide/perturbation data is stored. Read the structure file if available:
+Check the h5mu structure to identify how guide/perturbation data is stored:
 
 ```bash
 cat <out_dir>/<run_name>/Inference/adata/cNMF_<K>_<sel_thresh>_structure.txt
 ```
 
 Look for these keys in the cNMF modality:
-- **Standard keys** (CRT-compatible): `obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']` → No preprocessing needed. Pass the h5mu or a guide h5ad directly as `--mdata_guide_path`.
-- **Alternative keys** (common in KO/village experiments): `obsm['target_assignment']`, `uns['target_names']` → Preprocessing required. Use the `--preprocess_guide_h5mu` flag in `generate_slurm.py` to auto-inject a conversion step.
+- **Standard keys** (CRT-compatible): `obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']` -> No preprocessing needed. Pass the h5mu or a guide h5ad directly as `--mdata_guide_path`.
+- **Alternative keys** (common in KO/village experiments): `obsm['target_assignment']`, `uns['target_names']` -> Preprocessing required. Use the `--preprocess_guide_h5mu` flag in `generate_slurm.py` to auto-inject a conversion step.
 
 ### Step B: Determine experiment type
 
@@ -109,15 +59,15 @@ Present available continuous covariates from the h5mu obs columns. Common covari
 | Doublet score | `doublet_scores` | `--covariates` | Raw (already a probability) |
 | Guides per cell | `guides_per_cell` | `--log_covariates` | log1p-transform (count data) |
 
-**Redundancy warning**: Some datasets have multiple equivalent columns (e.g., `nCount_RNA` ≈ `n_counts`, `nFeature_RNA` ≈ `n_genes` ≈ `n_genes2`). Use only one from each group to avoid multicollinearity.
+**Redundancy warning**: Some datasets have multiple equivalent columns (e.g., `nCount_RNA` ~ `n_counts`, `nFeature_RNA` ~ `n_genes` ~ `n_genes2`). Use only one from each group to avoid multicollinearity.
 
-### Step E: Resource estimation for CRT
+### Step E: Resource estimation
 
 | Factor | Recommendation |
 |--------|---------------|
 | CPUs | `40` (CRT parallelizes permutations across cores) |
 | Memory | `256G` for >100k cells, `128G` for <100k |
-| Time | ~2h per K × sel_thresh × categorical condition. E.g., 1 K × 1 sel_thresh × 17 timepoints = 4-8h |
+| Time | ~2h per K x sel_thresh x categorical condition. E.g., 1 K x 1 sel_thresh x 17 timepoints = 4-8h |
 | Partition | `owners,engreitz,bigmem` |
 
 ### Step F: Generate SLURM script
@@ -155,3 +105,65 @@ python3 SKILL_DIR/scripts/generate_slurm.py \
 ```
 
 If no preprocessing is needed (standard guide keys), omit the `--preprocess_*` flags and point `--mdata_guide_path` directly to the guide data file.
+
+---
+
+## U-test Calibration
+
+### Required parameters
+
+- `--out_dir`, `--run_name`, `--mdata_guide_path`
+
+### Key optional parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--components` | `[30,50,60,80,100,200,250,300]` | K values |
+| `--sel_thresh` | `[0.4,0.8,2.0]` | Density thresholds |
+| `--guide_annotation_key` | `['non-targeting']` | Non-targeting guide label |
+| `--number_run` | `300` | Calibration iterations |
+| `--number_guide` | `6` | Fake targeting guides per iteration |
+| `--FDR_method` | `StoreyQ` | FDR correction method |
+
+### SLURM resources
+
+- Partition: `engreitz,owners`
+- CPUs: 10-20, Memory: 128-256G, Time: 3-5h
+
+---
+
+## Matched Cell DE
+
+Runs via R script. Conda env: `programDE`.
+
+### Required parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `--input` | Input directory |
+| `--output_dir` | Output directory for results |
+| `--cell_metadata` | Path to cells_metadata.tsv |
+| `--cnmf_usages` | cNMF usages file (program loadings) |
+| `--gene_perturbations_sparse` | Guide assignment file |
+| `--gene_batch_file` | File with batch gene names to test (one per line) |
+| `--perturbation_names` | File with all gene names to test (one per line) |
+| `--condition` | Condition to test |
+| `--batch_id` | Batch identifier for output filename |
+| `--script_dir` | Directory containing de_testing_utils.R |
+
+### Key optional parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--test_type` | `genes` | What to test: `genes` or `nulls` |
+| `--min_cells_per_gene` | `50` | Minimum cells required per gene |
+| `--matching_ratio` | `5` | Controls per treated cell |
+| `--methods` | `ols_log` | DE methods (space-separated: `ols_log`, `ols_pseudo`, `hurdle_marginal`) |
+| `--de_level` | `programs` | DE level: `programs`, `genes`, or `both` |
+
+See `references/parameter-catalog.md` for the full parameter list including gene propagation and direct gene-level DE options.
+
+### SLURM resources
+
+- Partition: `engreitz,owners`
+- CPUs: 10-20, Memory: 128-256G, Time: 2-6h

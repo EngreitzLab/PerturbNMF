@@ -28,7 +28,7 @@ echo "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || ec
 echo "Python: $(which python)"
 echo ""
 
-python -m pytest tests/Script/Inference/test_edge_cases.py -v --tb=short \
+python -m pytest tests/Script/Stage1_Inference/test_edge_cases.py -v --tb=short \
     2>&1 | tee "${LOG_DIR}/test_edge_cases.out"
 
 echo ""

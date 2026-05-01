@@ -1,0 +1,42 @@
+[
+  {
+    "query": "(ACTC1 AND TAGLN) AND (muscle contraction OR smooth muscle OR actomyosin)",
+    "strategy": "gene_pair",
+    "target": "Co-regulation of cardiac actin and transgelin in muscle contractile processes"
+  },
+  {
+    "query": "(ANKRD1 AND TPM1) AND (myofibril assembly OR sarcomere organization)",
+    "strategy": "gene_pair",
+    "target": "Functional relationship between ANKRD1 and tropomyosin in myofibril formation"
+  },
+  {
+    "query": "(ACTA1 OR ACTA2) AND (cell migration OR cytoskeleton organization) AND endothelial",
+    "strategy": "pathway_context",
+    "target": "Role of smooth muscle actins in endothelial cell migration and cytoskeletal dynamics"
+  },
+  {
+    "query": "(MEAF6 OR RBM33) AND (ACTC1 OR TAGLN OR TPM1)",
+    "strategy": "regulator_target",
+    "target": "How positive regulators MEAF6 and RBM33 control muscle contractile gene expression"
+  },
+  {
+    "query": "(TADA2B OR PRKCD) AND (muscle differentiation OR smooth muscle contraction)",
+    "strategy": "regulator_target",
+    "target": "Negative regulation of muscle contractile programs by TADA2B and protein kinase C"
+  },
+  {
+    "query": "(KRT18 AND KRT8) AND (mesoderm differentiation OR endothelial differentiation)",
+    "strategy": "temporal",
+    "target": "Keratin expression during mesoderm to endothelial cell differentiation"
+  },
+  {
+    "query": "(SPP1 AND ANXA1) AND (platelet aggregation OR extracellular matrix)",
+    "strategy": "pathway_context",
+    "target": "SPP1 and annexin A1 in platelet function and matrix interactions"
+  },
+  {
+    "query": "actomyosin organization AND (iPSC OR induced pluripotent stem cell) AND differentiation",
+    "strategy": "broad_context",
+    "target": "Actomyosin cytoskeletal organization during iPSC differentiation processes"
+  }
+]

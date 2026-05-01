@@ -2,7 +2,7 @@
 Pytest configuration and shared fixtures for Inference pipeline tests.
 
 Mirrors the top-level tests/conftest.py constants and fixtures so inference
-tests can be run directly from tests/Script/Inference/.
+tests can be run directly from tests/Script/Stage1_Inference/.
 """
 
 import os

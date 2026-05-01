@@ -233,7 +233,7 @@ def main():
     # Optional: run full format checking from pipeline
     if args.reference_gtf_path or args.guide_annotation_path:
         try:
-            from Inference.src import check_guide_names
+            from Stage1_Inference.src import check_guide_names
             if ext == '.h5mu':
                 adata_check = mdata[args.data_key]
             else:

@@ -26,16 +26,15 @@ sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
 
 from torch_cnmf import cNMF
 
-from Inference.src import (
+from Stage1_Inference.src import (
     run_cnmf_consensus, get_top_indices_fast, annotate_genes_to_excel,
     rename_and_move_files_NMF, rename_all_NMF, compile_results
 )
-from Inference.src.plot_diagnostics import generate_all_plots
+from Stage1_Inference.src.plot_diagnostics import generate_all_plots
 
 
 
-if __name__ == '__main__':
-
+def main():
     parser = argparse.ArgumentParser(
         description="torch-cNMF inference pipeline (torch_cnmf)"
     )
@@ -293,3 +292,8 @@ if __name__ == '__main__':
                         components=args.K)
 
     print("Pipeline finished.")
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

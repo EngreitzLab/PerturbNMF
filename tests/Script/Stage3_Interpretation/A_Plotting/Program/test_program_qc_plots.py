@@ -7,7 +7,7 @@ perturbation data. All plots are saved to tests/output/Interpretation/Plotting/P
 Usage:
     eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking
     cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
-    python -m pytest tests/Script/Interpretation/Plotting/Program/test_program_qc_plots.py -v
+    python -m pytest tests/Script/Stage3_Interpretation/A_Plotting/Program/test_program_qc_plots.py -v
 """
 
 import os
@@ -19,7 +19,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from Interpretation.Plotting.src.Program_QC_plots import (
+from Stage3_Interpretation.A_Plotting.src.Program_QC_plots import (
     compute_program_correlation_matrix,
     analyze_program_correlations,
     plot_top_gene_per_program,

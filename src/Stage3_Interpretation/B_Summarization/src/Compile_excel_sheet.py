@@ -18,7 +18,7 @@ from functools import reduce
 sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
 
 
-from Interpretation.Plotting.src import rename_adata_gene_dictionary ,compute_gene_waterfall_cor
+from Stage3_Interpretation.A_Plotting.src import rename_adata_gene_dictionary ,compute_gene_waterfall_cor
 
 #-------------- helper methods compile into excel sheets, not used here --------------
 

@@ -1,0 +1,1261 @@
+{
+  "program_id": "34",
+  "timestamp": "2026-04-28T15:38:29.706864",
+  "program_context": {
+    "program_id": "34",
+    "top_genes": "ACTC1;TAGLN;ANKRD1;KRT18;TPM1;ACTA1;ACTA2;KRT8;SPP1;ANXA1",
+    "positive_regulators": "MEAF6,RBM33,C5orf22,TSTD2,ERCC2",
+    "negative_regulators": "TADA2B,TAF6L,PRKCD,EEF2,SGF29",
+    "day": "D3",
+    "cell_types": "iPSC-derived endothelial/mesoderm differentiation",
+    "go_enrichment": "Regulation Of Cell Migration (GO:0030334);Actomyosin Structure Organization (GO:0031032);Supramolecular Fiber Organization (GO:0097435);Platelet Aggregation (GO:0070527);Collagen Fibril Organization (GO:0030199);Homotypic Cell-Cell Adhesion (GO:0034109);Myofibril Assembly (GO:0030239);Regulation Of ",
+    "other_enrichment": "Smooth Muscle Contraction R-HSA-445355;Cell-extracellular Matrix Interactions R-HSA-446353;Muscle Contraction R-HSA-397014;Platelet Degranulation R-HSA-114608;Response To Elevated Platelet Cytosolic Ca2+ R-HSA-76005;Extracellular Matrix Organization R-HSA-1474244;EPHA-mediated Growth Cone Collapse R"
+  },
+  "search_queries": [
+    {
+      "query": "(ACTC1 AND TAGLN) AND (muscle contraction OR smooth muscle OR actomyosin)",
+      "strategy": "gene_pair",
+      "target": "Co-regulation of cardiac actin and transgelin in muscle contractile processes"
+    },
+    {
+      "query": "(ANKRD1 AND TPM1) AND (myofibril assembly OR sarcomere organization)",
+      "strategy": "gene_pair",
+      "target": "Functional relationship between ANKRD1 and tropomyosin in myofibril formation"
+    },
+    {
+      "query": "(ACTA1 OR ACTA2) AND (cell migration OR cytoskeleton organization) AND endothelial",
+      "strategy": "pathway_context",
+      "target": "Role of smooth muscle actins in endothelial cell migration and cytoskeletal dynamics"
+    },
+    {
+      "query": "(MEAF6 OR RBM33) AND (ACTC1 OR TAGLN OR TPM1)",
+      "strategy": "regulator_target",
+      "target": "How positive regulators MEAF6 and RBM33 control muscle contractile gene expression"
+    },
+    {
+      "query": "(TADA2B OR PRKCD) AND (muscle differentiation OR smooth muscle contraction)",
+      "strategy": "regulator_target",
+      "target": "Negative regulation of muscle contractile programs by TADA2B and protein kinase C"
+    },
+    {
+      "query": "(KRT18 AND KRT8) AND (mesoderm differentiation OR endothelial differentiation)",
+      "strategy": "temporal",
+      "target": "Keratin expression during mesoderm to endothelial cell differentiation"
+    },
+    {
+      "query": "(SPP1 AND ANXA1) AND (platelet aggregation OR extracellular matrix)",
+      "strategy": "pathway_context",
+      "target": "SPP1 and annexin A1 in platelet function and matrix interactions"
+    },
+    {
+      "query": "actomyosin organization AND (iPSC OR induced pluripotent stem cell) AND differentiation",
+      "strategy": "broad_context",
+      "target": "Actomyosin cytoskeletal organization during iPSC differentiation processes"
+    }
+  ],
+  "papers": [
+    {
+      "pmid": 37251946,
+      "title": "Identification of the hub genes associated with prostate cancer tumorigenesis.",
+      "abstract": "Introduction: Prostate cancer (PCa) is one of the most common malignant tumors of the male urogenital system; however, the underlying mechanisms remain largely unclear. This study integrated two cohort profile datasets to elucidate the potential hub genes and mechanisms in PCa. Methods and Results: Gene expression profiles GSE55945 and GSE6919 were filtered from the Gene Expression Omnibus (GEO) database to obtain 134 differentially expressed genes (DEGs) (14 upregulated and 120 downregulated) in PCa. Gene Ontology and pathway enrichment were performed using the Database for Annotation, Visualization, and Integrated Discovery, showing that these DEGs were mainly involved in biological functions such as cell adhesion, extracellular matrix, migration, focal adhesion, and vascular smooth muscle contraction. The STRING database and Cytoscape tools were used to analyze protein-protein interactions and identify 15 hub candidate genes. Violin plot, boxplot, and prognostic curve analyses were performed using Gene Expression Profiling Interactive Analysis, which identified seven hub genes, including upregulated expressed SPP1 and downregulated expressed MYLK, MYL9, MYH11, CALD1, ACTA2, and CNN1 in PCa compared with normal tissue. Correlation analysis was performed using the OmicStudio tools, which showed that these hub genes were moderately to strongly correlated with each other. Finally, quantitative reverse transcription PCR and western blotting were performed to validate the hub genes, showing that the abnormal expression of the seven hub genes in PCa was consistent with the analysis results of the GEO database. Discussion: Taken together, MYLK, MYL9, MYH11, CALD1, ACTA2, SPP1, and CNN1 are hub genes significantly associated with PCa occurrence. These genes are abnormally expressed, leading to the formation, proliferation, invasion, and migration of PCa cells and promoting tumor neovascularization. These genes may serve as potential biomarkers and therapeutic targets in patients with PCa.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "SPP1": [
+          "SPP1"
+        ],
+        "MYLK": [
+          "MYLK"
+        ],
+        "MYL9": [
+          "MYL9"
+        ],
+        "MYH11": [
+          "MYH11"
+        ],
+        "CALD1": [
+          "CALD1"
+        ],
+        "ACTA2": [
+          "ACTA2"
+        ],
+        "CNN1": [
+          "CNN1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "ACTA2": [
+          "Violin plot, boxplot, and prognostic curve analyses were performed using Gene Expression Profiling Interactive Analysis, which identified seven hub genes, including upregulated expressed SPP1 and downregulated expressed MYLK, MYL9, MYH11, CALD1, ACTA2, and CNN1 in PCa compared with normal tissue.",
+          "Discussion: Taken together, MYLK, MYL9, MYH11, CALD1, ACTA2, SPP1, and CNN1 are hub genes significantly associated with PCa occurrence."
+        ],
+        "SPP1": [
+          "Violin plot, boxplot, and prognostic curve analyses were performed using Gene Expression Profiling Interactive Analysis, which identified seven hub genes, including upregulated expressed SPP1 and downregulated expressed MYLK, MYL9, MYH11, CALD1, ACTA2, and CNN1 in PCa compared with normal tissue.",
+          "Discussion: Taken together, MYLK, MYL9, MYH11, CALD1, ACTA2, SPP1, and CNN1 are hub genes significantly associated with PCa occurrence."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:37251946 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 34910127,
+      "title": "Colonic healing requires Wnt produced by epithelium as well as Tagln+ and Acta2+ stromal cells.",
+      "abstract": "Although Wnt signaling is clearly important for the intestinal epithelial homeostasis, the relevance of various sources of Wnt ligands themselves remains incompletely understood. Blocking the release of Wnt in distinct stromal cell types suggests obligatory functions of several stromal cell sources and yields different observations. The physiological contribution of epithelial Wnt to tissue homeostasis remains unclear. We show here that blocking epithelial Wnts affects colonic Reg4+ epithelial cell differentiation and impairs colonic epithelial regeneration after injury in mice. Single-cell RNA analysis of intestinal stroma showed that the majority of Wnt-producing cells were contained in transgelin (Tagln+) and smooth muscle actin alpha2 (Acta2+) expressing populations. We genetically attenuated Wnt production from these stromal cells using Tagln-Cre and Acta2-CreER drivers, and found that blockage of Wnt release from either epithelium or Tagln+ and Acta2+ stromal cells impaired colonic epithelial healing after chemical-induced injury. Aggregated blockage of Wnt release from both epithelium and Tagln+ or Acta2+ stromal cells drastically diminished epithelial repair, increasing morbidity and mortality. These results from two uncharacterized stromal populations suggested that colonic recovery from colitis-like injury depends on multiple Wnt-producing sources.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "TAGLN": [
+          "Tagln",
+          "transgelin"
+        ],
+        "ACTA2": [
+          "Acta2"
+        ],
+        "REG4": [
+          "Reg4"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "TAGLN": [
+          "Colonic healing requires Wnt produced by epithelium as well as Tagln+ and Acta2+ stromal cells..",
+          "Single-cell RNA analysis of intestinal stroma showed that the majority of Wnt-producing cells were contained in transgelin (Tagln+) and smooth muscle actin alpha2 (Acta2+) expressing populations."
+        ],
+        "ACTA2": [
+          "Colonic healing requires Wnt produced by epithelium as well as Tagln+ and Acta2+ stromal cells..",
+          "Single-cell RNA analysis of intestinal stroma showed that the majority of Wnt-producing cells were contained in transgelin (Tagln+) and smooth muscle actin alpha2 (Acta2+) expressing populations."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:34910127 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 37031286,
+      "title": "The apoptotic effects of soybean agglutinin were induced through three different signal pathways by down-regulating cytoskeleton proteins in IPEC-J2 cells.",
+      "abstract": "Soybean agglutinin (SBA) is a main anti-nutritional factor in soybean. SBA exhibits its anti-nutritional functions by binding to intestinal epithelial cells. Keratin8 (KRT8), Keratin18 (KRT18) and Actin (ACTA) are the representative SBA-specific binding proteins. Such cytoskeletal proteins act a crucial role in different cell activities. However, limited reports reveal what the signal transduction pathway of apoptosis caused by SBA when binding to KRT8, KRT18 and ACTA. We aimed to evaluate the effects of SBA on cell apoptosis and the expression of the cytoskeletal protein (KRT8, KRT18 and ACTA), reveal the roles of these cytoskeletal proteins or their combinations on SBA-induced cell apoptosis in IPEC-J2 cell line, evaluate the influences of SBA on the mitochondria, endoplasmic reticulum stress and death receptor-mediated apoptosis signal pathway and to show the roles of KRT8, KRT18 and ACTA in different apoptosis signal pathways induced by SBA. The results showed that SBA induced the IPEC-J2 cell apoptosis and decreased the mRNA expression of KRT8, KRT18 and ACTA (p < 0.05). The degree of effect of three cytoskeleton proteins on cell apoptosis was ACTA > KRT8 > KRT18. The roles of these three cytoskeletal proteins on IPEC-J2 apoptotic rates had a certain accumulation effect. SBA up-regulated mitochondrial fission variant protein (FIS1) and fusion protein (Mfn2) promoted CytC and AIF in mitochondria to enter the cytoplasm, activated caspase-9 and caspase-3, damaged or declined mitochondrial function and reduced ATP synthesis (p < 0.05). Also, SBA up-regulated the expression of GRP78, XBP-1, eIF2alpha, p-eIF2alpha and CHOP (p < 0.05), down-regulated the expression level of ASK1 protein (p < 0.05). SBA led to the recruitment of FADD to the cytoplasmic membrane and increased the expression of FasL, resulting in caspase-8 processing. SBA up-regulated the expression level of Bax protein and decreased cytosolic Bcl-2 and Bid (p < 0.05). In addition, there was a significant negative correlation between the gene expression of cytoskeleton proteins and apoptosis, as well as the expression of key proteins of apoptosis-related signal transduction pathways. In conclusion, SBA induced the activation of the mitochondria, endoplasmic reticulum stress and the death receptor-mediated apoptosis signal pathway and the crosstalk between them. The effect of SBA on these three pathways was mainly exhibited via down-regulation of the mRNA expression of the three cytoskeletal expressions. This study elucidates the molecular mechanism and signaling pathway of SBA that lead to apoptosis from the perspective of cell biology and molecular biology and provides a new perspective on the toxicity mechanism of other food-derived anti-nutrients, medical gastrointestinal health and related cancer treatment.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CDSN": [
+          "proteins"
+        ],
+        "LE1": [
+          "SBA"
+        ],
+        "KRT8": [
+          "KRT8",
+          "Keratin8"
+        ],
+        "KRT18": [
+          "KRT18",
+          "Keratin18"
+        ],
+        "ACTA2": [
+          "Actin"
+        ],
+        "FIS1": [
+          "FIS1"
+        ],
+        "100512172": [
+          "Mfn2"
+        ],
+        "CASP9": [
+          "caspase-9"
+        ],
+        "CASP3": [
+          "caspase-3"
+        ],
+        "HSPA5": [
+          "GRP78"
+        ],
+        "XBP1": [
+          "XBP-1"
+        ],
+        "EIF2A": [
+          "eIF2alpha"
+        ],
+        "100157454": [
+          "ASK1"
+        ],
+        "FADD": [
+          "FADD"
+        ],
+        "FASLG": [
+          "FasL"
+        ],
+        "CASP8": [
+          "caspase-8"
+        ],
+        "BAX": [
+          "Bax"
+        ],
+        "BCL2": [
+          "Bcl-2"
+        ],
+        "BID": [
+          "Bid"
+        ]
+      },
+      "relations": [
+        {
+          "gene1": "KRT18",
+          "gene2": "LE1",
+          "type": "Negative_Correlation",
+          "score": 0.998
+        },
+        {
+          "gene1": "LE1",
+          "gene2": "CASP3",
+          "type": "Positive_Correlation",
+          "score": 0.9994
+        },
+        {
+          "gene1": "FIS1",
+          "gene2": "LE1",
+          "type": "Positive_Correlation",
+          "score": 0.9994
+        },
+        {
+          "gene1": "KRT8",
+          "gene2": "LE1",
+          "type": "Negative_Correlation",
+          "score": 0.9976
+        },
+        {
+          "gene1": "CASP9",
+          "gene2": "LE1",
+          "type": "Positive_Correlation",
+          "score": 0.9993
+        },
+        {
+          "gene1": "100512172",
+          "gene2": "LE1",
+          "type": "Positive_Correlation",
+          "score": 0.9994
+        }
+      ],
+      "evidence_sentences": {
+        "KRT8": [
+          "Keratin8 (KRT8), Keratin18 (KRT18) and Actin (ACTA) are the representative SBA-specific binding proteins.",
+          "However, limited reports reveal what the signal transduction pathway of apoptosis caused by SBA when binding to KRT8, KRT18 and ACTA."
+        ],
+        "KRT18": [
+          "Keratin8 (KRT8), Keratin18 (KRT18) and Actin (ACTA) are the representative SBA-specific binding proteins.",
+          "However, limited reports reveal what the signal transduction pathway of apoptosis caused by SBA when binding to KRT8, KRT18 and ACTA."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:37031286 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 34918678,
+      "title": "ANKRD1 and SPP1 as diagnostic markers and correlated with immune infiltration in biliary atresia.",
+      "abstract": "ABSTRACT: The diagnosis of biliary atresia (BA) remains a clinical challenge, reliable biomarkers that can easily distinguish BA and other forms of intrahepatic cholestasis (IC) are urgently needed.Differentially expressed genes were identified by R software. The least absolute shrinkage and selection operator regression and support vector machine algorithms were used to filter the diagnostic biomarkers of BA. The candidate biomarkers were further validated in another independent cohort of patients with BA and IC. Then CIBERSORT was used for estimating the fractions of immune cell types in BA. Gene set enrichment analyses were conducted and the correlation between diagnostic genes and immune cells was analyzed.A total of 419 differentially expressed genes in BA were detected and 2 genes (secreted phosphoprotein 1 [SPP1] and ankyrin repeat domain [ANKRD1]) among them were selected as diagnostic biomarkers. The SPP1 yielded an area under the curve (AUC) value of 0.798 (95% confidence interval [CI]: 0.742-0.854) to distinguish patients with BA from those with IC, and ANKRD1 exhibited AUC values of 0.686 (95% CI: 0.616-0.754) in discriminating BA patients and those with IC. Further integrating them into one variable resulted in a higher AUC of 0.830 (95% CI: 0.777-0.879). The regulatory T cells, M2 macrophages cells, CD4 memory T cells, and dendritic cells may be involved in the BA process. The ANKRD1 and SPP1 was negatively correlated with regulatory T cells.In conclusion, the ANKRD1 and SPP1 could potentially provide extra guidance in discriminating BA and IC. The immune cell infiltration of BA gives us new insight to explore its pathogenesis.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "ANKRD1": [
+          "ANKRD1"
+        ],
+        "SPP1": [
+          "SPP1",
+          "secreted phosphoprotein 1"
+        ],
+        "CD4": [
+          "CD4"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "SPP1": [
+          "ANKRD1 and SPP1 as diagnostic markers and correlated with immune infiltration in biliary atresia..",
+          "Gene set enrichment analyses were conducted and the correlation between diagnostic genes and immune cells was analyzed.A total of 419 differentially expressed genes in BA were detected and 2 genes (secreted phosphoprotein 1 [SPP1] and ankyrin repeat domain [ANKRD1]) among them were selected as diagnostic biomarkers."
+        ],
+        "ANKRD1": [
+          "ANKRD1 and SPP1 as diagnostic markers and correlated with immune infiltration in biliary atresia..",
+          "Gene set enrichment analyses were conducted and the correlation between diagnostic genes and immune cells was analyzed.A total of 419 differentially expressed genes in BA were detected and 2 genes (secreted phosphoprotein 1 [SPP1] and ankyrin repeat domain [ANKRD1]) among them were selected as diagnostic biomarkers."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:34918678 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 40623986,
+      "title": "Single-cell transcriptomic analysis identifies systemic immunosuppressive myeloid cells and local monocytes/macrophages as key regulators in polytrauma-induced immune dysregulation.",
+      "abstract": "Polytrauma with significant bone and volumetric muscle loss presents substantial clinical challenges. Although immune responses significantly influence fracture healing post-polytrauma, the cellular and molecular underpinnings of polytrauma-induced immune dysregulation require further investigation. While previous studies examined either injury site tissue or systemic tissue (peripheral blood), our study uniquely investigated both systemic and local immune cells at the same time to better understand polytrauma-induced immune dysregulation and associated impaired bone healing. Using single-cell RNA sequencing (scRNA-seq) in a rat polytrauma model, we analyzed blood, bone marrow, and the local defect soft tissue to identify potential cellular and molecular targets involved in immune dysregulation. We identified a trauma-associated immunosuppressive myeloid (TIM) cell population that drives systemic immune dysregulation, immunosuppression, and potentially impaired bone healing. We found CD1d as a global marker for TIM cells in polytrauma. In the local defect tissue, we observed Spp1+ monocytes/macrophages mediating inflammatory, fibrotic, and impaired adaptive immune responses. Finally, our findings highlighted increased signaling via Anxa1-Fpr2 and Spp1-Cd44 axes. This comprehensive analysis enhances our understanding of immune dysregulation-mediated nonunion following traumatic injury and provides biomarkers that could function as treatment targets.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CD1D1": [
+          "CD1d"
+        ],
+        "SPP1": [
+          "Spp1"
+        ],
+        "ANXA1": [
+          "Anxa1"
+        ],
+        "FPR2": [
+          "Fpr2"
+        ],
+        "CD44": [
+          "Cd44"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "SPP1": [
+          "In the local defect tissue, we observed Spp1+ monocytes/macrophages mediating inflammatory, fibrotic, and impaired adaptive immune responses.",
+          "Finally, our findings highlighted increased signaling via Anxa1-Fpr2 and Spp1-Cd44 axes."
+        ],
+        "ANXA1": [
+          "Finally, our findings highlighted increased signaling via Anxa1-Fpr2 and Spp1-Cd44 axes."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:40623986 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 33761369,
+      "title": "The remodelling of actin composition as a hallmark of cancer.",
+      "abstract": "Actin is a key structural protein that makes up the cytoskeleton of cells, and plays a role in functions such as division, migration, and vesicle trafficking. It comprises six different cell-type specific isoforms: ACTA1, ACTA2, ACTB, ACTC1, ACTG1, and ACTG2. Abnormal actin isoform expression has been reported in many cancers, which led us to hypothesize that it may serve as an early biomarker of cancer. We show an overview of the different actin isoforms and highlight mechanisms by which they may contribute to tumorigenicity. Furthermore, we suggest how the aberrant expression of actin subunits can confer cells with greater proliferation ability, increased migratory capability, and chemoresistance through incorporation into the normal cellular F-actin network and altered actin binding protein interaction. Studying this fundamental change that takes place within cancer cells can further our understanding of neoplastic transformation in multiple tissue types, which can ultimately aid in the early-detection, diagnosis and treatment of cancer.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "ACTA1": [
+          "ACTA1"
+        ],
+        "ACTA2": [
+          "ACTA2"
+        ],
+        "ACTB": [
+          "ACTB"
+        ],
+        "ACTC1": [
+          "ACTC1"
+        ],
+        "ACTG1": [
+          "ACTG1"
+        ],
+        "ACTG2": [
+          "ACTG2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "ACTA2": [
+          "It comprises six different cell-type specific isoforms: ACTA1, ACTA2, ACTB, ACTC1, ACTG1, and ACTG2."
+        ],
+        "ACTC1": [
+          "It comprises six different cell-type specific isoforms: ACTA1, ACTA2, ACTB, ACTC1, ACTG1, and ACTG2."
+        ],
+        "ACTA1": [
+          "It comprises six different cell-type specific isoforms: ACTA1, ACTA2, ACTB, ACTC1, ACTG1, and ACTG2."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:33761369 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 38013282,
+      "title": "MYLK and CALD1 as molecular targets in bladder cancer.",
+      "abstract": "Bladder cancer (BC) is a malignant tumor that occurs in bladder mucosa. However, relationship between myosin light chain kinase (MYLK) and CALD1 and BC remains unclear. The BC datasets GSE65635 and GSE100926 were downloaded from gene expression omnibus by GPL14951 and GPL14550. Multiple datasets were merged and batched. Differentially expressed genes (DEGs) were screened and weighted gene co-expression network analysis was performed. gene ontology (GO) and Kyoto Encyclopedia of Gene and Genome analysis, gene set enrichment analysis, immune infiltration analysis, survival analysis and Comparative Toxicogenomics Database were performed. TargetScan screened miRNAs that regulated central DEGs. 1026 DEGs were identified. According to GO analysis, DEGs were mainly enriched in cancer pathway, cGMP-PKG signaling pathway, Apelin signaling pathway and proteoglycans in cancer. The enrichment items are similar to GO and Kyoto Encyclopedia of Gene and Genome enrichment projects for DEGs, which were mainly enriched in cancer pathways and leukocyte trans-endothelial cell migration. Among enrichment projects of metascape, GO has regulation of the enzyme-linked receptor protein signaling pathway and silk-based process, as well as an enrichment network stained by enrichment terms and P values. Nine core genes (ACTA2, MYLK, MYH11, MYL9, ACTG2, TPM1, TPM2, TAGLN and CALD1) were obtained, which were highly expressed in tumor tissue samples and lowly expressed in normal tissue samples. Nine genes were associated with necrosis, inflammation, tumor, edema, and ureteral obstruction. MYLK and CALD1 are highly expressed in the BC. The higher expression of MYLK and CALD1, the worse prognosis.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "MYLK": [
+          "myosin light chain kinase",
+          "MYLK"
+        ],
+        "CALD1": [
+          "CALD1"
+        ],
+        "APLN": [
+          "Apelin"
+        ],
+        "ACTA2": [
+          "ACTA2"
+        ],
+        "MYH11": [
+          "MYH11"
+        ],
+        "MYL9": [
+          "MYL9"
+        ],
+        "ACTG2": [
+          "ACTG2"
+        ],
+        "TPM2": [
+          "TPM2"
+        ],
+        "TAGLN": [
+          "TAGLN"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "TAGLN": [
+          "Nine core genes (ACTA2, MYLK, MYH11, MYL9, ACTG2, TPM1, TPM2, TAGLN and CALD1) were obtained, which were highly expressed in tumor tissue samples and lowly expressed in normal tissue samples."
+        ],
+        "ACTA2": [
+          "Nine core genes (ACTA2, MYLK, MYH11, MYL9, ACTG2, TPM1, TPM2, TAGLN and CALD1) were obtained, which were highly expressed in tumor tissue samples and lowly expressed in normal tissue samples."
+        ],
+        "TPM1": [
+          "Nine core genes (ACTA2, MYLK, MYH11, MYL9, ACTG2, TPM1, TPM2, TAGLN and CALD1) were obtained, which were highly expressed in tumor tissue samples and lowly expressed in normal tissue samples."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:38013282 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 37274283,
+      "title": "Screening of immunotherapy-related genes in bladder cancer based on GEO datasets.",
+      "abstract": "Background: As one of the most prevalent genitourinary cancers, bladder cancer (BLCA) is associated with high morbidity and mortality. Currently, limited indicators are available for early detection and diagnosis of bladder cancer, and there is a lack of specific biomarkers for evaluating the prognosis of BLCA patients. This study aims to identify critical genes that affect bladder cancer immunity to improve the diagnosis and prognosis of bladder cancer and to identify new biomarkers and targets for immunotherapy. Methods: Two GEO datasets were used to screen differentially expressed genes (DEGs). The STRING database was used to construct a protein-protein interaction network of DEGs, and plug-in APP CytoHubba in Cytoscape was used to identify critical genes in the network. GO and KEGG analyses explored the functions and pathways of differential gene enrichment. We used GEPIA to validate the expression of differential genes, their impact on patient survival, and their relationship to clinicopathological parameters. Additionally, hub genes were verified using qRT-PCR and Western blotting. Immune infiltration analysis and multiple immunohistochemistry reveal the impact of Hub genes on the tumor microenvironment. Result: We screened out 259 differential genes, and identified 10 key hub genes by the degree algorithm. Four genes (ACTA2, FLNA, TAGLN, and TPM1) were associated with overall or disease-free survival in BLCA patients and were significantly associated with clinical parameters. We experimentally confirmed that the mRNA and protein levels of these four genes were significantly decreased in bladder cancer cells. Immunoassays revealed that these four genes affect immune cell infiltration in the tumor microenvironment; they increased the polarization of M2 macrophages. Conclusion: These four genes affect the tumor microenvironment of bladder cancer, provide a new direction for tumor immunotherapy, and have significant potential in the diagnosis and prognosis of bladder cancer.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "ELAVL2": [
+          "Hub",
+          "hub"
+        ],
+        "ACTA2": [
+          "ACTA2"
+        ],
+        "FLNA": [
+          "FLNA"
+        ],
+        "TAGLN": [
+          "TAGLN"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "TAGLN": [
+          "Four genes (ACTA2, FLNA, TAGLN, and TPM1) were associated with overall or disease-free survival in BLCA patients and were significantly associated with clinical parameters."
+        ],
+        "ACTA2": [
+          "Four genes (ACTA2, FLNA, TAGLN, and TPM1) were associated with overall or disease-free survival in BLCA patients and were significantly associated with clinical parameters."
+        ],
+        "TPM1": [
+          "Four genes (ACTA2, FLNA, TAGLN, and TPM1) were associated with overall or disease-free survival in BLCA patients and were significantly associated with clinical parameters."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:37274283 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 40624255,
+      "title": "Machine learning identifies KRT8 dysregulation and endothelial remodeling in Moyamoya disease.",
+      "abstract": "Moyamoya disease (MMD) is a rare occlusive cerebrovascular disease, and its pathological mechanism remains unclear at present. The abnormal vascular remodeling may be involved in vascular endothelial cells. In this study, RNA seq was performed on the superficial temporal arteries of 10 patients with MMD. Integrated analysis was conducted by combining validation set with training set. Key genes were identified through differential analysis and WGCNA. The functions of potential biomarkers were explored by methods such as correlation analysis, KEGG analysis, PPI network, and tube formation experiments. Integrated analysis of three cohorts (43 MMD vs. 26 controls) identified 19 shared DEGs, including upregulated KRT8/KRT18 and downregulated NT5C2 (P < 0.001). Enrichment revealed dysregulation in circadian rhythm, calcium signaling, and metabolic pathways (P < 0.05). Immune infiltration showed elevated pro-inflammatory cells (neutrophils, M1 macrophages) and reduced Tregs/NK cells (P < 0.05). Machine learning (SVM-RFE, Boruta, LASSO) prioritized KRT8 as diagnostic markers (AUC > 0.96). KRT8 overexpression enhanced angiogenesis in HBMECs (1.5-fold tube formation, P < 0.01). This omics approach delineates MMD's molecular interplay between inflammation, metabolism, and vascular remodeling. KRT8 may promote vascular remodeling in MMD by regulating the tube-forming ability of endothelial cells. This could be a highlight of therapeutic targets for MMD and shed light on the mechanism research of MMD.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "KRT8": [
+          "KRT8"
+        ],
+        "KRT18": [
+          "KRT18"
+        ],
+        "SPG45": [
+          "NT5C2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "KRT8": [
+          "Integrated analysis of three cohorts (43 MMD vs. 26 controls) identified 19 shared DEGs, including upregulated KRT8/KRT18 and downregulated NT5C2 (P < 0.001).",
+          "KRT8 overexpression enhanced angiogenesis in HBMECs (1.5-fold tube formation, P < 0.01)."
+        ],
+        "KRT18": [
+          "Integrated analysis of three cohorts (43 MMD vs. 26 controls) identified 19 shared DEGs, including upregulated KRT8/KRT18 and downregulated NT5C2 (P < 0.001)."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:40624255 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 36131343,
+      "title": "CDH1 overexpression predicts bladder cancer from early stage and inversely correlates with immune infiltration.",
+      "abstract": "BACKGROUND: Bladder cancer (BC) seriously endangers public health, but effective biomarkers for BC diagnosis, particularly in the early stage, are still lacking. Identification of reliable biomarkers associated with early-stage BC is of great importance to early treatment and an improved outcome. METHODS: Differentially expressed genes (DEGs) were identified using four publicly available early-stage BC gene-expression profiles. Protein-protein interaction (PPI) and survival analysis for hub genes was evaluated. The correlation between methylation of genes and prognosis was evaluated using the MethSurv database. Co-expressed genes were explored using Cancer Cell Line Encyclopedia database and the corresponding expression were assessed in vitro. The competing endogenous RNA network and the immune cell infiltration in BC were generated using data of The Cancer Genome Atlas. RESULTS: Ten hub genes of the 213 integrated DEGs were identified, including CDH1, IGFBP3, PPARG, SDC1, EPCAM, ACTA2, COL3A1, TPM1, ACTC1, and ACTN1. CDH1 appeared to increase from tumor initiation stage and negatively correlated with methylation. Six methylated sites in CDH1 indicated a good prognosis and one site indicated an aberrant prognosis. High CDH1 expression was negatively correlated with infiltrations by most immune cells, such as plasmacytoid dendritic cells (pDCs), regulatory T cells, macrophages, neutrophils, DCs, and natural killer cells. CDH1 was highly positively correlated with EPCAM and appeared to be directly regulated by miR-383. CONCLUSIONS: The identified oncogenic alterations provide theoretical support for the development of novel biomarkers to advance early-stage BC diagnosis and personalized therapy.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CDH1": [
+          "CDH1"
+        ],
+        "IGFBP3": [
+          "IGFBP3"
+        ],
+        "PPARG": [
+          "PPARG"
+        ],
+        "SDC1": [
+          "SDC1"
+        ],
+        "EPCAM": [
+          "EPCAM"
+        ],
+        "ACTA2": [
+          "ACTA2"
+        ],
+        "COL3A1": [
+          "COL3A1"
+        ],
+        "ACTC1": [
+          "ACTC1"
+        ],
+        "ACTN1": [
+          "ACTN1"
+        ],
+        "MIR383": [
+          "miR-383"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "ACTA2": [
+          "RESULTS: Ten hub genes of the 213 integrated DEGs were identified, including CDH1, IGFBP3, PPARG, SDC1, EPCAM, ACTA2, COL3A1, TPM1, ACTC1, and ACTN1."
+        ],
+        "TPM1": [
+          "RESULTS: Ten hub genes of the 213 integrated DEGs were identified, including CDH1, IGFBP3, PPARG, SDC1, EPCAM, ACTA2, COL3A1, TPM1, ACTC1, and ACTN1."
+        ],
+        "ACTC1": [
+          "RESULTS: Ten hub genes of the 213 integrated DEGs were identified, including CDH1, IGFBP3, PPARG, SDC1, EPCAM, ACTA2, COL3A1, TPM1, ACTC1, and ACTN1."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:36131343 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 35441809,
+      "title": "Estimation of the proteome affecting changes in tenderness of yak meat during storage by label-free mass spectrometry.",
+      "abstract": "BACKGROUND: Tenderness is the main quality of meat products. However, the meat tenderness formation is a complex biological process, and pathways and proteins that affect the tenderness of yak meat are unknown. METHODS: Label-free proteomics method was used to explore the effects of differentially expressed proteins on the tenderness of yak skeletal muscle (tenderloin) during post-mortem storage (0, 3, and 7 days) at 3 +- 1 C. RESULTS: The tenderness of yak skeletal muscle improved significantly during storage. A total of 91 differentially expressed proteins of yak skeletal muscle during post-mortem storage were identified by the following comparisons: day 3 versus 0, day 7 versus 0, and day 7 versus 3. NDUFS6, CYCS, COX6A2, LDB3, HSPB7, TPM4, TAGLN, COL1A1, LUM, MYH11, ACTC1, and MYOZ1 proteins showed a significant difference during yak skeletal muscle post-mortem storage. Furthermore, bioinformatics analyses revealed that the identified proteins were related to carbon metabolism, citrate cycle, glycolysis, oxidative phosphorylation, and RNA degradation. CONCLUSION: The results of the present study could provide proteomic insights into changes in yak skeletal muscle tenderness during storage and may be a valuable resource for future investigations.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "NDUFS6": [
+          "NDUFS6"
+        ],
+        "CYCS": [
+          "CYCS"
+        ],
+        "COX6A2": [
+          "COX6A2"
+        ],
+        "LDB3": [
+          "LDB3"
+        ],
+        "HSPB7": [
+          "HSPB7"
+        ],
+        "TPM4": [
+          "TPM4"
+        ],
+        "TAGLN": [
+          "TAGLN"
+        ],
+        "COL1A1": [
+          "COL1A1"
+        ],
+        "LUM": [
+          "LUM"
+        ],
+        "MYH11": [
+          "MYH11"
+        ],
+        "ACTC1": [
+          "ACTC1"
+        ],
+        "MYOZ1": [
+          "MYOZ1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "TAGLN": [
+          "NDUFS6, CYCS, COX6A2, LDB3, HSPB7, TPM4, TAGLN, COL1A1, LUM, MYH11, ACTC1, and MYOZ1 proteins showed a significant difference during yak skeletal muscle post-mortem storage."
+        ],
+        "ACTC1": [
+          "NDUFS6, CYCS, COX6A2, LDB3, HSPB7, TPM4, TAGLN, COL1A1, LUM, MYH11, ACTC1, and MYOZ1 proteins showed a significant difference during yak skeletal muscle post-mortem storage."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:35441809 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 38559046,
+      "title": "Dilated cardiomyopathy-associated skeletal muscle actin (ACTA1) mutation R256H disrupts actin structure and function and causes cardiomyocyte hypocontractility.",
+      "abstract": "Skeletal muscle actin (ACTA1) mutations are a prevalent cause of skeletal myopathies consistent with ACTA1's high expression in skeletal muscle. Rare de novo mutations in ACTA1 associated with combined cardiac and skeletal myopathies have been reported, but ACTA1 represents only ~20% of the total actin pool in cardiomyocytes, making its role in cardiomyopathy controversial. Here we demonstrate how a mutation in an actin isoform expressed at low levels in cardiomyocytes can cause cardiomyopathy by focusing on a unique ACTA1 mutation, R256H. We previously identified this mutation in multiple family members with dilated cardiomyopathy (DCM), who had reduced systolic function without clinical skeletal myopathy. Using a battery of multiscale biophysical tools, we show that R256H has potent functional effects on ACTA1 function at the molecular scale and in human cardiomyocytes. Importantly, we demonstrate that R256H acts in a dominant manner, where the incorporation of small amounts of mutant protein into thin filaments is sufficient to disrupt molecular contractility, and that this effect is dependent on the presence of troponin and tropomyosin. To understand the structural basis of this change in regulation, we resolved a structure of R256H filaments using Cryo-EM, and we see alterations in actin's structure that have the potential to disrupt interactions with tropomyosin. Finally, we show that ACTA1 R256H/+ human induced pluripotent stem cell cardiomyocytes demonstrate reduced contractility and sarcomeric disorganization. Taken together, we demonstrate that R256H has multiple effects on ACTA1 function that are sufficient to cause reduced contractility and establish a likely causative relationship between ACTA1 R256H and clinical cardiomyopathy. Significance Statement: Skeletal muscle actin mutations are well-known to cause skeletal myopathies, but their role in cardiomyopathies have been controversial as skeletal muscle actin is only expressed at modest levels in the heart. Here, we demonstrate that a skeletal muscle actin mutation potently causes multiple defects in actin function at the atomic and molecular scales, and it functions in a dominant fashion, leading to cardiomyocyte contractile defects. Our results establish how skeletal muscle actin mutations may cause cardiomyocyte dysfunction and lay the foundation for future studies of the role of skeletal muscle actin in cardiomyopathy.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "ACTA1": [
+          "ACTA1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "ACTA1": [
+          "Dilated cardiomyopathy-associated skeletal muscle actin (ACTA1) mutation R256H disrupts actin structure and function and causes cardiomyocyte hypocontractility..",
+          "Skeletal muscle actin (ACTA1) mutations are a prevalent cause of skeletal myopathies consistent with ACTA1's high expression in skeletal muscle."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:38559046 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 36909460,
+      "title": "Nuclear Smooth Muscle alpha-actin in Vascular Smooth Muscle Cell Differentiation.",
+      "abstract": "Missense variants throughout ACTA2 , encoding smooth muscle alpha-actin (alphaSMA), predispose to adult onset thoracic aortic disease, but variants disrupting arginine 179 (R179) lead to Smooth Muscle Dysfunction Syndrome (SMDS) characterized by childhood-onset diverse vascular diseases. Our data indicate that alphaSMA localizes to the nucleus in wildtype (WT) smooth muscle cells (SMCs), enriches in the nucleus with SMC differentiation, and associates with chromatin remodeling complexes and SMC contractile gene promotors, and the ACTA2 p.R179 variant decreases nuclear localization of alphaSMA. SMCs explanted from a SMC-specific conditional knockin mouse model, Acta2 SMC-R179C/+ , are less differentiated than WT SMCs, both in vitro and in vivo , and have global changes in chromatin accessibility. Induced pluripotent stem cells from patients with ACTA2 p.R179 variants fail to fully differentiate from neural crest cells to SMCs, and single cell transcriptomic analyses of an ACTA2 p.R179H patient's aortic tissue shows increased SMC plasticity. Thus, nuclear alphaSMA participates in SMC differentiation and loss of this nuclear activity occurs with ACTA2 p.R179 pathogenic variants.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "ACTA2": [
+          "ACTA2",
+          "Acta2"
+        ],
+        "ACTA1": [
+          "alphaSMA"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "ACTA2": [
+          "Our data indicate that alphaSMA localizes to the nucleus in wildtype (WT) smooth muscle cells (SMCs), enriches in the nucleus with SMC differentiation, and associates with chromatin remodeling complexes and SMC contractile gene promotors, and the ACTA2 p.R179 variant decreases nuclear localization of alphaSMA.",
+          "Missense variants throughout ACTA2 , encoding smooth muscle alpha-actin (alphaSMA), predispose to adult onset thoracic aortic disease, but variants disrupting arginine 179 (R179) lead to Smooth Muscle Dysfunction Syndrome (SMDS) characterized by childhood-onset diverse vascular diseases."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:36909460 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 39503885,
+      "title": "Dilated cardiomyopathy-associated skeletal muscle actin (ACTA1) mutation R256H disrupts actin structure and function and causes cardiomyocyte hypocontractility.",
+      "abstract": "Skeletal muscle actin (ACTA1) mutations are a prevalent cause of skeletal myopathies consistent with ACTA1's high expression in skeletal muscle. Rare de novo mutations in ACTA1 associated with combined cardiac and skeletal myopathies have been reported, but ACTA1 represents only ~20% of the total actin pool in cardiomyocytes, making its role in cardiomyopathy controversial. Here we demonstrate how a mutation in an actin isoform expressed at low levels in cardiomyocytes can cause cardiomyopathy by focusing on a unique ACTA1 variant, R256H. We previously identified this variant in a family with dilated cardiomyopathy, who had reduced systolic function without clinical skeletal myopathy. Using a battery of multiscale biophysical tools, we show that R256H has potent effects on ACTA1 function at the molecular scale and in human cardiomyocytes. Importantly, we demonstrate that R256H acts in a dominant manner, where the incorporation of small amounts of mutant protein into thin filaments is sufficient to disrupt molecular contractility, and that this effect is dependent on the presence of troponin and tropomyosin. To understand the structural basis of this change in regulation, we resolved a structure of R256H filaments using cryoelectron microscopy, and we see alterations in actin's structure that have the potential to disrupt interactions with tropomyosin. Finally, we show that ACTA1R256H/+ human-induced pluripotent stem cell cardiomyocytes demonstrate reduced contractility and sarcomeric organization. Taken together, we demonstrate that R256H has multiple effects on ACTA1 function that are sufficient to cause reduced contractility and establish a likely causative relationship between ACTA1 R256H and clinical cardiomyopathy.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "ACTA1": [
+          "ACTA1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "ACTA1": [
+          "Dilated cardiomyopathy-associated skeletal muscle actin (ACTA1) mutation R256H disrupts actin structure and function and causes cardiomyocyte hypocontractility..",
+          "Skeletal muscle actin (ACTA1) mutations are a prevalent cause of skeletal myopathies consistent with ACTA1's high expression in skeletal muscle."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:39503885 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 35022077,
+      "title": "Effect of lentivirus-mediated growth and differentiation factor-5 transfection on differentiation of rabbit nucleus pulposus mesenchymal stem cells.",
+      "abstract": "BACKGROUND: Intervertebral disc degeneration (IDD) is a natural progression of age-related processes. Associated with IDD, degenerative disc disease (DDD) is a pathologic condition implicated as a major cause of chronic lower back pain, which can have a severe impact on the quality of life of patients. As degeneration progression is associated with elevated levels of inflammatory cytokines, enhanced aggrecan and collagen degradation, and changes in the disc cell phenotype. The purpose of this study was to investigate the biological and cytological characteristics of rabbit nucleus pulposus mesenchymal stem cells (NPMSCs)-a key factor in IDD-and to determine the effect of the growth and differentiation factor-5 (GDF5) on the differentiation of rabbit NPMSCs transduced with a lentivirus vector. METHODS: An in vitro culture model of rabbit NPMSCs was established and NPMSCs were identified by flow cytometry (FCM) and quantitative real-time PCR (qRT-PCR). Subsequently, NPMSCs were randomly divided into three groups: a transfection group (the lentiviral vector carrying GDF5 gene used to transfect NPMSCs); a control virus group (the NPMSCs transfected with an ordinary lentiviral vector); and a normal group (the NPMSCs alone). FCM, qRT-PCR, and western blot (WB) were used to detect the changes in NPMSCs. RESULTS: The GDF5-transfected NPMSCs displayed an elongated shape, with decreased cell density, and significantly increased GDF5 positivity rate in the transfected group compared to the other two groups (P < 0.01). The mRNA levels of Krt8, Krt18, and Krt19 in the transfected group were significantly higher in comparison with the other two groups (P < 0.01), and the WB results were consistent with that of qRT-PCR. CONCLUSIONS: GDF5 could induce the differentiation of NPMSCs. The lentiviral vector carrying the GDF5 gene could be integrated into the chromosome genome of NPMSCs and promoted differentiation of NPMSCs into nucleus pulposus cells. Our findings advance the development of feasible and effective therapies for IDD.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "GDF5": [
+          "GDF5",
+          "growth and differentiation factor-5"
+        ],
+        "ACAN": [
+          "aggrecan"
+        ],
+        "KRT8": [
+          "Krt8"
+        ],
+        "KRT18": [
+          "Krt18"
+        ],
+        "KRT19": [
+          "Krt19"
+        ]
+      },
+      "relations": [
+        {
+          "gene1": "KRT8",
+          "gene2": "GDF5",
+          "type": "Positive_Correlation",
+          "score": 0.9989
+        },
+        {
+          "gene1": "KRT19",
+          "gene2": "GDF5",
+          "type": "Positive_Correlation",
+          "score": 0.9989
+        },
+        {
+          "gene1": "KRT18",
+          "gene2": "GDF5",
+          "type": "Positive_Correlation",
+          "score": 0.9989
+        }
+      ],
+      "evidence_sentences": {
+        "KRT8": [
+          "The mRNA levels of Krt8, Krt18, and Krt19 in the transfected group were significantly higher in comparison with the other two groups (P < 0.01), and the WB results were consistent with that of qRT-PCR."
+        ],
+        "KRT18": [
+          "The mRNA levels of Krt8, Krt18, and Krt19 in the transfected group were significantly higher in comparison with the other two groups (P < 0.01), and the WB results were consistent with that of qRT-PCR."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:35022077 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 38263350,
+      "title": "Hyperoxia prevents the dynamic neonatal increases in lung mesenchymal cell diversity.",
+      "abstract": "Rapid expansion of the pulmonary microvasculature through angiogenesis drives alveolarization, the final stage of lung development that occurs postnatally and dramatically increases lung gas-exchange surface area. Disruption of pulmonary angiogenesis induces long-term structural and physiologic lung abnormalities, including bronchopulmonary dysplasia, a disease characterized by compromised alveolarization. Although endothelial cells are primary determinants of pulmonary angiogenesis, mesenchymal cells (MC) play a critical and dual role in angiogenesis and alveolarization. Therefore, we performed single cell transcriptomics and in-situ imaging of the developing lung to profile mesenchymal cells during alveolarization and in the context of lung injury. Specific mesenchymal cell subtypes were present at birth with increasing diversity during alveolarization even while expressing a distinct transcriptomic profile from more mature correlates. Hyperoxia arrested the transcriptomic progression of the MC, revealed differential cell subtype vulnerability with pericytes and myofibroblasts most affected, altered cell to cell communication, and led to the emergence of Acta1 expressing cells. These insights hold the promise of targeted treatment for neonatal lung disease, which remains a major cause of infant morbidity and mortality across the world.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "ACTA1": [
+          "Acta1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "ACTA1": [
+          "Hyperoxia arrested the transcriptomic progression of the MC, revealed differential cell subtype vulnerability with pericytes and myofibroblasts most affected, altered cell to cell communication, and led to the emergence of Acta1 expressing cells."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:38263350 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 38310220,
+      "title": "Transcriptomic and proteomic strategies to reveal the mechanism of Gymnocypris przewalskii scale development.",
+      "abstract": "BACKGROUND: Fish scales are typical products of biomineralization and play an important role in the adaptation of fish to their environment. The Gymnocypris przewalskii scales are highly specialized, with scales embedded in only specific parts of the dermis, such as the areas around the anal fin and branchiostegite, making G. przewalskii an ideal material for biomineralization research. In this study, we aimed to unveil genes and pathways controlling scale formation through an integrated analysis of both transcriptome and proteome, of which G. przewalskii tissues of the dorsal skin (no scales) and the rump side skin (with scales) were sequenced. The sequencing results were further combined with cellular experiments to clarify the relationship between genes and signaling pathways. RESULTS: The results indicated the following: (1) a total of 4,904 differentially expressed genes were screened out, including 3,294 upregulated genes and 1,610 downregulated genes (with a filtering threshold of  log2Fold-Change > 1 and p-adjust < 0.05). The identified differentially expressed genes contained family members such as FGF, EDAR, Wnt10, and bmp. (2) A total of 535 differentially expressed proteins (DEPs) were filtered out from the proteome, with 204 DEPs downregulated and 331 DEPs upregulated (with a filtering threshold of  Fold-Change > 1.5 and p < 0.05). (3) Integrated analyses of transcriptome and proteome revealed that emefp1, col1a1, col6a2, col16a1, krt8, and krt18 were important genes contributing to scale development and that PI3K-AKT was the most important signaling pathway involved. (4) With the use of the constructed G. przewalskii fibroblast cell line, emefp1, col1a1, col6a2, col16a1, krt8, and krt18 were confirmed to be positively regulated by the PI3K-AKT signaling pathway. CONCLUSION: This study provides experimental evidence for PI3K-AKT controlled scale development in G. przewalskii and would benefit further study on stress adaptation, scale biomineralization, and the development of skin appendages.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {
+        "KRT8": [
+          "(3) Integrated analyses of transcriptome and proteome revealed that emefp1, col1a1, col6a2, col16a1, krt8, and krt18 were important genes contributing to scale development and that PI3K-AKT was the most important signaling pathway involved.",
+          "przewalskii fibroblast cell line, emefp1, col1a1, col6a2, col16a1, krt8, and krt18 were confirmed to be positively regulated by the PI3K-AKT signaling pathway."
+        ],
+        "KRT18": [
+          "(3) Integrated analyses of transcriptome and proteome revealed that emefp1, col1a1, col6a2, col16a1, krt8, and krt18 were important genes contributing to scale development and that PI3K-AKT was the most important signaling pathway involved.",
+          "przewalskii fibroblast cell line, emefp1, col1a1, col6a2, col16a1, krt8, and krt18 were confirmed to be positively regulated by the PI3K-AKT signaling pathway."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:38310220 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 41420864,
+      "title": "Distinct contributions of Etv2+ and Flk1+ progenitors to endothelial, hematopoietic, and cardiac lineages.",
+      "abstract": "The ETS family transcription factor ETV2, VEGFA, and its receptor FLK1 are essential for hematopoietic, vascular, and cardiac development. Here, we combine dual Etv2 and Flk1 lineage tracing with molecular profiling to define how mesoderm progenitors are allocated to hematopoietic, endothelial, cardiomyocyte, and smooth muscle lineages. We demonstrate that hematopoietic, endothelial, and cardiac valves arise from dual Etv2+ and Flk1+ lineages and that Etv2+ and Flk1+ mesoderm contributing to the hemangiogenic fate is molecularly distinct from that generating muscle. Mechanistically, we show that ETV2 cooperates with the BAF chromatin remodeling complex to establish accessibility at ETV2 target loci. Loss of Baf155 expression reduces chromatin accessibility at ETV2 target loci and impairs hemangiogenic lineage specification. This work defines lineage relationships and the molecular circuitry underlying hemangiogenic specification during cardiovascular development.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "ETV2": [
+          "ETV2",
+          "Etv2"
+        ],
+        "KDR": [
+          "Flk1",
+          "FLK1"
+        ],
+        "VEGFA": [
+          "VEGFA"
+        ],
+        "BANF1": [
+          "BAF"
+        ],
+        "SMARCC1": [
+          "Baf155"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:41420864 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36998087,
+      "title": "An in vitro culture platform for studying the effect of collective cell migration on spatial self-organization within induced pluripotent stem cell colonies.",
+      "abstract": "BACKGROUND: Human induced pluripotent stem cells (hiPSCs) provide an in vitro system to identify the impact of cell behavior on the earliest stages of cell fate specification during human development. Here, we developed an hiPSC-based model to study the effect of collective cell migration in meso-endodermal lineage segregation and cell fate decisions through the control of space confinement using a detachable ring culture system. RESULTS: The actomyosin organization of cells at the edge of undifferentiated colonies formed in a ring barrier differed from that of the cells in the center of the colony. In addition, even in the absence of exogenous supplements, ectoderm, mesoderm, endoderm, and extraembryonic cells differentiated following the induction of collective cell migration at the colony edge by removing the ring-barrier. However, when collective cell migration was inhibited by blocking E-cadherin function, this fate decision within an hiPSC colony was altered to an ectodermal fate. Furthermore, the induction of collective cell migration at the colony edge using an endodermal induction media enhanced endodermal differentiation efficiency in association with cadherin switching, which is involved in the epithelial-mesenchymal transition. CONCLUSIONS: Our findings suggest that collective cell migration can be an effective way to drive the segregation of mesoderm and endoderm lineages, and cell fate decisions of hiPSCs.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CDH1": [
+          "E-cadherin"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:36998087 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 38883422,
+      "title": "Nanofiber-microwell cell culture system for spatially patterned differentiation of pluripotent stem cells in 3D.",
+      "abstract": "The intricate interplay between biochemical and physical cues dictates pluripotent stem cell (PSC) differentiation to form various tissues. While biochemical modulation has been extensively studied, the role of biophysical microenvironments in early lineage commitment remains elusive. Here, we introduce a novel 3D cell culture system combining electrospun nanofibers with microfabricated polydimethylsiloxane (PDMS) patterns. This system enables the controlled formation of semispherical human induced pluripotent stem cell (hiPSC) colonies, facilitating the investigation of local mechanical stem cell niches on mechano-responsive signaling and lineage specification. Our system unveiled spatially organized RhoA activity coupled with actin-myosin cable formation, suggesting mechano-dependent hiPSC behaviors. Nodal network analysis of RNA-seq data revealed RhoA downstream regulation of YAP signaling, DNA histone modifications, and patterned germ layer specification. Notably, altering colony morphology through controlled PDMS microwell shaping effectively modulated the spatial distribution of mechano-sensitive mediators and subsequent differentiation. This study provides a cell culture platform to decipher the role of biophysical cues in early embryogenesis, offering valuable insights for material design in tissue engineering and regenerative medicine applications.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "RHOA": [
+          "RhoA"
+        ],
+        "MYH14": [
+          "myosin"
+        ],
+        "YAP1": [
+          "YAP"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:38883422 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36706974,
+      "title": "Analysis of Cre lines for targeting embryonic airway smooth muscle.",
+      "abstract": "During development of the embryonic mouse lung, the pulmonary mesenchyme differentiates into smooth muscle that wraps around the airway epithelium. Inhibiting smooth muscle differentiation leads to cystic airways, while enhancing it stunts epithelial branching. These findings support a conceptual model wherein the differentiation of smooth muscle sculpts the growing epithelium into branches at precise positions and with stereotyped morphologies. Unfortunately, most approaches to manipulate the differentiation of airway smooth muscle rely on pharmacological or physical perturbations that are conducted ex vivo. Here, we explored the use of diphtheria toxin-based genetic ablation strategies to eliminate airway smooth muscle in the embryonic mouse lung. Surprisingly, neither airway smooth muscle wrapping nor epithelial branching were affected in embryos in which the expression of diphtheria toxin or its receptor were driven by several different smooth muscle-specific Cre lines. Close examination of spatial patterns of Cre activity in the embryonic lung revealed that none of these commonly used Cre lines target embryonic airway smooth muscle robustly or specifically. Our findings demonstrate the need for airway smooth muscle-specific Cre lines that are active in the embryonic lung, and serve as a resource for researchers contemplating the use of these commonly used Cre lines for studying embryonic airway smooth muscle.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:36706974 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 39588360,
+      "title": "Morphogen-driven differentiation is precluded by physical confinement in human iPSCs spheroids.",
+      "abstract": "Introduction: Cell lineage specification is tightly associated with profound morphological changes in the developing human embryo, particularly during gastrulation. The interplay between mechanical forces and biochemical signals is poorly understood. Methods: Here, we dissect the effects of biochemical cues and physical confinement on a 3D in vitro model based on spheroids formed from human induced pluripotent stem cells (hiPSCs). Results: First, we compare self-renewing versus differentiating media conditions in free-floating cultures and observe the emergence of tri-germ layers. In these unconfined conditions, BMP4 exposure induces polarised expression of SOX17 in conjunction with spheroid elongation. We then physically confine spheroids using PEG-peptide hydrogels and observe dramatically reduced SOX17 expression, albeit rescued if gels that soften over time are used instead. Discussion: Our study combines high-content imaging, synthetic hydrogels, and hiPSCs-derived models of early development to define the drivers that cause changes in the shape and the emergence of germ layers.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "BMP4": [
+          "BMP4"
+        ],
+        "SOX17": [
+          "SOX17"
+        ]
+      },
+      "relations": [
+        {
+          "gene1": "SOX17",
+          "gene2": "BMP4",
+          "type": "Positive_Correlation",
+          "score": 0.9994
+        }
+      ],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:39588360 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 37681899,
+      "title": "Optical Mapping of Cardiomyocytes in Monolayer Derived from Induced Pluripotent Stem Cells.",
+      "abstract": "Optical mapping is a powerful imaging technique widely adopted to measure membrane potential changes and intracellular Ca2+ variations in excitable tissues using voltage-sensitive dyes and Ca2+ indicators, respectively. This powerful tool has rapidly become indispensable in the field of cardiac electrophysiology for studying depolarization wave propagation, estimating the conduction velocity of electrical impulses, and measuring Ca2+ dynamics in cardiac cells and tissues. In addition, mapping these electrophysiological parameters is important for understanding cardiac arrhythmia mechanisms. In this review, we delve into the fundamentals of cardiac optical mapping technology and its applications when applied to hiPSC-derived cardiomyocytes and discuss related advantages and challenges. We also provide a detailed description of the processing and analysis of optical mapping data, which is a crucial step in the study of cardiac diseases and arrhythmia mechanisms for extracting and comparing relevant electrophysiological parameters.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:37681899 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 39558513,
+      "title": "Matrix Architecture and Mechanics Regulate Myofibril Organization, Costamere Assembly, and Contractility in Engineered Myocardial Microtissues.",
+      "abstract": "The mechanical function of the myocardium is defined by cardiomyocyte contractility and the biomechanics of the extracellular matrix (ECM). Understanding this relationship remains an important unmet challenge due to limitations in existing approaches for engineering myocardial tissue. Here, they established arrays of cardiac microtissues with tunable mechanics and architecture by integrating ECM-mimetic synthetic, fiber matrices, and induced pluripotent stem cell-derived cardiomyocytes (iPSC-CMs), enabling real-time contractility readouts, in-depth structural assessment, and tissue-specific computational modeling. They found that the stiffness and alignment of matrix fibers distinctly affect the structural development and contractile function of pure iPSC-CM tissues. Further examination into the impact of fibrous matrix stiffness enabled by computational models and quantitative immunofluorescence implicates cell-ECM interactions in myofibril assembly, myofibril maturation, and notably costamere assembly, which correlates with improved contractile function of tissues. These results highlight how iPSC-CM tissue models with controllable architecture and mechanics can elucidate mechanisms of tissue maturation and disease.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:39558513 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 33505968,
+      "title": "Rocking the Boat: The Decisive Roles of Rho Kinases During Oocyte, Blastocyst, and Stem Cell Development.",
+      "abstract": "The rho-associated coiled-coil-containing proteins (ROCKs or rho kinase) are effectors of the small rho-GTPase rhoA, which acts as a signaling molecule to regulate a variety of cellular processes, including cell proliferation, adhesion, polarity, cytokinesis, and survival. Owing to the multifunctionality of these kinases, an increasing number of studies focus on understanding the pleiotropic effects of the ROCK signaling pathway in the coordination and control of growth (proliferation, initiation, and progression), development (morphology and differentiation), and survival in many cell types. There is growing evidence that ROCKs actively phosphorylate several actin-binding proteins and intermediate filament proteins during oocyte cytokinesis, the preimplantation embryos as well as the stem cell development and differentiation. In this review, we focus on the participation of ROCK proteins in oocyte maturation, blastocyst formation, and stem cell development with a special focus on the selective targeting of ROCK isoforms, ROCK1, and ROCK2. The selective switching of cell fate through ROCK inhibition would provide a novel paradigm for in vitro oocyte maturation, experimental embryology, and clinical applications.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "RHOA": [
+          "rhoA"
+        ],
+        "ROCK1": [
+          "ROCK1"
+        ],
+        "ROCK2": [
+          "ROCK2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:33505968 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 38965264,
+      "title": "Metabolic remodeling and calcium handling abnormality in induced pluripotent stem cell-derived cardiomyocytes in dilated phase of hypertrophic cardiomyopathy with MYBPC3 frameshift mutation.",
+      "abstract": "Hypertrophic cardiomyopathy (HCM) is an inherited disorder characterized by left ventricular hypertrophy and diastolic dysfunction, and increases the risk of arrhythmias and heart failure. Some patients with HCM develop a dilated phase of hypertrophic cardiomyopathy (D-HCM) and have poor prognosis; however, its pathogenesis is unclear and few pathological models exist. This study established disease-specific human induced pluripotent stem cells (iPSCs) from a patient with D-HCM harboring a mutation in MYBPC3 (c.1377delC), a common causative gene of HCM, and investigated the associated pathophysiological mechanisms using disease-specific iPSC-derived cardiomyocytes (iPSC-CMs). We confirmed the expression of pluripotent markers and the ability to differentiate into three germ layers in D-HCM patient-derived iPSCs (D-HCM iPSCs). D-HCM iPSC-CMs exhibited disrupted myocardial sarcomere structures and an increased number of damaged mitochondria. Ca2+ imaging showed increased abnormal Ca2+ signaling and prolonged decay time in D-HCM iPSC-CMs. Cell metabolic analysis revealed increased basal respiration, maximal respiration, and spare-respiratory capacity in D-HCM iPSC-CMs. RNA sequencing also showed an increased expression of mitochondrial electron transport system-related genes. D-HCM iPSC-CMs showed abnormal Ca2+ handling and hypermetabolic state, similar to that previously reported for HCM patient-derived iPSC-CMs. Although further studies are required, this is expected to be a useful pathological model for D-HCM.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "MYBPC3": [
+          "MYBPC3"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:38965264 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 37401411,
+      "title": "Optogenetic control of Wnt signaling models cell-intrinsic embryogenic patterning using 2D human pluripotent stem cell culture.",
+      "abstract": "In embryonic stem cell (ESC) models for early development, spatially and temporally varying patterns of signaling and cell types emerge spontaneously. However, mechanistic insight into this dynamic self-organization is limited by a lack of methods for spatiotemporal control of signaling, and the relevance of signal dynamics and cell-to-cell variability to pattern emergence remains unknown. Here, we combine optogenetic stimulation, imaging, and transcriptomic approaches to study self-organization of human ESCs (hESC) in two-dimensional (2D) culture. Morphogen dynamics were controlled via optogenetic activation of canonical Wnt/beta-catenin signaling (optoWnt), which drove broad transcriptional changes and mesendoderm differentiation at high efficiency (>99% cells). When activated within cell subpopulations, optoWnt induced cell self-organization into distinct epithelial and mesenchymal domains, mediated by changes in cell migration, an epithelial to mesenchymal-like transition, and TGF-beta signaling. Furthermore, we demonstrate that such optogenetic control of cell subpopulations can be used to uncover signaling feedback mechanisms between neighboring cell types. These findings reveal that cell-to-cell variability in Wnt signaling is sufficient to generate tissue-scale patterning and establish an hESC model system for investigating feedback mechanisms relevant to early human embryogenesis.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CTNNB1": [
+          "beta-catenin"
+        ],
+        "TGFB1": [
+          "TGF-beta"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:37401411 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 34698150,
+      "title": "Matured Myofibers in Bioprinted Constructs with In Vivo Vascularization and Innervation.",
+      "abstract": "For decades, the study of tissue-engineered skeletal muscle has been driven by a clinical need to treat neuromuscular diseases and volumetric muscle loss. The in vitro fabrication of muscle offers the opportunity to test drug-and cell-based therapies, to study disease processes, and to perhaps, one day, serve as a muscle graft for reconstructive surgery. This study developed a biofabrication technique to engineer muscle for research and clinical applications. A bioprinting protocol was established to deliver primary mouse myoblasts in a gelatin methacryloyl (GelMA) bioink, which was implanted in an in vivo chamber in a nude rat model. For the first time, this work demonstrated the phenomenon of myoblast migration through the bioprinted GelMA scaffold with cells spontaneously forming fibers on the surface of the material. This enabled advanced maturation and facilitated the connection between incoming vessels and nerve axons in vivo without the hindrance of a scaffold material. Immunohistochemistry revealed the hallmarks of tissue maturity with sarcomeric striations and peripherally placed nuclei in the organized bundles of muscle fibers. Such engineered muscle autografts could, with further structural development, eventually be used for surgical reconstructive purposes while the methodology presented here specifically has wide applications for in vitro and in vivo neuromuscular function and disease modelling.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:34698150 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 40541174,
+      "title": "Integrin b1 activity controls colony morphology during human pluripotent stem cell state transitions.",
+      "abstract": "Integrin b1-mediated adhesion is dispensable in early mouse embryogenesis (pre-implantation) but indispensable post-implantation, suggesting distinct roles for b1-integrin-mediated adhesions in the naive (pre-implantation) versus primed (post-implantation) pluripotent stem cells (PSCs). We investigated the role of integrin b1 in regulating naive-like and primed human induced PSC (hiPSC) states. We find that integrin b1 is active in both in vitro. In primed hiPSCs, integrin b1 inhibition induces naive-like colony features, reduces actomyosin contraction and extracellular signal-regulated kinase (ERK) activity, and alters gene expression, indicative of more naive-like features. These resemble the dramatic reorganization of the colony morphology, actin cytoskeleton, and adhesions upon chemical reversion from primed to naive states of pluripotency. Importantly, functional and single-cell transcriptomics analyses demonstrate that integrin b1 inhibition attenuates colony morphology transitions in cells exiting naive pluripotency. These data reveal unprecedented integrin-dependent regulation of PSC states and demonstrate how integrin inhibitors may help to fine-tune hiPSC function and properties in vitro.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "MAPK1": [
+          "extracellular signal-regulated kinase",
+          "ERK"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:40541174 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 41383763,
+      "title": "Intrinsic mechanotransduction during apical constriction licenses lineage competence in pluripotent stem cells.",
+      "abstract": "To acquire the capacity for multi-lineage differentiation, pluripotent stem cells must undergo a transition from naive pluripotency to lineage competency. This transition requires epithelialization and changes in nuclear architecture. We sought to determine whether the cell and tissue mechanics intrinsic to epithelialization drive pluripotency progression and subsequent lineage commitment to neuroectodermal fate. We demonstrate that naive mouse embryonic stem cells (mESCs) undergoing early differentiation in vitro recapitulate features of epithelialization in the peri-implantation epiblast, specifically apical constriction. We further demonstrate that cell contractility during apical constriction induces a distinct nuclear mechanoresponse, notably enrichment of emerin at the outer nuclear membrane, nuclear envelope localization of SUN2, and the global loss of H3K9me3 heterochromatin which is compensated by H3K27me3. Importantly, these nuclear phenotypes and subsequent neuroectodermal lineage priming require myosin II-mediated contractility, an intact LINC complex, and emerin. We demonstrate that LINC-dependent mechanotransduction through emerin regulates H3K27me3 occupancy on the key early neuroectodermal transcription factor gene, Sox1, implicating a mechanical switch in chromatin mediation of neuroectodermal lineage competence. These results indicate that epithelialization-induced nuclear mechanotransduction poises a critical lineage gene for subsequent expression.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "EMD": [
+          "emerin"
+        ],
+        "SUN2": [
+          "SUN2"
+        ],
+        "SOX1": [
+          "Sox1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['ACTC1', 'TAGLN', 'ANKRD1', 'KRT18', 'TPM1'] in PMID:41383763 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    }
+  ],
+  "statistics": {
+    "total_papers": 30,
+    "total_queries": 8
+  }
+}

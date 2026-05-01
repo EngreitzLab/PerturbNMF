@@ -1,5 +1,5 @@
 """
-Unit tests for the Calibration pipeline (U-test and CRT).
+Unit tests for U-test perturbation calibration.
 
 Tests use synthetic MuData with guide assignments. No real inference
 output is required.
@@ -7,7 +7,7 @@ output is required.
 Usage:
     eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking
     cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
-    python -m pytest tests/Script/Calibration/test_calibration.py -v
+    python -m pytest tests/Script/Stage2_Evaluation/test_utest.py -v
 """
 
 import os
@@ -28,12 +28,12 @@ from scipy import sparse
 class TestPerturbationAssociation:
     """Test the core compute_perturbation_association function used by U-test calibration."""
 
-    def test_basic_perturbation_association(self, mdata_copy):
+    def test_basic_perturbation_association(self, calibration_mdata_copy):
         """Run perturbation association and check output structure."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         result = compute_perturbation_association(
-            mdata_copy,
+            calibration_mdata_copy,
             prog_key="cNMF",
             collapse_targets=True,
             pseudobulk=False,
@@ -48,12 +48,12 @@ class TestPerturbationAssociation:
         assert "program_name" in result.columns
         assert "p-value" in result.columns or "pval" in result.columns
 
-    def test_perturbation_pvalues_valid(self, mdata_copy):
+    def test_perturbation_pvalues_valid(self, calibration_mdata_copy):
         """All p-values should be between 0 and 1."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         result = compute_perturbation_association(
-            mdata_copy,
+            calibration_mdata_copy,
             prog_key="cNMF",
             collapse_targets=True,
             pseudobulk=False,
@@ -67,13 +67,13 @@ class TestPerturbationAssociation:
         assert (pvals >= 0).all(), "Found negative p-values"
         assert (pvals <= 1).all(), "Found p-values > 1"
 
-    def test_perturbation_per_condition(self, mdata_copy):
+    def test_perturbation_per_condition(self, calibration_mdata_copy):
         """Run perturbation association on a single condition subset."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
-        cond = mdata_copy["rna"].obs["condition"].unique()[0]
-        mask = mdata_copy["rna"].obs["condition"] == cond
-        mdata_sub = mdata_copy[mask]
+        cond = calibration_mdata_copy["rna"].obs["condition"].unique()[0]
+        mask = calibration_mdata_copy["rna"].obs["condition"] == cond
+        mdata_sub = calibration_mdata_copy[mask]
 
         result = compute_perturbation_association(
             mdata_sub,
@@ -88,12 +88,12 @@ class TestPerturbationAssociation:
         assert isinstance(result, pd.DataFrame)
         assert len(result) > 0
 
-    def test_fdr_bh_correction(self, mdata_copy):
+    def test_fdr_bh_correction(self, calibration_mdata_copy):
         """BH FDR correction should produce adj_pval column."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         result = compute_perturbation_association(
-            mdata_copy,
+            calibration_mdata_copy,
             prog_key="cNMF",
             collapse_targets=True,
             pseudobulk=False,
@@ -144,12 +144,12 @@ class TestFakeGuideCalibration:
         n_original_targeting = guide_annotation_df["targeting"].sum()
         assert n_targeting == n_original_targeting + 3
 
-    def test_subset_to_nontargeting_guides(self, mdata_copy, guide_annotation_df):
+    def test_subset_to_nontargeting_guides(self, calibration_mdata_copy, guide_annotation_df):
         """Subset MuData to only non-targeting guides."""
         nt_mask = ~guide_annotation_df["targeting"]
         nt_indices = np.where(nt_mask.values)[0]
 
-        prog = mdata_copy["cNMF"]
+        prog = calibration_mdata_copy["cNMF"]
         original_n_guides = prog.obsm["guide_assignment"].shape[1]
 
         # Subset guide assignment matrix
@@ -160,9 +160,9 @@ class TestFakeGuideCalibration:
         assert len(subset_names) == nt_mask.sum()
         assert subset_assignment.shape[1] < original_n_guides
 
-    def test_calibration_run_single_iteration(self, mdata_copy, guide_annotation_df):
+    def test_calibration_run_single_iteration(self, calibration_mdata_copy, guide_annotation_df):
         """Run one calibration iteration: subset to NT, relabel some as targeting, compute association."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         rng = np.random.default_rng(789)
         guide_ann = guide_annotation_df.copy()
@@ -170,7 +170,7 @@ class TestFakeGuideCalibration:
         nt_indices = np.where(nt_mask.values)[0]
 
         # Subset to NT guides only
-        prog = mdata_copy["cNMF"]
+        prog = calibration_mdata_copy["cNMF"]
         prog.obsm["guide_assignment"] = prog.obsm["guide_assignment"][:, nt_indices]
         prog.uns["guide_names"] = prog.uns["guide_names"][nt_indices]
 
@@ -181,14 +181,14 @@ class TestFakeGuideCalibration:
         prog.uns["guide_targets"] = new_targets
 
         # Also update rna modality
-        rna = mdata_copy["rna"]
+        rna = calibration_mdata_copy["rna"]
         rna.obsm["guide_assignment"] = rna.obsm["guide_assignment"][:, nt_indices]
         rna.uns["guide_names"] = prog.uns["guide_names"]
         rna.uns["guide_targets"] = new_targets
 
         # Run perturbation association
         result = compute_perturbation_association(
-            mdata_copy,
+            calibration_mdata_copy,
             prog_key="cNMF",
             collapse_targets=True,
             pseudobulk=False,
@@ -264,20 +264,20 @@ class TestCalibrationVisualization:
 class TestGuideMetadata:
     """Test guide metadata extraction and manipulation."""
 
-    def test_get_guide_metadata(self, mdata_copy):
+    def test_get_guide_metadata(self, calibration_mdata_copy):
         """Extract guide metadata from MuData."""
-        from Evaluation.src.association_perturbation import get_guide_metadata
+        from Stage2_Evaluation.A_Metrics.src.association_perturbation import get_guide_metadata
 
-        guide_meta = get_guide_metadata(mdata_copy, prog_key="cNMF")
+        guide_meta = get_guide_metadata(calibration_mdata_copy, prog_key="cNMF")
         assert isinstance(guide_meta, pd.DataFrame)
         assert "Target" in guide_meta.columns
-        assert len(guide_meta) == len(mdata_copy["cNMF"].uns["guide_names"])
+        assert len(guide_meta) == len(calibration_mdata_copy["cNMF"].uns["guide_names"])
 
-    def test_guide_metadata_has_nontargeting(self, mdata_copy):
+    def test_guide_metadata_has_nontargeting(self, calibration_mdata_copy):
         """Verify non-targeting guides are present in metadata."""
-        from Evaluation.src.association_perturbation import get_guide_metadata
+        from Stage2_Evaluation.A_Metrics.src.association_perturbation import get_guide_metadata
 
-        guide_meta = get_guide_metadata(mdata_copy, prog_key="cNMF")
+        guide_meta = get_guide_metadata(calibration_mdata_copy, prog_key="cNMF")
         nt_count = (guide_meta["Target"] == "non-targeting").sum()
         assert nt_count > 0, "No non-targeting guides found"
 
@@ -302,12 +302,12 @@ class TestGuideMetadata:
 class TestCalibrationOutput:
     """Test that calibration produces correctly formatted output files."""
 
-    def test_save_perturbation_results(self, mdata_copy, calibration_output_dir):
+    def test_save_perturbation_results(self, calibration_mdata_copy, calibration_output_dir):
         """Run association and save to TSV, verify file format."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         result = compute_perturbation_association(
-            mdata_copy,
+            calibration_mdata_copy,
             prog_key="cNMF",
             collapse_targets=True,
             pseudobulk=False,
@@ -327,9 +327,9 @@ class TestCalibrationOutput:
         assert "target_name" in loaded.columns
         assert "program_name" in loaded.columns
 
-    def test_multiple_iterations_concatenate(self, mdata_copy, guide_annotation_df):
+    def test_multiple_iterations_concatenate(self, calibration_mdata_copy, guide_annotation_df):
         """Multiple calibration iterations should concatenate correctly."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         rng = np.random.default_rng(0)
         all_results = []
@@ -337,7 +337,7 @@ class TestCalibrationOutput:
         nt_indices = np.where(nt_mask.values)[0]
 
         for iteration in range(3):
-            _mdata = mdata_copy.copy()
+            _mdata = calibration_mdata_copy.copy()
             prog = _mdata["cNMF"]
             prog.obsm["guide_assignment"] = prog.obsm["guide_assignment"][:, nt_indices]
             prog.uns["guide_names"] = prog.uns["guide_names"][nt_indices]
@@ -379,7 +379,7 @@ class TestEdgeCases:
 
     def test_sparse_guide_assignment(self, synthetic_mdata):
         """Perturbation association should work with sparse guide assignment matrices."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         mdata = synthetic_mdata.copy()
         prog = mdata["cNMF"]
@@ -405,7 +405,7 @@ class TestEdgeCases:
 
     def test_single_target_gene(self, synthetic_mdata, guide_annotation_df):
         """Calibration with only one fake targeting guide group."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         mdata = synthetic_mdata.copy()
         nt_mask = ~guide_annotation_df["targeting"]
@@ -436,12 +436,12 @@ class TestEdgeCases:
         assert isinstance(result, pd.DataFrame)
         assert result["target_name"].nunique() == 1
 
-    def test_all_pvals_finite_after_fdr(self, mdata_copy):
+    def test_all_pvals_finite_after_fdr(self, calibration_mdata_copy):
         """FDR-adjusted p-values must all be finite (no NaN/Inf)."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         result = compute_perturbation_association(
-            mdata_copy,
+            calibration_mdata_copy,
             prog_key="cNMF",
             collapse_targets=True,
             pseudobulk=False,
@@ -454,12 +454,12 @@ class TestEdgeCases:
         assert all(result["adj_pval"] >= 0)
         assert all(result["adj_pval"] <= 1)
 
-    def test_inplace_mode_updates_mdata(self, mdata_copy):
+    def test_inplace_mode_updates_mdata(self, calibration_mdata_copy):
         """inplace=True should write results into varm/uns, not return a DataFrame."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         ret = compute_perturbation_association(
-            mdata_copy,
+            calibration_mdata_copy,
             prog_key="cNMF",
             collapse_targets=True,
             pseudobulk=False,
@@ -469,9 +469,9 @@ class TestEdgeCases:
             inplace=True,
         )
         assert ret is None
-        assert "perturbation_association_target_stat" in mdata_copy["cNMF"].varm
-        assert "perturbation_association_target_pval" in mdata_copy["cNMF"].varm
-        assert "perturbation_association_target_names" in mdata_copy["cNMF"].uns
+        assert "perturbation_association_target_stat" in calibration_mdata_copy["cNMF"].varm
+        assert "perturbation_association_target_pval" in calibration_mdata_copy["cNMF"].varm
+        assert "perturbation_association_target_names" in calibration_mdata_copy["cNMF"].uns
 
 
 # ===========================================================================
@@ -507,7 +507,7 @@ class TestCalibrationReproducibility:
 
     def test_reproducible_calibration_pvalues(self, synthetic_mdata, guide_annotation_df):
         """Two calibration runs with the same seed should give identical p-values."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         nt_mask = ~guide_annotation_df["targeting"]
         nt_indices = np.where(nt_mask.values)[0]
@@ -550,17 +550,17 @@ class TestCalibrationReproducibility:
 class TestConditionStratifiedCalibration:
     """Test calibration run per-condition (mimicking the real pipeline)."""
 
-    def test_per_condition_results_differ(self, mdata_copy):
+    def test_per_condition_results_differ(self, calibration_mdata_copy):
         """Different conditions should produce different p-value distributions."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
-        conditions = mdata_copy["rna"].obs["condition"].unique()
+        conditions = calibration_mdata_copy["rna"].obs["condition"].unique()
         assert len(conditions) >= 2
 
         results_by_cond = {}
         for cond in conditions[:2]:
-            mask = mdata_copy["rna"].obs["condition"] == cond
-            mdata_sub = mdata_copy[mask]
+            mask = calibration_mdata_copy["rna"].obs["condition"] == cond
+            mdata_sub = calibration_mdata_copy[mask]
             result = compute_perturbation_association(
                 mdata_sub,
                 prog_key="cNMF",
@@ -577,14 +577,14 @@ class TestConditionStratifiedCalibration:
         # Results should differ (different cell subsets)
         assert not results_by_cond[c1]["pval"].values.tolist() == results_by_cond[c2]["pval"].values.tolist()
 
-    def test_per_condition_combine_with_metadata(self, mdata_copy):
+    def test_per_condition_combine_with_metadata(self, calibration_mdata_copy):
         """Combine per-condition results with sample metadata columns."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         all_results = []
-        for cond in mdata_copy["rna"].obs["condition"].unique():
-            mask = mdata_copy["rna"].obs["condition"] == cond
-            mdata_sub = mdata_copy[mask]
+        for cond in calibration_mdata_copy["rna"].obs["condition"].unique():
+            mask = calibration_mdata_copy["rna"].obs["condition"] == cond
+            mdata_sub = calibration_mdata_copy[mask]
             result = compute_perturbation_association(
                 mdata_sub,
                 prog_key="cNMF",
@@ -602,7 +602,7 @@ class TestConditionStratifiedCalibration:
         combined = pd.concat(all_results, ignore_index=True)
         assert "sample" in combined.columns
         assert "K" in combined.columns
-        assert combined["sample"].nunique() == mdata_copy["rna"].obs["condition"].nunique()
+        assert combined["sample"].nunique() == calibration_mdata_copy["rna"].obs["condition"].nunique()
 
 
 # ===========================================================================
@@ -639,52 +639,6 @@ class TestSparseConversion:
         cells_with_targeting = targeting_only.sum(axis=1) > 0
         # Those cells should have 0 in the NT subset
         assert (subset[cells_with_targeting].sum(axis=1) == 0).all()
-
-
-# ===========================================================================
-# Tests for CRT data reformatting (skip if sceptre unavailable)
-# ===========================================================================
-
-CRT_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "src",
-                       "Calibration", "Slurm_version", "CRT")
-
-try:
-    import sys as _sys
-    _sys.path.insert(0, CRT_DIR)
-    from CRT import reformat_data_for_CRT  # noqa: F401 — needs sceptre (programDE env)
-    _HAS_CRT = True
-except ImportError:
-    _HAS_CRT = False
-
-
-@pytest.mark.skipif(not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)")
-class TestCRTReformat:
-    """Test the reformat_data_for_CRT function from the CRT calibration script."""
-
-    def test_reformat_basic_structure(self, synthetic_mdata):
-        """reformat_data_for_CRT should produce expected keys in obsm/uns."""
-        mdata = synthetic_mdata.copy()
-        mdata_guide = mdata["rna"].copy()
-
-        adata = reformat_data_for_CRT(mdata, mdata_guide)
-        assert "cnmf_usage" in adata.obsm
-        assert "guide_assignment" in adata.obsm
-        assert "guide_names" in adata.uns
-        assert "guide2gene" in adata.uns
-        assert "program_names" in adata.uns
-        assert "covar" in adata.obsm
-
-    def test_reformat_guide2gene_mapping(self, synthetic_mdata):
-        """guide2gene dict should map every guide name to its target."""
-        mdata = synthetic_mdata.copy()
-        mdata_guide = mdata["rna"].copy()
-
-        adata = reformat_data_for_CRT(mdata, mdata_guide)
-        g2g = adata.uns["guide2gene"]
-        assert isinstance(g2g, dict)
-        assert len(g2g) == len(adata.uns["guide_names"])
-        for gname in adata.uns["guide_names"]:
-            assert gname in g2g
 
 
 # ===========================================================================
@@ -770,12 +724,12 @@ class TestUTestPlotFunctions:
 class TestGuideLevelAssociation:
     """Test perturbation association at guide level (collapse_targets=False)."""
 
-    def test_guide_level_returns_guide_name_col(self, mdata_copy):
+    def test_guide_level_returns_guide_name_col(self, calibration_mdata_copy):
         """With collapse_targets=False, output should have guide_name column."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         result = compute_perturbation_association(
-            mdata_copy,
+            calibration_mdata_copy,
             prog_key="cNMF",
             collapse_targets=False,
             pseudobulk=False,
@@ -788,12 +742,12 @@ class TestGuideLevelAssociation:
         assert "guide_name" in result.columns
         assert "target_name" not in result.columns
 
-    def test_guide_level_more_rows_than_target_level(self, mdata_copy):
+    def test_guide_level_more_rows_than_target_level(self, calibration_mdata_copy):
         """Guide-level results should have more rows than target-level (multiple guides per target)."""
-        from Evaluation.src import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
 
         target_result = compute_perturbation_association(
-            mdata_copy,
+            calibration_mdata_copy,
             prog_key="cNMF",
             collapse_targets=True,
             pseudobulk=False,
@@ -803,7 +757,7 @@ class TestGuideLevelAssociation:
             inplace=False,
         )
         guide_result = compute_perturbation_association(
-            mdata_copy,
+            calibration_mdata_copy,
             prog_key="cNMF",
             collapse_targets=False,
             pseudobulk=False,

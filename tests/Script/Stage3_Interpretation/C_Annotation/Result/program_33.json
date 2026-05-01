@@ -1,0 +1,1093 @@
+{
+  "program_id": "33",
+  "timestamp": "2026-04-28T15:33:13.810312",
+  "program_context": {
+    "program_id": "33",
+    "top_genes": "DSCAM;PKM;COL5A2;CER1;MCF2L2;SERHL2;SLC5A4-AS1;NTN1;GYPB;ENSG00000197585",
+    "positive_regulators": "ACVR1B,CBLL1,SMAD3,EOMES,SYVN1",
+    "negative_regulators": "PLCG1,PYGO2,NAA20,TOP1,TRRAP",
+    "day": "D3",
+    "cell_types": "iPSC-derived endothelial/mesoderm differentiation",
+    "go_enrichment": "Regulation Of Cell Migration (GO:0030334);Axon Guidance (GO:0007411);Cardiac Muscle Tissue Development (GO:0048738);Negative Regulation Of Cell Population Proliferation (GO:0008285);Negative Regulation Of Cellular Process (GO:0048523);Cardiocyte Differentiation (GO:0035051);Positive Regulation Of Ga",
+    "other_enrichment": "Extracellular Matrix Organization R-HSA-1474244;Elastic Fibre Formation R-HSA-1566948;Collagen Biosynthesis And Modifying Enzymes R-HSA-1650814;Collagen Chain Trimerization R-HSA-8948216;Collagen Formation R-HSA-1474290;HS-GAG Biosynthesis R-HSA-2022928;Glycosaminoglycan Metabolism R-HSA-1630316;Neu"
+  },
+  "search_queries": [
+    {
+      "query": "(DSCAM AND PKM) AND (endothelial differentiation OR mesoderm differentiation)",
+      "strategy": "gene_pair",
+      "target": "Co-regulation of DSCAM and PKM during endothelial/mesoderm differentiation"
+    },
+    {
+      "query": "(SMAD3 OR EOMES) AND (COL5A2 OR CER1) AND cardiac development",
+      "strategy": "regulator_target",
+      "target": "How SMAD3/EOMES regulate collagen and cardiac development genes"
+    },
+    {
+      "query": "extracellular matrix organization AND (COL5A2 OR NTN1) AND cardiac muscle",
+      "strategy": "pathway_context",
+      "target": "ECM organization pathway in cardiac muscle development"
+    },
+    {
+      "query": "ACVR1B AND SMAD3 AND (cardiocyte differentiation OR cardiac development)",
+      "strategy": "regulator_target",
+      "target": "ACVR1B-SMAD3 signaling in cardiac differentiation"
+    },
+    {
+      "query": "(axon guidance[MeSH] OR cell migration[MeSH]) AND (DSCAM OR NTN1)",
+      "strategy": "pathway_context",
+      "target": "Axon guidance and migration roles of DSCAM and NTN1"
+    },
+    {
+      "query": "PLCG1 AND (endothelial cells OR mesoderm) AND differentiation",
+      "strategy": "regulator_target",
+      "target": "PLCG1 regulation of endothelial/mesoderm differentiation"
+    },
+    {
+      "query": "collagen biosynthesis AND (COL5A2 AND cardiac development)",
+      "strategy": "pathway_context",
+      "target": "Collagen biosynthesis pathway in cardiac development"
+    },
+    {
+      "query": "(CER1 OR EOMES) AND mesoderm AND iPSC",
+      "strategy": "temporal",
+      "target": "CER1 and EOMES function in iPSC mesoderm differentiation"
+    }
+  ],
+  "papers": [
+    {
+      "pmid": 39358374,
+      "title": "Reassessment of marker genes in human induced pluripotent stem cells for enhanced quality control.",
+      "abstract": "Human induced pluripotent stem cells (iPSCs) have great potential in research, but pluripotency testing faces challenges due to non-standardized methods and ambiguous markers. Here, we use long-read nanopore transcriptome sequencing to discover 172 genes linked to cell states not covered by current guidelines. We validate 12 genes by qPCR as unique markers for specific cell fates: pluripotency (CNMD, NANOG, SPP1), endoderm (CER1, EOMES, GATA6), mesoderm (APLNR, HAND1, HOXB7), and ectoderm (HES5, PAMR1, PAX6). Using these genes, we develop a machine learning-based scoring system, \"hiPSCore\", trained on 15 iPSC lines and validated on 10 more. hiPSCore accurately classifies pluripotent and differentiated cells and predicts their potential to become specialized 2D cells and 3D organoids. Our re-evaluation of cell fate marker genes identifies key targets for future studies on cell fate assessment. hiPSCore improves iPSC testing by reducing time, subjectivity, and resource use, thus enhancing iPSC quality for scientific and medical applications.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CNMD": [
+          "CNMD"
+        ],
+        "NANOG": [
+          "NANOG"
+        ],
+        "SPP1": [
+          "SPP1"
+        ],
+        "CER1": [
+          "CER1"
+        ],
+        "EOMES": [
+          "EOMES"
+        ],
+        "GATA6": [
+          "GATA6"
+        ],
+        "APLNR": [
+          "APLNR"
+        ],
+        "HAND1": [
+          "HAND1"
+        ],
+        "HOXB7": [
+          "HOXB7"
+        ],
+        "HES5": [
+          "HES5"
+        ],
+        "PAMR1": [
+          "PAMR1"
+        ],
+        "PAX6": [
+          "PAX6"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "EOMES": [
+          "We validate 12 genes by qPCR as unique markers for specific cell fates: pluripotency (CNMD, NANOG, SPP1), endoderm (CER1, EOMES, GATA6), mesoderm (APLNR, HAND1, HOXB7), and ectoderm (HES5, PAMR1, PAX6)."
+        ],
+        "CER1": [
+          "We validate 12 genes by qPCR as unique markers for specific cell fates: pluripotency (CNMD, NANOG, SPP1), endoderm (CER1, EOMES, GATA6), mesoderm (APLNR, HAND1, HOXB7), and ectoderm (HES5, PAMR1, PAX6)."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:39358374 annotations",
+          "method": "citation_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 39657853,
+      "title": "Exercise-Induced Methylation of the Serhl2 Promoter and Implication for Lipid Metabolism in Rat Skeletal Muscle.",
+      "abstract": "OBJECTIVE: Environmental factors such as physical activity induce epigenetic modification, with exercise-responsive DNA methylation changes occurring in skeletal muscle. To determine the skeletal muscle DNA methylation signature to endurance swim training we used whole-genome methylated DNA immunoprecipitation (MeDIP) sequencing. RESULTS: Gene set expression analysis (GSEA) of differentially methylated promoter regions (DMRs) an enrichment of four gene sets, including those annotated to lipid metabolic process, with differentially hypermethylated or hypomethylated promoter regions in skeletal muscle of exercise-trained rats. Single base resolution bisulfite sequencing confirmed that neighboring CpGs in the transcription start site of Serhl2 (Serine Hydrolase Like 2) were hypomethylated in exercise-trained rats. Serhl2 gene expression was upregulated in exercise-trained rats, as well as in an exercise-in-a-dish model of L6 myotubes subjected to electrical pulse stimulation (EPS). Serhl2 promoter activity was regulated by methylation, and in response to EPS. We identified a Nr4a binding motif in the Serhl2 promoter region, which upon deletion, reduced Serhl2 promoter activity and abolished sensitivity to methylation in L6 myotubes. Gene silencing of Serhl2 in L6 myotubes reduced both intracellular lipid oxidation and triacylglycerol synthesis in response to EPS. CONCLUSION: Exercise training promotes intracellular lipid metabolism and phenotypic changes in skeletal muscle through epigenomic modifications on Serine Hydrolase Like 2. Hypomethylation of Serhl2 promoter affects transcription factor binding of Nr4a, Serhl2 promoter activity, and Serhl2 mRNA expression in skeletal muscle. Our data link exercise-induced epigenomic regulation Serhl2 with lipid oxidation and triacylglycerol synthesis in skeletal muscle.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "SERHL2": [
+          "Serhl2",
+          "Serine Hydrolase Like 2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "SERHL2": [
+          "Exercise-Induced Methylation of the Serhl2 Promoter and Implication for Lipid Metabolism in Rat Skeletal Muscle..",
+          "Single base resolution bisulfite sequencing confirmed that neighboring CpGs in the transcription start site of Serhl2 (Serine Hydrolase Like 2) were hypomethylated in exercise-trained rats."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:39657853 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 39863609,
+      "title": "Comprehensive pan-cancer analysis reveals NTN1 as an immune infiltrate risk factor and its potential prognostic value in SKCM.",
+      "abstract": "Netrin-1 (NTN1) is a laminin-related secreted protein involved in axon guidance and cell migration. Previous research has established a significant connection between NTN1 and nervous system development. In recent years, mounting evidence indicates that NTN1 also plays a crucial role in tumorigenesis and tumor progression. For instance, inhibiting Netrin-1 has been shown to suppress tumor growth and epithelial-mesenchymal transition (EMT) characteristics in endometrial cancer. To further elucidate the influence of genes on tumors, we utilized a variety of machine learning techniques and found that NTN1 is strongly linked to multiple cancer types, suggesting it as a potential therapeutic target. This study aimed to elucidate the role of NTN1 in pan-cancer using multi-omics data and explore its potential as a prognostic biomarker in SKCM. Analysis of the TCGA, GTEx, and UALCAN databases revealed significant differences in NTN1 expression at both the mRNA and protein levels. Prognostic value was evaluated through univariate Cox regression and Kaplan-Meier methods. Mutation and methylation analyses were conducted using the cBioPortal and SMART databases. We identified genes interacting with and correlated to NTN1 through STRING and GEPIA2, respectively. Subsequently, we performed GO and KEGG enrichment analyses. The results suggested that NTN1 might be involved in crucial biological processes and pathways related to cancer development and progression, including cell adhesion, axon guidance, immune response, and various signaling pathways. We then explored the correlation between NTN1 and immune infiltration as well as immunotherapy using the ESTIMATE package, TIMER2.0, TISIDB, TIDE, TIMSO, and TCIA. The relationship between NTN1 and tumor heterogeneity, stemness, DNA methyltransferases, and MMR genes was also examined. Lastly, we constructed a nomogram based on NTN1 in SKCM and investigated its association with drug sensitivity. NTN1 expression was significantly associated with tumor immune infiltration, molecular subtypes, and clinicopathological features in various cancers. Genetic analysis revealed that Deep deletions were the most common type of NTN1 alteration. Additionally, a positive correlation was observed between NTN1 CNAs and its expression levels. In most cancers, NTN1 showed positive correlations with immune and stromal scores, as well as with specific immune cell populations. Its predictive value for immunotherapy response was comparable to that of tumor mutational burden. Furthermore, NTN1 exhibited positive correlations with tumor heterogeneity, stemness, DNA methyltransferase genes, and MMR genes. In SKCM, NTN1 was identified as an independent risk factor and demonstrated potential associations with multiple drugs. NTN1 exhibits substantial clinical utility as a prognostic marker and indicator of immune response across various tumor types. This comprehensive analysis provides insights into its potential implications in pan-cancer research.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "NTN1": [
+          "Netrin-1",
+          "NTN1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "NTN1": [
+          "Netrin-1 (NTN1) is a laminin-related secreted protein involved in axon guidance and cell migration.",
+          "The results suggested that NTN1 might be involved in crucial biological processes and pathways related to cancer development and progression, including cell adhesion, axon guidance, immune response, and various signaling pathways."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:39863609 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 37723519,
+      "title": "COL5A2 is a prognostic-related biomarker and correlated with immune infiltrates in gastric cancer based on transcriptomics and single-cell RNA sequencing.",
+      "abstract": "BACKGROUND: There is still a therapeutic challenge in treating gastric cancer (GC) due to its high incidence and poor prognosis. Collagen type V alpha 2 (COL5A2) is increased in various cancers, yet it remains unclear how it contributes to the prognosis and immunity of GC. METHODS: The Cancer Genome Atlas (TCGA) and Gene Expression Omnibus (GEO) datasets were used to download transcriptome profiling (TCGA-STAD; GSE84437), single-cell RNA sequencing (scRNA-seq) data (GSE167297) and clinical information. COL5A2 expression and its relationship with clinicopathological factors were analyzed. We conducted survival analysis and Cox regression analysis to evaluate the prognosis and independent factors of GC. Co-expressed analysis was also performed. To identify the underlying mechanism, we conducted analyses of differentially expressed genes (DEGs) and functional enrichment. The correlations between COL5A2 expression and immune cell infiltration levels and immune infiltrate gene marker sets were further explored. Additionally, we analyzed the association of COL5A2 expression with immunological checkpoint molecules. Furthermore, the relationship between COL5A2 expression and immunotherapy sensitivity was also investigated. RESULTS: COL5A2 expression was elevated in GC. More than this, the scRNA-seq analysis revealed that COL5A2 expression had a spatial gradient. The upregulated COL5A2 was associated with worse overall survival. A significant correlation was found between COL5A2 overexpression and age, T classification and clinical stage in GC. COL5A2 was found to be an independent factor for the unfortunate outcome in Cox regression analysis. The co-expressed genes of COL5A2 were associated with tumor stage or poor survival. Enrichment analysis revealed that the DEGs were mainly associated with extracellular matrix (ECM)-related processes, PI3K-AKT signaling pathway, and focal adhesion. GSEA analyses revealed that COL5A2 was associated with tumor progression-related pathways. Meanwhile, COL5A2 expression was correlated with tumor-infiltrating immune cells. Moreover, immunophenoscore (IPS) analysis and PRJEB25780 cohorts showed that patients with low COL5A2 expression were highly sensitive to immunotherapy. CONCLUSIONS: COL5A2 might act as a prognostic biomarker of GC prognosis and immune infiltration and may provide a therapeutic intervention strategy.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "COL5A2": [
+          "COL5A2",
+          "Collagen type V alpha 2"
+        ],
+        "AKT1": [
+          "AKT"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "COL5A2": [
+          "COL5A2 is a prognostic-related biomarker and correlated with immune infiltrates in gastric cancer based on transcriptomics and single-cell RNA sequencing..",
+          "Collagen type V alpha 2 (COL5A2) is increased in various cancers, yet it remains unclear how it contributes to the prognosis and immunity of GC."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:37723519 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 35885988,
+      "title": "Transcriptomic Profile of Genes Regulating the Structural Organization of Porcine Atrial Cardiomyocytes during Primary In Vitro Culture.",
+      "abstract": "Numerous cardiovascular diseases (CVD) eventually lead to severe myocardial dysfunction, which is the most common cause of death worldwide. A better understanding of underlying molecular mechanisms of cardiovascular pathologies seems to be crucial to develop effective therapeutic options. Therefore, a worthwhile endeavor is a detailed molecular characterization of cells extracted from the myocardium. A transcriptomic profile of atrial cardiomyocytes during long-term primary cell culture revealed the expression patterns depending on the duration of the culture and the heart segment of origin (right atrial appendage and right atrium). Differentially expressed genes (DEGs) were classified as involved in ontological groups such as: \"cellular component assembly\", \"cellular component organization\", \"cellular component biogenesis\", and \"cytoskeleton organization\". Transcriptomic profiling allowed us to indicate the increased expression of COL5A2, COL8A1, and COL12A1, encoding different collagen subunits, pivotal in cardiac extracellular matrix (ECM) structure. Conversely, genes important for cellular architecture, such as ABLIM1, TMOD1, XIRP1, and PHACTR1, were downregulated during in vitro culture. The culture conditions may create a favorable environment for reconstruction of the ECM structures, whereas they may be suboptimal for expression of some pivotal transcripts responsible for the formation of intracellular structures.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "COL5A2": [
+          "COL5A2"
+        ],
+        "COL8A1": [
+          "COL8A1"
+        ],
+        "COL12A1": [
+          "COL12A1"
+        ],
+        "ABLIM1": [
+          "ABLIM1"
+        ],
+        "TMOD1": [
+          "TMOD1"
+        ],
+        "XIRP1": [
+          "XIRP1"
+        ],
+        "PHACTR1": [
+          "PHACTR1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "COL5A2": [
+          "Transcriptomic profiling allowed us to indicate the increased expression of COL5A2, COL8A1, and COL12A1, encoding different collagen subunits, pivotal in cardiac extracellular matrix (ECM) structure."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:35885988 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 35602939,
+      "title": "Chromatin remodeling is restricted by transient GATA6 binding during iPSC differentiation to definitive endoderm.",
+      "abstract": "In addition to cooperatively driving transcriptional programs, emerging evidence supports transcription factors interacting with one another to modulate the outcome of binding events. As such, transcription factor interactions fine-tune the unique gene expression profiles required for developmental progression. Using human-induced pluripotent stem cells as a model of human endoderm lineage commitment, we reveal that GATA6 transiently co-localizes with EOMES at regions associated with non-endodermal lineages and is required for the repression of chromatin opening at these loci. Our results indicate that GATA6-dependent repression of chromatin remodeling, which is potentially mediated via the recruitment of NCOR1 to the EOMES interactome, contributes to definitive endoderm commitment. We anticipate that similar mechanisms are common during human development, furthering our understanding of the complex mechanisms that define cell fate decisions.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "GATA6": [
+          "GATA6"
+        ],
+        "EOMES": [
+          "EOMES"
+        ],
+        "NCOR1": [
+          "NCOR1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "EOMES": [
+          "Using human-induced pluripotent stem cells as a model of human endoderm lineage commitment, we reveal that GATA6 transiently co-localizes with EOMES at regions associated with non-endodermal lineages and is required for the repression of chromatin opening at these loci.",
+          "Our results indicate that GATA6-dependent repression of chromatin remodeling, which is potentially mediated via the recruitment of NCOR1 to the EOMES interactome, contributes to definitive endoderm commitment."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:35602939 annotations",
+          "method": "citation_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 34363756,
+      "title": "The role of the Cer1 transposon in horizontal transfer of transgenerational memory.",
+      "abstract": "Animals face both external and internal dangers: pathogens threaten from the environment, and unstable genomic elements threaten from within. C. elegans protects itself from pathogens by \"reading\" bacterial small RNAs, using this information to both induce avoidance and transmit memories for four generations. Here, we found that memories can be transferred from either lysed animals or from conditioned media to naive animals via Cer1 retrotransposon-encoded virus-like particles. Moreover, Cer1 functions internally at the step of transmission of information from the germline to neurons and is required for learned avoidance. The presence of the Cer1 retrotransposon in wild C. elegans strains correlates with the ability to learn and inherit small-RNA-induced pathogen avoidance. Together, these results suggest that C. elegans has co-opted a potentially dangerous retrotransposon to instead protect itself and its progeny from a common pathogen through its inter-tissue signaling ability, hijacking this genomic element for its own adaptive immunity benefit.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {
+        "CER1": [
+          "The role of the Cer1 transposon in horizontal transfer of transgenerational memory..",
+          "Here, we found that memories can be transferred from either lysed animals or from conditioned media to naive animals via Cer1 retrotransposon-encoded virus-like particles."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:34363756 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 38339201,
+      "title": "Nuclear Binding Protein 2/Nesfatin-1 Affects Trophoblast Cell Fusion during Placental Development via the EGFR-PLCG1-CAMK4 Pathway.",
+      "abstract": "Previous studies have shown that nuclear binding protein 2 (NUCB2) is expressed in the human placenta and increases with an increase in the syncytialization of trophoblast cells. This study aimed to investigate the role of NUCB2 in the differentiation and fusion of trophectoderm cells. In this study, the expression levels of NUCB2 and E-cadherin in the placentas of rats at different gestation stages were investigated. The results showed that there was an opposite trend between the expression of placental NUCB2 and E-cadherin in rat placentas in different trimesters. When primary human trophoblast (PHT) and BeWo cells were treated with high concentrations of Nesfatin-1, the trophoblast cell syncytialization was significantly inhibited. The effects of NUCB2 knockdown in BeWo cells and Forskolin-induced syncytialization were investigated. These cells showed a significantly decreased cell fusion rate. The mechanism underlying NUCB2-regulated trophoblast cell syncytialization was explored using RNA-Seq and the results indicated that the epidermal growth factor receptor (EGFR)-phospholipase C gamma 1 (PLCG1)-calmodulin-dependent protein kinase IV (CAMK4) pathway might be involved. The results suggested that the placental expression of NUCB2 plays an important role in the fusion of trophoblasts during differentiation via the EGFR-PLCG1-CAMK4 pathway.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "NUCB2": [
+          "Nesfatin-1",
+          "nuclear binding protein 2",
+          "NUCB2",
+          "Nuclear Binding Protein 2"
+        ],
+        "EGFR": [
+          "EGFR",
+          "epidermal growth factor receptor"
+        ],
+        "PLCG1": [
+          "phospholipase C gamma 1",
+          "PLCG1"
+        ],
+        "CAMK4": [
+          "CAMK4"
+        ],
+        "CDH1": [
+          "E-cadherin"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "PLCG1": [
+          "Nuclear Binding Protein 2/Nesfatin-1 Affects Trophoblast Cell Fusion during Placental Development via the EGFR-PLCG1-CAMK4 Pathway..",
+          "The mechanism underlying NUCB2-regulated trophoblast cell syncytialization was explored using RNA-Seq and the results indicated that the epidermal growth factor receptor (EGFR)-phospholipase C gamma 1 (PLCG1)-calmodulin-dependent protein kinase IV (CAMK4) pathway might be involved."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:38339201 annotations",
+          "method": "citation_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        },
+        {
+          "level": 2,
+          "passed": true,
+          "confidence": 0.5,
+          "details": "No gene-gene relations in this paper (inconclusive)",
+          "method": "direction_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36267843,
+      "title": "Long Noncoding RNA DSCAM-AS1 Facilitates Proliferation and Migration of Hemangioma Endothelial Cells by Targeting miR-411-5p/TPD52 Axis.",
+      "abstract": "Background: Diagnosed as a kind of vascular neoplasm of infancy, hemangioma (HA) occurs mainly due to the aberrant proliferation of endothelial cells. Existing evidence has manifested the close relationship of long noncoding RNAs (lncRNAs) with the pathogenesis of HA. Although lncRNA DSCAM antisense RNA 1 (DSCAM-AS1) has been revealed to be implicated in the progression of human diseases, the underlying mechanism DSCAM-AS1 exerts in HA formation is unclear. Aims: To figure out how DSCAM-AS1 may regulate the progression of human hemangioma endothelial cells (HemECs). Methods: DSCAM-AS1 expression was verified through RT-qPCR detection. Functional assays including EdU assay, colony formation assay, flow cytometry analysis, TUNEL assay, and transwell assay were applied to evaluate cell proliferation, apoptosis, and migration upon DSCAM-AS1 knockdown. Moreover, RNA pull-down assay, luciferase reporter assay, RIP assay, and other mechanism experiments were utilized for evaluating the correlation of DSCAM-AS1 and RNAs in HemECs. Results: DSCAM-AS1 knockdown inhibited proliferative capability and migratory capability of HemECs whereas expedited apoptosis. Molecular mechanism results testified DSCAM-AS1 could function as a ceRNA to bind miR-411-5p in HemECs. Besides, it was confirmed that tumor protein D52 (TPD52) served as a downstream target of miR-411-5p in HemECs. More importantly, related rescue assays uncovered that elevated expression of TPD52 or inhibited expression of miR-411-5p reversed the repressive progression of HemECs mediated by DSCAM-AS1 depletion. Conclusion: DSCAM-AS1 expedited HA progression via miR-411-5p/TPD52 pathway, which provided a novel therapeutic option for HA treatment.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "DSCAM-AS1": [
+          "DSCAM antisense RNA 1",
+          "DSCAM-AS1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "DSCAM": [
+          "Long Noncoding RNA DSCAM-AS1 Facilitates Proliferation and Migration of Hemangioma Endothelial Cells by Targeting miR-411-5p/TPD52 Axis..",
+          "Functional assays including EdU assay, colony formation assay, flow cytometry analysis, TUNEL assay, and transwell assay were applied to evaluate cell proliferation, apoptosis, and migration upon DSCAM-AS1 knockdown."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:36267843 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 38515781,
+      "title": "The role of Down syndrome cell adhesion molecule in Down syndrome.",
+      "abstract": "Down syndrome (DS) is caused by the presence of an extra copy of the entire or a portion of human chromosome 21 (HSA21). This genomic alteration leads to elevated expression of numerous HSA21 genes, resulting in a variety of health issues in individuals with DS. Among the genes located in the DS \"critical region\" of HSA21, Down syndrome cell adhesion molecule (DSCAM) plays an important role in neuronal development. There is a growing body of evidence underscoring DSCAM's involvement in various DS-related disorders. This review aims to provide a concise overview of the established functions of DSCAM, with a particular focus on its implications in DS. We delve into the roles that DSCAM plays in DS-associated diseases. In the concluding section of this review, we explore prospective avenues for future research to further unravel DSCAM's role in DS and opportunities for therapeutic treatments.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {
+        "DSCAM": [
+          "Among the genes located in the DS \"critical region\" of HSA21, Down syndrome cell adhesion molecule (DSCAM) plays an important role in neuronal development.",
+          "There is a growing body of evidence underscoring DSCAM's involvement in various DS-related disorders."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:38515781 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 35422013,
+      "title": "DSCAM is differentially patterned along the optic axon pathway in the developing Xenopus visual system and guides axon termination at the target.",
+      "abstract": "BACKGROUND: The Xenopus retinotectal circuit is organized topographically, where the dorsal-ventral axis of the retina maps respectively on to the ventral-dorsal axis of the tectum; axons from the nasal-temporal axis of the retina project respectively to the caudal-rostral axis of the tectum. Studies throughout the last two decades have shown that mechanisms involving molecular recognition of proper termination domains are at work guiding topographic organization. Such studies have shown that graded distribution of molecular cues is important for topographic mapping. However, the complement of molecular cues organizing topography along the developing optic nerve, and as retinal axons cross the chiasm and navigate towards and innervate their target in the tectum, remains unknown. Down syndrome cell adhesion molecule (DSCAM) has been characterized as a key molecule in axon guidance, making it a strong candidate involved in the topographic organization of retinal fibers along the optic path and at their target. METHODS: Using a combination of whole-brain clearing and immunohistochemistry staining techniques we characterized DSCAM expression and the projection of ventral and dorsal retinal fibers starting from the eye, following to the optic nerve and chiasm, and into the terminal target in the optic tectum in Xenopus laevis tadpoles. We then assessed the effects of DSCAM on the establishment of retinotopic maps through spatially and temporally targeted DSCAM knockdown on retinal ganglion cells (RGCs) with axons innervating the optic tectum. RESULTS: Highest expression of DSCAM was localized to the ventral posterior region of the optic nerve and chiasm; this expression pattern coincides with ventral fibers derived from ventral RGCs. Targeted downregulation of DSCAM expression on ventral RGCs affected the segregation of medial axon fibers from their dorsal counterparts within the tectal neuropil, indicating that DSCAM plays a role in retinotopic organization. CONCLUSION: These findings together with previous studies demonstrating cell-autonomous roles for DSCAM during the development of pre- and postsynaptic arbors in the Xenopus retinotectal circuit indicates that DSCAM exerts multiple roles in coordinating axon targeting and structural connectivity in the developing vertebrate visual system.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {
+        "DSCAM": [
+          "Down syndrome cell adhesion molecule (DSCAM) has been characterized as a key molecule in axon guidance, making it a strong candidate involved in the topographic organization of retinal fibers along the optic path and at their target.",
+          "DSCAM is differentially patterned along the optic axon pathway in the developing Xenopus visual system and guides axon termination at the target.."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:35422013 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 35717565,
+      "title": "LncRNA DS Cell Adhesion Molecule Antisense RNA 1 Facilitates Oral Squamous Cell Carcinoma Progression through The microRNA-138-5p/ Enhancer of Zeste 2 Polycomb Repressive Complex 2 Subunit Axis.",
+      "abstract": "Objective: A lot of lncRNAs are implicated in oral squamous cell carcinoma (OSCC) progression. The study aimed at investigating lncRNA DS cell adhesion molecule antisense RNA 1 (DSCAM-AS1)'s functional role and molecular mechanism in OSCC. Materials and Methods: In this experimental study, a total of 46 pairs of OSCC samples and para-cancerous tissues were collected during surgery. In OSCC tissues and cell lines, quantitative real time polymerase chain reaction (qRTPCR) was performed for detecting DSCAM-AS1 and microRNA-138-5p (miR-138-5p) expression levels. Western blot was conducted to examine the enhancer of zeste 2 polycomb repressive complex 2 subunit (EZH2) expression level. Then, DSCAM-AS1 was knocked down with siRNA in OSCC cells and MTT and EdU assays were conducted to evaluate OSCC cell proliferation. Transwell assay was utilized for detecting OSCC cell migration and invasion capacities. Besides, the relationships among DSCAM-AS1, miR-138-5p, and EZH2 were explored through RNA immunoprecipitation, dual-luciferase reporter assay, qRT-PCR, and Western blot. Results: DSCAM-AS1 expression was remarkably increased in OSCC tissues and cell lines, and DSCAM-AS1 knockdown could significantly restrain OSCC cell proliferation, migration, and invasion. MiR-138-5p was identified as a target of DSCAM-AS1, and its inhibitor could reverse the suppressive effects of DSCAM-AS1 knockdown on OSCC progression. EZH2 was verified as a target of miR-138-5p, and EZH2 knockdown could counteract the promotional impact of miR-138-5p inhibitor on OSCC progression. Additionally, DSCAM-AS1, as a ceRNA, could regulate EZH2 expression via miR-138-5p. Conclusion: DSCAM-AS1 can play a tumor-promoting role in OSCC via miR-138-5p/EZH2 axis.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "DSCAM-AS1": [
+          "DS cell adhesion molecule antisense RNA 1",
+          "DS Cell Adhesion Molecule Antisense RNA 1",
+          "DSCAM-AS1"
+        ],
+        "EZH2": [
+          "EZH2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "DSCAM": [
+          "The study aimed at investigating lncRNA DS cell adhesion molecule antisense RNA 1 (DSCAM-AS1)'s functional role and molecular mechanism in OSCC.",
+          "Then, DSCAM-AS1 was knocked down with siRNA in OSCC cells and MTT and EdU assays were conducted to evaluate OSCC cell proliferation."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:35717565 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 35441363,
+      "title": "First report of a null allele on a GYPB*s background: GYPB*s(37 + 4_8delAGTGA).",
+      "abstract": "",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {
+        "GYPB": [
+          "First report of a null allele on a GYPB*s background: GYPB*s(37 + 4_8delAGTGA).."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:35441363 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36483540,
+      "title": "Exploring the cardiac ECM during fibrosis: A new era with next-gen proteomics.",
+      "abstract": "Extracellular matrix (ECM) plays a critical role in maintaining elasticity in cardiac tissues. Elasticity is required in the heart for properly pumping blood to the whole body. Dysregulated ECM remodeling causes fibrosis in the cardiac tissues. Cardiac fibrosis leads to stiffness in the heart tissues, resulting in heart failure. During cardiac fibrosis, ECM proteins get excessively deposited in the cardiac tissues. In the ECM, cardiac fibroblast proliferates into myofibroblast upon various kinds of stimulations. Fibroblast activation (myofibroblast) contributes majorly toward cardiac fibrosis. Other than cardiac fibroblasts, cardiomyocytes, epithelial/endothelial cells, and immune system cells can also contribute to cardiac fibrosis. Alteration in the expression of the ECM core and ECM-modifier proteins causes different types of cardiac fibrosis. These different components of ECM culminated into different pathways inducing transdifferentiation of cardiac fibroblast into myofibroblast. In this review, we summarize the role of different ECM components during cardiac fibrosis progression leading to heart failure. Furthermore, we highlight the importance of applying mass-spectrometry-based proteomics to understand the key changes occurring in the ECM during fibrotic progression. Next-gen proteomics studies will broaden the potential to identify key targets to combat cardiac fibrosis in order to achieve precise medicine-development in the future.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:36483540 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 34150870,
+      "title": "A Porcine Model of Heart Failure With Preserved Ejection Fraction Induced by Chronic Pressure Overload Characterized by Cardiac Fibrosis and Remodeling.",
+      "abstract": "Heart failure is induced by multiple pathological mechanisms, and current therapies are ineffective against heart failure with preserved ejection fraction (HFpEF). As there are limited animal models of HFpEF, its underlying mechanisms have not yet been elucidated. Here, we employed the descending aortic constriction (DAC) technique to induce chronic pressure overload in the left ventricles of Tibetan minipigs for 12 weeks. Cardiac function, pathological and cellular changes, fibrotic signaling activation, and gene expression profiles were explored. The left ventricles developed concentric hypertrophy from weeks 4 to 6 and transition to dilation starting in week 10. Notably, the left ventricular ejection fraction was maintained at >50% in the DAC group during the 12-week period. Pathological examination, biochemical analyses, and gene profile analysis revealed evidence of inflammation, fibrosis, cell death, and myofilament dephosphorylation in the myocardium of HFpEF model animals, together with gene expression shifts promoting cardiac remodeling and downregulating metabolic pathways. Furthermore, we noted the activation of several signaling proteins that impact cardiac fibrosis and remodeling, including transforming growth factor-beta/SMAD family members 2/3, type I/III/V collagens, phosphatidylinositol 3-kinase, extracellular signal-regulated kinase, matrix metalloproteinases 2 and 9, tissue inhibitor of metalloproteinases 1 and 2, interleukins 6 and 1beta, and inhibitor of kappaBalpha/nuclear factor-kappaB. Our findings demonstrate that this chronic pressure overload-induced porcine HFpEF model is a powerful tool to elucidate the mechanisms of this disease and translate preclinical findings.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "TGFB1": [
+          "transforming growth factor-beta"
+        ],
+        "SMAD2": [
+          "SMAD family members 2/3"
+        ],
+        "PIK3R1": [
+          "phosphatidylinositol 3-kinase"
+        ],
+        "MMP2": [
+          "matrix metalloproteinases 2 and 9"
+        ],
+        "IL6": [
+          "interleukins 6 and 1beta"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:34150870 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 40981152,
+      "title": "The Expanding Genetic Architecture of Arteriopathies: From Canonical TAAD Genes to Emerging Connective Tissue and Signaling Pathways.",
+      "abstract": "Thoracic aortic aneurysm and dissection (TAAD) encompasses a clinically heterogeneous group of diseases characterized by high morbidity and mortality. Genetic studies over the past two decades have significantly expanded our understanding of the molecular landscape underlying heritable TAAD, revealing contributions from multiple interconnected biological pathways. This review systematically summarizes more than 75 genes implicated in TAAD pathogenesis, categorizing them according to major mechanistic roles including TGF-beta signaling, extracellular matrix remodeling, smooth muscle cell contractility and cytoskeletal regulation, cell-matrix and cell-cell adhesion, metabolic processes, ion transport, and transcriptional regulation. Special emphasis is placed on emerging genes with variable or overlapping clinical phenotypes, dual-mechanism candidates, and their implications for personalized clinical management, including surveillance and surgical intervention thresholds. The integration of molecular insights into clinical practice, along with cautious consideration of genes of uncertain significance, promises to enhance diagnostic precision and risk stratification in individuals and families affected by heritable aortic disease.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "TGFB1": [
+          "TGF-beta"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:40981152 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 40998795,
+      "title": "Injectable therapeutic system incorporating neurogenesis-programmed stem cells concomitantly promoting muscle regeneration treats stress urinary incontinence.",
+      "abstract": "Stress urinary incontinence (SUI) remains a significant clinical challenge due to the lack of strategies that simultaneously address muscle degeneration, neurogenic atrophy, and vascular deficits. Here, we report an innovative injectable system that combines a thermo-responsive poly(N-isopropylacrylamide)-COOH/leucine/decellularized extracellular matrix hydrogel with adipose-derived stem cells (ADSCs) pre-programmed by zeolitic imidazolate framework-8/polyethylene glycol 200@magnesium (ZIF-8/PEG200@Mg) nanoparticles. In vitro, programmed ADSCs exhibit enhanced neurogenic differentiation, while the hydrogels support robust myogenic activity and cell viability. In a female rat model of SUI-chosen to reflect the higher prevalence of SUI in women-the composite system leads to a marked improvement in leak point pressure (LPP) and restores urethral sphincter function. Mechanistic analyses reveals upregulation of muscle regeneration (e.g., Myoz1, Smyd1) and neurogenesis/neuromuscular junction stabilization (NMJ) stabilization genes (e.g., Dok7, Musk), highlighting a coordinated multi-lineage regenerative process. This work establishes an integrated regeneration-plus-support injectable strategy, offering a regenerative medicine-based approach that surpasses conventional bulking or sling therapies for SUI.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "MYOZ1": [
+          "Myoz1"
+        ],
+        "SMYD1": [
+          "Smyd1"
+        ],
+        "DOK7": [
+          "Dok7"
+        ],
+        "MUSK": [
+          "Musk"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:40998795 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 40264508,
+      "title": "The epigenetic regulation of crosstalk between cardiac fibroblasts and other cardiac cell types during stress.",
+      "abstract": "With the global impact of cardiovascular disease, there is a dire need to understand the mechanisms in the heart during injury and stress. It has been shown that the regulation of the extracellular matrix via cardiac fibroblasts plays a major role in the progression of heart failure and worsening function of the heart. Importantly, it has been suggested that crosstalk between other cardiac cells like cardiomyocytes, immune cells, and endothelial cells are influenced by the pathological function of the fibroblasts. This decline in function across all cardiac cells is seemingly irreversible. However, epigenetic mechanisms have been shown to regulate functionality across cardiac cells and improve outcomes during stress or injury. This epigenetic regulation has also been shown to control communication between different cell types and influence the role of multiple cardiac cell types during injury. The goal of this review is to summarize and discuss the current research of epigenetic regulation of cardiac fibroblasts and the subsequent crosstalk with other cardiac cell types in cardiovascular disease states.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:40264508 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36980884,
+      "title": "Transcriptomic Studies on Intracranial Aneurysms.",
+      "abstract": "Intracranial aneurysm (IA) is a relatively common vascular malformation of an intracranial artery. In most cases, its presence is asymptomatic, but IA rupture causing subarachnoid hemorrhage is a life-threating condition with very high mortality and disability rates. Despite intensive studies, molecular mechanisms underlying the pathophysiology of IA formation, growth, and rupture remain poorly understood. There are no specific biomarkers of IA presence or rupture. Analysis of expression of mRNA and other RNA types offers a deeper insight into IA pathobiology. Here, we present results of published human studies on IA-focused transcriptomics.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:36980884 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36421707,
+      "title": "Genome-Wide RNA Sequencing of Human Trabecular Meshwork Cells Treated with TGF-beta1: Relevance to Pseudoexfoliation Glaucoma.",
+      "abstract": "Pseudoexfoliation glaucoma (XFG) is an aggressive form of secondary open angle glaucoma, characterised by the production of exfoliation material and is estimated to affect 30 million people worldwide. Activation of the TGF-beta pathway by TGF-beta1 has been implicated in the pathogenesis of pseudoexfoliation glaucoma. To further investigate the role of TGF-beta1 in glaucomatous changes in the trabecular meshwork (TM), we used RNA-Seq to determine TGF-beta1 induced changes in the transcriptome of normal human trabecular meshwork (HTM) cells. The main purpose of this study was to perform a hypothesis-independent RNA sequencing analysis to investigate genome-wide alterations in the transcriptome of normal HTMs stimulated with TGF-beta1 and investigate possible pathophysiological mechanisms driving XFG. Our results identified multiple differentially expressed genes including several genes known to be present in exfoliation material. Significantly altered pathways, biological processes and molecular functions included extracellular matrix remodelling, Hippo and Wnt pathways, the unfolded protein response, oxidative stress, and the antioxidant system. This cellular model of pseudoexfoliation glaucoma can provide insight into disease pathogenesis and support the development of novel therapeutic interventions.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "TGFB1": [
+          "TGF-beta1",
+          "TGF-beta"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:36421707 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 35843176,
+      "title": "Exercise-derived peptide protects against pathological cardiac remodeling.",
+      "abstract": "BACKGROUND: Exercise training protects the heart against pathological cardiac remodeling and confers cardioprotection from heart failure. However, the underlying mechanism is still elusive. METHODS: An integrative analysis of multi-omics data of the skeletal muscle in response to exercise is performed to search for potential exerkine. Then, CCDC80tide is examined in humans after acute exercise. The role of CCDC80tide is assessed in a mouse model of hypertensive cardiac remodeling and in hypertension-mediated cell injury models. The transcriptomic analysis and immunoprecipitation assay are conducted to explore the mechanism. FINDINGS: The coiled-coil domain-containing protein 80 (CCDC80) is found strongly positively associated with exercise. Interestingly, exercise stimuli induce the secretion of C-terminal CCDC80 (referred as CCDC80tide hereafter) via EVs-encapsulated CCDC80tide into the circulation. Importantly, cardiac-specific expression of CCDC80tide protects against angiotensin II (Ang II)-induced cardiac hypertrophy and fibrosis in mice. In in vitro studies, the expression of CCDC80tide reduces Ang II-induced cardiomyocyte hypertrophy, cardiac microvascular endothelial cell (CMEC) inflammation, and mitigated vascular smooth muscle cell (VSMC) proliferation and collagen formation. To understand the cardioprotective effect of CCDC80tide, a transcriptomic analysis reveals a dramatic inhibition of the STAT3 (Signal transducer and activator of transcription 3) signaling pathway in CCDC80tide overexpressing cells. Mechanistically, CCDC80tide selectively interacts with the kinase-active form of JAK2 (Janus kinase 2) and consequently inhibits its kinase activity to phosphorylate and activate STAT3. INTERPRETATION: The results provide new insights into exercise-afforded cardioprotection in pathological cardiac remodeling and highlight the therapeutic potential of CCDC80tide in heart failure treatment. FUNDING: This work was supported by the National Natural Science Foundation of China [Grant/Award Numbers: 81770428, 81830010, 82130012, 81900438, 82100447); Shanghai Science and Technology Committee [Grant/Award Numbers: 21S11903000, 19JC1415702]; Emerging and Advanced Technology Programs of Hospital Development Center of Shanghai [Grant/Award Number: SHDC12018129]; China Postdoctoral Science Foundation [2021M692108]; and China National Postdoctoral Program for Innovative Talents [BX20200211].",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CCDC80": [
+          "coiled-coil domain-containing protein 80",
+          "CCDC80"
+        ],
+        "AGT": [
+          "Ang II",
+          "angiotensin II"
+        ],
+        "STAT3": [
+          "Signal transducer and activator of transcription 3",
+          "STAT3"
+        ],
+        "JAK2": [
+          "JAK2",
+          "Janus kinase 2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:35843176 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 41233909,
+      "title": "Beclin1 deficiency unlocks cardiac lineage commitment through convergent Wnt and BMP signaling activation.",
+      "abstract": "BACKGROUND: Embryonic stem cell (ESC)-derived cardiomyocytes are a key resource for studying cardiac development and advancing regenerative therapies. Beclin1 (Becn1), a core regulator of autophagy and cardiac morphogenesis, has an undefined role in cardiomyocyte lineage specification. This study aims to investigate the regulatory function of Becn1 during cardiac differentiation from both mouse and human ESCs. METHODS: Mouse and human ESCs were differentiated into cardiomyocytes through established embryoid body (EB) formation or monolayer differentiation protocols. Stable Becn1 knockdown was achieved using short hairpin RNA (shRNA). Cardiomyocyte differentiation efficiency was evaluated by flow cytometry, immunocytochemistry, and contraction assays. Differentiation cardiomyocyte function was evaluated by sarcomere arrangement, calcium transients, and microelectrode array (MEA). Transcriptomic profiling was conducted by bulk RNA sequencing, and pathway dynamics were analyzed using qPCR and western blotting. RESULTS: Becn1 expression declined over the course of differentiation. Knockdown of Becn1 significantly enhanced cardiomyocyte yield and promoted earlier onset of contractile activity, accompanied by increased expression of cardiac-specific markers. Mechanistically, Becn1 deficiency elicited a biphasic Wnt signaling response, characterized by early activation during mesodermal induction followed by suppression at later stages of differentiation. This shift was accompanied by sustained BMP pathway activation. Notably, Becn1-deficient ESCs underwent efficient cardiac differentiation in the absence of exogenous VEGF or FGF, with BMP signaling compensating for their omission. These findings were recapitulated in human ESCs, where BECN1 knockdown supported Wnt modulators-independent cardiomyocyte differentiation through coordinated modulation of Wnt and BMP pathways. CONCLUSIONS: Becn1 serves as a negative regulator of cardiac lineage commitment by orchestrating stage-specific Wnt/BMP signaling dynamics. Silencing Becn1 enhances cardiomyocyte differentiation and enables growth factor-independent lineage progression. These findings offer a novel approach to improve the efficiency and scalability of stem cell-derived cardiomyocyte production for regenerative applications.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "BECN1": [
+          "Beclin1",
+          "BECN1",
+          "Becn1"
+        ],
+        "BMP1": [
+          "BMP"
+        ],
+        "VEGFA": [
+          "VEGF"
+        ]
+      },
+      "relations": [
+        {
+          "gene1": "BMP1",
+          "gene2": "BECN1",
+          "type": "Negative_Correlation",
+          "score": 0.8769
+        }
+      ],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:41233909 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 40407177,
+      "title": "Structure, Mechanics, and Mechanobiology of Fibrocartilage Pericellular Matrix Mediated by Type V Collagen.",
+      "abstract": "The pericellular matrix (PCM) is the immediate microniche surrounding cells in various tissues, regulating matrix turnover, cell-matrix interactions, and disease. This study elucidates the structure-mechanical properties and mechanobiology of the PCM in fibrocartilage, using the murine meniscus as the model. The fibrocartilage PCM is comprised of thin, randomly oriented collagen fibrils that entrap proteoglycans, contrasting with the densely packed, highly aligned collagen fibers in the bulk extracellular matrix (ECM). Compared to the ECM, the PCM exhibits lower modulus and greater isotropy, but has similar relative viscoelastic properties. In Col5a1<sup>+/-</sup> menisci, the reduction of collagen V results in thicker, more heterogeneous collagen fibrils, reduced modulus, loss of isotropy and faster viscoelastic relaxation in the PCM. Such altered PCM leads to impaired matrix-to-cell strain transmission, and in turn, disrupts mechanotransduction of meniscal cells, as illustrated by reduced calcium signaling activities and alters expression of matrix genes. In vitro, Col5a1<sup>+/-</sup> cells produce a weakened PCM with inferior properties and reduced protection of cells against tensile stretch. These findings highlight the PCM as a distinctive microstructure in fibrocartilage mechanobiology, underscoring a pivotal role of collagen V in PCM function. Targeting the PCM or its constituents offers potential for improving meniscus regeneration, osteoarthritis intervention and broader fibrocartilage-related therapies.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "COL5A1": [
+          "Col5a1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:40407177 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36553625,
+      "title": "Congenital Defects in a Patient Carrying a Novel Homozygous AEBP1 Variant: Further Expansion of the Phenotypic Spectrum of Ehlers-Danlos Syndrome Classical-like Type 2?",
+      "abstract": "In 2018, a new clinical subtype, caused by biallelic variants in the AEBP1 gene, encoding the ACLP protein, was added to the current nosological classification of the Ehlers-Danlos Syndromes (EDS). This new phenotype, provisionally termed EDS classical-like type 2 (clEDS2), has not yet been fully characterized, as only nine cases have been reported to date. Here we describe a patient, homozygous for a novel AEBP1 pathogenic variant (NM_001129.5 c.2123_2124delTG (p.Val708AlafsTer5)), whose phenotype is reminiscent of classical EDS but also includes previously unreported multiple congenital malformations. Furthermore, we briefly summarize the current principal clinical manifestations of clEDS2 and the molecular evidence surrounding the role of AEBP1 in the context of extracellular matrix homeostasis and connective tissue development. Although a different coexisting etiology for the multiple congenital malformations of our patient cannot be formally excluded, the emerging role of ACLP in TGF-beta and WNT pathways may explain their occurrence and the phenotypical variability of clEDS2.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "AEBP1": [
+          "AEBP1",
+          "ACLP"
+        ],
+        "TGFB1": [
+          "TGF-beta"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:36553625 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36835058,
+      "title": "First Characterization of the Transcriptome of Lung Fibroblasts of SSc Patients and Healthy Donors of African Ancestry.",
+      "abstract": "Systemic sclerosis (SSc) is a connective tissue disorder that results in fibrosis of the skin and visceral organs. SSc-associated pulmonary fibrosis (SSc-PF) is the leading cause of death amongst SSc patients. Racial disparity is noted in SSc as African Americans (AA) have a higher frequency and severity of disease than European Americans (EA). Using RNAseq, we determined differentially expressed genes (DEGs; q < 0.1, log2FC >  0.6 ) in primary pulmonary fibroblasts from SSc lungs (SScL) and normal lungs (NL) of AA and EA patients to characterize the unique transcriptomic signatures of AA-NL and AA-SScL fibroblasts using systems-level analysis. We identified 69 DEGs in \"AA-NL vs. EA-NL\" and 384 DEGs in \"AA-SScL vs. EA-SScL\" analyses, and a comparison of disease mechanisms revealed that only 7.5% of DEGs were commonly deregulated in AA and EA patients. Surprisingly, we also identified an SSc-like signature in AA-NL fibroblasts. Our data highlight differences in disease mechanisms between AA and EA SScL fibroblasts and suggest that AA-NL fibroblasts are in a \"pre-fibrosis\" state, poised to respond to potential fibrotic triggers. The DEGs and pathways identified in our study provide a wealth of novel targets to better understand disease mechanisms leading to racial disparity in SSc-PF and develop more effective and personalized therapies.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:36835058 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36292765,
+      "title": "Hereditary Metabolic Bone Diseases: A Review of Pathogenesis, Diagnosis and Management.",
+      "abstract": "Hereditary metabolic bone diseases are characterized by genetic abnormalities in skeletal homeostasis and encompass one of the most diverse groups among rare diseases. In this review, we examine 25 selected hereditary metabolic bone diseases and recognized genetic variations of 78 genes that represent each of the three groups, including sclerosing bone disorders, disorders of defective bone mineralization and disorder of bone matrix and cartilage formation. We also review pathophysiology, manifestation and treatment for each disease. Advances in molecular genetics and basic sciences has led to accurate genetic diagnosis and novel effective therapeutic strategies for some diseases. For other diseases, the genetic basis and pathophysiology remain unclear. Further researches are therefore crucial to innovate ways to overcome diagnostic challenges and develop effective treatment options for these orphan diseases.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:36292765 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36769235,
+      "title": "Genetics and Molecular Basis of Congenital Heart Defects in Down Syndrome: Role of Extracellular Matrix Regulation.",
+      "abstract": "Down syndrome (DS), a complex disorder that is caused by the trisomy of chromosome 21 (Hsa21), is a major cause of congenital heart defects (CHD). Interestingly, only about 50% of individuals with Hsa21 trisomy manifest CHD. Here we review the genetic basis of CHD in DS, focusing on genes that regulate extracellular matrix (ECM) organization. The overexpression of Hsa21 genes likely underlies the molecular mechanisms that contribute to CHD, even though the genes responsible for CHD could only be located in a critical region of Hsa21. A role in causing CHD has been attributed not only to protein-coding Hsa21 genes, but also to genes on other chromosomes, as well as miRNAs and lncRNAs. It is likely that the contribution of more than one gene is required, and that the overexpression of Hsa21 genes acts in combination with other genetic events, such as specific mutations or polymorphisms, amplifying their effect. Moreover, a key function in determining alterations in cardiac morphogenesis might be played by ECM. A large number of genes encoding ECM proteins are overexpressed in trisomic human fetal hearts, and many of them appear to be under the control of a Hsa21 gene, the RUNX1 transcription factor.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "RUNX1": [
+          "RUNX1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:36769235 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 41285846,
+      "title": "Regional and cell specific bioactivity of injectable extracellular matrix biomaterials in myocardial infarction.",
+      "abstract": "Myocardial infarction (MI) remains a global health concern. To mitigate subacute and chronic MI pathophysiology, we previously investigated a pro-reparative decellularized extracellular matrix hydrogel. Despite increasing interest in biomaterial scaffolds, single cell and spatially resolved transcriptomics have not been used to probe their therapeutic activity in the heart. Here, we utilize spatial transcriptomics and single nucleus RNA sequencing to delineate the regional and cell-specific bioactivity of extracellular matrix biomaterials. Extracellular matrix hydrogel subacute treatment in female rats induces cardiac resident macrophage preservation, fibroblast activation, and increased lymphatic, vasculature, smooth muscle, and cardiomyocyte development as well as neurogenesis. Chronic treatment in female rats elicits macrophage polarization, neurogenesis, and development of cardiomyocytes, endothelial cells, and fibroblasts. When comparing treatment timepoints, subacute administration has stronger immune modulation, while chronic administration demonstrates higher cardiac development markers. Both subacute and chronic administration are associated with fibroblast activation and vasculature development. Thus, we elucidate undiscovered therapeutic targets of an injectable extracellular matrix hydrogel, further demonstrating the potential of these biomaterials as an MI therapy.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:41285846 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 33659279,
+      "title": "Development and Application of Endothelial Cells Derived From Pluripotent Stem Cells in Microphysiological Systems Models.",
+      "abstract": "The vascular endothelium is present in all organs and blood vessels, facilitates the exchange of nutrients and waste throughout different organ systems in the body, and sets the tone for healthy vessel function. Mechanosensitive in nature, the endothelium responds to the magnitude and temporal waveform of shear stress in the vessels. Endothelial dysfunction can lead to atherosclerosis and other diseases. Modeling endothelial function and dysfunction in organ systems in vitro, such as the blood-brain barrier and tissue-engineered blood vessels, requires sourcing endothelial cells (ECs) for these biomedical engineering applications. It can be difficult to source primary, easily renewable ECs that possess the function or dysfunction in question. In contrast, human pluripotent stem cells (hPSCs) can be sourced from donors of interest and renewed almost indefinitely. In this review, we highlight how knowledge of vascular EC development in vivo is used to differentiate induced pluripotent stem cells (iPSC) into ECs. We then describe how iPSC-derived ECs are being used currently in in vitro models of organ function and disease and in vivo applications.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:33659279 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 38467692,
+      "title": "Single-cell RNA sequencing reveals critical modulators of extracellular matrix of penile cavernous cells in erectile dysfunction.",
+      "abstract": "Erectile dysfunction (ED) is a common and difficult to treat disease, and has a high incidence rate worldwide. As a marker of vascular disease, ED usually occurs in cardiovascular disease, 2-5 years prior to cardiovascular disease events. The extracellular matrix (ECM) network plays a crucial role in maintaining cardiac homeostasis, not only by providing structural support, but also by promoting force transmission, and by transducing key signals to intracardiac cells. However, the relationship between ECM and ED remains unclear. To help fill this gap, we profiled single-cell RNA-seq (scRNA-seq) to obtain transcriptome maps of 82,554 cavernous single cells from ED and non-ED samples. Cellular composition of cavernous tissues was explored by uniform manifold approximation and projection. Pseudo-time cell trajectory combined with gene enrichment analysis were performed to unveil the molecular pathways of cell fate determination. The relationship between cavernous cells and the ECM, and the changes in related genes were elucidated. The CellChat identified ligand-receptor pairs (e.g., PTN-SDC2, PTN-NCL, and MDK-SDC2) among the major cell types in the cavernous tissue microenvironment. Differential analysis revealed that the cell type-specific transcriptomic changes in ED are related to ECM and extracellular structure organization, external encapsulating structure organization, and regulation of vasculature development. Trajectory analysis predicted the underlying target genes to modulate ECM (e.g., COL3A1, MDK, MMP2, and POSTN). Together, this study highlights potential cell-cell interactions and the main regulatory factors of ECM, and reveals that genes may represent potential marker features of ED progression.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "PTN": [
+          "PTN"
+        ],
+        "NCL": [
+          "NCL"
+        ],
+        "MDK": [
+          "MDK"
+        ],
+        "COL3A1": [
+          "COL3A1"
+        ],
+        "MMP2": [
+          "MMP2"
+        ],
+        "POSTN": [
+          "POSTN"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['DSCAM', 'PKM', 'COL5A2', 'CER1', 'MCF2L2'] in PMID:38467692 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    }
+  ],
+  "statistics": {
+    "total_papers": 30,
+    "total_queries": 8
+  }
+}

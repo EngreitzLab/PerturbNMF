@@ -6,7 +6,7 @@ Tests use real MuData and synthetic perturbation files.
 Usage:
     eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking
     cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
-    python -m pytest tests/Script/Interpretation/Plotting/Program/test_program_expression_weighted_plots.py -v
+    python -m pytest tests/Script/Stage3_Interpretation/A_Plotting/Program/test_program_expression_weighted_plots.py -v
 """
 
 import os
@@ -18,7 +18,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from Interpretation.Plotting.src.Program_expression_weighted_plots import (
+from Stage3_Interpretation.A_Plotting.src.Program_expression_weighted_plots import (
     compute_program_expression_by_condition,
     plot_program_heatmap_weighted,
     plot_program_heatmap_expression_scaled,

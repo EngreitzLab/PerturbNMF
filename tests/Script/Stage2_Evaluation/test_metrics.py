@@ -7,10 +7,10 @@ and use synthetic data where external APIs or heavy I/O would be needed.
 Usage:
     eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking
     cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src
-    python -m pytest tests/Script/Evaluation/test_evaluation.py -v
+    python -m pytest tests/Script/Stage2_Evaluation/test_evaluation.py -v
 
     # Custom inference path:
-    python -m pytest tests/Script/Evaluation/ -v --inference-path /path/to/Inference/
+    python -m pytest tests/Script/Stage2_Evaluation/ -v --inference-path /path/to/Inference/
 """
 
 import os
@@ -32,7 +32,7 @@ from scipy import sparse
 class TestCategoricalAssociation:
 
     def test_kw_single_cell(self, mdata_copy):
-        from Evaluation.src.association_categorical import perform_kruskall_wallis
+        from Stage2_Evaluation.A_Metrics.src.association_categorical import perform_kruskall_wallis
         mdata = mdata_copy
         prog_name = mdata["cNMF"].var_names[0]
         perform_kruskall_wallis(mdata, prog_key="cNMF", prog_name=prog_name,
@@ -44,7 +44,7 @@ class TestCategoricalAssociation:
 
     def test_kw_pseudobulk(self, mdata_copy):
         """Pseudobulk KW using sample_id (3 replicates per batch)."""
-        from Evaluation.src.association_categorical import perform_kruskall_wallis
+        from Stage2_Evaluation.A_Metrics.src.association_categorical import perform_kruskall_wallis
         mdata = mdata_copy
         prog_name = mdata["cNMF"].var_names[0]
         perform_kruskall_wallis(mdata, prog_key="cNMF", prog_name=prog_name,
@@ -58,7 +58,7 @@ class TestCategoricalAssociation:
 
     def test_kw_pseudobulk_too_few_replicates(self, mdata_copy):
         """biological_sample has only 2 reps per batch -> should raise."""
-        from Evaluation.src.association_categorical import perform_kruskall_wallis
+        from Stage2_Evaluation.A_Metrics.src.association_categorical import perform_kruskall_wallis
         mdata = mdata_copy
         prog_name = mdata["cNMF"].var_names[0]
         with pytest.raises(ValueError, match="less than 3 replicates"):
@@ -67,7 +67,7 @@ class TestCategoricalAssociation:
                                     pseudobulk_key="biological_sample")
 
     def test_perform_correlation_one_vs_all(self):
-        from Evaluation.src.association_categorical import perform_correlation
+        from Stage2_Evaluation.A_Metrics.src.association_categorical import perform_correlation
         rng = np.random.default_rng(0)
         df = pd.DataFrame({
             "group": rng.choice(["A", "B", "C"], 200),
@@ -81,7 +81,7 @@ class TestCategoricalAssociation:
         assert any("pearsonr_pval" in c for c in res.columns)
 
     def test_perform_correlation_one_vs_one(self):
-        from Evaluation.src.association_categorical import perform_correlation
+        from Stage2_Evaluation.A_Metrics.src.association_categorical import perform_correlation
         rng = np.random.default_rng(0)
         df = pd.DataFrame({
             "group": rng.choice(["A", "B", "C"], 200),
@@ -92,7 +92,7 @@ class TestCategoricalAssociation:
         assert pvals.shape == (3, 3)
 
     def test_compute_categorical_not_inplace_dunn(self, mdata_copy, eval_output_dir):
-        from Evaluation.src.association_categorical import compute_categorical_association
+        from Stage2_Evaluation.A_Metrics.src.association_categorical import compute_categorical_association
         results_df, posthoc_df = compute_categorical_association(
             mdata_copy, prog_key="cNMF", categorical_key="batch",
             test="dunn", n_jobs=1, inplace=False
@@ -105,7 +105,7 @@ class TestCategoricalAssociation:
         posthoc_df.to_csv(os.path.join(eval_output_dir, "5_categorical_association_posthoc.csv"))
 
     def test_compute_categorical_pearson_one_vs_all(self, mdata_copy):
-        from Evaluation.src.association_categorical import compute_categorical_association
+        from Stage2_Evaluation.A_Metrics.src.association_categorical import compute_categorical_association
         results_df, posthoc_df = compute_categorical_association(
             mdata_copy, prog_key="cNMF", categorical_key="batch",
             test="pearsonr", mode="one_vs_all", n_jobs=1, inplace=False
@@ -121,7 +121,7 @@ class TestCategoricalAssociation:
 class TestPerturbationAssociation:
 
     def test_get_guide_metadata(self, test_mdata):
-        from Evaluation.src.association_perturbation import get_guide_metadata
+        from Stage2_Evaluation.A_Metrics.src.association_perturbation import get_guide_metadata
         gm = get_guide_metadata(test_mdata, prog_key="cNMF")
         assert "Target" in gm.columns
         assert len(gm) == 1859
@@ -129,7 +129,7 @@ class TestPerturbationAssociation:
 
     def test_compute_perturbation_single_unit(self):
         """Test the inner per-program Mann-Whitney function with synthetic data."""
-        from Evaluation.src.association_perturbation import compute_perturbation_association_
+        from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association_
         rng = np.random.default_rng(42)
         test_data = ad.AnnData(
             X=sparse.csr_matrix(rng.random((30, 3))),
@@ -149,7 +149,7 @@ class TestPerturbationAssociation:
         assert 0 <= row[6] <= 1     # pval
 
     def test_compute_perturbation_not_inplace(self, mdata_copy, eval_output_dir):
-        from Evaluation.src.association_perturbation import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
         result = compute_perturbation_association(
             mdata_copy, prog_key="cNMF",
             guide_names_key="guide_names",
@@ -170,7 +170,7 @@ class TestPerturbationAssociation:
         result.to_csv(os.path.join(eval_output_dir, "5_perturbation_association.csv"), index=False)
 
     def test_pval_sanitization(self, mdata_copy):
-        from Evaluation.src.association_perturbation import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
         result = compute_perturbation_association(
             mdata_copy, prog_key="cNMF",
             reference_targets=["non-targeting"],
@@ -188,7 +188,7 @@ class TestPerturbationAssociation:
 class TestGenesetEnrichment:
 
     def test_create_geneset_dict(self):
-        from Evaluation.src.enrichment_geneset import create_geneset_dict
+        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import create_geneset_dict
         df = pd.DataFrame({
             "trait": ["T1", "T1", "T2", "T2", "T2"],
             "gene": ["A", "B", "C", "D", "E"]
@@ -199,13 +199,13 @@ class TestGenesetEnrichment:
         assert gmt["T2"] == ["C", "D", "E"]
 
     def test_create_geneset_dict_empty(self):
-        from Evaluation.src.enrichment_geneset import create_geneset_dict
+        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import create_geneset_dict
         df = pd.DataFrame({"trait": [], "gene": []})
         gmt = create_geneset_dict(df, key_column="trait", gene_column="gene")
         assert gmt == {}
 
     def test_get_program_gene_loadings_all(self, mdata_copy, eval_output_dir):
-        from Evaluation.src.enrichment_geneset import get_program_gene_loadings
+        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import get_program_gene_loadings
         loadings = get_program_gene_loadings(
             mdata_copy, prog_key="cNMF", data_key="rna", gene_names_key="symbol"
         )
@@ -214,7 +214,7 @@ class TestGenesetEnrichment:
         loadings.to_csv(os.path.join(eval_output_dir, "5_gene_loadings.csv"))
 
     def test_get_program_gene_loadings_single(self, mdata_copy):
-        from Evaluation.src.enrichment_geneset import get_program_gene_loadings
+        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import get_program_gene_loadings
         prog_name = mdata_copy["cNMF"].var_names[0]
         loadings = get_program_gene_loadings(
             mdata_copy, prog_key="cNMF", prog_nam=prog_name,
@@ -225,7 +225,7 @@ class TestGenesetEnrichment:
 
     @patch("Evaluation.src.enrichment_geneset.gp")
     def test_perform_prerank(self, mock_gp):
-        from Evaluation.src.enrichment_geneset import perform_prerank
+        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import perform_prerank
         mock_res = pd.DataFrame({
             "Name": ["prerank"],
             "Term": ["PATHWAY_A"],
@@ -249,7 +249,7 @@ class TestGenesetEnrichment:
 
     @patch("Evaluation.src.enrichment_geneset.gp")
     def test_perform_fisher_enrich(self, mock_gp):
-        from Evaluation.src.enrichment_geneset import perform_fisher_enrich
+        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import perform_fisher_enrich
         mock_res = pd.DataFrame({
             "Gene_set": ["lib"],
             "Term": ["PATHWAY_B"],
@@ -270,7 +270,7 @@ class TestGenesetEnrichment:
         assert result["overlap_numerator"].iloc[0] == 2
 
     def test_insert_enrichment(self, mdata_copy):
-        from Evaluation.src.enrichment_geneset import insert_enrichment
+        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import insert_enrichment
         prog_names = mdata_copy["cNMF"].var_names.tolist()
         df = pd.DataFrame({
             "program_name": [prog_names[0], prog_names[0], prog_names[1], prog_names[1]],
@@ -292,19 +292,19 @@ class TestGenesetEnrichment:
 class TestTraitEnrichment:
 
     def test_process_json_format_valid(self):
-        from Evaluation.src.enrichment_trait import process_json_format_l2g_columns
+        from Stage2_Evaluation.A_Metrics.src.enrichment_trait import process_json_format_l2g_columns
         row = pd.Series({"efos": "[{'element': 'EFO_001'}, {'element': 'EFO_002'}]"})
         result = process_json_format_l2g_columns(row, "efos")
         assert result == "EFO_001, EFO_002"
 
     def test_process_json_format_invalid(self):
-        from Evaluation.src.enrichment_trait import process_json_format_l2g_columns
+        from Stage2_Evaluation.A_Metrics.src.enrichment_trait import process_json_format_l2g_columns
         row = pd.Series({"efos": "no brackets here"})
         result = process_json_format_l2g_columns(row, "efos")
         assert result is None
 
     def test_process_enrichment_data(self):
-        from Evaluation.src.enrichment_trait import process_enrichment_data
+        from Stage2_Evaluation.A_Metrics.src.enrichment_trait import process_enrichment_data
         enrich_df = pd.DataFrame({
             "Term": ["EFO_001", "EFO_002"],
             "P-value": [0.001, 0.5],
@@ -327,7 +327,7 @@ class TestTraitEnrichment:
         assert result["-log10(P-value)"].max() > 2.0
 
     def test_process_enrichment_data_zero_pval(self):
-        from Evaluation.src.enrichment_trait import process_enrichment_data
+        from Stage2_Evaluation.A_Metrics.src.enrichment_trait import process_enrichment_data
         enrich_df = pd.DataFrame({
             "Term": ["EFO_001", "EFO_002"],
             "P-value": [0.0, 0.01],
@@ -355,7 +355,7 @@ class TestTraitEnrichment:
 class TestMotifEnrichment:
 
     def test_read_loci_valid(self):
-        from Evaluation.src.enrichment_motif import read_loci
+        from Stage2_Evaluation.A_Metrics.src.enrichment_motif import read_loci
         with tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False) as f:
             f.write("chromosome\tstart\tend\tseq_name\tseq_class\tseq_score\tgene_name\n")
             f.write("chr1\t100\t200\tseq1\tpromoter\t0.9\tGENE1\n")
@@ -369,7 +369,7 @@ class TestMotifEnrichment:
             os.unlink(fname)
 
     def test_read_loci_missing_column(self):
-        from Evaluation.src.enrichment_motif import read_loci
+        from Stage2_Evaluation.A_Metrics.src.enrichment_motif import read_loci
         with tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False) as f:
             f.write("chromosome\tstart\tend\n")
             f.write("chr1\t100\t200\n")
@@ -381,7 +381,7 @@ class TestMotifEnrichment:
             os.unlink(fname)
 
     def test_compute_motif_instances(self):
-        from Evaluation.src.enrichment_motif import compute_motif_instances
+        from Stage2_Evaluation.A_Metrics.src.enrichment_motif import compute_motif_instances
         motif_df = pd.DataFrame({
             "gene_name": ["G1", "G1", "G2", "G2", "G3"],
             "motif_name": ["M1", "M1", "M2", "M1", "M2"],
@@ -394,7 +394,7 @@ class TestMotifEnrichment:
         assert pd.isna(result.loc["G4", "M1"])
 
     def test_perform_correlation_motif(self):
-        from Evaluation.src.enrichment_motif import perform_correlation as motif_corr
+        from Stage2_Evaluation.A_Metrics.src.enrichment_motif import perform_correlation as motif_corr
         rng = np.random.default_rng(42)
         n_genes, n_motifs, n_progs = 50, 3, 2
         motif_count_df = pd.DataFrame(
@@ -423,19 +423,19 @@ class TestMotifEnrichment:
 class TestExplainedVariance:
 
     def test_compute_Var(self):
-        from Evaluation.src.explained_variance import compute_Var
+        from Stage2_Evaluation.A_Metrics.src.explained_variance import compute_Var
         X = np.array([[1, 2], [3, 4], [5, 6]])
         var = compute_Var(X)
         expected = np.var([1, 3, 5], ddof=1) + np.var([2, 4, 6], ddof=1)
         assert np.isclose(var, expected)
 
     def test_compute_Var_single_column(self):
-        from Evaluation.src.explained_variance import compute_Var
+        from Stage2_Evaluation.A_Metrics.src.explained_variance import compute_Var
         X = np.array([[1], [2], [3]])
         assert np.isclose(compute_Var(X), np.var([1, 2, 3], ddof=1))
 
     def test_computeVarianceExplained_numpy(self):
-        from Evaluation.src.explained_variance import computeVarianceExplained, compute_Var
+        from Stage2_Evaluation.A_Metrics.src.explained_variance import computeVarianceExplained, compute_Var
         rng = np.random.default_rng(42)
         X = rng.random((100, 10))
         H = rng.random((3, 10))
@@ -444,7 +444,7 @@ class TestExplainedVariance:
         assert np.isfinite(ve)
 
     def test_computeVarianceExplained_dataframe(self):
-        from Evaluation.src.explained_variance import computeVarianceExplained, compute_Var
+        from Stage2_Evaluation.A_Metrics.src.explained_variance import computeVarianceExplained, compute_Var
         rng = np.random.default_rng(42)
         X = rng.random((100, 10))
         H_df = pd.DataFrame(rng.random((3, 10)))
@@ -460,7 +460,7 @@ class TestExplainedVariance:
 class TestSelfRegulatingPrograms:
 
     def test_get_top_genes_real_data(self, spectra_score_path):
-        from Evaluation.src.Self_regulating_programs import get_top_genes_per_program
+        from Stage2_Evaluation.A_Metrics.src.Self_regulating_programs import get_top_genes_per_program
         top = get_top_genes_per_program(spectra_score_path, top_n=10)
         assert "0" in top
         assert "4" in top
@@ -468,7 +468,7 @@ class TestSelfRegulatingPrograms:
             assert len(top[prog_key]) == 10
 
     def test_get_top_genes_with_rename(self):
-        from Evaluation.src.Self_regulating_programs import get_top_genes_per_program
+        from Stage2_Evaluation.A_Metrics.src.Self_regulating_programs import get_top_genes_per_program
         rng = np.random.default_rng(42)
         ens_ids = [f"ENS{i:05d}" for i in range(50)]
         gene_dict = {ens: f"GENE{i}" for i, ens in enumerate(ens_ids)}
@@ -485,7 +485,7 @@ class TestSelfRegulatingPrograms:
             os.unlink(fname)
 
     def test_find_autoregulatory_hits(self):
-        from Evaluation.src.Self_regulating_programs import find_autoregulatory_hits
+        from Stage2_Evaluation.A_Metrics.src.Self_regulating_programs import find_autoregulatory_hits
         perturb_df = pd.DataFrame({
             "target_name": ["GENE1", "GENE2", "GENE3", "GENE4", "GENE5"],
             "program_name": [0, 0, 1, 1, 2],
@@ -511,7 +511,7 @@ class TestSelfRegulatingPrograms:
             os.unlink(fname)
 
     def test_find_autoregulatory_no_hits(self):
-        from Evaluation.src.Self_regulating_programs import find_autoregulatory_hits
+        from Stage2_Evaluation.A_Metrics.src.Self_regulating_programs import find_autoregulatory_hits
         perturb_df = pd.DataFrame({
             "target_name": ["GENE1"],
             "program_name": [0],
@@ -537,7 +537,7 @@ class TestSelfRegulatingPrograms:
 class TestUtilities:
 
     def test_rename_gene_dictionary(self):
-        from Evaluation.src.Utilities import rename_gene_dictionary
+        from Stage2_Evaluation.A_Metrics.src.Utilities import rename_gene_dictionary
         rng = np.random.default_rng(42)
         n_cells, n_genes = 10, 5
         ens_ids = [f"ENS{i:05d}" for i in range(n_genes)]
@@ -561,7 +561,7 @@ class TestUtilities:
 
     def test_rename_gene_dictionary_partial(self):
         """Unmapped IDs stay as-is."""
-        from Evaluation.src.Utilities import rename_gene_dictionary
+        from Stage2_Evaluation.A_Metrics.src.Utilities import rename_gene_dictionary
         rng = np.random.default_rng(42)
         n_cells, n_genes = 10, 5
         ens_ids = [f"ENS{i:05d}" for i in range(n_genes)]
@@ -592,8 +592,8 @@ class TestIntegration:
 
     def test_categorical_then_perturbation(self, mdata_copy, eval_output_dir):
         """Run categorical + perturbation on same real MuData."""
-        from Evaluation.src.association_categorical import compute_categorical_association
-        from Evaluation.src.association_perturbation import compute_perturbation_association
+        from Stage2_Evaluation.A_Metrics.src.association_categorical import compute_categorical_association
+        from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
 
         cat_results, cat_posthoc = compute_categorical_association(
             mdata_copy, prog_key="cNMF", categorical_key="batch",

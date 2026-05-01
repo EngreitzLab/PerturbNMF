@@ -1,0 +1,42 @@
+[
+  {
+    "query": "(DSCAM AND PKM) AND (endothelial differentiation OR mesoderm differentiation)",
+    "strategy": "gene_pair",
+    "target": "Co-regulation of DSCAM and PKM during endothelial/mesoderm differentiation"
+  },
+  {
+    "query": "(SMAD3 OR EOMES) AND (COL5A2 OR CER1) AND cardiac development",
+    "strategy": "regulator_target",
+    "target": "How SMAD3/EOMES regulate collagen and cardiac development genes"
+  },
+  {
+    "query": "extracellular matrix organization AND (COL5A2 OR NTN1) AND cardiac muscle",
+    "strategy": "pathway_context",
+    "target": "ECM organization pathway in cardiac muscle development"
+  },
+  {
+    "query": "ACVR1B AND SMAD3 AND (cardiocyte differentiation OR cardiac development)",
+    "strategy": "regulator_target",
+    "target": "ACVR1B-SMAD3 signaling in cardiac differentiation"
+  },
+  {
+    "query": "(axon guidance[MeSH] OR cell migration[MeSH]) AND (DSCAM OR NTN1)",
+    "strategy": "pathway_context",
+    "target": "Axon guidance and migration roles of DSCAM and NTN1"
+  },
+  {
+    "query": "PLCG1 AND (endothelial cells OR mesoderm) AND differentiation",
+    "strategy": "regulator_target",
+    "target": "PLCG1 regulation of endothelial/mesoderm differentiation"
+  },
+  {
+    "query": "collagen biosynthesis AND (COL5A2 AND cardiac development)",
+    "strategy": "pathway_context",
+    "target": "Collagen biosynthesis pathway in cardiac development"
+  },
+  {
+    "query": "(CER1 OR EOMES) AND mesoderm AND iPSC",
+    "strategy": "temporal",
+    "target": "CER1 and EOMES function in iPSC mesoderm differentiation"
+  }
+]

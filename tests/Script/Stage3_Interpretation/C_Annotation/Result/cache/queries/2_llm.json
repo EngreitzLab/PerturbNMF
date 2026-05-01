@@ -1,0 +1,42 @@
+[
+  {
+    "query": "(MECOM AND FLT1) AND (endothelial OR angiogenesis OR vasculogenesis)",
+    "strategy": "gene_pair",
+    "target": "Co-regulation of MECOM and FLT1 in endothelial development and angiogenesis"
+  },
+  {
+    "query": "(BMPR1A OR SMAD5 OR SMAD1) AND (MECOM OR FLT1) AND (BMP signaling OR bone morphogenetic protein)",
+    "strategy": "regulator_target",
+    "target": "BMP-SMAD pathway regulation of top program genes"
+  },
+  {
+    "query": "(DOCK4 AND VAV3) AND (GTPase OR Rho signaling OR cell migration)",
+    "strategy": "gene_pair",
+    "target": "DOCK4-VAV3 interaction in GTPase regulation and cell migration"
+  },
+  {
+    "query": "(NOTCH1 AND TGFBR2) AND (endothelial differentiation OR mesoderm)",
+    "strategy": "regulator_target",
+    "target": "Negative regulation by NOTCH1 and TGFBR2 in endothelial/mesoderm differentiation"
+  },
+  {
+    "query": "(NRP1 AND FLT1) AND (VEGF OR vascular development OR endothelial)",
+    "strategy": "gene_pair",
+    "target": "NRP1-FLT1 co-regulation in VEGF signaling and vascular development"
+  },
+  {
+    "query": "\"Rho GTPase\" AND \"cell migration\" AND (endothelial OR iPSC OR differentiation)",
+    "strategy": "pathway_context",
+    "target": "Rho GTPase-mediated cell migration in endothelial differentiation context"
+  },
+  {
+    "query": "(KALRN OR PLEKHG1) AND (GEF OR guanine nucleotide exchange factor) AND (Rho OR Rac OR CDC42)",
+    "strategy": "pathway_context",
+    "target": "Guanine nucleotide exchange factors in Rho family GTPase regulation"
+  },
+  {
+    "query": "(PLCG1 AND NF2) AND (endothelial OR vascular) AND (signal transduction OR cell migration)",
+    "strategy": "regulator_target",
+    "target": "PLCG1 and NF2 positive regulation of endothelial signaling and migration"
+  }
+]

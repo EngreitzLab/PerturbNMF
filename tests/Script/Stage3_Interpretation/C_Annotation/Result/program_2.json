@@ -1,0 +1,1194 @@
+{
+  "program_id": "2",
+  "timestamp": "2026-04-28T15:32:16.110691",
+  "program_context": {
+    "program_id": "2",
+    "top_genes": "MECOM;FBXL7;RP1;DOCK4;FLT1;NRP1;VAV3;GALNT18;PLEKHG1;KALRN",
+    "positive_regulators": "BMPR1A,SMAD5,NF2,PLCG1,SMAD1",
+    "negative_regulators": "NOTCH1,PTAR1,non-targeting,TGFBR2,KIAA0232",
+    "day": "D3",
+    "cell_types": "iPSC-derived endothelial/mesoderm differentiation",
+    "go_enrichment": "Regulation Of GTPase Activity (GO:0043087);Regulation Of Small GTPase Mediated Signal Transduction (GO:0051056);Positive Regulation Of Cell Migration (GO:0030335);Regulation Of Cell Migration (GO:0030334);Regulation Of Intracellular Signal Transduction (GO:1902531);Regulation Of Cell Migration Invol",
+    "other_enrichment": "RHO GTPase Cycle R-HSA-9012999;Signaling By Rho GTPases R-HSA-194315;Signaling By Rho GTPases, Miro GTPases And RHOBTB3 R-HSA-9716542;CDC42 GTPase Cycle R-HSA-9013148;Nervous System Development R-HSA-9675108;Signaling By Receptor Tyrosine Kinases R-HSA-9006934;Axon Guidance R-HSA-422475;RHOA GTPase "
+  },
+  "search_queries": [
+    {
+      "query": "(MECOM AND FLT1) AND (endothelial OR angiogenesis OR vasculogenesis)",
+      "strategy": "gene_pair",
+      "target": "Co-regulation of MECOM and FLT1 in endothelial development and angiogenesis"
+    },
+    {
+      "query": "(BMPR1A OR SMAD5 OR SMAD1) AND (MECOM OR FLT1) AND (BMP signaling OR bone morphogenetic protein)",
+      "strategy": "regulator_target",
+      "target": "BMP-SMAD pathway regulation of top program genes"
+    },
+    {
+      "query": "(DOCK4 AND VAV3) AND (GTPase OR Rho signaling OR cell migration)",
+      "strategy": "gene_pair",
+      "target": "DOCK4-VAV3 interaction in GTPase regulation and cell migration"
+    },
+    {
+      "query": "(NOTCH1 AND TGFBR2) AND (endothelial differentiation OR mesoderm)",
+      "strategy": "regulator_target",
+      "target": "Negative regulation by NOTCH1 and TGFBR2 in endothelial/mesoderm differentiation"
+    },
+    {
+      "query": "(NRP1 AND FLT1) AND (VEGF OR vascular development OR endothelial)",
+      "strategy": "gene_pair",
+      "target": "NRP1-FLT1 co-regulation in VEGF signaling and vascular development"
+    },
+    {
+      "query": "\"Rho GTPase\" AND \"cell migration\" AND (endothelial OR iPSC OR differentiation)",
+      "strategy": "pathway_context",
+      "target": "Rho GTPase-mediated cell migration in endothelial differentiation context"
+    },
+    {
+      "query": "(KALRN OR PLEKHG1) AND (GEF OR guanine nucleotide exchange factor) AND (Rho OR Rac OR CDC42)",
+      "strategy": "pathway_context",
+      "target": "Guanine nucleotide exchange factors in Rho family GTPase regulation"
+    },
+    {
+      "query": "(PLCG1 AND NF2) AND (endothelial OR vascular) AND (signal transduction OR cell migration)",
+      "strategy": "regulator_target",
+      "target": "PLCG1 and NF2 positive regulation of endothelial signaling and migration"
+    }
+  ],
+  "papers": [
+    {
+      "pmid": 39641382,
+      "title": "Association of ten VEGF family genes with Alzheimer's disease endophenotypes at single cell resolution.",
+      "abstract": "INTRODUCTION: Using a single-nucleus transcriptome derived from the dorsolateral prefrontal cortex of 424 Religious Orders Study and the Rush Memory and Aging Project (ROS/MAP) participants, we investigated the cell type-specific effect of ten vascular endothelial growth factor (VEGF) genes on Alzheimer's disease (AD) endophenotypes. METHODS: Negative binomial mixed models were used for differential gene expression and association analysis with AD endophenotypes. VEGF-associated intercellular communication was also profiled. RESULTS: Higher microglia FLT1, endothelial FLT4, and oligodendrocyte VEGFB are associated with greater amyloid beta (Abeta) load, whereas higher VEGFB expression in inhibitory neurons is associated with lower Abeta load. Higher astrocyte NRP1 is associated with lower tau density. Higher microglia and endothelial FLT1 are associated with worse cognition performance. Endothelial and microglial FLT1 expression was upregulated in clinical AD patients compared to cognitively normal controls. Finally, AD cells showed a significant reduction in VEGF signaling compared to controls. DISCUSSION: Our results highlight key changes in VEGF receptor expression in endothelial and microglial cells during AD, and the potential protective role of VEGFB in neurons. HIGHLIGHTS: The prefrontal cortical expression of FLT1 and FLT4 was associated with worse cross-sectional global cognitive function, longitudinal cognitive trajectories, and more Alzheimer's disease (AD) neuropathology. The associations between FLT1 or FLT4 and AD endophenotypes appear to be driven by endothelial and microglial cells. VEGFB expression seems to have opposing effects on the Abeta burden in AD depending on cell types, highlighting its potential protective role in neurons.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "VEGFA": [
+          "VEGF",
+          "vascular endothelial growth factor"
+        ],
+        "FLT1": [
+          "FLT1"
+        ],
+        "FLT4": [
+          "FLT4"
+        ],
+        "VEGFB": [
+          "VEGFB"
+        ],
+        "APP": [
+          "amyloid beta",
+          "Abeta"
+        ],
+        "NRP1": [
+          "NRP1"
+        ],
+        "MAPT": [
+          "tau"
+        ]
+      },
+      "relations": [
+        {
+          "gene1": "FLT1",
+          "gene2": "APP",
+          "type": "Positive_Correlation",
+          "score": 0.9896
+        },
+        {
+          "gene1": "FLT4",
+          "gene2": "APP",
+          "type": "Positive_Correlation",
+          "score": 0.9915
+        },
+        {
+          "gene1": "MAPT",
+          "gene2": "NRP1",
+          "type": "Negative_Correlation",
+          "score": 0.911
+        },
+        {
+          "gene1": "APP",
+          "gene2": "VEGFB",
+          "type": "Negative_Correlation",
+          "score": 0.9974
+        }
+      ],
+      "evidence_sentences": {
+        "FLT1": [
+          "Endothelial and microglial FLT1 expression was upregulated in clinical AD patients compared to cognitively normal controls.",
+          "RESULTS: Higher microglia FLT1, endothelial FLT4, and oligodendrocyte VEGFB are associated with greater amyloid beta (Abeta) load, whereas higher VEGFB expression in inhibitory neurons is associated with lower Abeta load."
+        ],
+        "NRP1": [
+          "Higher astrocyte NRP1 is associated with lower tau density."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:39641382 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 38826287,
+      "title": "Association of 10 VEGF Family Genes with Alzheimer's Disease Endophenotypes at Single Cell Resolution.",
+      "abstract": "The cell-type specific role of the vascular endothelial growth factors (VEGFs) in the pathogenesis of Alzheimer's disease (AD) is not well characterized. In this study, we utilized a single-nucleus RNA sequencing dataset from Dorsolateral Prefrontal Cortex (DLFPC) of 424 donors from the Religious Orders Study and Memory and Aging Project (ROS/MAP) to investigate the effect of 10 VEGF genes ( VEGFA, VEGFB, VEGFC, VEGFD, PGF, FLT1, FLT4, KDR, NRP1 , and NRP2 ) on AD endophenotypes. Mean age of death was 89 years, among which 68% were females, and 52% has AD dementia. Negative binomial mixed models were used for differential expression analysis and for association analysis with beta-amyloid load, PHF tau tangle density, and both cross-sectional and longitudinal global cognitive function. Intercellular VEGF-associated signaling was profiled using CellChat. We discovered prefrontal cortical FLT1 expression was upregulated in AD brains in both endothelial and microglial cells. Higher FLT1 expression was also associated with worse cross-sectional global cognitive function, longitudinal cognitive trajectories, and beta-amyloid load. Similarly, higher endothelial FLT4 expression was associated with more beta-amyloid load. In contrast to the receptors, VEGFB showed opposing effects on beta-amyloid load whereby higher levels in oligodendrocytes was associated with high amyloid burden, while higher levels in inhibitory neurons was associated with lower amyloid burden. Finally, AD cells showed significant reduction in overall VEGF signaling comparing to those from cognitive normal participants. Our results highlight key changes in VEGF receptor expression in endothelial and microglial cells during AD, and the potential protective role of VEGFB in neurons.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "VEGFA": [
+          "VEGF",
+          "VEGFA"
+        ],
+        "VEGFB": [
+          "VEGFB"
+        ],
+        "VEGFC": [
+          "VEGFC"
+        ],
+        "VEGFD": [
+          "VEGFD"
+        ],
+        "PGF": [
+          "PGF"
+        ],
+        "FLT1": [
+          "FLT1"
+        ],
+        "FLT4": [
+          "FLT4"
+        ],
+        "KDR": [
+          "KDR"
+        ],
+        "NRP1": [
+          "NRP1"
+        ],
+        "NRP2": [
+          "NRP2"
+        ],
+        "MAPT": [
+          "tau"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "FLT1": [
+          "In this study, we utilized a single-nucleus RNA sequencing dataset from Dorsolateral Prefrontal Cortex (DLFPC) of 424 donors from the Religious Orders Study and Memory and Aging Project (ROS/MAP) to investigate the effect of 10 VEGF genes ( VEGFA, VEGFB, VEGFC, VEGFD, PGF, FLT1, FLT4, KDR, NRP1 , and NRP2 ) on AD endophenotypes.",
+          "We discovered prefrontal cortical FLT1 expression was upregulated in AD brains in both endothelial and microglial cells."
+        ],
+        "NRP1": [
+          "In this study, we utilized a single-nucleus RNA sequencing dataset from Dorsolateral Prefrontal Cortex (DLFPC) of 424 donors from the Religious Orders Study and Memory and Aging Project (ROS/MAP) to investigate the effect of 10 VEGF genes ( VEGFA, VEGFB, VEGFC, VEGFD, PGF, FLT1, FLT4, KDR, NRP1 , and NRP2 ) on AD endophenotypes."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:38826287 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 39202455,
+      "title": "PLEKHG1: New Potential Candidate Gene for Periventricular White Matter Abnormalities.",
+      "abstract": "Hypoxic-ischemic brain damage presents a significant neurological challenge, often manifesting during the perinatal period. Specifically, periventricular leukomalacia (PVL) is emerging as a notable contributor to cerebral palsy and intellectual disabilities. It compromises cerebral microcirculation, resulting in insufficient oxygen or blood flow to the periventricular region of the brain. As widely documented, these pathological conditions can be caused by several factors encompassing preterm birth (4-5% of the total cases), as well single cotwin abortion and genetic variants such as those associated with GTPase pathways. Whole exome sequencing (WES) analysis identified a de novo causative variant within the pleckstrin homology domain-containing family G member 1 (PLEKHG1) gene in a patient presenting with PVL. The PLEKHG1 gene is ubiquitously expressed, showing high expression patterns in brain tissues. PLEKHG1 is part of a family of Rho guanine nucleotide exchange factors, and the protein is essential for cell division control protein 42 (CDC42) activation in the GTPase pathway. CDC42 is a key small GTPase of the Rho-subfamily, regulating various cellular functions such as cell morphology, migration, endocytosis, and cell cycle progression. The molecular mechanism involving PLEKHG1 and CDC42 has an intriguing role in the reorientation of cells in the vascular endothelium, thus suggesting that disruption responses to mechanical stress in endothelial cells may be involved in the formation of white matter lesions. Significantly, CDC42 association with white matter abnormalities is underscored by its MIM phenotype number. In contrast, although PLEKHG1 has been recently associated with patients showing white matter hyperintensities, it currently lacks a MIM phenotype number. Additionally, in silico analyses classified the identified variant as pathogenic. Although the patient was born prematurely and subsequently to dichorionic gestation, during which its cotwin died, we suggest that the variant described can strongly contribute to PVL. The aim of the current study is to establish a plausible association between the PLEKHG1 gene and PVL.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "PLEKHG1": [
+          "PLEKHG1",
+          "pleckstrin homology domain-containing family G member 1"
+        ],
+        "RHO": [
+          "Rho"
+        ],
+        "CDC42": [
+          "CDC42",
+          "cell division control protein 42"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "PLEKHG1": [
+          "PLEKHG1: New Potential Candidate Gene for Periventricular White Matter Abnormalities..",
+          "Whole exome sequencing (WES) analysis identified a de novo causative variant within the pleckstrin homology domain-containing family G member 1 (PLEKHG1) gene in a patient presenting with PVL."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:39202455 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 31469028,
+      "title": "Identification of guanine nucleotide exchange factors that increase Cdc42 activity in primary human endothelial cells.",
+      "abstract": "The Rho GTPase family is involved in actin dynamics and regulates the barrier function of the endothelium. One of the main barrier-promoting Rho GTPases is Cdc42, also known as cell division control protein 42 homolog. Currently, regulation of Cdc42-based signalling networks in endothelial cells (ECs) lack molecular details. To examine these, we focused on a subset of 15 Rho guanine nucleotide exchange factors (GEFs), which are expressed in the endothelium. By performing single cell FRET measurements with Rho GTPase biosensors in primary human ECs, we monitored GEF efficiency towards Cdc42 and Rac1. A new, single cell-based analysis was developed and used to enable the quantitative comparison of cellular activities of the overexpressed full-length GEFs. Our data reveal GEF dependent activation of Cdc42, with the most efficient Cdc42 activation induced by PLEKHG2, FGD1, PLEKHG1 and PREX1 and the highest selectivity for FGD1. Additionally, we generated truncated GEF constructs that comprise only the catalytic dbl homology (DH) domain or together with the adjacent pleckstrin homology domain (DHPH). The DH domain by itself did not activate Cdc42, whereas the DHPH domain of ITSN1, ITSN2 and PLEKHG1 showed activity towards Cdc42. Together, our study characterized endothelial GEFs that may directly or indirectly activate Cdc42, which will be of great value for the field of vascular biology.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CDC42": [
+          "Cdc42"
+        ],
+        "ARHGEF2": [
+          "GEF"
+        ],
+        "RAC1": [
+          "Rac1"
+        ],
+        "PLEKHG2": [
+          "PLEKHG2"
+        ],
+        "FGD1": [
+          "FGD1"
+        ],
+        "PLEKHG1": [
+          "PLEKHG1"
+        ],
+        "PREX1": [
+          "PREX1"
+        ],
+        "ITSN1": [
+          "ITSN1"
+        ],
+        "ITSN2": [
+          "ITSN2"
+        ]
+      },
+      "relations": [
+        {
+          "gene1": "FGD1",
+          "gene2": "CDC42",
+          "type": "Positive_Correlation",
+          "score": 0.9988
+        },
+        {
+          "gene1": "PLEKHG1",
+          "gene2": "CDC42",
+          "type": "Positive_Correlation",
+          "score": 0.9782
+        },
+        {
+          "gene1": "PLEKHG2",
+          "gene2": "CDC42",
+          "type": "Positive_Correlation",
+          "score": 0.9992
+        },
+        {
+          "gene1": "PREX1",
+          "gene2": "CDC42",
+          "type": "Positive_Correlation",
+          "score": 0.9991
+        }
+      ],
+      "evidence_sentences": {
+        "PLEKHG1": [
+          "Our data reveal GEF dependent activation of Cdc42, with the most efficient Cdc42 activation induced by PLEKHG2, FGD1, PLEKHG1 and PREX1 and the highest selectivity for FGD1.",
+          "The DH domain by itself did not activate Cdc42, whereas the DHPH domain of ITSN1, ITSN2 and PLEKHG1 showed activity towards Cdc42."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:31469028 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 35031323,
+      "title": "The Rho guanine nucleotide exchange factor PLEKHG1 is activated by interaction with and phosphorylation by Src family kinase member FYN.",
+      "abstract": "Rho family small GTPases (Rho) regulate various cell motility processes by spatiotemporally controlling the actin cytoskeleton. Some Rho-specific guanine nucleotide exchange factors (RhoGEFs) are regulated via tyrosine phosphorylation by Src family tyrosine kinase (SFK). We also previously reported that PLEKHG2, a RhoGEF for the GTPases Rac1 and Cdc42, is tyrosine-phosphorylated by SRC. However, the details of the mechanisms by which SFK regulates RhoGEFs are not well understood. In this study, we found for the first time that PLEKHG1, which has very high homology to the Dbl and pleckstrin homology domains of PLEKHG2, activates Cdc42 following activation by FYN, a member of the SFK family. We also show that this activation of PLEKHG1 by FYN requires interaction between these two proteins and FYN-induced tyrosine phosphorylation of PLEKHG1. We also found that the region containing the Src homology 3 and Src homology 2 domains of FYN is required for this interaction. Finally, we demonstrated that tyrosine phosphorylation of Tyr-720 and Tyr-801 in PLEKHG1 is important for the activation of PLEKHG1. These results suggest that FYN is a regulator of PLEKHG1 and may regulate cell morphology through Rho signaling via the interaction with and tyrosine phosphorylation of PLEKHG1.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "PLEKHG1": [
+          "PLEKHG1"
+        ],
+        "FYN": [
+          "FYN"
+        ],
+        "PLEKHG2": [
+          "PLEKHG2"
+        ],
+        "RAC1": [
+          "Rac1"
+        ],
+        "CDC42": [
+          "Cdc42"
+        ],
+        "SRC": [
+          "Src",
+          "SRC"
+        ]
+      },
+      "relations": [
+        {
+          "gene1": "FYN",
+          "gene2": "CDC42",
+          "type": "Positive_Correlation",
+          "score": 0.9992
+        },
+        {
+          "gene1": "FYN",
+          "gene2": "PLEKHG2",
+          "type": "Positive_Correlation",
+          "score": 0.9846
+        },
+        {
+          "gene1": "FYN",
+          "gene2": "PLEKHG1",
+          "type": "Positive_Correlation",
+          "score": 0.999
+        },
+        {
+          "gene1": "PLEKHG1",
+          "gene2": "CDC42",
+          "type": "Positive_Correlation",
+          "score": 0.9993
+        }
+      ],
+      "evidence_sentences": {
+        "PLEKHG1": [
+          "In this study, we found for the first time that PLEKHG1, which has very high homology to the Dbl and pleckstrin homology domains of PLEKHG2, activates Cdc42 following activation by FYN, a member of the SFK family.",
+          "The Rho guanine nucleotide exchange factor PLEKHG1 is activated by interaction with and phosphorylation by Src family kinase member FYN.."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:35031323 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 37449140,
+      "title": "Comprehensive analysis of the oncogenic roles of vascular endothelial growth factors and their receptors in stomach adenocarcinoma.",
+      "abstract": "Background: Vascular endothelial growth factors (VEGFs) and their receptors (VEGFRs) play complicated oncogenic roles in multiple tumors by initiating and promoting tumor angiogenesis and lymphangiogenesis. The main goal of our study was to comprehensively investigate the oncogenic roles of VEGFs and VEGFRs in stomach adenocarcinoma (STAD). Methods: The present study applied multiple bioinformatic tools to comprehensively explore the expression levels, prognostic values, genetic alterations and immune infiltrations of VEGFs and VEGFRs in STAD patients. Results: We found that VEGFA, VEGFC, placenta growth factor, FLT1, KDR, FLT4, and Neuropilin 1 were overexpressed in STAD, while the expression of VEGFB and VEGFD were decreased. Survival analysis revealed that higher transcription levels of VEGF/VEGFRs were obviously correlated with worse clinical outcome in STAD patients. Additionally, high alteration frequencies of VEGFs and VEGFRs (27%) were observed in STAD patients, and alterations of VEGFs and VEGFRs improved their prognosis. The expression of VEGFs and VEGFRs was remarkably associated with immune cell infiltration and immune checkpoint expression in STAD patients. Conclusion: Our study systematically explored the transcriptome profiles and distinct prognostic values of VEGFs and their receptors in STAD and contributed to a better understanding of the oncogenic roles of VEGF/VEGFR members in STAD.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "VEGFA": [
+          "VEGF",
+          "VEGFA"
+        ],
+        "VEGFC": [
+          "VEGFC"
+        ],
+        "PGF": [
+          "placenta growth factor"
+        ],
+        "FLT1": [
+          "FLT1"
+        ],
+        "KDR": [
+          "KDR",
+          "VEGFR"
+        ],
+        "FLT4": [
+          "FLT4"
+        ],
+        "NRP1": [
+          "Neuropilin 1"
+        ],
+        "VEGFB": [
+          "VEGFB"
+        ],
+        "VEGFD": [
+          "VEGFD"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {
+        "FLT1": [
+          "Results: We found that VEGFA, VEGFC, placenta growth factor, FLT1, KDR, FLT4, and Neuropilin 1 were overexpressed in STAD, while the expression of VEGFB and VEGFD were decreased."
+        ]
+      },
+      "verification": [
+        {
+          "level": 1,
+          "passed": true,
+          "confidence": 1.0,
+          "details": "All genes found in PMID:37449140 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[VERIFIED]"
+    },
+    {
+      "pmid": 33955328,
+      "title": "Rac-maninoff and Rho-vel: The symphony of Rho-GTPase signaling at excitatory synapses.",
+      "abstract": "Synaptic connections between neurons are essential for every facet of human cognition and are thus regulated with extreme precision. Rho-family GTPases, molecular switches that cycle between an active GTP-bound state and an inactive GDP-bound state, comprise a critical feature of synaptic regulation. Rho-GTPases are exquisitely controlled by an extensive suite of activators (GEFs) and inhibitors (GAPs and GDIs) and interact with many different signalling pathways to fulfill their roles in orchestrating the development, maintenance, and plasticity of excitatory synapses of the central nervous system. Among the mechanisms that control Rho-GTPase activity and signalling are cell surface receptors, GEF/GAP complexes that tightly regulate single Rho-GTPase dynamics, GEF/GAP and GEF/GEF functional complexes that coordinate multiple Rho-family GTPase activities, effector positive feedback loops, and mutual antagonism of opposing Rho-GTPase pathways. These complex regulatory mechanisms are employed by the cells of the nervous system in almost every step of development, and prominently figure into the processes of synaptic plasticity that underlie learning and memory. Finally, misregulation of Rho-GTPases plays critical roles in responses to neuronal injury, such as traumatic brain injury and neuropathic pain, and in neurodevelopmental and neurodegenerative disorders, including intellectual disability, autism spectrum disorder, schizophrenia, and Alzheimer's Disease. Thus, decoding the mechanisms of Rho-GTPase regulation and function at excitatory synapses has great potential for combatting many of the biggest current challenges in mental health.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "ARHGEF2": [
+          "GEF"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:33955328 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 35047576,
+      "title": "The Emerging Role of Rho Guanine Nucleotide Exchange Factors in Cardiovascular Disorders: Insights Into Atherosclerosis: A Mini Review.",
+      "abstract": "Atherosclerosis is a leading cause of cardiovascular disease, and atherosclerotic cardiovascular disease accounts for one-third of global deaths. However, the mechanism of atherosclerosis is not fully understood. It is well-known that the Rho GTPase family, especially Rho A, plays a vital role in the development and progression of arteriosclerosis. Rho guanine nucleotide exchange factors (Rho GEFs), which act upstream of Rho GTPases, are also involved in the atheromatous pathological process. Despite some research on the role of Rho GEFS in the regulation of atherosclerosis, the number of studies is small relative to studies on the essential function of Rho GEFs. Some studies have preliminarily revealed Rho GEF regulation of atherosclerosis by experiments in vivo and in vitro. Herein, we review the advances in research on the relationship and interaction between Rho GEFs and atheroma to provide a potential reference for further study of atherosclerosis.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "RHOA": [
+          "Rho A"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:35047576 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36198871,
+      "title": "Vascular endothelial cell development and diversity.",
+      "abstract": "Vascular endothelial cells form the inner layer of blood vessels where they have a key role in the development and maintenance of the functional circulatory system and provide paracrine support to surrounding non-vascular cells. Technical advances in the past 5 years in single-cell genomics and in in vivo genetic labelling have facilitated greater insights into endothelial cell development, plasticity and heterogeneity. These advances have also contributed to a new understanding of the timing of endothelial cell subtype differentiation and its relationship to the cell cycle. Identification of novel tissue-specific gene expression patterns in endothelial cells has led to the discovery of crucial signalling pathways and new interactions with other cell types that have key roles in both tissue maintenance and disease pathology. In this Review, we describe the latest findings in vascular endothelial cell development and diversity, which are often supported by large-scale, single-cell studies, and discuss the implications of these findings for vascular medicine. In addition, we highlight how techniques such as single-cell multimodal omics, which have become increasingly sophisticated over the past 2 years, are being utilized to study normal vascular physiology as well as functional perturbations in disease.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:36198871 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 39688567,
+      "title": "Insights into the transcriptomic heterogeneity of brain endothelial cells in normal aging and Alzheimer's disease.",
+      "abstract": "ABSTRACT: Drug development for Alzheimer's disease Is extremely challenging, as demonstrated by the repeated failures of amyloid-beta-targeted therapeutics and the controversies surrounding the amyloid-beta cascade hypothesis. More recently, advances in the development of Lecanemab, an anti-amyloid-beta monoclonal antibody, have shown positive results in reducing brain A burden and slowing cognitive decline in patients with early- stage Alzheimer's disease in the Phase III clinical trial (Clarity Alzheimer's disease). Despite these promising results, side effects such as amyloid-related imaging abnormalities (ARIA) may limit its usage. ARIA can manifest as ARIA-E (cerebral edema or effusions) and ARIA-H (microhemorrhages or superficial siderosis) and is thought to be caused by increased vascular permeability due to inflammatory responses, leading to leakages of blood products and protein-rich fluid into brain parenchyma. Endothelial dysfunction is an early pathological feature of Alzheimer's disease, and the blood-brain barrier becomes increasingly leaky as the disease progresses. In addition, APOE4, the strongest genetic risk factor for Alzheimer's disease, is associated with higher vascular amyloid burden, increased ARIA incidence, and accelerated blood-brain barrier disruptions. These interconnected vascular abnormalities highlight the importance of vascular contributions to the pathophysiology of Alzheimer's disease. Here, we will closely examine recent research evaluating the heterogeneity of brain endothelial cells in the microvasculature of different brain regions and their relationships with Alzheimer's disease progression.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "APP": [
+          "amyloid-beta"
+        ],
+        "APOE": [
+          "APOE4"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:39688567 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 40276039,
+      "title": "Identifying similar populations across independent single cell studies without data integration.",
+      "abstract": "Supervised and unsupervised methods have emerged to address the complexity of single cell data analysis in the context of large pools of independent studies. Here, we present ClusterFoldSimilarity (CFS), a novel statistical method design to quantify the similarity between cell groups across any number of independent datasets, without the need for data correction or integration. By bypassing these processes, CFS avoids the introduction of artifacts and loss of information, offering a simple, efficient, and scalable solution. This method match groups of cells that exhibit conserved phenotypes across datasets, including different tissues and species, and in a multimodal scenario, including single-cell RNA-Seq, ATAC-Seq, single-cell proteomics, or, more broadly, data exhibiting differential abundance effects among groups of cells. Additionally, CFS performs feature selection, obtaining cross-dataset markers of the similar phenotypes observed, providing an inherent interpretability of relationships between cell populations. To showcase the effectiveness of our methodology, we generated single-nuclei RNA-Seq data from the motor cortex and spinal cord of adult mice. By using CFS, we identified three distinct sub-populations of astrocytes conserved on both tissues. CFS includes various visualization methods for the interpretation of the similarity scores and similar cell populations.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:40276039 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36499658,
+      "title": "Key Genetic Components of Fibrosis in Diabetic Nephropathy: An Updated Systematic Review and Meta-Analysis.",
+      "abstract": "Renal fibrosis (RF) constitutes the common end-point of all kinds of chronic kidney disease (CKD), regardless of the initial cause of disease. The aim of the present study was to identify the key players of fibrosis in the context of diabetic nephropathy (DN). A systematic review and meta-analysis of all available genetic association studies regarding the genes that are included in signaling pathways related to RF were performed. The evaluated studies were published in English and they were included in PubMed and the GWAS Catalog. After an extensive literature review and search of the Kyoto Encyclopedia of Genes and Genomes (KEGG) database, eight signaling pathways related to RF were selected and all available genetic association studies of these genes were meta-analyzed. ACE, AGT, EDN1, EPO, FLT4, GREM1, IL1B, IL6, IL10, IL12RB1, NOS3, TGFB1, IGF2/INS/TH cluster, and VEGFA were highlighted as the key genetic components driving the fibrosis process in DN. The present systematic review and meta-analysis indicate, as key players of fibrosis in DN, sixteen genes. However, the results should be interpreted with caution because the number of studies was relatively small.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "AP2B1": [
+          "ACE"
+        ],
+        "AGT": [
+          "AGT"
+        ],
+        "EDN1": [
+          "EDN1"
+        ],
+        "EPO": [
+          "EPO"
+        ],
+        "FLT4": [
+          "FLT4"
+        ],
+        "GREM1": [
+          "GREM1"
+        ],
+        "IL1B": [
+          "IL1B"
+        ],
+        "IL6": [
+          "IL6"
+        ],
+        "IL10": [
+          "IL10"
+        ],
+        "IL12RB1": [
+          "IL12RB1"
+        ],
+        "NOS3": [
+          "NOS3"
+        ],
+        "TGFB1": [
+          "TGFB1"
+        ],
+        "IGF2": [
+          "IGF2"
+        ],
+        "VEGFA": [
+          "VEGFA"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:36499658 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 35071371,
+      "title": "Turning Platelets Off and On: Role of RhoGAPs and RhoGEFs in Platelet Activity.",
+      "abstract": "Platelet cytoskeletal reorganisation is a critical component of platelet activation and thrombus formation in haemostasis. The Rho GTPases RhoA, Rac1 and Cdc42 are the primary drivers in the dynamic reorganisation process, leading to the development of filopodia and lamellipodia which dramatically increase platelet surface area upon activation. Rho GTPases cycle between their active (GTP-bound) and inactive (GDP-bound) states through tightly regulated processes, central to which are the guanine nucleotide exchange factors (GEFs) and GTPase-activating proteins (GAPs). GEFs catalyse the dissociation of GDP by inducing changes in the nucleotide binding site, facilitating GTP binding and activating Rho GTPases. By contrast, while all GTPases possess intrinsic hydrolysing activity, this reaction is extremely slow. Therefore, GAPs catalyse the hydrolysis of GTP to GDP, reverting Rho GTPases to their inactive state. Our current knowledge of these proteins is constantly being updated but there is considerably less known about the functionality of Rho GTPase specific GAPs and GEFs in platelets. In the present review, we discuss GAP and GEF proteins for Rho GTPases identified in platelets, their regulation, biological function and present a case for their further study in platelets.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "RHOG": [
+          "RhoGAPs",
+          "RhoGEFs"
+        ],
+        "RHOA": [
+          "RhoA"
+        ],
+        "RAC1": [
+          "Rac1"
+        ],
+        "CDC42": [
+          "Cdc42"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:35071371 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 34943902,
+      "title": "Pathophysiological Mechanisms in Neurodevelopmental Disorders Caused by Rac GTPases Dysregulation: What's behind Neuro-RACopathies.",
+      "abstract": "Rho family guanosine triphosphatases (GTPases) regulate cellular signaling and cytoskeletal dynamics, playing a pivotal role in cell adhesion, migration, and cell cycle progression. The Rac subfamily of Rho GTPases consists of three highly homologous proteins, Rac 1-3. The proper function of Rac1 and Rac3, and their correct interaction with guanine nucleotide-exchange factors (GEFs) and GTPase-activating proteins (GAPs) are crucial for neural development. Pathogenic variants affecting these delicate biological processes are implicated in different medical conditions in humans, primarily neurodevelopmental disorders (NDDs). In addition to a direct deleterious effect produced by genetic variants in the RAC genes, a dysregulated GTPase activity resulting from an abnormal function of GEFs and GAPs has been involved in the pathogenesis of distinctive emerging conditions. In this study, we reviewed the current pertinent literature on Rac-related disorders with a primary neurological involvement, providing an overview of the current knowledge on the pathophysiological mechanisms involved in the neuro-RACopathies.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "AKT1": [
+          "RAC",
+          "Rac"
+        ],
+        "RAC1": [
+          "Rac 1-3",
+          "Rac1"
+        ],
+        "RAC3": [
+          "Rac3"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:34943902 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 33628114,
+      "title": "Functional and Therapeutic Relevance of Rho GTPases in Innate Immune Cell Migration and Function during Inflammation: An In Silico Perspective.",
+      "abstract": "Systematic regulation of leukocyte migration to the site of infection is a vital step during immunological responses. Improper migration and localization of immune cells could be associated with disease pathology as seen in systemic inflammation. Rho GTPases act as molecular switches during inflammatory cell migration by cycling between Rho-GDP (inactive) to Rho-GTP (active) forms and play an essential role in the precise regulation of actin cytoskeletal dynamics as well as other immunological functions of leukocytes. Available reports suggest that the dysregulation of Rho GTPase signaling is associated with various inflammatory diseases ranging from mild to life-threatening conditions. Therefore, it is crucial to understand the step-by-step activation and inactivation of GTPases and the functioning of different Guanine Nucleotide Exchange Factors (GEFs) and GTPase-Activating Proteins (GAPs) that regulate the conversion of GDP to GTP and GTP to GDP exchange reactions, respectively. Here, we describe the molecular organization and activation of various domains of crucial elements associated with the activation of Rho GTPases using solved PDB structures. We will also present the latest evidence available on the relevance of Rho GTPases in the migration and function of innate immune cells during inflammation. This knowledge will help scientists design promising drug candidates against the Rho-GTPase-centric regulatory molecules regulating inflammatory cell migration.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:33628114 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 33916163,
+      "title": "Rho GTPases in Retinal Vascular Diseases.",
+      "abstract": "The Rho family of small GTPases (Rho GTPases) act as molecular switches that transduce extrinsic stimuli into cytoskeletal rearrangements. In vascular endothelial cells (ECs), Cdc42, Rac1, and RhoA control cell migration and cell-cell junctions downstream of angiogenic and inflammatory cytokines, thereby regulating vascular formation and permeability. While these Rho GTPases are broadly expressed in various types of cells, RhoJ is enriched in angiogenic ECs. Semaphorin 3E (Sema3E) releases RhoJ from the intracellular domain of PlexinD1, by which RhoJ induces actin depolymerization through competition with Cdc42 for their common effector proteins. RhoJ further mediates the Sema3E-induced association of PlexinD1 with vascular endothelial growth factor receptor (VEGFR) 2 and the activation of p38. Upon stimulation with VEGF-A, RhoJ facilitates the formation of a holoreceptor complex comprising VEGFR2, PlexinD1, and neuropilin-1, leading to the prevention of VEGFR2 degradation and the maintenance of intracellular signal transduction. These pleiotropic roles of RhoJ are required for directional EC migration in retinal angiogenesis. This review highlights the latest insights regarding Rho GTPases in the field of vascular biology, as it will be informative to consider their potential as targets for the treatment of aberrant angiogenesis and hyperpermeability in retinal vascular diseases.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CDC42": [
+          "Cdc42"
+        ],
+        "RAC1": [
+          "Rac1"
+        ],
+        "RHO1": [
+          "RhoA"
+        ],
+        "ACT42A": [
+          "actin"
+        ],
+        "P38B": [
+          "p38"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:33916163 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 40549904,
+      "title": "Bone morphogenetic protein-9 controls pulmonary vascular growth and remodeling.",
+      "abstract": "Pulmonary arterial hypertension (PAH) and hereditary hemorrhagic telangiectasia (HHT) are two distinct vascular diseases linked to impaired signaling through bone morphogenetic protein (BMP) receptor complexes in endothelial cells. Although BMP-9 plays a central role in activating this pathway by binding to ALK1 and BMPR-II, its precise function in the pulmonary microvasculature has remained unclear. In this study, we demonstrate a role for BMP-9 in regulating pulmonary vascular architecture and homeostasis. Our findings reveal that BMP-9 signaling intersects with VEGF pathways and contributes to the delicate balance between vascular growth and remodeling in the lungs. We also show that disruption of this pathway can shift vascular responses toward an HHT-like state, potentially altering disease susceptibility. These insights offer a unique perspective on how BMP-9 and ALK1 shape pulmonary vascular biology and suggest that targeting this axis could inform future strategies for treating complex vascular diseases such as PAH.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "GDF2": [
+          "Bone morphogenetic protein-9",
+          "BMP-9"
+        ],
+        "ACVRL1": [
+          "ALK1"
+        ],
+        "BMPR2": [
+          "BMPR-II"
+        ],
+        "VEGFA": [
+          "VEGF"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:40549904 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 40126693,
+      "title": "PI(3,4,5)P3-mediated Cdc42 activation regulates macrophage podosome assembly.",
+      "abstract": "Podosomes are adhesion structures with densely-polymerized F-actin. While PI(3,4,5)P3 and Cdc42-GTP are known factors to trigger WASP-mediated actin polymerization at the macrophage podosome, their causal mechanism to activate WASP remains unclear. Here, we demonstrate that spatially elevated Cdc42-GTP is a downstream effector of local PI(3,4,5)P3 production at the podosome. We further examine the expression and distribution of 19 Cdc42 guanine exchange factors (GEFs) and identify VAV1 as the key PI(3,4,5)P3-dependent Cdc42 GEF. VAV1 is spatially enriched at the macrophage podosome, and the association of VAV1 with the membrane plays a critical role in upregulating its GEF activity. Reintroduction of wildtype VAV1, rather than the PI(3,4,5)P3-binding deficient or catalytically dead mutants restores the matrix degradation and chemotactic migration of VAV1-knockdown macrophage. Thus, the biogenesis of PI(3,4,5)P3 acts as an upstream signal to locally recruit VAV1 and in turn triggers the guanine nucleotide exchange of Cdc42. Elevated levels of Cdc42-GTP then promote WASP-mediated podosome assembly and macrophage chemotaxis.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CDC42": [
+          "Cdc42"
+        ],
+        "WAS": [
+          "WASP"
+        ],
+        "VAV1": [
+          "VAV1"
+        ]
+      },
+      "relations": [
+        {
+          "gene1": "WAS",
+          "gene2": "CDC42",
+          "type": "Positive_Correlation",
+          "score": 0.9993
+        }
+      ],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:40126693 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36348464,
+      "title": "RHO GTPase family in hepatocellular carcinoma.",
+      "abstract": "RHO GTPases are a subfamily of the RAS superfamily of proteins, which are highly conserved in eukaryotic species and have important biological functions, including actin cytoskeleton reorganization, cell proliferation, cell polarity, and vesicular transport. Recent studies indicate that RHO GTPases participate in the proliferation, migration, invasion and metastasis of cancer, playing an essential role in the tumorigenesis and progression of hepatocellular carcinoma (HCC). This review first introduces the classification, structure, regulators and functions of RHO GTPases, then dissects its role in HCC, especially in migration and metastasis. Finally, we summarize inhibitors targeting RHO GTPases and highlight the issues that should be addressed to improve the potency of these inhibitors.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:36348464 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 35257471,
+      "title": "Effect of cadmium on Rho GTPases signal transduction during osteoclast differentiation.",
+      "abstract": "Osteoclasts are the key target cells for cadmium (Cd)-induced bone metabolism diseases, while Rho GTPases play an important role in osteoclast differentiation and bone resorption. To identify new therapeutic targets of Cd-induced bone diseases; we evaluated signal transduction through Rho GTPases during osteoclast differentiation under the influence of Cd. In osteoclastic precursor cells, 10 nM Cd induced pseudopodia stretching, promoted cell migration, upregulated the levels of Cdc42, and RhoQ mRNAs and downstream Rho-associated coiled-coil kinase 1 (ROCK1) and ROCK2 proteins, and downregulated the actin-related protein 2/3 (ARP2/3) levels. Cd at 2 and 5 muM shortened the pseudopodia, inhibited cell migration, and decreased ROCK1, ROCK2, and ARP2/3 protein levels; Cd at 5 muM also reduced the mRNA expression levels of Rac1, Rac2, and RhoU mRNAs and decreased the level of phosphorylated (p)-cofilin. In osteoclasts, 10 nM Cd induced the formation of sealing zones, slightly upregulated Cdc42 mRNA levels and ROCK2 and ARP2/3 protein levels and significantly reduced p-cofilin levels. Cd at 2 muM and 5 muM Cd blocked the fusion of precursor cells; and 5 muM Cd downregulated the expression levels of RhoB, Rac1, Rac3, and RhoU mRNAs, and ROCK1, p-cofilin and ARP2/3 protein levels, significantly. In vivo, Cd (at 5 or 25 mg/L) increased the levels of key proteins RhoA, Rac1/2/3, Cdc42, and RhoU and their mRNAs in bone marrow cells. In summary, the results suggested that Cd affected the differentiation process of osteoclast and altered the expression of several Rho GTPases, which might be crucial targets of Cd during the differentiation of osteoclasts.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "CDC42": [
+          "Cdc42"
+        ],
+        "RHOQ": [
+          "RhoQ"
+        ],
+        "ROCK1": [
+          "ROCK1",
+          "Rho-associated coiled-coil kinase 1"
+        ],
+        "ROCK2": [
+          "ROCK2"
+        ],
+        "ACTR2": [
+          "actin-related protein 2/3",
+          "ARP2/3"
+        ],
+        "RAC1": [
+          "Rac1",
+          "Rac1/2/3"
+        ],
+        "RAC2": [
+          "Rac2"
+        ],
+        "RHOU": [
+          "RhoU"
+        ],
+        "CFL1": [
+          "cofilin"
+        ],
+        "RHOB": [
+          "RhoB"
+        ],
+        "RAC3": [
+          "Rac3"
+        ],
+        "RHOA": [
+          "RhoA"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:35257471 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 33570449,
+      "title": "Role of Rho-GTPases in megakaryopoiesis.",
+      "abstract": "Megakaryocytes (MKs) are the bone marrow (BM) cells that generate blood platelets by a process that requires: i) polyploidization responsible for the increased MK size and ii) cytoplasmic organization leading to extension of long pseudopods, called proplatelets, through the endothelial barrier to allow platelet release into blood. Low level of localized RHOA activation prevents actomyosin accumulation at the cleavage furrow and participates in MK polyploidization. In the platelet production, RHOA and CDC42 play opposite, but complementary roles. RHOA inhibits both proplatelet formation and MK exit from BM, whereas CDC42 drives the development of the demarcation membranes and MK migration in BM. Moreover, the RhoA or Cdc42 MK specific knock-out in mice and the genetic alterations in their down-stream effectors in human induce a thrombocytopenia demonstrating their key roles in platelet production. A better knowledge of Rho-GTPase signalling is thus necessary to develop therapies for diseases associated with platelet production defects.Abbreviations: AKT: Protein Kinase BARHGEF2: Rho/Rac Guanine Nucleotide Exchange Factor 2ARP2/3: Actin related protein 2/3BM: Bone marrowCDC42: Cell division control protein 42 homologCFU-MK: Colony-forming-unit megakaryocyteCIP4: Cdc42-interacting protein 4mDIA: DiaphanousDIAPH1; Protein diaphanous homolog 1ECT2: Epithelial Cell Transforming Sequence 2FLNA: Filamin AGAP: GTPase-activating proteins or GTPase-accelerating proteinsGDI: GDP Dissociation InhibitorGEF: Guanine nucleotide exchange factorHDAC: Histone deacetylaseLIMK: LIM KinaseMAL: Megakaryoblastic leukaemiaMARCKS: Myristoylated alanine-rich C-kinase substrateMKL: Megakaryoblastic leukaemiaMLC: Myosin light chainMRTF: Myocardin Related Transcription FactorOTT: One-Twenty Two ProteinPACSIN2: Protein Kinase C And Casein Kinase Substrate In Neurons 2PAK: P21-Activated KinasePDK: Pyruvate Dehydrogenase kinasePI3K: Phosphoinositide 3-kinasePKC: Protein kinase CPTPRJ: Protein tyrosine phosphatase receptor type JRAC: Ras-related C3 botulinum toxin substrate 1RBM15: RNA Binding Motif Protein 15RHO: Ras homologousROCK: Rho-associated protein kinaseSCAR: Suppressor of cAMP receptorSRF: Serum response factorSRC: SarcTAZ: Transcriptional coactivator with PDZ motifTUBB1: Tubulin beta1VEGF: Vascular endothelial growth factorWAS: Wiskott Aldrich syndromeWASP: Wiskott Aldrich syndrome proteinWAVE: WASP-family verprolin-homologous proteinWIP: WASP-interacting proteinYAP: Yes-associated protein.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "RHOA": [
+          "RHOA",
+          "RhoA"
+        ],
+        "CDC42": [
+          "Cdc42",
+          "CDC42"
+        ],
+        "AKT1": [
+          "AKT"
+        ],
+        "ACTR2": [
+          "Actin related protein 2/3BM"
+        ],
+        "PDLIM5": [
+          "LIM"
+        ],
+        "MYOCD": [
+          "Myocardin"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:33570449 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36054271,
+      "title": "Bone morphogenetic protein pathway responses and alterations of osteogenesis in metastatic prostate cancers.",
+      "abstract": "BACKGROUND: Prostate cancer is a common cancer in men that annually results in more than 33 000 US deaths. Mortality from prostate cancer is largely from metastatic disease, reflecting on the great strides in the last century of treatments in care for the localized disease. Metastatic castrate resistant prostate cancer (mCRPC) will commonly travel to the bone, creating unique bone pathology that requires nuanced treatments in those sites with surgical, radio and chemotherapeutic interventions. The bone morphogenetic protein (BMP) pathway has been historically studied in the capacity to regulate the osteogenic nature of new bone. New mineralized bone generation is a frequent and common observation in mCRPC and referred to as blastic bone lesions. Less common are bone destructive lesions that are termed lytic. METHODS: We queried the cancer genome atlas (TCGA) prostate cancer databases for the expression of the BMP pathway and found that distinct gene expression of the ligands, soluble antagonists, receptors, and intracellular mediators were altered in localized versus metastatic disease. Human prostate cancer cell lines have an innate ability to promote blastic- or lytic-like bone lesions and we hypothesized that inhibiting BMP signaling in these cell lines would result in a distinct change in osteogenesis gene expression with BMP inhibition. RESULTS: We found unique and common changes by comparing these cell lines response and unique BMP pathway alterations. We treated human PCa cell lines with distinct bone pathologic phenotypes with the BMP inhibitor DMH1 and found distinct osteogenesis responses. We analyzed distinct sites of metastatic PCa in the TCGA and found that BMP signaling was selectively altered in commons sites such as lymph node, bone and liver compared to primary tumors. CONCLUSIONS: Overall we conclude that BMPs in metastatic prostate cancer are important signals and functional mediators of diverse processes that have potential for individualized precision oncology in mCRPC.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "BMP1": [
+          "Bone morphogenetic protein",
+          "bone morphogenetic protein",
+          "BMP"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:36054271 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 35454871,
+      "title": "The Role of Fast-Cycling Atypical RHO GTPases in Cancer.",
+      "abstract": "The RHO GTPases comprise a subfamily within the RAS superfamily of small GTP-hydrolyzing enzymes and have primarily been ascribed roles in regulation of cytoskeletal dynamics in eukaryotic cells. An oncogenic role for the RHO GTPases has been disregarded, as no activating point mutations were found for genes encoding RHO GTPases. Instead, dysregulated expression of RHO GTPases and their regulators have been identified in cancer, often in the context of increased tumor cell migration and invasion. In the new landscape of cancer genomics, activating point mutations in members of the RHO GTPases have been identified, in particular in RAC1, RHOA, and CDC42, which has suggested that RHO GTPases can indeed serve as oncogenes in certain cancer types. This review describes the current knowledge of these cancer-associated mutant RHO GTPases, with a focus on how their altered kinetics can contribute to cancer progression.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "RAC1": [
+          "RAC1"
+        ],
+        "RHOA": [
+          "RHOA"
+        ],
+        "CDC42": [
+          "CDC42"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:35454871 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 33742396,
+      "title": "Analyzing the Roles of Rho GTPases in Cancer Cell Adhesion to Endothelial Cells Under Flow Conditions.",
+      "abstract": "Adhesion between cancer cells and endothelial cells, lining the blood vessels, is an important event in tumor progression and metastasis formation. The expression of Rho GTPases is frequently altered in cancers, and they are known to regulate cell migration through their effects on adhesion and cytoskeletal dynamics. Several different types of assays are used to investigate how cancer cells attach to and cross the endothelium. Here, we describe an in vitro technique to study the effects of Rho GTPases on human cancer cell adhesion to endothelial cells under shear stress coupled to live cell imaging.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:33742396 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 34777599,
+      "title": "The Role of Rho GTPases During Fibroblast Spreading, Migration, and Myofibroblast Differentiation in 3D Synthetic Fibrous Matrices.",
+      "abstract": "INTRODUCTION: Connective tissue repair and mechanosensing are tightly entwined in vivo and occur within a complex three-dimensional (3D), fibrous extracellular matrix (ECM). Typically driven by activated fibroblasts, wound repair involves well-defined steps of cell spreading, migration, proliferation, and fibrous ECM deposition. While the role of Rho GTPases in regulating these processes has been explored extensively in two-dimensional cell culture models, much less is known about their role in more physiologic, 3D environments. METHODS: We employed a 3D, fibrous and protease-sensitive hydrogel model of interstitial ECM to study the interplay between Rho GTPases and fibrous matrix cues in fibroblasts during wound healing. RESULTS: Modulating fiber density within protease-sensitive hydrogels, we confirmed previous findings that heightened fiber density promotes fibroblast spreading and proliferation. The presence of matrix fibers furthermore corresponded to increased cell migration speeds and macroscopic hydrogel contraction arising from fibroblast generated forces. During fibroblast spreading, Rac1 and RhoA GTPase activity proved crucial for fiber-mediated cell spreading and contact guidance along matrix fibers, while Cdc42 was dispensable. In contrast, interplay between RhoA, Rac1, and Cdc42 contributed to fiber-mediated myofibroblast differentiation and matrix contraction over longer time scales. CONCLUSION: These observations may provide insights into tissue repair processes in vivo and motivate the incorporation of cell-adhesive fibers within synthetic hydrogels for material-guided wound repair strategies. SUPPLEMENTARY INFORMATION: The online version contains supplementary material available at 10.1007/s12195-021-00698-5.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "RAC1": [
+          "Rac1"
+        ],
+        "RHOA": [
+          "RhoA"
+        ],
+        "CDC42": [
+          "Cdc42"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:34777599 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36690621,
+      "title": "Role of Rho GTPases in inflammatory bowel disease.",
+      "abstract": "Rat sarcoma virus homolog (Rho) guanosine triphosphatases (GTPases) function as \"molecular switch\" in cellular signaling regulation processes and are associated with the pathogenesis of inflammatory bowel disease (IBD). This chronic intestinal tract inflammation primarily encompasses two diseases: Crohn's disease and ulcerative colitis. The pathogenesis of IBD is complex and considered to include four main factors and their interactions: genetics, intestinal microbiota, immune system, and environment. Recently, several novel pathogenic components have been identified. In addition, potential therapies for IBD targeting Rho GTPases have emerged and proven to be clinically effective. This review mainly focuses on Rho GTPases and their possible mechanisms in IBD pathogenesis. The therapeutic possibility of Rho GTPases is also discussed.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:36690621 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 36894017,
+      "title": "Differential role for rapid proteostasis in Rho GTPase-mediated control of quiescent endothelial integrity.",
+      "abstract": "Endothelial monolayer permeability is regulated by actin dynamics and vesicular traffic. Recently, ubiquitination was also implicated in the integrity of quiescent endothelium, as it differentially controls the localization and stability of adhesion and signaling proteins. However, the more general effect of fast protein turnover on endothelial integrity is not clear. Here, we found that inhibition of E1 ubiquitin ligases induces a rapid, reversible loss of integrity in quiescent, primary human endothelial monolayers, accompanied by increased F-actin stress fibers and the formation of intercellular gaps. Concomitantly, total protein and activity of the actin-regulating GTPase RhoB, but not its close homolog RhoA, increase ~10-fold in 5 to 8 h. We determined that the depletion of RhoB, but not of RhoA, the inhibition of actin contractility, and the inhibition of protein synthesis all significantly rescue the loss of cell-cell contact induced by E1 ligase inhibition. Collectively, our data suggest that in quiescent human endothelial cells, the continuous and fast turnover of short-lived proteins that negatively regulate cell-cell contact is essential to preserve monolayer integrity.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "RHOB": [
+          "RhoB"
+        ],
+        "RHOA": [
+          "RhoA"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:36894017 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 35005558,
+      "title": "Rho GTPase signaling in rheumatic diseases.",
+      "abstract": "Rho guanosine triphosphatase (GTPases), as molecular switches, have been identified to be dysregulated and involved in the pathogenesis of various rheumatic diseases, mainly including rheumatoid arthritis, osteoarthritis, systemic sclerosis, and systemic lupus erythematosus. Downstream pathways involving multiple types of cells, such as fibroblasts, chondrocytes, synoviocytes, and immunocytes are mediated by activated Rho GTPases to promote pathogenesis. Targeted therapy via inhibitors of Rho GTPases has been implicated in the treatment of rheumatic diseases, demonstrating promising effects. In this review, the effects of Rho GTPases in the pathogenesis of rheumatic diseases are summarized, and the Rho GTPase-mediated pathways are elucidated. Therapeutic strategies using Rho GTPase inhibitors in rheumatic diseases are also discussed to provide insights for further exploration of targeted therapy in preclinical studies and clinical practice. Future directions on studies of Rho GTPases in rheumatic diseases based on current understandings are provided.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {},
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:35005558 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 34830789,
+      "title": "The Large GTPase, GBP-2, Regulates Rho Family GTPases to Inhibit Migration and Invadosome Formation in Breast Cancer Cells.",
+      "abstract": "Breast cancer is the most common cancer in women. Despite advances in early detection and treatment, it is predicted that over 43,000 women will die of breast cancer in 2021. To lower this number, more information about the molecular players in breast cancer are needed. Guanylate-Binding Protein-2 has been correlated with better prognosis in breast cancer. In this study, we asked if the expression of GBP-2 in breast cancer merely provided a biomarker for improved prognosis or whether it actually contributed to improving outcome. To answer this, the 4T1 model of murine breast cancer was used. 4T1 cells themselves are highly aggressive and highly metastatic, while 67NR cells, isolated from the same tumor, do not leave the primary site. The expression of GBP-2 was examined in the two cell lines and found to be inversely correlated with aggressiveness/metastasis. Proliferation, migration, and invadosome formation were analyzed after altering the expression levels of GBP-2. Our experiments show that GBP-2 does not alter the proliferation of these cells but inhibits migration and invadosome formation downstream of regulation of Rho GTPases. Together these data demonstrate that GBP-2 is responsible for cell autonomous activities that make breast cancer cells less aggressive.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "GBP2": [
+          "GBP-2",
+          "Guanylate-Binding Protein-2"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:34830789 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    },
+    {
+      "pmid": 40396280,
+      "title": "The role of RAC1 in resistance to targeted therapies in cancer.",
+      "abstract": "RAC1 is a small 21 kDa RHO GTPase that plays a pivotal role in regulating actin cytoskeletal dynamics and cell growth. Alterations in the activity of RAC1 are implicated in a range of diseases, including cancer. Increased RAC1 activity, due to overexpression and/or activating mutations, drives transcriptional upregulation, reactive oxygen species production, mesenchymal-to-epithelial transition, membrane ruffling, and uncontrolled cell proliferation, which are hallmarks of an oncogenic phenotype. While RAC1-activating mutations alone do not appear sufficient to transform cells, their combination with other common mutations, such as BRAF, NRAS, or NF1, have been linked to drug resistance and significantly worsen patient prognosis and hinder treatment responses. The precise mechanisms underlying drug resistance, and the regulation of RAC1 splicing remain poorly understood. RAC1 is a challenging therapeutic target due to its ubiquitous presence and essential cellular functions. To date, there are no established standard treatments for cancers that harbour an additional RAC1 mutation or for RAC1-mediated drug resistance. Current experimental strategies aim to target RAC1 localization, its activators (e.g. guanine nucleotide exchange factors) and downstream effectors. Regulating RAC1 expression by targeting epigenetic regulators, and direct targeting of RAC1 itself, may also be possible in the near future.",
+      "authors": "",
+      "journal": "",
+      "year": 0,
+      "gene_mentions": {
+        "RAC1": [
+          "RAC1"
+        ],
+        "BRAF": [
+          "BRAF"
+        ],
+        "NRAS": [
+          "NRAS"
+        ],
+        "NF1": [
+          "NF1"
+        ]
+      },
+      "relations": [],
+      "evidence_sentences": {},
+      "verification": [
+        {
+          "level": 1,
+          "passed": false,
+          "confidence": 0.0,
+          "details": "Found []; missing ['MECOM', 'FBXL7', 'RP1', 'DOCK4', 'FLT1'] in PMID:40396280 annotations",
+          "method": "citation_check"
+        }
+      ],
+      "badge": "[GENE_MISMATCH]"
+    }
+  ],
+  "statistics": {
+    "total_papers": 30,
+    "total_queries": 8
+  }
+}

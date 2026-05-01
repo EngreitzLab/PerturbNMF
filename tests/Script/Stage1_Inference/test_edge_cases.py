@@ -4,11 +4,11 @@ Edge-case tests for torch-cNMF inference pipeline (GPU).
 Tests boundary conditions and parameter variations that could cause crashes.
 
 Run via SLURM:
-    sbatch tests/Script/run_gpu_test_edge_cases.sh
+    sbatch tests/Script/Stage1_Inference/run_gpu_test_edge_cases.sh
 
 Or directly on a GPU node:
     conda activate torch-nmf-dl
-    python -m pytest tests/Script/Inference/test_edge_cases.py -v
+    python -m pytest tests/Script/Stage1_Inference/test_edge_cases.py -v
 """
 
 import os
@@ -22,7 +22,7 @@ import scipy.sparse as sp
 from .conftest import TEST_SEED, PERSISTENT_OUTPUT
 
 from torch_cnmf import cNMF
-from Inference.src.run_cNMF import run_cnmf_consensus, compile_results
+from Stage1_Inference.src.run_cNMF import run_cnmf_consensus, compile_results
 
 # Minimal params for fast tests
 # Need >= 5 iters for density filtering to work at thresh=2.0

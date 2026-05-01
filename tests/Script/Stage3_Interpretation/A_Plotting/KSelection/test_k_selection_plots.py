@@ -6,7 +6,7 @@ Tests use synthetic data and verify that plots are saved to disk.
 Usage:
     eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking
     cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
-    python -m pytest tests/Script/Interpretation/Plotting/KSelection/test_k_selection_plots.py -v
+    python -m pytest tests/Script/Stage3_Interpretation/A_Plotting/KSelection/test_k_selection_plots.py -v
 """
 
 import os
@@ -19,7 +19,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from Interpretation.Plotting.src.k_selection_plots import (
+from Stage3_Interpretation.A_Plotting.src.k_selection_plots import (
     _style_ax,
     _filter_components,
     _load_stats_file,

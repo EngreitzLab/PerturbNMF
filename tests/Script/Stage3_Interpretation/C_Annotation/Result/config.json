@@ -1,0 +1,28 @@
+{
+  "excel_path": "src/Stage3_Interpretation/C_Annotation/Literature_search/test_programs.xlsx",
+  "output_dir": "src/Stage3_Interpretation/C_Annotation/Literature_search/test_output",
+  "max_pubtator_results": 50,
+  "max_llm_queries": 8,
+  "max_papers_per_program": 30,
+  "llm_provider": "anthropic",
+  "llm_model": "claude-4-sonnet",
+  "llm_max_tokens": 4096,
+  "enable_citation_check": true,
+  "enable_direction_check": true,
+  "enable_semantic_check": false,
+  "species": 10090,
+  "organism": "mouse",
+  "cache_dir": "src/Stage3_Interpretation/C_Annotation/Literature_search/test_output/cache",
+  "resume": true,
+  "programs": [
+    34
+  ],
+  "col_program_id": "program_id",
+  "col_top_genes": "top_genes",
+  "col_positive_regulators": "positive_regulators",
+  "col_negative_regulators": "negative_regulators",
+  "col_day": "day_most_active",
+  "col_cell_types": "cell_types",
+  "col_go_enrichment": "go_enrichment",
+  "col_other_enrichment": "other_enrichment"
+}

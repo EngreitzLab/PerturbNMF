@@ -18,57 +18,57 @@ DEFAULT_EMAIL = "ymo@stanford.edu"
 # Stage definitions: script path (relative), conda env, whether GPU is needed
 STAGES = {
     "inference-sk": {
-        "script": "src/Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py",
+        "script": "src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py",
         "conda_env": "sk-cNMF",
         "gpu": False,
     },
     "inference-torch": {
-        "script": "src/Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py",
+        "script": "src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py",
         "conda_env": "torch-cNMF",
         "gpu": True,
     },
     "evaluation": {
-        "script": "src/Evaluation/Slurm_Version/cNMF_evaluation_pipeline.py",
+        "script": "src/Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py",
         "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
     "k-selection": {
-        "script": "src/Interpretation/Plotting/Slurm_Version/cNMF_k_selection.py",
+        "script": "src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_k_selection.py",
         "conda_env": "torch-cNMF",
         "gpu": False,
     },
     "program-analysis": {
-        "script": "src/Interpretation/Plotting/Slurm_Version/cNMF_program_analysis.py",
+        "script": "src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_program_analysis.py",
         "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
     "perturbed-gene": {
-        "script": "src/Interpretation/Plotting/Slurm_Version/cNMF_perturbed_gene_analysis.py",
+        "script": "src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_perturbed_gene_analysis.py",
         "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
     "annotation": {
-        "script": "src/Interpretation/Annotation/Slurm_Version/run_annotation.py",
+        "script": "src/Stage3_Interpretation/C_Annotation/Slurm_Version/run_annotation.py",
         "conda_env": "progexplorer",
         "gpu": False,
     },
     "excel-summary": {
-        "script": "src/Interpretation/Summary_table/src/Compile_excel_sheet.py",
+        "script": "src/Stage3_Interpretation/B_Summarization/src/Compile_excel_sheet.py",
         "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
     "u-test-calibration": {
-        "script": "src/Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py",
+        "script": "src/Stage2_Evaluation/B_Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py",
         "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
     "crt-calibration": {
-        "script": "src/Calibration/Slurm_version/CRT/CRT.py",
+        "script": "src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/CRT.py",
         "conda_env": "programDE",
         "gpu": False,
     },
     "matched-cell-de": {
-        "script": "src/Calibration/Slurm_version/Matched_cell_programDE/run_matching_de_batch.R",
+        "script": "src/Stage2_Evaluation/B_Calibration/Slurm_version/Matched_cell_programDE/run_matching_de_batch.R",
         "conda_env": "programDE",
         "gpu": False,
         "interpreter": "Rscript",

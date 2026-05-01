@@ -4,20 +4,16 @@
 flowchart TD
     A["Input: counts.h5ad\n(cells x genes)"] --> B["Stage 1: Inference\n(sk-cNMF CPU or torch-cNMF GPU)"]
     B --> D["Output: cNMF_{K}_{thresh}.h5mu\n(MuData with scores + loadings)"]
-    D --> E["Stage 2: Evaluation\n(9 metrics)"]
+    D --> E["Stage 2a: Metrics\n(9 metrics)"]
     E --> F["Output: Evaluation/{K}_{thresh}/\n(CSV results per metric)"]
     E --> G["Stage 2b: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
     G --> F
-    F --> I["Stage 3a: K Selection Plots"]
-    F --> J["Stage 3b: Program Analysis Plots"]
-    F --> K["Stage 3c: Perturbed Gene Plots"]
+    F --> I["Stage 3a: Plotting\n(K-selection, Program analysis, Perturbation analysis)"]
     I --> L["Output: PDFs + PNGs"]
-    J --> L
-    K --> L
-    F --> Q["Stage 3d: Annotation\n(LLM-driven gene program annotation)"]
-    Q --> L
-    F --> S["Stage 3e: Excel Summarization"]
+    F --> S["Stage 3b: Excel Summarization"]
     S --> L
+    F --> Q["Stage 3c: Annotation\n(LLM-driven gene program annotation)"]
+    Q --> L
     M["Guide Annotation TSV"] --> E
     N["GWAS Data (OpenTargets)"] --> E
     O["Normalized Counts .h5ad"] --> E

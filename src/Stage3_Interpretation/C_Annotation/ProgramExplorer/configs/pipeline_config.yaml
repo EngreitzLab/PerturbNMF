@@ -1,0 +1,82 @@
+# Pipeline Configuration for Annotation Module
+# =============================================
+#
+# This is a template configuration for the gene program annotation pipeline.
+# Part of PerturbNMF/src/Stage3_Interpretation/C_Annotation/
+#
+# Usage:
+#   python src/Stage3_Interpretation/C_Annotation/src/run_pipeline.py \
+#     --config src/Stage3_Interpretation/C_Annotation/configs/pipeline_config.yaml
+#
+# For partial runs:
+#   ... --stop-after batch_prepare
+#   ... --start-from parse_results
+
+# =============================================================================
+# REQUIRED: Input files
+# =============================================================================
+input:
+  # Gene loading matrix with columns: Name, Score, RowID (or program_id)
+  # Tip: Use convert_spectra_to_csv.py to convert cNMF gene_spectra_score TSV
+  gene_loading: /path/to/gene_loading.csv
+
+  # Raw cell-type enrichment CSV (summary auto-generated in step 1)
+  # Required columns: cell_type, program, log2_fc_in_vs_out, fdr
+  celltype_enrichment: None
+
+  # SCEPTRE regulator results (Perturb-seq analysis)
+  # Tip: Use compile_regulators.py to merge per-timepoint files
+  regulator_file: /path/to/regulators.csv
+
+# =============================================================================
+# REQUIRED: Output directory (all results go here)
+# =============================================================================
+output_dir: /path/to/output
+
+# =============================================================================
+# OPTIONAL: Processing settings
+# =============================================================================
+
+# Limit to specific topic/program IDs (null = process all)
+topics: null
+
+# Species for STRING-DB (10090 = mouse, 9606 = human)
+species: 9606
+
+# Literature search keyword (for PubMed queries)
+keyword: '(endothelial OR endothelium OR "vascular endothelial")'
+
+# LLM prompt context
+annotation_role: developmental biologist
+annotation_context: 'a gene program extracted from single-cell Perturb-seq'
+
+# Gene selection parameters
+n_top_genes: 300      # Top N genes per program for STRING enrichment
+top_loading: 20       # Top loading genes for LLM prompts
+top_unique: 10        # Top unique genes for LLM prompts
+top_enrichment: 3     # Top enrichment terms per category
+genes_per_term: 10    # Genes to show per enrichment term
+
+# Regulator selection parameters
+top_positive_regulators: 3
+top_negative_regulators: 3
+regulator_significance_threshold: 0.05
+
+# =============================================================================
+# OPTIONAL: LLM batch settings
+# =============================================================================
+
+# LLM backend: "anthropic" (default, recommended) or "vertex"
+llm_backend: anthropic
+
+# Model name
+llm_model: claude-4-5-sonnet
+
+# Max tokens for LLM response
+llm_max_tokens: 8192
+
+# Wait for batch completion (set false for async)
+llm_wait: true
+
+# Resume from cached API results when possible
+resume: true

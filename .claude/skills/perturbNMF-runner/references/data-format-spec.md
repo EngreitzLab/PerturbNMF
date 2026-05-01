@@ -78,14 +78,14 @@ Optional TSV file with guide metadata. Used for evaluation and calibration.
 ### GWAS Data
 - OpenTargets L2G filtered data
 - Used for trait enrichment analysis in evaluation
-- Path: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz`
+- Path: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz`
 
 ### Motif Files
 - HOCOMOCO motif database in MEME format
 - Used for motif enrichment analysis
-- Path: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/Evaluation/Resources/hocomoco_meme.meme`
+- Path: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/hocomoco_meme.meme`
 
 ### Genome Sequence
 - hg38 reference genome FASTA
 - Required for motif analysis
-- Path: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/Evaluation/Resources/hg38.fa`
+- Path: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/hg38.fa`

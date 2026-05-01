@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # SLURM job configuration
 #SBATCH --job-name=102325_100K_cells_20iter_torch_halsvar_online_e7_RTX_0_2    # Job name
@@ -90,7 +91,7 @@ nvidia-smi 2>/dev/null || echo "GPU monitoring not available"
 
 # Run the Python script
 echo "Running Python script..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py \
+python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py \
         --counts_fn "/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Cell_data/shuffled_100K_250genes.h5ad" \
         --output_directory "$OUT_DIR" \
         --run_name "$RUN_NAME" \
@@ -129,38 +130,36 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Inference/t
         #--ensembl_prefix "ENSG" \
         #--gene_names_key "symbol" \
 
-# After the python command
-if [ $? -ne 0 ]; then
-    echo "Python script failed with exit code $?"
-    exit 1
-fi
+# Cleanup function — runs on both success and failure
+cleanup() {
+    EXIT_CODE=$?
+    END_TIME=$(date +%s)
+    SCRIPT_END_TIME=$(date)
+    DURATION=$((END_TIME - START_TIME))
 
-# Record end time and calculate duration
-END_TIME=$(date +%s)
-SCRIPT_END_TIME=$(date)
-DURATION=$((END_TIME - START_TIME))
+    # Stop resource monitoring
+    kill $MONITOR_PID 2>/dev/null || true
 
-# Stop resource monitoring
-kill $MONITOR_PID 2>/dev/null
+    # Final resource summary
+    echo "========================================="
+    echo "EXECUTION SUMMARY"
+    echo "========================================="
+    if [ $EXIT_CODE -ne 0 ]; then
+        echo "*** PIPELINE FAILED with exit code $EXIT_CODE ***"
+    fi
+    echo "Script start time: $SCRIPT_START_TIME"
+    echo "Script end time: $SCRIPT_END_TIME"
+    echo "Total execution time: ${DURATION} seconds ($(($DURATION / 3600))h $(($DURATION % 3600 / 60))m $(($DURATION % 60))s)"
+    echo "Final memory usage:"
+    free -h
+    echo "Final GPU status:"
+    nvidia-smi 2>/dev/null || echo "GPU monitoring not available"
 
+    # Peak memory usage from SLURM
+    echo "SLURM reported peak memory usage: $(sacct -j $SLURM_JOB_ID --format=MaxRSS --noheader | head -1 | tr -d ' ')" 2>/dev/null || echo "SLURM memory stats not available"
 
-# Final resource summary
-echo "========================================="
-echo "EXECUTION SUMMARY"
-echo "========================================="
-echo "Script start time: $SCRIPT_START_TIME"
-echo "Script end time: $SCRIPT_END_TIME"
-echo "Total execution time: ${DURATION} seconds ($(($DURATION / 3600))h $(($DURATION % 3600 / 60))m $(($DURATION % 60))s)"
-echo "Final memory usage:"
-free -h
-echo "Final GPU status:"
-nvidia-smi 2>/dev/null || echo "GPU monitoring not available"
-
-# Peak memory usage from SLURM
-echo "SLURM reported peak memory usage: $(sacct -j $SLURM_JOB_ID --format=MaxRSS --noheader | head -1 | tr -d ' ')" 2>/dev/null || echo "SLURM memory stats not available"
-#awk '/utilization\.memory \[%\]/ {getline; gsub(/%,/, "", $7); print $7}' resource_monitor_$SLURM_JOB_ID.log | sort -n | tail -1
-
-echo "Resource monitoring log saved to: $MONITOR_LOG"
-echo "Time output log saved to: logs/time_output_${SLURM_JOB_ID}.log"
-
-echo "Job completed at: $(date)"
+    echo "Resource monitoring log saved to: $MONITOR_LOG"
+    echo "Job completed at: $(date)"
+    exit $EXIT_CODE
+}
+trap cleanup EXIT

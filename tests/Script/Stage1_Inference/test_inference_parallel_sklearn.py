@@ -11,7 +11,7 @@ This test validates:
 
 Run with:
     conda activate sk-cNMF
-    python -m pytest tests/Script/Inference/test_inference_parallel_sklearn.py -v
+    python -m pytest tests/Script/Stage1_Inference/test_inference_parallel_sklearn.py -v
 
 Output saved to: tests/output/sk-cNMF-parallel/
 """
@@ -25,7 +25,7 @@ import cnmf
 
 from .conftest import TEST_K, TEST_NUMITER, TEST_NUMHVGENES, TEST_SEL_THRESH, TEST_SEED, PERSISTENT_OUTPUT
 
-from Inference.src.run_cNMF import rename_all_NMF
+from Stage1_Inference.src.run_cNMF import rename_all_NMF
 
 
 # ---------- shared state ----------

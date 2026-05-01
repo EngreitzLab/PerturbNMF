@@ -9,7 +9,7 @@ import os
 # Change path to wherever you have repo locally
 sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
 
-from Interpretation.Plotting.src import (load_stablity_error_data, plot_stablity_error,\
+from Stage3_Interpretation.A_Plotting.src import (load_stablity_error_data, plot_stablity_error,\
                          load_enrichment_data, plot_enrichment,\
                          load_perturbation_data, plot_perturbation,\
                          load_explained_variance_data,plot_explained_variance, programs_dotplots,plot_k_selection_panel

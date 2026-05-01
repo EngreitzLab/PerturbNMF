@@ -9,7 +9,7 @@ import os
 # Change path to wherever you have repo locally
 sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
 
-from Interpretation.Plotting.src import plot_umap_per_gene, plot_top_program_per_gene, perturbed_gene_dotplot,\
+from Stage3_Interpretation.A_Plotting.src import plot_umap_per_gene, plot_top_program_per_gene, perturbed_gene_dotplot,\
                          plot_log2FC, plot_volcano, programs_dotplot, analyze_correlations, \
                          create_gene_correlation_waterfall, \
                          convert_with_mygene, convert_adata_with_mygene, read_npz, \

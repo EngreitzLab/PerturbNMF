@@ -28,7 +28,7 @@ echo "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || ec
 echo "Python: $(which python)"
 echo ""
 
-python -m pytest tests/Script/Inference/test_inference_torch.py -v --tb=short \
+python -m pytest tests/Script/Stage1_Inference/test_inference_torch.py -v --tb=short \
     -k "TestDataValid or TestDataloaderMode" 2>&1 | tee "${LOG_DIR}/test_dataloader.out"
 
 echo ""

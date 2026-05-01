@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Program 2 — Literature Evidence</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:#f8fafc;color:#1e293b;line-height:1.6}
+.container{max-width:960px;margin:0 auto;padding:24px 16px}
+h1{font-size:1.6em;margin-bottom:4px}
+h2{font-size:1.25em;margin:20px 0 10px;color:#334155}
+h3{font-size:1.05em;margin-bottom:6px}
+h3 a{color:#1d4ed8;text-decoration:none}
+h3 a:hover{text-decoration:underline}
+.meta{font-size:0.85em;color:#64748b;margin-bottom:8px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:12px}
+.card.synthesis{background:#f0fdf4;border-color:#bbf7d0}
+.card.paper{border-left:3px solid #3b82f6}
+table.ctx{width:100%;border-collapse:collapse}
+table.ctx td{padding:4px 8px;vertical-align:top;border-bottom:1px solid #f1f5f9}
+table.ctx td.lbl{font-weight:600;white-space:nowrap;width:180px;color:#475569}
+.gene{display:inline-block;padding:1px 6px;margin:1px;border-radius:3px;
+  font-size:0.85em;font-family:monospace;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
+.evidence ul,.relations ul{padding-left:18px;margin:4px 0}
+.evidence li,.relations li{margin-bottom:4px;font-size:0.92em}
+.score{color:#94a3b8;font-size:0.85em}
+details{margin-top:8px}
+summary{cursor:pointer;font-size:0.88em;color:#64748b}
+ul.vr{list-style:none;padding-left:8px;margin-top:4px}
+ul.vr li{font-size:0.85em;margin:2px 0}
+ul.vr li.pass{color:#16a34a}
+ul.vr li.fail{color:#dc2626}
+</style>
+</head><body><div class="container">
+<h1>Program 2 &mdash; Literature Evidence</h1>
+<p class="meta">Generated 2026-04-28 15:32 &bull; 30 papers &bull; 6 verified</p>
+<div class="card"><h2>Program Context</h2><table class="ctx">
+<tr><td class="lbl">Top Genes</td><td><span class="gene">MECOM</span> <span class="gene">FBXL7</span> <span class="gene">RP1</span> <span class="gene">DOCK4</span> <span class="gene">FLT1</span> <span class="gene">NRP1</span> <span class="gene">VAV3</span> <span class="gene">GALNT18</span> <span class="gene">PLEKHG1</span> <span class="gene">KALRN</span></td></tr>
+<tr><td class="lbl">Positive Regulators (up)</td><td><span class="gene">BMPR1A</span> <span class="gene">SMAD5</span> <span class="gene">NF2</span> <span class="gene">PLCG1</span> <span class="gene">SMAD1</span></td></tr>
+<tr><td class="lbl">Negative Regulators (down)</td><td><span class="gene">NOTCH1</span> <span class="gene">PTAR1</span> <span class="gene">non-targeting</span> <span class="gene">TGFBR2</span> <span class="gene">KIAA0232</span></td></tr>
+<tr><td class="lbl">Cell Types</td><td>iPSC-derived endothelial/mesoderm differentiation</td></tr>
+<tr><td class="lbl">GO Enrichment</td><td>Regulation Of GTPase Activity (GO:0043087);Regulation Of Small GTPase Mediated Signal Transduction (GO:0051056);Positive Regulation Of Cell Migration (GO:0030335);Regulation Of Cell Migration (GO:0030334);Regulation Of Intracellular Signal Transduction (GO:1902531);Regulation Of Cell Migration Invol</td></tr>
+<tr><td class="lbl">Other Enrichment</td><td>RHO GTPase Cycle R-HSA-9012999;Signaling By Rho GTPases R-HSA-194315;Signaling By Rho GTPases, Miro GTPases And RHOBTB3 R-HSA-9716542;CDC42 GTPase Cycle R-HSA-9013148;Nervous System Development R-HSA-9675108;Signaling By Receptor Tyrosine Kinases R-HSA-9006934;Axon Guidance R-HSA-422475;RHOA GTPase </td></tr>
+</table></div>
+<div class="card synthesis"><h2>Synthesis</h2>
+<p>This gene expression program represents a **Rho GTPase-mediated endothelial migration and vascular development** module active during early iPSC-derived endothelial/mesoderm differentiation at day 3. The program is characterized by strong enrichment in Rho GTPase signaling, cell migration regulation, and axon guidance pathways.
+
+**PLEKHG1** emerges as a central regulator in this program, functioning as a Rho guanine nucleotide exchange factor that &quot;activates Cdc42 following activation by FYN&quot; (PMID:35031323). Multiple studies confirm that **PLEKHG1** demonstrates &quot;activity towards Cdc42&quot; and is among the most efficient Cdc42 activators in primary human endothelial cells (PMID:31469028). This positions **PLEKHG1** as a key mediator of the program&#x27;s GTPase regulatory functions, with clinical relevance as mutations cause &quot;periventricular white matter abnormalities&quot; (PMID:39202455).
+
+The vascular components **FLT1** and **NRP1** provide endothelial-specific context to this program. **FLT1** shows consistent upregulation in endothelial cells across disease states, with &quot;endothelial and microglial FLT1 expression upregulated in clinical AD patients&quot; (PMID:39641382). **NRP1**, part of the VEGF signaling network, demonstrates protective associations where &quot;higher astrocyte NRP1 is associated with lower tau density&quot; (PMID:39641382).
+
+The positive regulation by **BMPR1A**, **SMAD5**, and **SMAD1** suggests BMP/TGF-β pathway integration with Rho GTPase signaling during endothelial differentiation. Negative regulation by **NOTCH1** and **TGFBR2** indicates tight control mechanisms preventing excessive activation. This program likely coordinates early vascular development through Rho GTPase-mediated cytoskeletal reorganization and migration, with **PLEKHG1**-CDC42 signaling as a central regulatory axis.</p></div>
+<h2>Paper Evidence</h2>
+<div class="card paper">
+<h3>1. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#16a34a;background:#dcfce7">VERIFIED</span> <a href="https://pubmed.ncbi.nlm.nih.gov/39641382/" target="_blank">Association of ten VEGF family genes with Alzheimer&#x27;s disease endophenotypes at single cell resolution.</a></h3>
+<p class="meta">PMID:39641382</p>
+<div class="evidence"><strong>Evidence sentences</strong><ul>
+<li><span class="gene">FLT1</span> &ldquo;Endothelial and microglial FLT1 expression was upregulated in clinical AD patients compared to cognitively normal controls.&rdquo;</li>
+<li><span class="gene">FLT1</span> &ldquo;RESULTS: Higher microglia FLT1, endothelial FLT4, and oligodendrocyte VEGFB are associated with greater amyloid beta (Abeta) load, whereas higher VEGFB expression in inhibitory neurons is associated with lower Abeta load.&rdquo;</li>
+<li><span class="gene">NRP1</span> &ldquo;Higher astrocyte NRP1 is associated with lower tau density.&rdquo;</li>
+</ul></div>
+<div class="relations"><strong>Gene-gene relations</strong><ul>
+<li><span class="gene">FLT1</span> &rarr; <em>Positive Correlation</em> &rarr; <span class="gene">APP</span> <span class="score">(0.99)</span></li>
+<li><span class="gene">FLT4</span> &rarr; <em>Positive Correlation</em> &rarr; <span class="gene">APP</span> <span class="score">(0.99)</span></li>
+<li><span class="gene">MAPT</span> &rarr; <em>Negative Correlation</em> &rarr; <span class="gene">NRP1</span> <span class="score">(0.91)</span></li>
+<li><span class="gene">APP</span> &rarr; <em>Negative Correlation</em> &rarr; <span class="gene">VEGFB</span> <span class="score">(1.00)</span></li>
+</ul></div>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="pass">&#10003; L1 (citation_check): All genes found in PMID:39641382 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>2. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#16a34a;background:#dcfce7">VERIFIED</span> <a href="https://pubmed.ncbi.nlm.nih.gov/38826287/" target="_blank">Association of 10 VEGF Family Genes with Alzheimer&#x27;s Disease Endophenotypes at Single Cell Resolution.</a></h3>
+<p class="meta">PMID:38826287</p>
+<div class="evidence"><strong>Evidence sentences</strong><ul>
+<li><span class="gene">FLT1</span> &ldquo;In this study, we utilized a single-nucleus RNA sequencing dataset from Dorsolateral Prefrontal Cortex (DLFPC) of 424 donors from the Religious Orders Study and Memory and Aging Project (ROS/MAP) to investigate the effect of 10 VEGF genes ( VEGFA, VEGFB, VEGFC, VEGFD, PGF, FLT1, FLT4, KDR, NRP1 , and NRP2 ) on AD endophenotypes.&rdquo;</li>
+<li><span class="gene">FLT1</span> &ldquo;We discovered prefrontal cortical FLT1 expression was upregulated in AD brains in both endothelial and microglial cells.&rdquo;</li>
+<li><span class="gene">NRP1</span> &ldquo;In this study, we utilized a single-nucleus RNA sequencing dataset from Dorsolateral Prefrontal Cortex (DLFPC) of 424 donors from the Religious Orders Study and Memory and Aging Project (ROS/MAP) to investigate the effect of 10 VEGF genes ( VEGFA, VEGFB, VEGFC, VEGFD, PGF, FLT1, FLT4, KDR, NRP1 , and NRP2 ) on AD endophenotypes.&rdquo;</li>
+</ul></div>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="pass">&#10003; L1 (citation_check): All genes found in PMID:38826287 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>3. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#16a34a;background:#dcfce7">VERIFIED</span> <a href="https://pubmed.ncbi.nlm.nih.gov/39202455/" target="_blank">PLEKHG1: New Potential Candidate Gene for Periventricular White Matter Abnormalities.</a></h3>
+<p class="meta">PMID:39202455</p>
+<div class="evidence"><strong>Evidence sentences</strong><ul>
+<li><span class="gene">PLEKHG1</span> &ldquo;PLEKHG1: New Potential Candidate Gene for Periventricular White Matter Abnormalities..&rdquo;</li>
+<li><span class="gene">PLEKHG1</span> &ldquo;Whole exome sequencing (WES) analysis identified a de novo causative variant within the pleckstrin homology domain-containing family G member 1 (PLEKHG1) gene in a patient presenting with PVL.&rdquo;</li>
+</ul></div>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="pass">&#10003; L1 (citation_check): All genes found in PMID:39202455 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>4. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#16a34a;background:#dcfce7">VERIFIED</span> <a href="https://pubmed.ncbi.nlm.nih.gov/31469028/" target="_blank">Identification of guanine nucleotide exchange factors that increase Cdc42 activity in primary human endothelial cells.</a></h3>
+<p class="meta">PMID:31469028</p>
+<div class="evidence"><strong>Evidence sentences</strong><ul>
+<li><span class="gene">PLEKHG1</span> &ldquo;Our data reveal GEF dependent activation of Cdc42, with the most efficient Cdc42 activation induced by PLEKHG2, FGD1, PLEKHG1 and PREX1 and the highest selectivity for FGD1.&rdquo;</li>
+<li><span class="gene">PLEKHG1</span> &ldquo;The DH domain by itself did not activate Cdc42, whereas the DHPH domain of ITSN1, ITSN2 and PLEKHG1 showed activity towards Cdc42.&rdquo;</li>
+</ul></div>
+<div class="relations"><strong>Gene-gene relations</strong><ul>
+<li><span class="gene">FGD1</span> &rarr; <em>Positive Correlation</em> &rarr; <span class="gene">CDC42</span> <span class="score">(1.00)</span></li>
+<li><span class="gene">PLEKHG1</span> &rarr; <em>Positive Correlation</em> &rarr; <span class="gene">CDC42</span> <span class="score">(0.98)</span></li>
+<li><span class="gene">PLEKHG2</span> &rarr; <em>Positive Correlation</em> &rarr; <span class="gene">CDC42</span> <span class="score">(1.00)</span></li>
+<li><span class="gene">PREX1</span> &rarr; <em>Positive Correlation</em> &rarr; <span class="gene">CDC42</span> <span class="score">(1.00)</span></li>
+</ul></div>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="pass">&#10003; L1 (citation_check): All genes found in PMID:31469028 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>5. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#16a34a;background:#dcfce7">VERIFIED</span> <a href="https://pubmed.ncbi.nlm.nih.gov/35031323/" target="_blank">The Rho guanine nucleotide exchange factor PLEKHG1 is activated by interaction with and phosphorylation by Src family kinase member FYN.</a></h3>
+<p class="meta">PMID:35031323</p>
+<div class="evidence"><strong>Evidence sentences</strong><ul>
+<li><span class="gene">PLEKHG1</span> &ldquo;In this study, we found for the first time that PLEKHG1, which has very high homology to the Dbl and pleckstrin homology domains of PLEKHG2, activates Cdc42 following activation by FYN, a member of the SFK family.&rdquo;</li>
+<li><span class="gene">PLEKHG1</span> &ldquo;The Rho guanine nucleotide exchange factor PLEKHG1 is activated by interaction with and phosphorylation by Src family kinase member FYN..&rdquo;</li>
+</ul></div>
+<div class="relations"><strong>Gene-gene relations</strong><ul>
+<li><span class="gene">FYN</span> &rarr; <em>Positive Correlation</em> &rarr; <span class="gene">CDC42</span> <span class="score">(1.00)</span></li>
+<li><span class="gene">FYN</span> &rarr; <em>Positive Correlation</em> &rarr; <span class="gene">PLEKHG2</span> <span class="score">(0.98)</span></li>
+<li><span class="gene">FYN</span> &rarr; <em>Positive Correlation</em> &rarr; <span class="gene">PLEKHG1</span> <span class="score">(1.00)</span></li>
+<li><span class="gene">PLEKHG1</span> &rarr; <em>Positive Correlation</em> &rarr; <span class="gene">CDC42</span> <span class="score">(1.00)</span></li>
+</ul></div>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="pass">&#10003; L1 (citation_check): All genes found in PMID:35031323 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>6. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#16a34a;background:#dcfce7">VERIFIED</span> <a href="https://pubmed.ncbi.nlm.nih.gov/37449140/" target="_blank">Comprehensive analysis of the oncogenic roles of vascular endothelial growth factors and their receptors in stomach adenocarcinoma.</a></h3>
+<p class="meta">PMID:37449140</p>
+<div class="evidence"><strong>Evidence sentences</strong><ul>
+<li><span class="gene">FLT1</span> &ldquo;Results: We found that VEGFA, VEGFC, placenta growth factor, FLT1, KDR, FLT4, and Neuropilin 1 were overexpressed in STAD, while the expression of VEGFB and VEGFD were decreased.&rdquo;</li>
+</ul></div>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="pass">&#10003; L1 (citation_check): All genes found in PMID:37449140 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>7. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/33955328/" target="_blank">Rac-maninoff and Rho-vel: The symphony of Rho-GTPase signaling at excitatory synapses.</a></h3>
+<p class="meta">PMID:33955328</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:33955328 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>8. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/35047576/" target="_blank">The Emerging Role of Rho Guanine Nucleotide Exchange Factors in Cardiovascular Disorders: Insights Into Atherosclerosis: A Mini Review.</a></h3>
+<p class="meta">PMID:35047576</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:35047576 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>9. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/36198871/" target="_blank">Vascular endothelial cell development and diversity.</a></h3>
+<p class="meta">PMID:36198871</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:36198871 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>10. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/39688567/" target="_blank">Insights into the transcriptomic heterogeneity of brain endothelial cells in normal aging and Alzheimer&#x27;s disease.</a></h3>
+<p class="meta">PMID:39688567</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:39688567 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>11. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/40276039/" target="_blank">Identifying similar populations across independent single cell studies without data integration.</a></h3>
+<p class="meta">PMID:40276039</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:40276039 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>12. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/36499658/" target="_blank">Key Genetic Components of Fibrosis in Diabetic Nephropathy: An Updated Systematic Review and Meta-Analysis.</a></h3>
+<p class="meta">PMID:36499658</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:36499658 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>13. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/35071371/" target="_blank">Turning Platelets Off and On: Role of RhoGAPs and RhoGEFs in Platelet Activity.</a></h3>
+<p class="meta">PMID:35071371</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:35071371 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>14. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/34943902/" target="_blank">Pathophysiological Mechanisms in Neurodevelopmental Disorders Caused by Rac GTPases Dysregulation: What&#x27;s behind Neuro-RACopathies.</a></h3>
+<p class="meta">PMID:34943902</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:34943902 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>15. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/33628114/" target="_blank">Functional and Therapeutic Relevance of Rho GTPases in Innate Immune Cell Migration and Function during Inflammation: An In Silico Perspective.</a></h3>
+<p class="meta">PMID:33628114</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:33628114 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>16. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/33916163/" target="_blank">Rho GTPases in Retinal Vascular Diseases.</a></h3>
+<p class="meta">PMID:33916163</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:33916163 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>17. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/40549904/" target="_blank">Bone morphogenetic protein-9 controls pulmonary vascular growth and remodeling.</a></h3>
+<p class="meta">PMID:40549904</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:40549904 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>18. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/40126693/" target="_blank">PI(3,4,5)P3-mediated Cdc42 activation regulates macrophage podosome assembly.</a></h3>
+<p class="meta">PMID:40126693</p>
+<div class="relations"><strong>Gene-gene relations</strong><ul>
+<li><span class="gene">WAS</span> &rarr; <em>Positive Correlation</em> &rarr; <span class="gene">CDC42</span> <span class="score">(1.00)</span></li>
+</ul></div>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:40126693 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>19. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/36348464/" target="_blank">RHO GTPase family in hepatocellular carcinoma.</a></h3>
+<p class="meta">PMID:36348464</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:36348464 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>20. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/35257471/" target="_blank">Effect of cadmium on Rho GTPases signal transduction during osteoclast differentiation.</a></h3>
+<p class="meta">PMID:35257471</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:35257471 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>21. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/33570449/" target="_blank">Role of Rho-GTPases in megakaryopoiesis.</a></h3>
+<p class="meta">PMID:33570449</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:33570449 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>22. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/36054271/" target="_blank">Bone morphogenetic protein pathway responses and alterations of osteogenesis in metastatic prostate cancers.</a></h3>
+<p class="meta">PMID:36054271</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:36054271 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>23. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/35454871/" target="_blank">The Role of Fast-Cycling Atypical RHO GTPases in Cancer.</a></h3>
+<p class="meta">PMID:35454871</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:35454871 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>24. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/33742396/" target="_blank">Analyzing the Roles of Rho GTPases in Cancer Cell Adhesion to Endothelial Cells Under Flow Conditions.</a></h3>
+<p class="meta">PMID:33742396</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:33742396 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>25. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/34777599/" target="_blank">The Role of Rho GTPases During Fibroblast Spreading, Migration, and Myofibroblast Differentiation in 3D Synthetic Fibrous Matrices.</a></h3>
+<p class="meta">PMID:34777599</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:34777599 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>26. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/36690621/" target="_blank">Role of Rho GTPases in inflammatory bowel disease.</a></h3>
+<p class="meta">PMID:36690621</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:36690621 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>27. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/36894017/" target="_blank">Differential role for rapid proteostasis in Rho GTPase-mediated control of quiescent endothelial integrity.</a></h3>
+<p class="meta">PMID:36894017</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:36894017 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>28. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/35005558/" target="_blank">Rho GTPase signaling in rheumatic diseases.</a></h3>
+<p class="meta">PMID:35005558</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:35005558 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>29. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/34830789/" target="_blank">The Large GTPase, GBP-2, Regulates Rho Family GTPases to Inhibit Migration and Invadosome Formation in Breast Cancer Cells.</a></h3>
+<p class="meta">PMID:34830789</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:34830789 annotations</li>
+</ul></details>
+</div>
+<div class="card paper">
+<h3>30. <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.8em;font-weight:600;color:#dc2626;background:#fee2e2">GENE_MISMATCH</span> <a href="https://pubmed.ncbi.nlm.nih.gov/40396280/" target="_blank">The role of RAC1 in resistance to targeted therapies in cancer.</a></h3>
+<p class="meta">PMID:40396280</p>
+<details><summary>Verification details</summary><ul class="vr">
+<li class="fail">&#10007; L1 (citation_check): Found []; missing [&#x27;MECOM&#x27;, &#x27;FBXL7&#x27;, &#x27;RP1&#x27;, &#x27;DOCK4&#x27;, &#x27;FLT1&#x27;] in PMID:40396280 annotations</li>
+</ul></details>
+</div>
+</div></body></html>

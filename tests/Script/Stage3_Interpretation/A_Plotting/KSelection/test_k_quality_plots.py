@@ -6,7 +6,7 @@ Tests use synthetic data for matrix computation and overlap functions.
 Usage:
     eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking
     cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
-    python -m pytest tests/Script/Interpretation/Plotting/KSelection/test_k_quality_plots.py -v
+    python -m pytest tests/Script/Stage3_Interpretation/A_Plotting/KSelection/test_k_quality_plots.py -v
 """
 
 import os
@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 torch_cnmf = pytest.importorskip("torch_cnmf", reason="torch_cnmf required for k_quality_plots imports")
 
-from Interpretation.Plotting.src.k_quality_plots import (
+from Stage3_Interpretation.A_Plotting.src.k_quality_plots import (
     program_corr,
     program_euclidean,
     top_genes_overlap,

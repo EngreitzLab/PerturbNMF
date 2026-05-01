@@ -8,7 +8,7 @@ Complete parameter reference for all pipeline stages, extracted from argparse de
 
 ## 1. sk-cNMF Inference
 
-**Script**: `src/Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py`
+**Script**: `src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py`
 **Conda**: `sk-cNMF`
 
 ### Required Parameters
@@ -67,7 +67,7 @@ Complete parameter reference for all pipeline stages, extracted from argparse de
 
 ## 2. torch-cNMF Inference
 
-**Script**: `src/Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py`
+**Script**: `src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py`
 **Conda**: `torch-cNMF`
 
 torch-cNMF shares most parameters with sk-cNMF but has these important differences:
@@ -178,7 +178,7 @@ Same as sk-cNMF except:
 
 ## 3. Evaluation
 
-**Script**: `src/Evaluation/Slurm_Version/cNMF_evaluation_pipeline.py`
+**Script**: `src/Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py`
 **Conda**: `NMF_Benchmarking`
 
 ### Required
@@ -230,7 +230,7 @@ Same as sk-cNMF except:
 
 ## 4. K-Selection Plot
 
-**Script**: `src/Interpretation/Plotting/Slurm_Version/cNMF_k_selection.py`
+**Script**: `src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_k_selection.py`
 **Conda**: `torch-cNMF`
 
 | Parameter | Type | Default | Required | Description |
@@ -262,7 +262,7 @@ Same as sk-cNMF except:
 
 ## 5. Program Analysis Plot
 
-**Script**: `src/Interpretation/Plotting/Slurm_Version/cNMF_program_analysis.py`
+**Script**: `src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_program_analysis.py`
 **Conda**: `NMF_Benchmarking`
 
 | Parameter | Type | Default | Required | Description |
@@ -298,7 +298,7 @@ Same as sk-cNMF except:
 
 ## 6. Perturbed Gene Analysis Plot
 
-**Script**: `src/Interpretation/Plotting/Slurm_Version/cNMF_perturbed_gene_analysis.py`
+**Script**: `src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_perturbed_gene_analysis.py`
 **Conda**: `NMF_Benchmarking`
 
 **Note**: Parameter names have been updated. Old name → new name mapping:
@@ -351,7 +351,7 @@ Same as sk-cNMF except:
 
 ## 7. U-test Calibration
 
-**Script**: `src/Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py`
+**Script**: `src/Stage2_Evaluation/B_Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py`
 **Conda**: `NMF_Benchmarking`
 
 ### Required
@@ -400,7 +400,7 @@ Same as sk-cNMF except:
 
 ## 8. CRT Calibration
 
-**Script**: `src/Calibration/Slurm_version/CRT/CRT.py`
+**Script**: `src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/CRT.py`
 **Conda**: `programDE`
 
 ### Required
@@ -430,8 +430,8 @@ Same as sk-cNMF except:
 
 ## 9. Matched Cell ProgramDE
 
-**Script**: `src/Calibration/Slurm_version/Matched_cell_programDE/run_matching_de_batch.R`
-**Utility**: `src/Calibration/Slurm_version/Matched_cell_programDE/de_testing_utils.R`
+**Script**: `src/Stage2_Evaluation/B_Calibration/Slurm_version/Matched_cell_programDE/run_matching_de_batch.R`
+**Utility**: `src/Stage2_Evaluation/B_Calibration/Slurm_version/Matched_cell_programDE/de_testing_utils.R`
 **Conda**: `programDE`
 
 This is an R-based calibration method using propensity score matching with OLS regression and HC3 robust standard errors. It supports gene propagation (mapping program-level effects to genes via gene spectra) and direct gene-level DE testing.

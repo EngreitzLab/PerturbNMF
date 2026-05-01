@@ -47,7 +47,7 @@ echo "Python path: $(which python)"
 
 # Run the Python script
 echo "Running Python script..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Interpretation/Plotting/Slurm_Version/cNMF_k_selection.py\
+python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_k_selection.py\
         --output_directory "$OUT_DIR" \
         --run_name "$RUN_NAME" \
         --save_folder_name "$LOG_DIR/Plot/k_selection" \

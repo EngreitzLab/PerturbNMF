@@ -32,7 +32,7 @@ flowchart TD
 ### Stages
 
 #### Stage 1a: sk-cNMF Inference (CPU)
-- **Script**: `Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py`
+- **Script**: `Stage1_Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py`
 - **Conda env**: `sk-cNMF`
 - **SLURM resources**: 786G memory, 10 CPUs, 14 hours, no GPU
 - **Parameters**: 21 total
@@ -60,7 +60,7 @@ flowchart TD
 | `--parallel_running` | flag | False | No |
 
 #### Stage 1b: torch-cNMF Inference (GPU)
-- **Script**: `Inference/torch-cNMF/Slurm_Version/torch-cNMF_inference_pipeline.py`
+- **Script**: `Stage1_Stage1_Inference/torch-cNMF/Slurm_Version/torch-cNMF_inference_pipeline.py`
 - **Conda env**: `torch-cNMF`
 - **SLURM resources**: 96G memory, 10 CPUs, 5 hours, 1 GPU
 - **Parameters**: 33 total (21 shared with sk-cNMF + 12 GPU-specific)
@@ -68,14 +68,14 @@ flowchart TD
 Additional parameters: `--mode`, `--use_gpu`, `--fp_precision`, `--alpha_usage`, `--alpha_spectra`, `--l1_ratio_usage`, `--l1_ratio_spectra`, `--online_usage_tol`, `--online_spectra_tol`, `--batch_max_iter`, `--batch_hals_tol`, `--batch_hals_max_iter`, `--online_max_pass`, `--online_chunk_size`, `--online_chunk_max_iter`, `--shuffle_cells`, `--sk_cd_refit`, `--remove_noncoding`, `--densify`
 
 #### Stage 2: Evaluation
-- **Script**: `Evaluation/Slurm_Version/cNMF_evaluation_pipeline.py`
+- **Script**: `Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py`
 - **Conda env**: `NMF_Benchmarking`
 - **SLURM resources**: 96G memory, 20 CPUs, 5 hours
 - **Parameters**: 22 total
 - **Evaluation metrics**: Categorical association, Perturbation association, Gene set enrichment, Trait enrichment, Motif enrichment (disabled), Explained variance
 
 #### Stage 4: Interpretation
-- **Script**: `Interpretation/Slurm_Version/cNMF_k_selection.py`
+- **Script**: `Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_k_selection.py`
 - **Conda env**: `NMF_Benchmarking`
 - **Parameters**: 9 total
 
@@ -85,7 +85,7 @@ Additional parameters: `--mode`, `--use_gpu`, `--fp_precision`, `--alpha_usage`,
 
 ### Error 1: Wrong default tolerance in sk-cNMF (CRITICAL)
 
-- **File**: `Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py:42`
+- **File**: `Stage1_Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py:42`
 - **Issue**: `--tol` default is `1e4` (10,000) instead of `1e-4` (0.0001)
 - **Impact**: NMF converges instantly without meaningful optimization. All sk-cNMF runs using the default tolerance produce low-quality factorizations.
 - **Severity**: Critical
@@ -107,7 +107,7 @@ parser.add_argument('--tol', type = float , default = 1e-4, ...)
 
 ### Error 3: File existence check tests directory instead of file (MODERATE)
 
-- **File**: `Inference/src/run_cNMF.py:354`
+- **File**: `Stage1_Stage1_Inference/src/run_cNMF.py:354`
 - **Issue**: `os.path.exists(source_dir)` checks if the directory exists, not the specific file `source_path`
 - **Impact**: Missing files are silently skipped when the parent directory exists. The function reports "File not found" with the wrong path when the directory doesn't exist.
 - **Severity**: Moderate
@@ -121,7 +121,7 @@ if os.path.exists(source_path):
 
 ### Error 4: Unclosed quote in eval SLURM script (CRITICAL)
 
-- **File**: `Evaluation/Slurm_Version/cNMF_evaluation_pipeline.sh:71`
+- **File**: `Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.sh:71`
 - **Issue**: `--FDR_method "StoreyQ` is missing the closing quote
 - **Impact**: Bash syntax error prevents the evaluation script from running
 - **Severity**: Critical
@@ -129,7 +129,7 @@ if os.path.exists(source_path):
 
 ### Error 5: `--gwas_data_path` is required even when unused (MODERATE)
 
-- **File**: `Evaluation/Slurm_Version/cNMF_evaluation_pipeline.py:63`
+- **File**: `Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py:63`
 - **Issue**: `required=True` forces users to provide GWAS data even if they only want to run categorical or perturbation analysis
 - **Impact**: Users must find/provide GWAS data even when they don't need trait enrichment
 - **Severity**: Moderate
@@ -137,7 +137,7 @@ if os.path.exists(source_path):
 
 ### Error 6: Motif enrichment silently disabled (MODERATE)
 
-- **File**: `Evaluation/Slurm_Version/cNMF_evaluation_pipeline.py:207-234`
+- **File**: `Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py:207-234`
 - **Issue**: The `--Perform_motif` flag exists in argparse but the implementation code is wrapped in a triple-quote comment (`''' ... '''`)
 - **Impact**: Users who set `--Perform_motif` get no error and no output -- the flag does nothing
 - **Severity**: Moderate
@@ -153,7 +153,7 @@ if os.path.exists(source_path):
 
 ### Error 8: Shadowed Python builtin (MINOR)
 
-- **File**: `Inference/src/run_cNMF.py:250,298,323`
+- **File**: `Stage1_Stage1_Inference/src/run_cNMF.py:250,298,323`
 - **Issue**: Parameter named `len` shadows Python's built-in `len()` function
 - **Impact**: If anyone calls `len()` inside these functions, they get the integer parameter instead
 - **Severity**: Minor
@@ -161,7 +161,7 @@ if os.path.exists(source_path):
 
 ### Error 9: `--nmf_seeds_path None` passed as literal string (MINOR)
 
-- **File**: `Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch.sh:69`
+- **File**: `Stage1_Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch.sh:69`
 - **Issue**: `--nmf_seeds_path None` passes the literal string "None" rather than omitting the argument
 - **Impact**: Attempts to load a file called "None", which will throw `FileNotFoundError`
 - **Severity**: Minor
@@ -289,7 +289,7 @@ sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF')
 conda activate sk-cNMF  # or torch-cNMF for GPU
 
 # 2. Run inference (small test: K=30, 2 iterations)
-python3 Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py \
+python3 Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py \
     --counts_fn /path/to/your/data.h5ad \
     --output_directory /path/to/output \
     --run_name my_test_run \
@@ -303,10 +303,10 @@ python3 Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py \
 
 # 3. Run evaluation
 conda activate NMF_Benchmarking
-python3 Evaluation/Slurm_Version/cNMF_evaluation_pipeline.py \
+python3 Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py \
     --out_dir /path/to/output \
     --run_name my_test_run \
-    --gwas_data_path Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz \
+    --gwas_data_path Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz \
     --K 30 \
     --sel_thresh 2.0 \
     --Perform_categorical \
@@ -314,7 +314,7 @@ python3 Evaluation/Slurm_Version/cNMF_evaluation_pipeline.py \
     --Perform_geneset
 
 # 4. Plot results
-python3 Interpretation/Slurm_Version/cNMF_k_selection.py \
+python3 Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_k_selection.py \
     --output_directory /path/to/output \
     --run_name my_test_run \
     --eval_folder_name Eval \

@@ -1,6 +1,6 @@
 # Large reference data (3.3GB — not tracked in git)
 # Run setup_resources.sh or manually symlink to populate
-src/Evaluation/Resources/
+src/Stage2_Evaluation/Resources/
 
 # Test output (generated)
 tests/output/
@@ -17,6 +17,9 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+
+# Secrets / API keys
+.env
 
 # OS
 .DS_Store

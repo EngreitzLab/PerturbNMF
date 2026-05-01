@@ -6,7 +6,7 @@
   "stages": [
     {
       "name": "inference_skcnmf",
-      "script": "Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py",
+      "script": "Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py",
       "conda_env": "sk-cNMF",
       "slurm_defaults": {
         "partition": "engreitz,owners,bigmem",
@@ -44,7 +44,7 @@
     },
     {
       "name": "inference_torchcnmf",
-      "script": "Inference/torch-cNMF/Slurm_Version/torch-cNMF_inference_pipeline.py",
+      "script": "Stage1_Inference/torch-cNMF/Slurm_Version/torch-cNMF_inference_pipeline.py",
       "conda_env": "torch-cNMF",
       "slurm_defaults": {
         "partition": "engreitz,owners,gpu",
@@ -79,7 +79,7 @@
     },
     {
       "name": "evaluation",
-      "script": "Evaluation/Slurm_Version/cNMF_evaluation_pipeline.py",
+      "script": "Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py",
       "conda_env": "NMF_Benchmarking",
       "slurm_defaults": {
         "partition": "engreitz,owners",
@@ -113,7 +113,7 @@
     },
     {
       "name": "plotting_k_selection",
-      "script": "Interpretation/Slurm_Version/cNMF_k_selection.py",
+      "script": "Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_k_selection.py",
       "conda_env": "NMF_Benchmarking",
       "slurm_defaults": {
         "partition": "engreitz,owners",
