@@ -54,6 +54,9 @@ def inference_path(request):
     return path
 
 
+TEST_K_VALUES = [5, 10, 15]
+
+
 @pytest.fixture(scope="session")
 def test_mdata(inference_path):
     """Load the smallest h5mu (k=5) once per test session."""
@@ -71,6 +74,28 @@ def mdata_copy(test_mdata):
     return mudata.MuData({"cNMF": prog, "rna": rna})
 
 
+@pytest.fixture(scope="session", params=TEST_K_VALUES)
+def test_mdata_per_k(request, inference_path):
+    """Load h5mu for each K value."""
+    k = request.param
+    h5mu_path = os.path.join(inference_path, "adata", f"cNMF_{k}_2_0.h5mu")
+    if not os.path.isfile(h5mu_path):
+        pytest.skip(f"h5mu not found: {h5mu_path}")
+    mdata = mudata.read(h5mu_path)
+    mdata.uns["test_k"] = k
+    return mdata
+
+
+@pytest.fixture
+def mdata_copy_per_k(test_mdata_per_k):
+    """Deep copy of per-K MuData so tests don't mutate the original."""
+    prog = test_mdata_per_k["cNMF"].copy()
+    rna = test_mdata_per_k["rna"].copy()
+    md = mudata.MuData({"cNMF": prog, "rna": rna})
+    md.uns["test_k"] = test_mdata_per_k.uns["test_k"]
+    return md
+
+
 @pytest.fixture(scope="session")
 def spectra_score_path(inference_path):
     path = os.path.join(inference_path, "Inference.gene_spectra_score.k_5.dt_2_0.txt")
@@ -79,11 +104,30 @@ def spectra_score_path(inference_path):
     return path
 
 
+@pytest.fixture(scope="session", params=TEST_K_VALUES)
+def spectra_score_path_per_k(request, inference_path):
+    """Spectra score path for each K value."""
+    k = request.param
+    path = os.path.join(inference_path, f"Inference.gene_spectra_score.k_{k}.dt_2_0.txt")
+    if not os.path.isfile(path):
+        pytest.skip(f"Spectra score file not found: {path}")
+    return k, path
+
+
 @pytest.fixture(scope="session")
 def eval_output_dir():
     """Fixed output directory for saving evaluation results."""
     os.makedirs(EVAL_OUTPUT_DIR, exist_ok=True)
     return EVAL_OUTPUT_DIR
+
+
+@pytest.fixture
+def eval_output_dir_per_k(mdata_copy_per_k):
+    """Per-K output directory: Evaluation/{K}_2_0/"""
+    k = mdata_copy_per_k.uns["test_k"]
+    out_dir = os.path.join(EVAL_OUTPUT_DIR, f"{k}_2_0")
+    os.makedirs(out_dir, exist_ok=True)
+    return out_dir
 
 
 # ---------------------------------------------------------------------------

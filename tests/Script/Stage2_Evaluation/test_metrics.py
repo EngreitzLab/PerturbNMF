@@ -4,10 +4,13 @@ Unit tests for the cNMF Evaluation pipeline.
 Tests run against real inference output (default: tests/output/torch-cNMF)
 and use synthetic data where external APIs or heavy I/O would be needed.
 
+Tests are parametrized over K values (5, 10, 15) where applicable,
+saving results into Evaluation/{K}_2_0/ subdirectories.
+
 Usage:
     eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking
     cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src
-    python -m pytest tests/Script/Stage2_Evaluation/test_evaluation.py -v
+    python -m pytest tests/Script/Stage2_Evaluation/test_metrics.py -v
 
     # Custom inference path:
     python -m pytest tests/Script/Stage2_Evaluation/ -v --inference-path /path/to/Inference/
@@ -612,6 +615,94 @@ class TestIntegration:
         cat_results.to_csv(os.path.join(eval_output_dir, "5_integration_categorical.csv"))
         cat_posthoc.to_csv(os.path.join(eval_output_dir, "5_integration_posthoc.csv"), index=False)
         perturb_results.to_csv(os.path.join(eval_output_dir, "5_integration_perturbation.csv"), index=False)
+
+
+# ===========================================================================
+# Per-K parametrized tests (K=5, 10, 15)
+# Results saved to Evaluation/{K}_2_0/
+# ===========================================================================
+
+class TestCategoricalPerK:
+
+    def test_compute_categorical_dunn(self, mdata_copy_per_k, eval_output_dir_per_k):
+        from Stage2_Evaluation.A_Metrics.src.association_categorical import compute_categorical_association
+        k = mdata_copy_per_k.uns["test_k"]
+        results_df, posthoc_df = compute_categorical_association(
+            mdata_copy_per_k, prog_key="cNMF", categorical_key="batch",
+            test="dunn", n_jobs=1, inplace=False
+        )
+        assert "batch_kruskall_wallis_stat" in results_df.columns
+        assert len(results_df) == mdata_copy_per_k["cNMF"].n_vars
+        results_df.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_categorical_association_results.txt"), sep="\t")
+        posthoc_df.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_categorical_association_posthoc.txt"), sep="\t", index=False)
+
+
+class TestPerturbationPerK:
+
+    def test_compute_perturbation(self, mdata_copy_per_k, eval_output_dir_per_k):
+        from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
+        k = mdata_copy_per_k.uns["test_k"]
+        result = compute_perturbation_association(
+            mdata_copy_per_k, prog_key="cNMF",
+            reference_targets=["non-targeting"],
+            collapse_targets=True, n_jobs=1, inplace=False, FDR_method="BH"
+        )
+        assert isinstance(result, pd.DataFrame)
+        assert all(result["pval"].between(0, 1))
+        result.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_perturbation_association_results.txt"), sep="\t", index=False)
+
+
+class TestGenesetPerK:
+
+    def test_get_gene_loadings(self, mdata_copy_per_k, eval_output_dir_per_k):
+        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import get_program_gene_loadings
+        k = mdata_copy_per_k.uns["test_k"]
+        loadings = get_program_gene_loadings(
+            mdata_copy_per_k, prog_key="cNMF", data_key="rna", gene_names_key="symbol"
+        )
+        assert loadings.shape[1] == mdata_copy_per_k["cNMF"].n_vars
+        loadings.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_gene_loadings.txt"), sep="\t")
+
+
+class TestSelfRegulatingPerK:
+
+    def test_get_top_genes(self, spectra_score_path_per_k, eval_output_dir):
+        from Stage2_Evaluation.A_Metrics.src.Self_regulating_programs import get_top_genes_per_program
+        k, path = spectra_score_path_per_k
+        out_dir = os.path.join(eval_output_dir, f"{k}_2_0")
+        os.makedirs(out_dir, exist_ok=True)
+        top = get_top_genes_per_program(path, top_n=10)
+        assert len(top) > 0
+        for prog_key in top:
+            assert len(top[prog_key]) == 10
+        top_df = pd.DataFrame(dict([(prog, pd.Series(genes)) for prog, genes in top.items()]))
+        top_df.to_csv(os.path.join(out_dir, f"{k}_top_genes_per_program.txt"), sep="\t", index=False)
+
+
+class TestIntegrationPerK:
+
+    def test_categorical_then_perturbation(self, mdata_copy_per_k, eval_output_dir_per_k):
+        """Run categorical + perturbation per K on real MuData."""
+        from Stage2_Evaluation.A_Metrics.src.association_categorical import compute_categorical_association
+        from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
+        k = mdata_copy_per_k.uns["test_k"]
+
+        cat_results, cat_posthoc = compute_categorical_association(
+            mdata_copy_per_k, prog_key="cNMF", categorical_key="batch",
+            test="dunn", n_jobs=1, inplace=False
+        )
+        assert len(cat_results) > 0
+
+        perturb_results = compute_perturbation_association(
+            mdata_copy_per_k, prog_key="cNMF",
+            reference_targets=["non-targeting"],
+            collapse_targets=True, n_jobs=1, inplace=False, FDR_method="BH"
+        )
+        assert len(perturb_results) > 0
+
+        cat_results.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_integration_categorical.txt"), sep="\t")
+        cat_posthoc.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_integration_posthoc.txt"), sep="\t", index=False)
+        perturb_results.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_integration_perturbation.txt"), sep="\t", index=False)
 
 
 if __name__ == "__main__":

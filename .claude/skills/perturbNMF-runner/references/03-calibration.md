@@ -46,6 +46,11 @@ Key parameters (always ask):
 | `--FDR_method` | `BH` | FDR correction: `BH` or `StoreyQ` |
 | `--save_dir` | auto | Custom output directory |
 
+**Important:** Different covariate selections produce different results. Always use a unique `--save_dir` for each covariate combination to avoid overwriting previous runs. The convention is `Evaluation/{K}_{thresh}/CRT_{covariate_names}/`:
+- `--save_dir <out_dir>/<run_name>/Evaluation/<K>_<thresh>/CRT_no_covariates/`
+- `--save_dir <out_dir>/<run_name>/Evaluation/<K>_<thresh>/CRT_total_counts/`
+- `--save_dir <out_dir>/<run_name>/Evaluation/<K>_<thresh>/CRT_total_counts_guides_per_cell_pct_counts_mt/`
+
 ### Step D: Select covariates
 
 Present available continuous covariates from the h5mu obs columns. Common covariates by category:
