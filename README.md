@@ -4,9 +4,9 @@
 flowchart TD
     A["Input: counts.h5ad\n(cells x genes)"] --> B["Stage 1: Inference\n(sk-cNMF CPU or torch-cNMF GPU)"]
     B --> D["Output: cNMF_{K}_{thresh}.h5mu\n(MuData with scores + loadings)"]
-    D --> E["Stage 2a: Evaluation\n(9 metrics)"]
-    E --> F["Output: Evaluation/{K}_{thresh}/\n(TXT results per metric)"]
-    D --> G["Stage 2b: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
+    D --> E["Stage 2: Evaluation\n(9 metrics)"]
+    E --> F["Output: Evaluation/{K}_{thresh}/\n(CSV results per metric)"]
+    E --> G["Stage 2b: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
     G --> F
     F --> I["Stage 3a: K Selection Plots"]
     F --> J["Stage 3b: Program Analysis Plots"]
@@ -14,18 +14,14 @@ flowchart TD
     I --> L["Output: PDFs + PNGs"]
     J --> L
     K --> L
-    F --> Q["Stage 3d: ProgramExplorer Annotation\n(STRING, PubTator3, Claude AI)"]
+    F --> Q["Stage 3d: Annotation\n(LLM-driven gene program annotation)"]
     Q --> L
-    F --> R["Stage 3d: Literature Search\n(PubMed mining + LLM)"]
-    R --> L
     F --> S["Stage 3e: Excel Summarization"]
     S --> L
     M["Guide Annotation TSV"] --> E
-    M --> G
     N["GWAS Data (OpenTargets)"] --> E
     O["Normalized Counts .h5ad"] --> E
-    P["Reference GTF (optional)"] -.-> J
-    P -.-> K
+    P["Reference GTF (optional)"] -.-> B
 ```
 
 Detail requirement see: https://docs.google.com/document/d/1eusT8lUCeKl1lTkQ37qd8IoRy3P1798lSVOkpPbyGMU/edit?usp=sharing
