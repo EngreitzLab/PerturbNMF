@@ -4,9 +4,9 @@
 flowchart TD
     A["Input: counts.h5ad\n(cells x genes)"] --> B["Stage 1: Inference\n(sk-cNMF CPU or torch-cNMF GPU)"]
     B --> D["Output: cNMF_{K}_{thresh}.h5mu\n(MuData with scores + loadings)"]
-    D --> E["Stage 2: Evaluation\n(9 metrics)"]
-    E --> F["Output: Evaluation/{K}_{thresh}/\n(CSV results per metric)"]
-    E --> G["Stage 2b: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
+    D --> E["Stage 2a: Evaluation\n(9 metrics)"]
+    E --> F["Output: Evaluation/{K}_{thresh}/\n(TXT results per metric)"]
+    D --> G["Stage 2b: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
     G --> F
     F --> I["Stage 3a: K Selection Plots"]
     F --> J["Stage 3b: Program Analysis Plots"]
@@ -14,14 +14,18 @@ flowchart TD
     I --> L["Output: PDFs + PNGs"]
     J --> L
     K --> L
-    F --> Q["Stage 3d: Annotation\n(LLM-driven gene program annotation)"]
+    F --> Q["Stage 3d: ProgramExplorer Annotation\n(STRING, PubTator3, Claude AI)"]
     Q --> L
+    F --> R["Stage 3d: Literature Search\n(PubMed mining + LLM)"]
+    R --> L
     F --> S["Stage 3e: Excel Summarization"]
     S --> L
     M["Guide Annotation TSV"] --> E
+    M --> G
     N["GWAS Data (OpenTargets)"] --> E
     O["Normalized Counts .h5ad"] --> E
-    P["Reference GTF (optional)"] -.-> B
+    P["Reference GTF (optional)"] -.-> J
+    P -.-> K
 ```
 
 Detail requirement see: https://docs.google.com/document/d/1eusT8lUCeKl1lTkQ37qd8IoRy3P1798lSVOkpPbyGMU/edit?usp=sharing
@@ -36,7 +40,7 @@ Run cNMF to decompose the cell × gene matrix into gene programs. Pick one:
 - **sk-cNMF**: CPU-based implementation using scikit-learn
 - **torch-cNMF**: GPU-accelerated implementation using PyTorch
 
-See [`src/Inference/README.md`](src/Inference/README.md) for detailed usage and recommended K selection steps.
+See [`src/Stage1_Inference/README.md`](src/Stage1_Inference/README.md) for detailed usage and recommended K selection steps.
 
 ### Stage 2: Evaluation
 Evaluate the quality of inferred gene programs using comprehensive metrics, with perturbation calibration as part of the evaluation process.
@@ -52,7 +56,7 @@ Evaluate the quality of inferred gene programs using comprehensive metrics, with
 - Reconstruction error
 - Stability metrics
 
-See [`src/Evaluation/README.md`](src/Evaluation/README.md) for detailed parameters and output format.
+See [`src/Stage2_Evaluation/A_Metrics/README.md`](src/Stage2_Evaluation/A_Metrics/README.md) for detailed parameters and output format.
 
 **Perturbation calibration** (pick one method):
 - **U-test**: Fast, non-parametric — good for initial exploratory analysis
@@ -65,13 +69,14 @@ Calibration validates that p-value calculations are well-calibrated by generatin
 3. The real p-values vs uniform distribution QQ-plot should show enrichment (rarer than expected)
 4. If calibrated → proceed to downstream analysis. If not → change the p-value calculation method.
 
-See [`src/Calibration/README.md`](src/Calibration/README.md) for detailed method descriptions and guidance on choosing a test.
+See [`src/Stage2_Evaluation/B_Calibration/README.md`](src/Stage2_Evaluation/B_Calibration/README.md) for detailed method descriptions and guidance on choosing a test.
 
 ### Stage 3: Interpretation
 - **K-selection plots** for optimal K selection
 - **Program analysis plots** for per-program quality control
 - **Perturbed gene analysis** visualization
-- **Annotation**: LLM-driven gene program annotation (STRING enrichment, PubTator3 literature mining, Claude AI)
+- **ProgramExplorer annotation**: LLM-driven gene program annotation (STRING enrichment, PubTator3 literature mining, Claude AI)
+- **Literature search**: PubMed-based literature mining with LLM verification
 - **Excel summarization** of results
 
-See [`src/Interpretation/README.md`](src/Interpretation/README.md) for detailed parameters and output format.
+See [`src/Stage3_Interpretation/README.md`](src/Stage3_Interpretation/README.md) for detailed parameters and output format.

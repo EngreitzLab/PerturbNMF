@@ -10,9 +10,9 @@ This pipeline runs consensus Non-negative Matrix Factorization (cNMF) on single-
 flowchart TD
     A["Input: counts.h5ad\n(cells x genes)"] --> B["Stage 1: Inference\n(sk-cNMF CPU or torch-cNMF GPU)"]
     B --> D["Output: cNMF_{K}_{thresh}.h5mu\n(MuData with scores + loadings)"]
-    D --> E["Stage 2: Evaluation\n(9 metrics)"]
-    E --> F["Output: Evaluation/{K}_{thresh}/\n(CSV results per metric)"]
-    E --> G["Stage 2b: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
+    D --> E["Stage 2a: Evaluation\n(9 metrics)"]
+    E --> F["Output: Evaluation/{K}_{thresh}/\n(TXT results per metric)"]
+    D --> G["Stage 2b: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
     G --> F
     F --> I["Stage 3a: K Selection Plots"]
     F --> J["Stage 3b: Program Analysis Plots"]
@@ -20,17 +20,19 @@ flowchart TD
     I --> L["Output: PDFs + PNGs"]
     J --> L
     K --> L
-    F --> Q["Stage 3d: Annotation\n(LLM-driven gene program annotation)"]
+    F --> Q["Stage 3d: ProgramExplorer Annotation\n(STRING, PubTator3, Claude AI)"]
     Q --> L
+    F --> R["Stage 3d: Literature Search\n(PubMed mining + LLM)"]
+    R --> L
     F --> S["Stage 3e: Excel Summarization"]
     S --> L
     M["Guide Annotation TSV"] --> E
+    M --> G
     N["GWAS Data (OpenTargets)"] --> E
     O["Normalized Counts .h5ad"] --> E
-    P["Reference GTF (optional)"] -.-> B
+    P["Reference GTF (optional)"] -.-> J
+    P -.-> K
 ```
-
-See also: `flowchart.png` in the repo root for a visual overview.
 
 ## HPC Environment
 
@@ -58,10 +60,10 @@ eval "$(conda shell.bash hook)" && conda activate <env_name> && <command>
 
 ## Key Resource Paths
 
-- **GWAS data**: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz`
+- **GWAS data**: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz`
 - **Reference GTF (IGVF)**: `/oak/stanford/groups/engreitz/Users/opushkar/genome/IGVFFI9573KOZR.gtf.gz`
-- **Motif file**: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Evaluation/Resources/hocomoco_meme.meme`
-- **Genome sequence**: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Evaluation/Resources/hg38.fa`
+- **Motif file**: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/hocomoco_meme.meme`
+- **Genome sequence**: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/hg38.fa`
 
 ## Conventions
 
