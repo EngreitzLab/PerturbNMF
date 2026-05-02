@@ -5,6 +5,7 @@ src/Stage2_Evaluation/Resources/
 # Test output (generated)
 tests/output/
 tests/tests/output/
+tests/resources/
 
 # Example output (generated)
 examples/example_output/

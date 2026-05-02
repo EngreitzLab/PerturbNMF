@@ -134,6 +134,23 @@ def X_norm(inference_path):
     return X
 
 
+@pytest.fixture(scope="session")
+def guide_annotation_path():
+    """Path to real guide annotation TSV with 'targeting' column (TRUE/FALSE)."""
+    path = os.path.join(PIPELINE_ROOT, "tests", "resources", "guide_annotation.tsv")
+    if not os.path.isfile(path):
+        pytest.skip(f"Guide annotation not found: {path}")
+    return path
+
+
+@pytest.fixture(scope="session")
+def reference_targets_from_annotation(guide_annotation_path):
+    """Extract non-targeting guide target names from the annotation table."""
+    df = pd.read_csv(guide_annotation_path, sep="\t", index_col=0)
+    df_non = df[df["targeting"] == False]
+    return df_non.index.values.tolist()
+
+
 # ---------------------------------------------------------------------------
 # Calibration fixtures (synthetic data, no inference output required)
 # ---------------------------------------------------------------------------
