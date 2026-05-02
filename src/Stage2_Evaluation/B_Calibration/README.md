@@ -98,28 +98,35 @@ For null model validation, group 6 guides into 1 pseudo gene and follow the same
 
 ---
 
-## Folder Structure
+## Output Organization
 
+### U-test
 ```
-Calibration/
-├── README.md (this file)
-├── JupterNote_Version/
-│   ├── U-test_perturbation_calibration.ipynb
-│   └── CRT.ipynb
-└── Slurm_version/
-    ├── U-test_perturbation_calibration/
-    │   ├── U-test_perturbation_calibration.py
-    │   └── U-test_perturbation_calibration.sh
-    ├── CRT/
-    │   ├── CRT.py
-    │   ├── CRT.sh
-    │   └── README.md
-    └── Matched_cell_programDE/
-        ├── run_matching_de_batch.R
-        ├── de_testing_utils.R
-        ├── run.sh
-        ├── environment.yml
-        └── README.md
+Evaluation/
+├── config_{job_id}.yml
+└── {k}_{sel_thresh}/
+    ├── {k}_perturbation_association_results_{sample}.txt   (one per sample)
+    └── {k}_fake_perturbation_association_results.txt
+```
+Plus visualization outputs at `<out_dir>/<run_name>/`:
+- `perturbation_association_calibration.png`
+- `perturbation_association_qqplot_overlap.png`
+
+### CRT
+```
+Evaluation/
+└── {k}_{sel_thresh}/CRT_{covariate_names}/
+    ├── config_{job_id}.yml
+    ├── {k}_CRT_{condition}.txt                (one per condition)
+    └── CRT_{condition}.png                    (QQ plot per condition)
+```
+
+### Matched Cell ProgramDE
+```
+<output_dir>/
+├── {condition}_gene_results.csv               (per condition)
+├── {condition}_null_results.csv               (per condition)
+└── logs/
 ```
 
 ## Choosing a Test
