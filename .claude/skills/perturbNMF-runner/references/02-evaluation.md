@@ -40,7 +40,7 @@ Reconstruction error and stability are computed automatically.
 
 ## SLURM Resources
 
-- Partition: `engreitz,owners`
+- Partition: `engreitz,owners,bigmem`
 - CPUs: 10-20
-- Memory: 64-96G
+- Memory: 64-256G
 - Time: 3-5h

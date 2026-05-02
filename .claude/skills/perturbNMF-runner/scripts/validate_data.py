@@ -6,7 +6,7 @@ Checks input .h5ad or .h5mu files for required structure, reports dataset
 statistics (cell count, gene count, sparsity, file size), and validates
 guide information when present.
 
-Reuses logic from Inference/src/format_checking.py.
+Reuses logic from Stage1_Inference/src/format_checking.py.
 
 Exit code 0 = valid, 1 = issues found.
 """

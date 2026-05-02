@@ -4,8 +4,8 @@
 #SBATCH --mem=32G
 #SBATCH --cpus-per-task=4
 #SBATCH --job-name=test_evaluation
-#SBATCH --output=tests/output/eval_logs/slurm_%j.out
-#SBATCH --error=tests/output/eval_logs/slurm_%j.err
+#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/tests/output/torch-cNMF/batch/Evaluation/logs/slurm_%j.out
+#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/tests/output/torch-cNMF/batch/Evaluation/logs/slurm_%j.err
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ymo@stanford.edu
 

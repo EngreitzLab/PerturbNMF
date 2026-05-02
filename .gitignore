@@ -4,6 +4,11 @@ src/Stage2_Evaluation/Resources/
 
 # Test output (generated)
 tests/output/
+tests/tests/output/
+
+# Example output (generated)
+examples/example_output/
+examples/data/
 
 # Python
 __pycache__/

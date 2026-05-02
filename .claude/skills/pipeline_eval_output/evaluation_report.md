@@ -32,7 +32,7 @@ flowchart TD
 ### Stages
 
 #### Stage 1a: sk-cNMF Inference (CPU)
-- **Script**: `Stage1_Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py`
+- **Script**: `Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py`
 - **Conda env**: `sk-cNMF`
 - **SLURM resources**: 786G memory, 10 CPUs, 14 hours, no GPU
 - **Parameters**: 21 total
@@ -60,7 +60,7 @@ flowchart TD
 | `--parallel_running` | flag | False | No |
 
 #### Stage 1b: torch-cNMF Inference (GPU)
-- **Script**: `Stage1_Stage1_Inference/torch-cNMF/Slurm_Version/torch-cNMF_inference_pipeline.py`
+- **Script**: `Stage1_Inference/torch-cNMF/Slurm_Version/torch-cNMF_inference_pipeline.py`
 - **Conda env**: `torch-cNMF`
 - **SLURM resources**: 96G memory, 10 CPUs, 5 hours, 1 GPU
 - **Parameters**: 33 total (21 shared with sk-cNMF + 12 GPU-specific)
@@ -85,7 +85,7 @@ Additional parameters: `--mode`, `--use_gpu`, `--fp_precision`, `--alpha_usage`,
 
 ### Error 1: Wrong default tolerance in sk-cNMF (CRITICAL)
 
-- **File**: `Stage1_Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py:42`
+- **File**: `Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py:42`
 - **Issue**: `--tol` default is `1e4` (10,000) instead of `1e-4` (0.0001)
 - **Impact**: NMF converges instantly without meaningful optimization. All sk-cNMF runs using the default tolerance produce low-quality factorizations.
 - **Severity**: Critical
@@ -107,7 +107,7 @@ parser.add_argument('--tol', type = float , default = 1e-4, ...)
 
 ### Error 3: File existence check tests directory instead of file (MODERATE)
 
-- **File**: `Stage1_Stage1_Inference/src/run_cNMF.py:354`
+- **File**: `Stage1_Inference/src/run_cNMF.py:354`
 - **Issue**: `os.path.exists(source_dir)` checks if the directory exists, not the specific file `source_path`
 - **Impact**: Missing files are silently skipped when the parent directory exists. The function reports "File not found" with the wrong path when the directory doesn't exist.
 - **Severity**: Moderate
@@ -153,7 +153,7 @@ if os.path.exists(source_path):
 
 ### Error 8: Shadowed Python builtin (MINOR)
 
-- **File**: `Stage1_Stage1_Inference/src/run_cNMF.py:250,298,323`
+- **File**: `Stage1_Inference/src/run_cNMF.py:250,298,323`
 - **Issue**: Parameter named `len` shadows Python's built-in `len()` function
 - **Impact**: If anyone calls `len()` inside these functions, they get the integer parameter instead
 - **Severity**: Minor
@@ -161,7 +161,7 @@ if os.path.exists(source_path):
 
 ### Error 9: `--nmf_seeds_path None` passed as literal string (MINOR)
 
-- **File**: `Stage1_Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch.sh:69`
+- **File**: `Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch.sh:69`
 - **Issue**: `--nmf_seeds_path None` passes the literal string "None" rather than omitting the argument
 - **Impact**: Attempts to load a file called "None", which will throw `FileNotFoundError`
 - **Severity**: Minor
