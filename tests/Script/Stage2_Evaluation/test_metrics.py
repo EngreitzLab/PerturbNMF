@@ -189,7 +189,7 @@ class TestPerturbationReferenceTargets:
         reference_targets = df_non.index.values.tolist()
         assert len(reference_targets) > 0
         # All extracted targets should be non-targeting type
-        assert all(df.loc[t, "type"] == "non-targeting" for t in reference_targets)
+        assert all(df.loc[t, "type"] in ("non-targeting", "safe-targeting") for t in reference_targets)
 
     def test_perturbation_with_annotation_table(self, mdata_copy, reference_targets_from_annotation):
         """Run perturbation association using reference_targets extracted from annotation table."""

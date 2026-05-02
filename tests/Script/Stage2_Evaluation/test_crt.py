@@ -34,9 +34,9 @@ except ImportError:
 class TestCRTReformat:
     """Test the reformat_data_for_CRT function from the CRT calibration script."""
 
-    def test_reformat_basic_structure(self, synthetic_mdata):
+    def test_reformat_basic_structure(self, test_mdata):
         """reformat_data_for_CRT should produce expected keys in obsm/uns."""
-        mdata = synthetic_mdata.copy()
+        mdata = test_mdata.copy()
         mdata_guide = mdata["rna"].copy()
 
         adata = reformat_data_for_CRT(mdata, mdata_guide)
@@ -47,9 +47,9 @@ class TestCRTReformat:
         assert "program_names" in adata.uns
         assert "covar" in adata.obsm
 
-    def test_reformat_guide2gene_mapping(self, synthetic_mdata):
+    def test_reformat_guide2gene_mapping(self, test_mdata):
         """guide2gene dict should map every guide name to its target."""
-        mdata = synthetic_mdata.copy()
+        mdata = test_mdata.copy()
         mdata_guide = mdata["rna"].copy()
 
         adata = reformat_data_for_CRT(mdata, mdata_guide)
