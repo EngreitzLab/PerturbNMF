@@ -123,10 +123,11 @@ Evaluation/
 
 ### Matched Cell ProgramDE
 ```
-<output_dir>/
-├── {condition}_gene_results.csv               (per condition)
-├── {condition}_null_results.csv               (per condition)
-└── logs/
+Evaluation/
+└── {k}_{sel_thresh}/Matched_cell_programDE/
+    ├── {condition}_gene_results.csv            (per condition)
+    ├── {condition}_null_results.csv            (per condition)
+    └── logs/
 ```
 
 ## Choosing a Test
