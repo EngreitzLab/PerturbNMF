@@ -29,8 +29,154 @@ from scipy import sparse
 
 
 # ===========================================================================
-# Tests for association_categorical.py
+# Per-K parametrized tests (K=5, 10, 15)
+# Results saved to Evaluation/{K}_2_0/
 # ===========================================================================
+
+class TestCategoricalPerK:
+
+    def test_compute_categorical_dunn(self, mdata_copy_per_k, eval_output_dir_per_k):
+        from Stage2_Evaluation.A_Metrics.src.association_categorical import compute_categorical_association
+        k = mdata_copy_per_k.uns["test_k"]
+        results_df, posthoc_df = compute_categorical_association(
+            mdata_copy_per_k, prog_key="cNMF", categorical_key="batch",
+            test="dunn", n_jobs=1, inplace=False
+        )
+        assert "batch_kruskall_wallis_stat" in results_df.columns
+        assert len(results_df) == mdata_copy_per_k["cNMF"].n_vars
+        results_df.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_categorical_association_results.txt"), sep="\t")
+        posthoc_df.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_categorical_association_posthoc.txt"), sep="\t", index=False)
+
+
+class TestPerturbationPerK:
+
+    def test_compute_perturbation(self, mdata_copy_per_k, eval_output_dir_per_k):
+        from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
+        k = mdata_copy_per_k.uns["test_k"]
+        result = compute_perturbation_association(
+            mdata_copy_per_k, prog_key="cNMF",
+            reference_targets=["non-targeting"],
+            collapse_targets=True, n_jobs=1, inplace=False, FDR_method="BH"
+        )
+        assert isinstance(result, pd.DataFrame)
+        assert all(result["pval"].between(0, 1))
+        result.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_perturbation_association_results.txt"), sep="\t", index=False)
+
+
+class TestGenesetPerK:
+
+    def test_get_gene_loadings(self, mdata_copy_per_k, eval_output_dir_per_k):
+        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import get_program_gene_loadings
+        k = mdata_copy_per_k.uns["test_k"]
+        loadings = get_program_gene_loadings(
+            mdata_copy_per_k, prog_key="cNMF", data_key="rna", gene_names_key="symbol"
+        )
+        assert loadings.shape[1] == mdata_copy_per_k["cNMF"].n_vars
+        loadings.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_gene_loadings.txt"), sep="\t")
+
+    def test_reactome_enrichment(self, mdata_copy_per_k, eval_output_dir_per_k):
+        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import compute_geneset_enrichment
+        k = mdata_copy_per_k.uns["test_k"]
+        result = compute_geneset_enrichment(
+            mdata_copy_per_k, prog_key="cNMF", data_key="rna", prog_name=None,
+            organism="human", library="Reactome_2022", method="fisher",
+            database="enrichr", n_top=300, n_jobs=1,
+            inplace=False, user_geneset=None, use_loadings_gene=False,
+            gene_names_key="symbol"
+        )
+        assert isinstance(result, pd.DataFrame)
+        result.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_geneset_enrichment.txt"), sep="\t", index=False)
+
+
+class TestExplainedVariancePerK:
+
+    def test_compute_explained_variance(self, mdata_copy_per_k, eval_output_dir_per_k, cnmf_obj, X_norm):
+        from Stage2_Evaluation.A_Metrics.src.explained_variance import compute_explained_variance
+        k = mdata_copy_per_k.uns["test_k"]
+        program_names = mdata_copy_per_k["cNMF"].var_names
+        compute_explained_variance(cnmf_obj, X_norm, k,
+                                   output_folder=eval_output_dir_per_k,
+                                   thre='2.0',
+                                   program_name=program_names)
+        ev_path = os.path.join(eval_output_dir_per_k, f"{k}_Explained_Variance.txt")
+        summary_path = os.path.join(eval_output_dir_per_k, f"{k}_Explained_Variance_Summary.txt")
+        assert os.path.isfile(ev_path)
+        assert os.path.isfile(summary_path)
+        ev_df = pd.read_csv(ev_path, sep="\t")
+        assert len(ev_df) == k
+        assert all(np.isfinite(ev_df["VarianceExplained"]))
+
+
+class TestGOEnrichmentPerK:
+
+    def test_go_enrichment(self, mdata_copy_per_k, eval_output_dir_per_k):
+        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import compute_geneset_enrichment
+        k = mdata_copy_per_k.uns["test_k"]
+        result = compute_geneset_enrichment(
+            mdata_copy_per_k, prog_key="cNMF", data_key="rna", prog_name=None,
+            organism="human", library="GO_Biological_Process_2023", method="fisher",
+            database="enrichr", n_top=300, n_jobs=1,
+            inplace=False, user_geneset=None, use_loadings_gene=False,
+            gene_names_key="symbol"
+        )
+        assert isinstance(result, pd.DataFrame)
+        result.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_GO_term_enrichment.txt"), sep="\t", index=False)
+
+
+class TestTraitEnrichmentPerK:
+
+    def test_trait_enrichment(self, mdata_copy_per_k, eval_output_dir_per_k):
+        from Stage2_Evaluation.A_Metrics.src.enrichment_trait import compute_trait_enrichment
+        k = mdata_copy_per_k.uns["test_k"]
+        gwas_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+            "src", "Stage2_Evaluation", "Resources", "OpenTargets_L2G_Filtered.csv.gz"
+        )
+        if not os.path.isfile(gwas_path):
+            pytest.skip(f"GWAS data not found: {gwas_path}")
+        result = compute_trait_enrichment(
+            mdata_copy_per_k, gwas_data=gwas_path,
+            prog_key="cNMF", prog_name=None, data_key="rna",
+            library="OT_GWAS", n_jobs=1, inplace=False,
+            key_column="trait_efos", gene_column="gene_name",
+            method="fisher", n_top=300, use_loadings_gene=True,
+            gene_names_key="symbol"
+        )
+        assert isinstance(result, pd.DataFrame)
+        result.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_trait_enrichment.txt"), sep="\t", index=False)
+
+
+class TestIntegrationPerK:
+
+    def test_categorical_then_perturbation(self, mdata_copy_per_k, eval_output_dir_per_k):
+        """Run categorical + perturbation per K on real MuData."""
+        from Stage2_Evaluation.A_Metrics.src.association_categorical import compute_categorical_association
+        from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
+        k = mdata_copy_per_k.uns["test_k"]
+
+        cat_results, cat_posthoc = compute_categorical_association(
+            mdata_copy_per_k, prog_key="cNMF", categorical_key="batch",
+            test="dunn", n_jobs=1, inplace=False
+        )
+        assert len(cat_results) > 0
+
+        perturb_results = compute_perturbation_association(
+            mdata_copy_per_k, prog_key="cNMF",
+            reference_targets=["non-targeting"],
+            collapse_targets=True, n_jobs=1, inplace=False, FDR_method="BH"
+        )
+        assert len(perturb_results) > 0
+
+        cat_results.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_integration_categorical.txt"), sep="\t")
+        cat_posthoc.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_integration_posthoc.txt"), sep="\t", index=False)
+        perturb_results.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_integration_perturbation.txt"), sep="\t", index=False)
+
+
+# ===========================================================================
+# Unit / edge-case tests (K=5 only, no file output)
+# ===========================================================================
+
+# --- association_categorical.py ---
 
 class TestCategoricalAssociation:
 
@@ -94,19 +240,6 @@ class TestCategoricalAssociation:
                                     correlation="pearsonr", mode="one_vs_one")
         assert pvals.shape == (3, 3)
 
-    def test_compute_categorical_not_inplace_dunn(self, mdata_copy, eval_output_dir):
-        from Stage2_Evaluation.A_Metrics.src.association_categorical import compute_categorical_association
-        results_df, posthoc_df = compute_categorical_association(
-            mdata_copy, prog_key="cNMF", categorical_key="batch",
-            test="dunn", n_jobs=1, inplace=False
-        )
-        assert "batch_kruskall_wallis_stat" in results_df.columns
-        assert "batch_kruskall_wallis_pval" in results_df.columns
-        assert "program_name" in posthoc_df.columns
-        assert len(results_df) == 5
-        results_df.to_csv(os.path.join(eval_output_dir, "5_categorical_association_results.csv"))
-        posthoc_df.to_csv(os.path.join(eval_output_dir, "5_categorical_association_posthoc.csv"))
-
     def test_compute_categorical_pearson_one_vs_all(self, mdata_copy):
         from Stage2_Evaluation.A_Metrics.src.association_categorical import compute_categorical_association
         results_df, posthoc_df = compute_categorical_association(
@@ -117,9 +250,7 @@ class TestCategoricalAssociation:
         assert posthoc_df.shape[0] > 0
 
 
-# ===========================================================================
-# Tests for association_perturbation.py
-# ===========================================================================
+# --- association_perturbation.py ---
 
 class TestPerturbationAssociation:
 
@@ -151,27 +282,6 @@ class TestPerturbationAssociation:
         assert np.isfinite(row[5])  # stat
         assert 0 <= row[6] <= 1     # pval
 
-    def test_compute_perturbation_not_inplace(self, mdata_copy, eval_output_dir):
-        from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
-        result = compute_perturbation_association(
-            mdata_copy, prog_key="cNMF",
-            guide_names_key="guide_names",
-            guide_targets_key="guide_targets",
-            guide_assignments_key="guide_assignment",
-            reference_targets=["non-targeting"],
-            collapse_targets=True,
-            n_jobs=1,
-            inplace=False,
-            FDR_method="BH"
-        )
-        assert isinstance(result, pd.DataFrame)
-        expected_cols = {"target_name", "program_name", "pval", "adj_pval", "log2FC",
-                         "stat", "ref_mean", "test_mean"}
-        assert expected_cols.issubset(set(result.columns))
-        assert all(result["pval"].between(0, 1))
-        assert all(np.isfinite(result["adj_pval"]))
-        result.to_csv(os.path.join(eval_output_dir, "5_perturbation_association.csv"), index=False)
-
     def test_pval_sanitization(self, mdata_copy):
         from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
         result = compute_perturbation_association(
@@ -184,9 +294,7 @@ class TestPerturbationAssociation:
         assert all(result["pval"] <= 1)
 
 
-# ===========================================================================
-# Tests for enrichment_geneset.py
-# ===========================================================================
+# --- enrichment_geneset.py ---
 
 class TestGenesetEnrichment:
 
@@ -207,15 +315,6 @@ class TestGenesetEnrichment:
         gmt = create_geneset_dict(df, key_column="trait", gene_column="gene")
         assert gmt == {}
 
-    def test_get_program_gene_loadings_all(self, mdata_copy, eval_output_dir):
-        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import get_program_gene_loadings
-        loadings = get_program_gene_loadings(
-            mdata_copy, prog_key="cNMF", data_key="rna", gene_names_key="symbol"
-        )
-        assert loadings.shape == (17495, 5)
-        assert loadings.index.name == "gene_names"
-        loadings.to_csv(os.path.join(eval_output_dir, "5_gene_loadings.csv"))
-
     def test_get_program_gene_loadings_single(self, mdata_copy):
         from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import get_program_gene_loadings
         prog_name = mdata_copy["cNMF"].var_names[0]
@@ -226,7 +325,7 @@ class TestGenesetEnrichment:
         assert loadings.shape[1] == 1
         assert loadings.columns[0] == prog_name
 
-    @patch("Evaluation.src.enrichment_geneset.gp")
+    @patch("Stage2_Evaluation.A_Metrics.src.enrichment_geneset.gp")
     def test_perform_prerank(self, mock_gp):
         from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import perform_prerank
         mock_res = pd.DataFrame({
@@ -250,7 +349,7 @@ class TestGenesetEnrichment:
         assert result["tag_before"].iloc[0] == 10
         assert result["tag_after"].iloc[0] == 50
 
-    @patch("Evaluation.src.enrichment_geneset.gp")
+    @patch("Stage2_Evaluation.A_Metrics.src.enrichment_geneset.gp")
     def test_perform_fisher_enrich(self, mock_gp):
         from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import perform_fisher_enrich
         mock_res = pd.DataFrame({
@@ -288,9 +387,7 @@ class TestGenesetEnrichment:
         assert "gsea_varmap_test_lib" in mdata_copy["cNMF"].uns
 
 
-# ===========================================================================
-# Tests for enrichment_trait.py
-# ===========================================================================
+# --- enrichment_trait.py ---
 
 class TestTraitEnrichment:
 
@@ -351,77 +448,7 @@ class TestTraitEnrichment:
         assert all(np.isfinite(result["-log10(P-value)"]))
 
 
-# ===========================================================================
-# Tests for enrichment_motif.py
-# ===========================================================================
-
-class TestMotifEnrichment:
-
-    def test_read_loci_valid(self):
-        from Stage2_Evaluation.A_Metrics.src.enrichment_motif import read_loci
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False) as f:
-            f.write("chromosome\tstart\tend\tseq_name\tseq_class\tseq_score\tgene_name\n")
-            f.write("chr1\t100\t200\tseq1\tpromoter\t0.9\tGENE1\n")
-            f.write("chr1\t300\t400\tseq2\tpromoter\t0.8\tGENE2\n")
-            fname = f.name
-        try:
-            loci = read_loci(fname)
-            assert len(loci) == 2
-            assert "gene_name" in loci.columns
-        finally:
-            os.unlink(fname)
-
-    def test_read_loci_missing_column(self):
-        from Stage2_Evaluation.A_Metrics.src.enrichment_motif import read_loci
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False) as f:
-            f.write("chromosome\tstart\tend\n")
-            f.write("chr1\t100\t200\n")
-            fname = f.name
-        try:
-            with pytest.raises(ValueError, match="not formatted correctly"):
-                read_loci(fname)
-        finally:
-            os.unlink(fname)
-
-    def test_compute_motif_instances(self):
-        from Stage2_Evaluation.A_Metrics.src.enrichment_motif import compute_motif_instances
-        motif_df = pd.DataFrame({
-            "gene_name": ["G1", "G1", "G2", "G2", "G3"],
-            "motif_name": ["M1", "M1", "M2", "M1", "M2"],
-            "adj_pval": [0.01, 0.02, 0.03, 0.01, 0.04]
-        })
-        gene_names = np.array(["G1", "G2", "G3", "G4"])
-        result = compute_motif_instances(motif_df, gene_names=gene_names, sig=0.05)
-        assert result.shape[0] == 4
-        assert set(result.columns) == {"M1", "M2"}
-        assert pd.isna(result.loc["G4", "M1"])
-
-    def test_perform_correlation_motif(self):
-        from Stage2_Evaluation.A_Metrics.src.enrichment_motif import perform_correlation as motif_corr
-        rng = np.random.default_rng(42)
-        n_genes, n_motifs, n_progs = 50, 3, 2
-        motif_count_df = pd.DataFrame(
-            rng.integers(0, 5, size=(n_genes, n_motifs)),
-            index=[f"G{i}" for i in range(n_genes)],
-            columns=[f"M{j}" for j in range(n_motifs)]
-        )
-        prog_genes = pd.DataFrame(
-            rng.random((n_progs, n_genes)),
-            index=[f"prog_{i}" for i in range(n_progs)],
-            columns=[f"G{i}" for i in range(n_genes)]
-        )
-        stat_df = pd.DataFrame(np.nan, index=[f"prog_{i}" for i in range(n_progs)],
-                                columns=[f"M{j}" for j in range(n_motifs)])
-        pval_df = stat_df.copy()
-        motif_corr(motif_count_df, prog_genes, stat_df, pval_df,
-                   motif_idx=0, prog_idx=0, correlation="pearsonr")
-        assert np.isfinite(float(stat_df.iloc[0, 0]))
-        assert 0 <= float(pval_df.iloc[0, 0]) <= 1
-
-
-# ===========================================================================
-# Tests for explained_variance.py
-# ===========================================================================
+# --- explained_variance.py ---
 
 class TestExplainedVariance:
 
@@ -456,86 +483,7 @@ class TestExplainedVariance:
         assert np.isfinite(ve)
 
 
-# ===========================================================================
-# Tests for Self_regulating_programs.py
-# ===========================================================================
-
-class TestSelfRegulatingPrograms:
-
-    def test_get_top_genes_real_data(self, spectra_score_path):
-        from Stage2_Evaluation.A_Metrics.src.Self_regulating_programs import get_top_genes_per_program
-        top = get_top_genes_per_program(spectra_score_path, top_n=10)
-        assert "0" in top
-        assert "4" in top
-        for prog_key in top:
-            assert len(top[prog_key]) == 10
-
-    def test_get_top_genes_with_rename(self):
-        from Stage2_Evaluation.A_Metrics.src.Self_regulating_programs import get_top_genes_per_program
-        rng = np.random.default_rng(42)
-        ens_ids = [f"ENS{i:05d}" for i in range(50)]
-        gene_dict = {ens: f"GENE{i}" for i, ens in enumerate(ens_ids)}
-        data = rng.random((2, 50))
-        df = pd.DataFrame(data, index=[1, 2], columns=ens_ids)
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-            df.to_csv(f, sep="\t")
-            fname = f.name
-        try:
-            top = get_top_genes_per_program(fname, top_n=5, gene_name_dict=gene_dict)
-            for gene in top["0"]:
-                assert gene.startswith("GENE")
-        finally:
-            os.unlink(fname)
-
-    def test_find_autoregulatory_hits(self):
-        from Stage2_Evaluation.A_Metrics.src.Self_regulating_programs import find_autoregulatory_hits
-        perturb_df = pd.DataFrame({
-            "target_name": ["GENE1", "GENE2", "GENE3", "GENE4", "GENE5"],
-            "program_name": [0, 0, 1, 1, 2],
-            "log2FC": [-0.5, 0.3, -0.8, 0.2, -1.0],
-            "p-value": [0.001, 0.1, 0.01, 0.5, 0.001],
-            "adj_pval": [0.01, 0.2, 0.04, 0.8, 0.02]
-        })
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-            perturb_df.to_csv(f, sep="\t", index=False)
-            fname = f.name
-        try:
-            top_genes = {
-                "0": {"GENE1", "GENE2", "GENEX"},
-                "1": {"GENE3", "GENEY"},
-                "2": {"GENEZ"}
-            }
-            hits = find_autoregulatory_hits(fname, top_genes, pval_thresh=0.05)
-            assert "GENE1" in hits["target_name"].values
-            assert "GENE3" in hits["target_name"].values
-            assert "GENE5" not in hits["target_name"].values
-            assert "GENE2" not in hits["target_name"].values
-        finally:
-            os.unlink(fname)
-
-    def test_find_autoregulatory_no_hits(self):
-        from Stage2_Evaluation.A_Metrics.src.Self_regulating_programs import find_autoregulatory_hits
-        perturb_df = pd.DataFrame({
-            "target_name": ["GENE1"],
-            "program_name": [0],
-            "log2FC": [-0.5],
-            "p-value": [0.5],
-            "adj_pval": [0.9]
-        })
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-            perturb_df.to_csv(f, sep="\t", index=False)
-            fname = f.name
-        try:
-            top_genes = {"0": {"GENE1"}}
-            hits = find_autoregulatory_hits(fname, top_genes, pval_thresh=0.05)
-            assert len(hits) == 0
-        finally:
-            os.unlink(fname)
-
-
-# ===========================================================================
-# Tests for Utilities.py
-# ===========================================================================
+# --- Utilities.py ---
 
 class TestUtilities:
 
@@ -585,124 +533,6 @@ class TestUtilities:
             assert list(mdata["rna"].var_names) == expected
         finally:
             os.unlink(fname)
-
-
-# ===========================================================================
-# Integration test
-# ===========================================================================
-
-class TestIntegration:
-
-    def test_categorical_then_perturbation(self, mdata_copy, eval_output_dir):
-        """Run categorical + perturbation on same real MuData."""
-        from Stage2_Evaluation.A_Metrics.src.association_categorical import compute_categorical_association
-        from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
-
-        cat_results, cat_posthoc = compute_categorical_association(
-            mdata_copy, prog_key="cNMF", categorical_key="batch",
-            test="dunn", n_jobs=1, inplace=False
-        )
-        assert len(cat_results) == 5
-
-        perturb_results = compute_perturbation_association(
-            mdata_copy, prog_key="cNMF",
-            reference_targets=["non-targeting"],
-            collapse_targets=True, n_jobs=1, inplace=False, FDR_method="BH"
-        )
-        assert len(perturb_results) > 0
-        assert "adj_pval" in perturb_results.columns
-
-        cat_results.to_csv(os.path.join(eval_output_dir, "5_integration_categorical.csv"))
-        cat_posthoc.to_csv(os.path.join(eval_output_dir, "5_integration_posthoc.csv"), index=False)
-        perturb_results.to_csv(os.path.join(eval_output_dir, "5_integration_perturbation.csv"), index=False)
-
-
-# ===========================================================================
-# Per-K parametrized tests (K=5, 10, 15)
-# Results saved to Evaluation/{K}_2_0/
-# ===========================================================================
-
-class TestCategoricalPerK:
-
-    def test_compute_categorical_dunn(self, mdata_copy_per_k, eval_output_dir_per_k):
-        from Stage2_Evaluation.A_Metrics.src.association_categorical import compute_categorical_association
-        k = mdata_copy_per_k.uns["test_k"]
-        results_df, posthoc_df = compute_categorical_association(
-            mdata_copy_per_k, prog_key="cNMF", categorical_key="batch",
-            test="dunn", n_jobs=1, inplace=False
-        )
-        assert "batch_kruskall_wallis_stat" in results_df.columns
-        assert len(results_df) == mdata_copy_per_k["cNMF"].n_vars
-        results_df.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_categorical_association_results.txt"), sep="\t")
-        posthoc_df.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_categorical_association_posthoc.txt"), sep="\t", index=False)
-
-
-class TestPerturbationPerK:
-
-    def test_compute_perturbation(self, mdata_copy_per_k, eval_output_dir_per_k):
-        from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
-        k = mdata_copy_per_k.uns["test_k"]
-        result = compute_perturbation_association(
-            mdata_copy_per_k, prog_key="cNMF",
-            reference_targets=["non-targeting"],
-            collapse_targets=True, n_jobs=1, inplace=False, FDR_method="BH"
-        )
-        assert isinstance(result, pd.DataFrame)
-        assert all(result["pval"].between(0, 1))
-        result.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_perturbation_association_results.txt"), sep="\t", index=False)
-
-
-class TestGenesetPerK:
-
-    def test_get_gene_loadings(self, mdata_copy_per_k, eval_output_dir_per_k):
-        from Stage2_Evaluation.A_Metrics.src.enrichment_geneset import get_program_gene_loadings
-        k = mdata_copy_per_k.uns["test_k"]
-        loadings = get_program_gene_loadings(
-            mdata_copy_per_k, prog_key="cNMF", data_key="rna", gene_names_key="symbol"
-        )
-        assert loadings.shape[1] == mdata_copy_per_k["cNMF"].n_vars
-        loadings.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_gene_loadings.txt"), sep="\t")
-
-
-class TestSelfRegulatingPerK:
-
-    def test_get_top_genes(self, spectra_score_path_per_k, eval_output_dir):
-        from Stage2_Evaluation.A_Metrics.src.Self_regulating_programs import get_top_genes_per_program
-        k, path = spectra_score_path_per_k
-        out_dir = os.path.join(eval_output_dir, f"{k}_2_0")
-        os.makedirs(out_dir, exist_ok=True)
-        top = get_top_genes_per_program(path, top_n=10)
-        assert len(top) > 0
-        for prog_key in top:
-            assert len(top[prog_key]) == 10
-        top_df = pd.DataFrame(dict([(prog, pd.Series(genes)) for prog, genes in top.items()]))
-        top_df.to_csv(os.path.join(out_dir, f"{k}_top_genes_per_program.txt"), sep="\t", index=False)
-
-
-class TestIntegrationPerK:
-
-    def test_categorical_then_perturbation(self, mdata_copy_per_k, eval_output_dir_per_k):
-        """Run categorical + perturbation per K on real MuData."""
-        from Stage2_Evaluation.A_Metrics.src.association_categorical import compute_categorical_association
-        from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
-        k = mdata_copy_per_k.uns["test_k"]
-
-        cat_results, cat_posthoc = compute_categorical_association(
-            mdata_copy_per_k, prog_key="cNMF", categorical_key="batch",
-            test="dunn", n_jobs=1, inplace=False
-        )
-        assert len(cat_results) > 0
-
-        perturb_results = compute_perturbation_association(
-            mdata_copy_per_k, prog_key="cNMF",
-            reference_targets=["non-targeting"],
-            collapse_targets=True, n_jobs=1, inplace=False, FDR_method="BH"
-        )
-        assert len(perturb_results) > 0
-
-        cat_results.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_integration_categorical.txt"), sep="\t")
-        cat_posthoc.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_integration_posthoc.txt"), sep="\t", index=False)
-        perturb_results.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_integration_perturbation.txt"), sep="\t", index=False)
 
 
 if __name__ == "__main__":

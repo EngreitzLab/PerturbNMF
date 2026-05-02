@@ -97,24 +97,6 @@ def mdata_copy_per_k(test_mdata_per_k):
 
 
 @pytest.fixture(scope="session")
-def spectra_score_path(inference_path):
-    path = os.path.join(inference_path, "Inference.gene_spectra_score.k_5.dt_2_0.txt")
-    if not os.path.isfile(path):
-        pytest.skip(f"Spectra score file not found: {path}")
-    return path
-
-
-@pytest.fixture(scope="session", params=TEST_K_VALUES)
-def spectra_score_path_per_k(request, inference_path):
-    """Spectra score path for each K value."""
-    k = request.param
-    path = os.path.join(inference_path, f"Inference.gene_spectra_score.k_{k}.dt_2_0.txt")
-    if not os.path.isfile(path):
-        pytest.skip(f"Spectra score file not found: {path}")
-    return k, path
-
-
-@pytest.fixture(scope="session")
 def eval_output_dir():
     """Fixed output directory for saving evaluation results."""
     os.makedirs(EVAL_OUTPUT_DIR, exist_ok=True)
@@ -128,6 +110,28 @@ def eval_output_dir_per_k(mdata_copy_per_k):
     out_dir = os.path.join(EVAL_OUTPUT_DIR, f"{k}_2_0")
     os.makedirs(out_dir, exist_ok=True)
     return out_dir
+
+
+@pytest.fixture(scope="session")
+def cnmf_obj(inference_path):
+    """Create a cNMF object pointing to the test inference output."""
+    from torch_cnmf import cNMF
+    run_dir = os.path.dirname(inference_path)  # parent of Inference/
+    return cNMF(output_dir=run_dir, name='Inference')
+
+
+@pytest.fixture(scope="session")
+def X_norm(inference_path):
+    """Load the normalized counts matrix from inference output."""
+    import scanpy as sc
+    norm_path = os.path.join(inference_path, "cnmf_tmp", "Inference.norm_counts.h5ad")
+    if not os.path.isfile(norm_path):
+        pytest.skip(f"Normalized counts not found: {norm_path}")
+    adata = sc.read_h5ad(norm_path)
+    X = adata.X
+    if hasattr(X, 'toarray'):
+        X = X.toarray()
+    return X
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-# cNMF Pipeline
+# PerturbNMF Pipeline
 
 ```mermaid
 flowchart TD
@@ -53,22 +53,21 @@ See [`src/Stage2_Evaluation/A_Metrics/README.md`](src/Stage2_Evaluation/A_Metric
 **Perturbation calibration** (pick one method):
 - **U-test**: Fast, non-parametric — good for initial exploratory analysis
 - **CRT**: Permutation-based, covariate-adjusted — more statistically rigorous
-- **Matched Cell DE**: Propensity score matching with G-computation — causal inference framework
+- **Matched Cell DE**:  Permutation-based, covariate-adjusted — more statistically rigorous
 
 Calibration validates that p-value calculations are well-calibrated by generating a null distribution from non-targeting guides:
 1. Generate fake p-values by randomly selecting non-targeting guides as targeting, then perform perturbation testing
 2. The fake p-values vs uniform distribution QQ-plot should align on the diagonal
 3. The real p-values vs uniform distribution QQ-plot should show enrichment (rarer than expected)
-4. If calibrated → proceed to downstream analysis. If not → change the p-value calculation method.
+4. If calibrated → proceed to downstream analysis. If not → change the p-value calculation method or use different covariate.
 
 See [`src/Stage2_Evaluation/B_Calibration/README.md`](src/Stage2_Evaluation/B_Calibration/README.md) for detailed method descriptions and guidance on choosing a test.
 
 ### Stage 3: Interpretation
 - **K-selection plots** for optimal K selection
-- **Program analysis plots** for per-program quality control
-- **Perturbed gene analysis** visualization
-- **ProgramExplorer annotation**: LLM-driven gene program annotation (STRING enrichment, PubTator3 literature mining, Claude AI)
-- **Literature search**: PubMed-based literature mining with LLM verification
+- **Program  plots** for per-program quality control
+- **Perturbation plots** visualization
 - **Excel summarization** of results
+- **Annotation**: LLM-driven gene program annotation (PubTator3 literature mining, verfiication of LLM generated contents)
 
 See [`src/Stage3_Interpretation/README.md`](src/Stage3_Interpretation/README.md) for detailed parameters and output format.
