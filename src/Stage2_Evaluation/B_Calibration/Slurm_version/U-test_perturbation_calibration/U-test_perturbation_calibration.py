@@ -157,7 +157,7 @@ def compute_fake_perturbation_tests():
                         prog_key=args.prog_key,
                         collapse_targets=True,
                         pseudobulk=False,
-                        reference_targets=args.reference_targets,
+                        reference_targets=args.guide_annotation_key,
                         FDR_method=args.FDR_method,
                         n_jobs=-1,
                         inplace=False
