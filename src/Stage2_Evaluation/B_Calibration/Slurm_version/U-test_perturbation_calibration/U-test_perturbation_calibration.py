@@ -8,6 +8,7 @@ to evaluate the statistical properties of perturbation detection methods.
 
 import os
 import sys
+import gc
 import yaml
 import logging
 import argparse
@@ -157,7 +158,7 @@ def compute_fake_perturbation_tests():
                         prog_key=args.prog_key,
                         collapse_targets=True,
                         pseudobulk=False,
-                        reference_targets=args.reference_targets,
+                        reference_targets=args.guide_annotation_key,
                         FDR_method=args.FDR_method,
                         n_jobs=-1,
                         inplace=False
@@ -170,6 +171,16 @@ def compute_fake_perturbation_tests():
                     test_stats_df['sel_thresh'] = sel_thresh
                     test_stats_fake_dfs.append(test_stats_df) # combine all
                     test_stats_fake_dfs_temp.append(test_stats_df) # combine for each k and sel_thresh
+
+                # Release per-iteration deep-copy of mdata. Without this, full
+                # mdata.copy() instances stack up (~10 GB sparse rna matrix per copy
+                # on real datasets) and OOM around iteration 16/50 in 256 GB.
+                del _mdata, mdata_samp
+                gc.collect()
+
+            # Release the K-loop mdata before reloading for next K.
+            del mdata
+            gc.collect()
 
             # Save results
             test_stats_fake_dfs_temp = pd.concat(test_stats_fake_dfs_temp, ignore_index=True)
