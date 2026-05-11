@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # SLURM job configuration
-#SBATCH --job-name=U-test_PerturbationDE_1_1_0   # Job name
-#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/012726_100k_cells_20iter_allHVG_torch_halsvar_batch_e7/012726_100k_cells_20iter_allHVG_torch_halsvar_batch_e7_all/Evaluation/logs/%j.out      # Output file (%j = job ID)
-#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/012726_100k_cells_20iter_allHVG_torch_halsvar_batch_e7/012726_100k_cells_20iter_allHVG_torch_halsvar_batch_e7_all/Evaluation/logs/%j.err       # Error file
+#SBATCH --job-name=U-test_calibration_test   # Job name
+#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/tests/output/torch-cNMF/batch/Evaluation/logs/%j.out      # Output file (%j = job ID)
+#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/tests/output/torch-cNMF/batch/Evaluation/logs/%j.err       # Error file
 #SBATCH --partition=owners,engreitz            # partition name
-#SBATCH --time=01:00:00                 # Time limit 
+#SBATCH --time=01:00:00                 # Time limit
 #SBATCH --nodes=1                       # Number of nodes
 #SBATCH --ntasks=1                      # Number of tasks
 #SBATCH --cpus-per-task=20              # CPUs per task
@@ -18,8 +18,8 @@
 
 
 # Define the cNMF case
-OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/012726_100k_cells_20iter_allHVG_torch_halsvar_batch_e7"
-RUN_NAME="012726_100k_cells_20iter_allHVG_torch_halsvar_batch_e7_all"
+OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/tests/output/torch-cNMF"
+RUN_NAME="batch"
 LOG_DIR="$OUT_DIR/$RUN_NAME"
 
 # Store start time
@@ -54,28 +54,22 @@ echo "Running Python script..."
 python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/B_Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py \
         --out_dir "$OUT_DIR" \
         --run_name "$RUN_NAME" \
-        --mdata_guide_path "/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Data/withguide.h5ad" \
-        --guide_annotation_path '/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Data/300genes_guide_metadata_v43.tsv' \
         --guide_annotation_key "non-targeting" \
-        --reference_gtf_path "/oak/stanford/groups/engreitz/Users/opushkar/genome/IGVFFI9573KOZR.gtf.gz" \
         --data_key 'rna' \
         --prog_key 'cNMF' \
-        --categorical_key 'timepoint' \
+        --categorical_key 'day' \
         --guide_names_key 'guide_names' \
         --guide_targets_key 'guide_targets' \
         --guide_assignment_key 'guide_assignment' \
         --organism 'human' \
         --FDR_method "StoreyQ" \
-        --num_runs 10 \
-        --num_guides 6 \
-        --components 10 \
-        --sel_threshs 0.2 \
-        --compute_fake_pertubration_test \
-        #--compute_real_pertubration_test \
+        --number_run 10 \
+        --number_guide 6 \
+        --components 5 10 15 \
+        --sel_thresh 2.0 \
+        --compute_fake_perturbation_tests
+        #--compute_real_perturbation_tests
         #--visualizations
-        #--components
-        #--sel_thresh
-        #--check_format
 
 
 # Calculate and print elapsed time at the end
