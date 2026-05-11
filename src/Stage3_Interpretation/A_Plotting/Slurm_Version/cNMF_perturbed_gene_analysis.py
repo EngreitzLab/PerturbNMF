@@ -1,10 +1,13 @@
 import sys
-import muon as mu 
+import gc
+import muon as mu
 import numpy as np
 import pandas as pd
 import argparse
 import yaml
 import os
+import matplotlib.pyplot as plt
+from pathlib import Path
 
 # Change path to wherever you have repo locally
 sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
@@ -16,7 +19,8 @@ from Stage3_Interpretation.A_Plotting.src import plot_umap_per_gene, plot_top_pr
                          merge_pdfs_in_folder, merge_svgs_to_pdf, create_comprehensive_plot, rename_adata_gene_dictionary, \
                          rename_list_gene_dictionary, plot_umap_per_gene_guide, process_single_gene, parallel_gene_processing,_process_gene_worker,\
                          compute_gene_correlation_matrix, compute_gene_waterfall_cor,perturbed_program_dotplot, \
-                         plot_perturbation_vs_control
+                         plot_perturbation_vs_control, \
+                         export_gene_html, write_gene_share_index
 
 if __name__ == '__main__':
     
@@ -41,7 +45,12 @@ if __name__ == '__main__':
     parser.add_argument('--square_plots', action="store_true", help='use square aspect ratio for plots')
     parser.add_argument('--figsize', type=float, nargs=2, default=(35, 35), help='figure size as width height')
     parser.add_argument('--show', action="store_true", help='display plots interactively')
-    parser.add_argument('--PDF', action="store_true", help='save plots as PDF (default is SVG)')
+    parser.add_argument('--output_format', type=str, default='SVG', choices=['PDF', 'SVG', 'HTML'],
+                        help='output format: PDF (matplotlib + PyPDF2 merge), SVG (matplotlib + svglib merge), HTML (interactive Plotly share folder)')
+    parser.add_argument('--html_share_path', type=str, default=None,
+                        help='output folder for HTML mode (default: {save_path}/html_share)')
+    parser.add_argument('--PDF', action="store_true",
+                        help='[DEPRECATED] alias for --output_format PDF')
     parser.add_argument('--n_processes', type=int, default=-1, help='number of parallel processes (-1 for all available cores)')
     parser.add_argument('--sample', nargs='*', type=str, default=None, help='list of sample names (default: D0 sample_D1 sample_D2 sample_D3)')
     parser.add_argument('--umap_dot_size', type=int, default=10, help='dot size for UMAP plots')
@@ -50,6 +59,8 @@ if __name__ == '__main__':
     parser.add_argument('--subsample_frac', type=float, default=None, help='fraction of cells to subsample for UMAP plots (e.g. 0.1 for 10%%). Default: None (plot all cells)')
     parser.add_argument('--parallel', action="store_true", help='use fork-based multiprocessing to plot genes in parallel (Linux only)')
     parser.add_argument('--corr_matrix_path', type=str, default=None, help='directory for precomputed gene waterfall correlation matrices. Files are expected as <dir>/corr_gene_matrix_<sample>.txt. Falls back to computing if not found.')
+    parser.add_argument('--no-resume', dest='resume', action='store_false', help='re-process every gene; do not skip ones whose output already exists. Default: resume is on.')
+    parser.set_defaults(resume=True)
 
     # keys
     parser.add_argument('--data_key', type=str, default="rna", help='key to access gene expression data in MuData')
@@ -61,8 +72,15 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
 
+    if args.PDF:
+        print("WARNING: --PDF is deprecated; use --output_format PDF instead.", file=sys.stderr)
+        args.output_format = 'PDF'
+
     if args.sample is None:
         args.sample = ['D0', 'sample_D1', 'sample_D2', 'sample_D3']
+
+    if args.html_share_path is None:
+        args.html_share_path = os.path.join(args.save_path, 'html_share')
 
 
 
@@ -82,30 +100,38 @@ if __name__ == '__main__':
     if 'X_umap' not in mdata[args.prog_key].obsm:
         import scanpy as sc
         adata_tmp = mdata[args.data_key].copy()
-        sc.pp.highly_variable_genes(adata_tmp, n_top_genes=2000, subset=True)
+        # Select top 2000 genes by variance (robust to any normalization)
+        variances = np.array(adata_tmp.X.power(2).mean(axis=0) - np.power(adata_tmp.X.mean(axis=0), 2)).flatten() \
+            if hasattr(adata_tmp.X, 'power') else adata_tmp.X.var(axis=0)
+        top_idx = np.argsort(variances)[-2000:]
+        adata_tmp = adata_tmp[:, top_idx]
         sc.tl.pca(adata_tmp, n_comps=50)
         sc.pp.neighbors(adata_tmp)
         sc.tl.umap(adata_tmp)
         mdata[args.prog_key].obsm['X_pca'] = adata_tmp.obsm['X_pca']
         mdata[args.prog_key].obsm['X_umap'] = adata_tmp.obsm['X_umap']
+        mdata[args.data_key].obsm['X_pca'] = adata_tmp.obsm['X_pca']
+        mdata[args.data_key].obsm['X_umap'] = adata_tmp.obsm['X_umap']
         del adata_tmp
 
 
 
-    # found detected perturbed gene
+    # found detected perturbed gene (use gene symbols from var column when var_names are Ensembl IDs)
     perturbed_gene = np.unique(mdata[args.prog_key].uns["guide_targets"])
-    gene_list = mdata[args.data_key].var_names.tolist()
-    # gene_list = rename_list_gene_dictionary(mdata[args.data_key].var_names.tolist(), args.ensembl_to_symbol_file) # convert gene id to gene name
-    perturbed_gene_found = sorted(set(gene_list) & set(perturbed_gene.tolist()))
-    perturbed_gene_not_found = sorted(set(perturbed_gene.tolist()) - set(gene_list))
+    if args.gene_name_key in mdata[args.data_key].var.columns:
+        gene_symbols = mdata[args.data_key].var[args.gene_name_key].astype(str).tolist()
+    else:
+        gene_symbols = mdata[args.data_key].var_names.tolist()
+    perturbed_gene_found = sorted(set(gene_symbols) & set(perturbed_gene.tolist()))
+    perturbed_gene_not_found = sorted(set(perturbed_gene.tolist()) - set(gene_symbols))
     print(f"there are {len(perturbed_gene_found)} perturbed genes found in expression matrix")
     print(f"there are {len(perturbed_gene_not_found)} perturbed genes NOT found in expression matrix: {perturbed_gene_not_found}")
 
     if args.gene_list_file is not None:
         with open(args.gene_list_file, 'r') as f:
             genes_requested = sorted([line.strip() for line in f if line.strip()])
-        genes_valid = sorted(set(genes_requested) & set(gene_list))
-        genes_missing = sorted(set(genes_requested) - set(gene_list))
+        genes_valid = sorted(set(genes_requested) & set(gene_symbols))
+        genes_missing = sorted(set(genes_requested) - set(gene_symbols))
         if genes_missing:
             print(f"WARNING: {len(genes_missing)} genes from {args.gene_list_file} not found in expression matrix: {genes_missing}")
         genes_to_plot = genes_valid
@@ -114,6 +140,22 @@ if __name__ == '__main__':
         genes_to_plot = perturbed_gene_found
     else:
         genes_to_plot = sorted(perturbed_gene.tolist())
+
+    # Resume support: build the set of genes that actually need processing,
+    # but keep `genes_to_plot` as the full ordered list so HTML nav/index stay correct.
+    if args.resume:
+        if args.output_format == 'HTML':
+            done = {p.parent.name[len('gene_'):]
+                    for p in Path(args.html_share_path).glob('gene_*/metadata.json')}
+        else:
+            ext = '.pdf' if args.output_format == 'PDF' else '.svg'
+            done = {p.stem for p in Path(args.save_path).glob(f'*{ext}')}
+        process_set = {g for g in genes_to_plot if g not in done}
+        skipped = len(genes_to_plot) - len(process_set)
+        if skipped:
+            print(f"Resume: skipping {skipped} already-produced gene(s); {len(process_set)} remaining.")
+    else:
+        process_set = set(genes_to_plot)
 
 
     # compute corr once
@@ -129,12 +171,49 @@ if __name__ == '__main__':
 
 
 
-    # Graph all pdf
-    if args.parallel:
+    # Graph all genes
+    if args.output_format == 'HTML':
+        n_genes = len(genes_to_plot)
+        for i, gene in enumerate(genes_to_plot):
+            if gene not in process_set:
+                continue
+            prev_g = genes_to_plot[i - 1] if i > 0 else None
+            next_g = genes_to_plot[i + 1] if i + 1 < n_genes else None
+            export_gene_html(
+                mdata=mdata,
+                perturb_path_base=args.perturb_path_base,
+                ensembl_to_symbol_file=args.ensembl_to_symbol_file,
+                Target_Gene=gene,
+                gene_loading_corr_matrix=correlation_matrix,
+                perturb_corr_by_sample=waterfall_correlation,
+                sample=args.sample,
+                html_share_path=args.html_share_path,
+                top_n_programs=args.top_n_programs,
+                top_corr_genes=args.top_corr_genes,
+                groupby=args.categorical_key,
+                perturb_target_col=args.perturb_target_col,
+                perturb_program_col=args.perturb_program_col,
+                perturb_log2fc_col=args.perturb_log2fc_col,
+                volcano_log2fc_min=args.volcano_log2fc_min,
+                volcano_log2fc_max=args.volcano_log2fc_max,
+                significance_threshold=args.significance_threshold,
+                gene_name_key=args.gene_name_key,
+                control_target_name=args.control_target_name,
+                umap_dot_size=args.umap_dot_size,
+                subsample_frac=args.subsample_frac,
+                prev_gene=prev_g,
+                next_gene=next_g,
+                position_index=i + 1,
+                position_total=n_genes,
+            )
+            plt.close('all')
+            gc.collect()
+        write_gene_share_index(args.html_share_path, genes_to_plot, args_dict)
+    elif args.parallel:
         print("Starting parallel gene processing...")
         try:
             result = parallel_gene_processing(
-                perturbed_gene_list=genes_to_plot,
+                perturbed_gene_list=[g for g in genes_to_plot if g in process_set],
                 mdata=mdata,
                 perturb_path_base=args.perturb_path_base,
                 ensembl_to_symbol_file=args.ensembl_to_symbol_file,
@@ -154,7 +233,7 @@ if __name__ == '__main__':
                 sample=args.sample,
                 square_plots=args.square_plots,
                 show=args.show,
-                PDF=True,
+                PDF=(args.output_format == 'PDF'),
                 n_processes=args.n_processes,
                 gene_name_key=args.gene_name_key,
                 umap_dot_size=args.umap_dot_size,
@@ -166,6 +245,8 @@ if __name__ == '__main__':
             print(f"ERROR in parallel_gene_processing: {e}")
     else:
         for gene in genes_to_plot:
+            if gene not in process_set:
+                continue
             create_comprehensive_plot(
                 mdata=mdata,
                 perturb_path_base=args.perturb_path_base,
@@ -188,16 +269,17 @@ if __name__ == '__main__':
                 sample=args.sample,
                 square_plots=args.square_plots,
                 show=args.show,
-                PDF=True,
+                PDF=(args.output_format == 'PDF'),
                 umap_dot_size=args.umap_dot_size,
                 umap_subsample_frac=args.subsample_frac,
                 gene_name_key=args.gene_name_key,
                 control_target_name=args.control_target_name
             )
 
-    # merge pdf 
-    if args.PDF:
-        merge_pdfs_in_folder(args.save_path, output_filename = "gene.pdf")
-    else:
+    # post-loop assembly
+    if args.output_format == 'PDF':
+        merge_pdfs_in_folder(args.save_path, output_filename="gene.pdf")
+    elif args.output_format == 'SVG':
         merge_svgs_to_pdf(args.save_path)
+    # HTML: index already written inside the HTML branch above
 
