@@ -76,7 +76,7 @@ def _blank_ax(ax, gene, message=None):
 
 def plot_umap_per_gene(mdata, Target_Gene, ensembl_to_symbol_file = None, ax=None,
  color='purple', save_path=None, save_name=None, figsize=(8,6), show=False, size = None,
- umap_subsample_frac=None, random_state=42):
+ umap_subsample_frac=None, random_state=42, gene_name_key='symbol'):
     """Plot gene expression on UMAP embedding.
 
     Colors cells by expression level of a single gene on a precomputed UMAP.
@@ -116,18 +116,21 @@ def plot_umap_per_gene(mdata, Target_Gene, ensembl_to_symbol_file = None, ax=Non
         The axes with the plot, or None if the gene was not found (standalone mode).
     """
 
-    if ensembl_to_symbol_file is None:
-        renamed = mdata['rna'].copy()
-    else:
-        renamed = rename_adata_gene_dictionary(mdata['rna'], ensembl_to_symbol_file)
-
-    # Optionally subsample cells for faster plotting
+    # Subsample BEFORE the .copy() so we don't materialize the full mdata['rna']
+    src = mdata['rna']
     if umap_subsample_frac is not None and 0 < umap_subsample_frac < 1.0:
         np.random.seed(random_state)
-        n_cells = renamed.n_obs
+        n_cells = src.n_obs
         n_sample = int(n_cells * umap_subsample_frac)
         indices = np.random.choice(n_cells, size=n_sample, replace=False)
-        renamed = renamed[sorted(indices)]
+        src = src[sorted(indices)]
+
+    if ensembl_to_symbol_file is None:
+        renamed = src.copy()
+        if gene_name_key is not None and gene_name_key in renamed.var.columns:
+            renamed.var_names = renamed.var[gene_name_key].astype(str)
+    else:
+        renamed = rename_adata_gene_dictionary(src, ensembl_to_symbol_file)
 
     # Check if query gene exists
     if Target_Gene not in renamed.var_names.values:
@@ -318,7 +321,7 @@ umap_subsample_frac=None, random_state=42):
 
 def plot_top_program_per_gene(mdata,  Target_Gene, ensembl_to_symbol_file = None,top_n_programs=10,
                             ax=None, save_path=None, save_name=None,
-                               figsize=(5,8), show=False):
+                               figsize=(5,8), show=False, gene_name_key='symbol'):
     """Horizontal bar plot of the top cNMF programs by gene-loading score for a gene.
 
     Reads the cNMF loadings matrix from ``mdata['cNMF'].varm['loadings']`` and
@@ -358,7 +361,11 @@ def plot_top_program_per_gene(mdata,  Target_Gene, ensembl_to_symbol_file = None
 
     # rename gene
     if ensembl_to_symbol_file is None:
-        df_renamed = pd.DataFrame(data=X, columns = mdata["rna"].var_names)
+        if gene_name_key is not None and gene_name_key in mdata["rna"].var.columns:
+            col_names = mdata["rna"].var[gene_name_key].astype(str)
+        else:
+            col_names = mdata["rna"].var_names
+        df_renamed = pd.DataFrame(data=X, columns = col_names)
     else:
         renamed_gene_list = rename_list_gene_dictionary( mdata["rna"].var_names, ensembl_to_symbol_file)
         df_renamed = pd.DataFrame(data=X, columns = renamed_gene_list)
@@ -436,7 +443,7 @@ def plot_top_program_per_gene(mdata,  Target_Gene, ensembl_to_symbol_file = None
 
 
 def perturbed_gene_dotplot(mdata,  Target_Gene, ensembl_to_symbol_file=None, dotplot_groupby='sample', save_name=None,
-                          save_path=None, figsize=(3, 2), show=False, ax=None):
+                          save_path=None, figsize=(3, 2), show=False, ax=None, gene_name_key='symbol'):
     """Scanpy dot plot of a single gene's expression grouped by a categorical variable.
 
     Wraps ``sc.pl.dotplot`` for a single perturbed gene, split by e.g. sample/day.
@@ -470,7 +477,9 @@ def perturbed_gene_dotplot(mdata,  Target_Gene, ensembl_to_symbol_file=None, dot
     """
     # read in adata
     if ensembl_to_symbol_file is None:
-        renamed = mdata['rna']
+        renamed = mdata['rna'].copy()
+        if gene_name_key is not None and gene_name_key in renamed.var.columns:
+            renamed.var_names = renamed.var[gene_name_key].astype(str)
     else:
         renamed = rename_adata_gene_dictionary(mdata['rna'],ensembl_to_symbol_file)
 
@@ -930,7 +939,7 @@ def programs_dotplot(mdata, Target, dotplot_groupby="sample", program_list=None,
     return ax
  
 
-def compute_gene_correlation_matrix(mdata, ensembl_to_symbol_file =  None):
+def compute_gene_correlation_matrix(mdata, ensembl_to_symbol_file =  None, gene_name_key='symbol'):
     """Compute gene-by-gene Pearson correlation matrix from cNMF loadings.
 
     Each gene is represented by its loading vector across all programs.
@@ -956,7 +965,11 @@ def compute_gene_correlation_matrix(mdata, ensembl_to_symbol_file =  None):
 
     # rename gene
     if ensembl_to_symbol_file is None:
-        df_rename = pd.DataFrame(data=X, columns = mdata["rna"].var_names)
+        if gene_name_key is not None and gene_name_key in mdata["rna"].var.columns:
+            col_names = mdata["rna"].var[gene_name_key].astype(str)
+        else:
+            col_names = mdata["rna"].var_names
+        df_rename = pd.DataFrame(data=X, columns = col_names)
     else:
         renamed_gene_list = rename_list_gene_dictionary( mdata["rna"].var_names, ensembl_to_symbol_file)
         df_rename = pd.DataFrame(data=X, columns = renamed_gene_list)
@@ -1787,7 +1800,8 @@ def create_comprehensive_plot(
         figsize=(4, 3),
         size=umap_dot_size,
         ax=ax_umap_expr,
-        umap_subsample_frac=umap_subsample_frac
+        umap_subsample_frac=umap_subsample_frac,
+        gene_name_key=gene_name_key
     )
     ax_umap_expr.set_title(f"{Target_Gene} Expression", fontsize=18, fontweight='bold', loc='center')
     ax_umap_expr.set_xlabel('UMAP 1', fontsize=14, fontweight='bold')
@@ -1813,7 +1827,8 @@ def create_comprehensive_plot(
         Target_Gene=Target_Gene,
         dotplot_groupby=dotplot_groupby,
         figsize=(3, 2),
-        ax=ax_dotplot
+        ax=ax_dotplot,
+        gene_name_key=gene_name_key
     )
     ax_dotplot.set_title(f"{Target_Gene} Expression", fontsize=20, fontweight='bold', loc='center')
     ax_dotplot.set_ylabel('Gene', fontsize=14, fontweight='bold', loc='center')
@@ -1826,7 +1841,8 @@ def create_comprehensive_plot(
         Target_Gene=Target_Gene,
         top_n_programs=top_n_programs,
         ax=ax_top_prog,
-        figsize=(2, 4)
+        figsize=(2, 4),
+        gene_name_key=gene_name_key
     )
     ax_top_prog.set_title(f"Top Loading Program for {Target_Gene}", fontsize=20, fontweight='bold', loc='center')
     ax_top_prog.set_xlabel('Gene Loading Score (z-score)', fontsize=14, fontweight='bold')

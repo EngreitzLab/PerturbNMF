@@ -109,14 +109,20 @@ def plot_umap_per_program(mdata, Target_Program, ax=None,
 
 
 # plot x top loading genes for target program 
-def plot_top_gene_per_program(mdata, Target_Program, 
-                              num_gene=5, ax=None, 
-                              save_path=None, save_name=None, 
-                              figsize=(5,8), show=False, file_to_dictionary=None):
-    
+def plot_top_gene_per_program(mdata, Target_Program,
+                              num_gene=5, ax=None,
+                              save_path=None, save_name=None,
+                              figsize=(5,8), show=False, file_to_dictionary=None,
+                              gene_name_key='symbol'):
+
     # Read cNMF gene program matrix
     X = mdata["cNMF"].varm["loadings"]
     gene_names = mdata["cNMF"].uns['var_names']
+
+    # Map Ensembl IDs to gene symbols using gene_name_key column when available
+    if gene_name_key is not None and gene_name_key in mdata['rna'].var.columns:
+        ensembl_to_symbol = dict(zip(mdata['rna'].var_names, mdata['rna'].var[gene_name_key].astype(str)))
+        gene_names = np.array([ensembl_to_symbol.get(g, g) for g in gene_names])
 
     # Rename genes
     if file_to_dictionary is None:
@@ -720,10 +726,13 @@ def plot_program_volcano(perturb_path, Target, tagert_col_name="target_name", pl
 
 # given mdata, list of programs to plot, plot dotplot for programs, split by days
 def perturbed_program_dotplot(mdata, Target_Program, groupby="sample", gene_list=None,
-                     save_path=None, save_name=None, figsize=(5, 4), show=False, ax=None, Day=""): 
-    
+                     save_path=None, save_name=None, figsize=(5, 4), show=False, ax=None, Day="",
+                     gene_name_key='symbol'):
 
-    adata_gene_list = mdata['rna'].var_names.tolist()
+    if gene_name_key is not None and gene_name_key in mdata['rna'].var.columns:
+        adata_gene_list = mdata['rna'].var[gene_name_key].astype(str).tolist()
+    else:
+        adata_gene_list = mdata['rna'].var_names.tolist()
     gene_list = [gene for gene in gene_list if gene in adata_gene_list] if gene_list else []
 
     # check when there is gene that perturbed this program
@@ -758,7 +767,7 @@ def perturbed_program_dotplot(mdata, Target_Program, groupby="sample", gene_list
     if ax is None:
         # Standalone mode - let scanpy create its own figure
         dp = sc.pl.dotplot(mdata['rna'] , gene_list, groupby=groupby, swap_axes=True, figsize=figsize,
-                          dendrogram=False, show=False, return_fig=True)
+                          dendrogram=False, show=False, return_fig=True, gene_symbols=gene_name_key)
         dp.make_figure()
         fig = dp.fig
         ax = dp.ax_dict['mainplot_ax']
@@ -766,7 +775,7 @@ def perturbed_program_dotplot(mdata, Target_Program, groupby="sample", gene_list
         # Gridspec mode - use provided ax
         fig = ax.get_figure()
         dp = sc.pl.dotplot(mdata['rna'] , gene_list, groupby=groupby, swap_axes=True, figsize=figsize,
-                          dendrogram=False, show=False, return_fig=True, ax=ax)
+                          dendrogram=False, show=False, return_fig=True, ax=ax, gene_symbols=gene_name_key)
         dp.make_figure()
     
     ax.set_title(f"Regulator Expression \n Program {Target_Program}, {Day}", 
@@ -935,7 +944,8 @@ def create_comprehensive_program_plot(
     gene_list = None,
     subsample_frac=None,
     go_p_value_name="Adjusted P-value",
-    go_term_col="Term"
+    go_term_col="Term",
+    gene_name_key='symbol'
 ):
 
     
@@ -1027,12 +1037,13 @@ def create_comprehensive_program_plot(
     
     # Plot 3: Top Gene for program
     ax3 = plot_top_gene_per_program(
-        mdata=mdata, 
-        Target_Program = Target_Program, 
-        num_gene = top_enrichned_term,  
+        mdata=mdata,
+        Target_Program = Target_Program,
+        num_gene = top_enrichned_term,
         figsize=(4, 4),
         file_to_dictionary=file_to_dictionary,
-        ax=ax3)  
+        ax=ax3,
+        gene_name_key=gene_name_key)  
     ax3.set_title(f"Top Loading Genes for Program {Target_Program}", fontsize=20, fontweight='bold', loc='center')
     ax3.set_xlabel('Gene Loading Score (z-score)', fontsize=14, fontweight='bold', loc='center')
     ax3.set_ylabel('Gene Name', fontsize=14, fontweight='bold', loc='center')
@@ -1106,13 +1117,14 @@ def create_comprehensive_program_plot(
        # Plot 3: Programs dotplot
         current_ax = axes[ax_index]
         current_ax = perturbed_program_dotplot(
-            mdata=mdata, 
+            mdata=mdata,
             gene_list=df[plot_col_name].tolist() if not df.empty else [],
             Target_Program=Target_Program,
             groupby=groupby,
             figsize=(5, 3),
             ax=current_ax,
-            Day=samp
+            Day=samp,
+            gene_name_key=gene_name_key
         )
         current_ax.set_title(f"Regulator Expression \n Program {Target_Program}, {samp} ", fontsize=18, fontweight='bold', loc='center')
         current_ax.set_ylabel('Regulator Name', fontsize=14, fontweight='bold', loc='center')

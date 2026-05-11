@@ -40,3 +40,7 @@ from .Program_QC_plots import plot_umap_per_program, plot_top_gene_per_program, 
 from .Program_expression_weighted_plots import compute_program_expression_by_condition, \
                                                plot_program_heatmap_weighted, \
                                                plot_program_heatmap_expression_scaled
+
+# interactive HTML export
+from .html_Program_QC_plots import export_program_html, write_share_index
+from .html_Perturbed_gene_QC_plots import export_gene_html, write_gene_share_index
