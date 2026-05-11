@@ -90,6 +90,31 @@ if __name__ == '__main__':
     with open(f'{args.save_folder_name}/config_{job_id}.yml', 'w') as f:
         yaml.dump(args_dict, f, default_flow_style=False, width=1000)
 
+    # ---- Pre-flight check: verify all required evaluation files exist ----
+    _go_pat = args.go_file or '{k}_GO_term_enrichment.txt'
+    _gs_pat = args.geneset_file or '{k}_geneset_enrichment.txt'
+    _tr_pat = args.trait_file or '{k}_trait_enrichment.txt'
+    _pt_pat = args.perturbation_file or '{k}_perturbation_association_results_{sample}.txt'
+    _ev_pat = args.variance_file or '{k}_Explained_Variance_Summary.txt'
+
+    missing = []
+    for sel_thresh in sel_thresh_value:
+        sel_str = f"{sel_thresh:g}".replace('.', '_')
+        for k in k_value:
+            k_folder = os.path.join(args.eval_folder_name, f"{k}_{sel_str}")
+            for pat in [_go_pat, _gs_pat, _tr_pat, _ev_pat]:
+                fpath = os.path.join(k_folder, pat.format(k=k))
+                if not os.path.isfile(fpath):
+                    missing.append(fpath)
+            for samp in samples_value:
+                fpath = os.path.join(k_folder, _pt_pat.format(k=k, sample=samp))
+                if not os.path.isfile(fpath):
+                    missing.append(fpath)
+    if missing:
+        print(f"ERROR: {len(missing)} required evaluation file(s) not found:")
+        for m in missing:
+            print(f"  {m}")
+        raise FileNotFoundError(f"{len(missing)} required evaluation file(s) missing. See list above.")
 
     # Stability & Error
     stats_SE = load_stablity_error_data(output_directory = f'{args.output_directory}/{args.run_name}', run_name = 'Inference', components = k_value,
