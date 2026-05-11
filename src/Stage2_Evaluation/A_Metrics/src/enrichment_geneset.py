@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import os
 from typing import Dict, List, Optional, Tuple, Union, Literal
@@ -12,6 +13,8 @@ from gseapy import Biomart, Msigdb
 from tqdm.auto import tqdm
 
 logging.basicConfig(level=logging.INFO)
+
+_RESOURCES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "Resources")
 
 
 def create_geneset_dict(
@@ -96,8 +99,25 @@ def get_program_gene_loadings(mdata, prog_key='prog', prog_nam=None, data_key='r
     return loadings
 
 
-def get_geneset(organism='human', library='h.all', database='msigdb', min_size: int = 0, max_size: int = 2000):
-    """Download gene set from MsigDB or Enrichr."""
+def get_geneset(organism='human', library='h.all', database='msigdb', min_size: int = 0, max_size: int = 2000, use_cache: bool = False):
+    """Download gene set from MsigDB or Enrichr.
+
+    Parameters
+    ----------
+    use_cache : bool
+        If True, try to load from a cached JSON in the Resources directory first.
+        After a successful download, always saves a cache copy for future use.
+    """
+    cache_file = os.path.join(_RESOURCES_DIR, f"{library}_{organism}.json")
+
+    if use_cache:
+        if os.path.isfile(cache_file):
+            logging.info(f"Loading cached gene set from {cache_file}")
+            with open(cache_file) as f:
+                return json.load(f)
+        else:
+            logging.info(f"Cache file not found ({cache_file}), downloading from {database}")
+
     if database == 'msigdb':
         msig = Msigdb()
         dbver = '2023.2.Hs' if organism == 'human' else '2023.1.Mm'
@@ -106,6 +126,16 @@ def get_geneset(organism='human', library='h.all', database='msigdb', min_size: 
             raise ValueError('Library does not exist')
     elif database == 'enrichr':
         gmt = gp.get_library(name=library, organism=organism.capitalize(), min_size=min_size, max_size=max_size)
+
+    # Cache for future use
+    try:
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, 'w') as f:
+            json.dump(gmt, f)
+        logging.info(f"Saved gene set cache to {cache_file}")
+    except Exception as e:
+        logging.warning(f"Could not save gene set cache: {e}")
+
     return gmt
 
 
@@ -339,6 +369,7 @@ def compute_geneset_enrichment(
     inplace: bool = True,
     use_loadings_gene = False, # False = use all oncology gene, True = use interact expresseed gene
     gene_names_key: Optional[str] = None,
+    use_cache: bool = False,
     **kwargs
 ) -> Optional[pd.DataFrame]:
 
@@ -408,7 +439,8 @@ def compute_geneset_enrichment(
             library=library,
             database=database,
             max_size=max_size,
-            min_size=min_size
+            min_size=min_size,
+            use_cache=use_cache
         )
      
     # get the gene loadings for each program
