@@ -1,10 +1,8 @@
-#%%
 import sys
 from statsmodels.stats.multitest import fdrcorrection
 import argparse
 import yaml
 import os
-#%%
 
 # Change path to wherever you have repo locally
 sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
@@ -151,3 +149,5 @@ if __name__ == '__main__':
         for k in k_value:
             fig = programs_dotplots(k, args.output_directory, args.run_name, sel_thresh = sel_thresh, groupby=args.groupby, figsize=(4, 30),
             show = False, save_name=f"Program_dotplot_{k}_{sel_thresh}", save_path = args.save_folder_name, ax = None)
+
+# %%
