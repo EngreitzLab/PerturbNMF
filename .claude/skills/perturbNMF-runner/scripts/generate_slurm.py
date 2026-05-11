@@ -15,6 +15,17 @@ PIPELINE_ROOT = "/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF"
 SKILL_SCRIPTS = os.path.join(PIPELINE_ROOT, ".claude/skills/perturbNMF-runner/scripts")
 DEFAULT_EMAIL = "ymo@stanford.edu"
 
+# Available GPU memory sizes on Sherlock (GB), sorted ascending
+AVAILABLE_GPU_MEMS_GB = [11, 12, 16, 24, 32, 40, 48, 80, 141]
+
+
+def get_gpu_mem_constraint(min_mem_gb):
+    """Generate SLURM -C constraint string for all GPUs with >= min_mem_gb memory."""
+    eligible = [m for m in AVAILABLE_GPU_MEMS_GB if m >= min_mem_gb]
+    if not eligible:
+        eligible = [AVAILABLE_GPU_MEMS_GB[-1]]  # fallback to largest
+    return "|".join(f"GPU_MEM:{m}GB" for m in eligible)
+
 # Stage definitions: script path (relative), conda env, whether GPU is needed
 STAGES = {
     "inference-sk": {
@@ -24,7 +35,7 @@ STAGES = {
     },
     "inference-torch": {
         "script": "src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py",
-        "conda_env": "torch-cNMF",
+        "conda_env": "torch-nmf-dl",
         "gpu": True,
     },
     "evaluation": {
@@ -141,8 +152,14 @@ def generate_script(args, passthrough_args):
 
     if needs_gpu:
         lines.append('#SBATCH --gres=gpu:1')
-        gpu_sku = args.gpu_sku if args.gpu_sku else 'V100S_PCIE'
-        lines.append(f'#SBATCH -C GPU_SKU:{gpu_sku}')
+        if args.gpu_sku:
+            # Explicit single-SKU override
+            lines.append(f'#SBATCH -C GPU_SKU:{args.gpu_sku}')
+        else:
+            # Default: select all GPUs with sufficient memory
+            min_mem = args.gpu_min_mem if args.gpu_min_mem else 32
+            constraint = get_gpu_mem_constraint(min_mem)
+            lines.append(f'#SBATCH -C "{constraint}"')
 
     lines.extend([
         '',
@@ -328,8 +345,13 @@ def main():
     )
     parser.add_argument(
         '--gpu_sku', type=str, default=None,
-        help='GPU SKU constraint (e.g., V100S_PCIE, L40S, H100_SXM5, A100_SXM4). '
-             'Default: V100S_PCIE'
+        help='Explicit single GPU SKU constraint (e.g., H100_SXM5). '
+             'Overrides --gpu_min_mem. If neither is set, defaults to --gpu_min_mem 32.'
+    )
+    parser.add_argument(
+        '--gpu_min_mem', type=int, default=None,
+        help='Minimum GPU memory in GB. Selects all available GPUs with >= this memory '
+             '(e.g., 48 selects L40S/H100/H200). Default: 32 if --gpu_sku not set.'
     )
     parser.add_argument(
         '--email', type=str, default=DEFAULT_EMAIL,

@@ -40,7 +40,7 @@ Ask which stage to run (or infer from context). Then **read the matching referen
 | Stage | `--stage` value | Conda Env | Reference File |
 |-------|-----------------|-----------|----------------|
 | sk-cNMF inference | `inference-sk` | `sk-cNMF` | `references/01-inference.md` |
-| torch-cNMF inference | `inference-torch` | `torch-cNMF` | `references/01-inference.md` |
+| torch-cNMF inference | `inference-torch` | `torch-nmf-dl` | `references/01-inference.md` |
 | Evaluation | `evaluation` | `NMF_Benchmarking` | `references/02-evaluation.md` |
 | U-test calibration | `u-test-calibration` | `NMF_Benchmarking` | `references/03-calibration.md` |
 | CRT calibration | `crt-calibration` | `programDE` | `references/03-calibration.md` |
@@ -111,7 +111,7 @@ Then guide the user through remaining stages in pipeline order:
 
 - All generated SLURM scripts go into `<project_root>/Script/` — sibling of `Result/`, NOT inside it.
 - Always use `eval "$(conda shell.bash hook)"` before conda activate in any Bash command.
-- For torch-cNMF, the generator auto-adds `--gres=gpu:1` and `-C GPU_SKU:<selected_sku>`.
+- For torch-cNMF GPU selection: by default, the generator uses `--gpu_min_mem` to select all GPUs with sufficient memory (e.g., `-C "GPU_MEM:32GB|GPU_MEM:40GB|GPU_MEM:48GB|GPU_MEM:80GB|GPU_MEM:141GB"`). Use `--gpu_sku` only when targeting a specific SKU. Always estimate minimum VRAM needed and pass `--gpu_min_mem <GB>` accordingly.
 - Run name convention: `MMDDYY_<short_description>`.
 - Output MuData: `<out_dir>/<run_name>/Inference/adata/cNMF_<K>_<sel_thresh>.h5mu` with `_structure.txt` summaries.
 - Generated inference scripts automatically run h5mu structure generation. Pass `--no_structure` to skip.

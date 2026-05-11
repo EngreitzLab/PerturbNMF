@@ -215,3 +215,7 @@ tests/
 - **sk-cNMF output empty** — run pytest from the pipeline root directory
 - **Custom seeds error** — `nmf_seeds` array length must equal `n_iter`
 - **Evaluation tests skip** — need inference output from at least one mode (torch-cNMF/batch preferred, then dataloader, minibatch, sk-cNMF)
+- **IMPORTANT: Always remove previous output before re-running jobs** — tests and pipeline scripts depend on clean state. Check for existing results first:
+  - Inference: `rm -rf tests/output/sk-cNMF/` or `tests/output/torch-cNMF/<mode>/`
+  - Evaluation: `rm -rf tests/output/torch-cNMF/<mode>/Evaluation/`
+  - U-test calibration: remove `*_fake_perturbation_association_results.txt`, `*_real_perturbation_association_all.txt`, `calibration_merged_results.txt`, and plot PNGs from the `Evaluation/` folder before re-submitting

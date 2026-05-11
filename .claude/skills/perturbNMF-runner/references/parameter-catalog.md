@@ -68,7 +68,7 @@ Complete parameter reference for all pipeline stages, extracted from argparse de
 ## 2. torch-cNMF Inference
 
 **Script**: `src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py`
-**Conda**: `torch-cNMF`
+**Conda**: `torch-nmf-dl`
 
 torch-cNMF shares most parameters with sk-cNMF but has these important differences:
 - Does NOT have `--max_NMF_iter` (use `--batch_max_epoch` instead)

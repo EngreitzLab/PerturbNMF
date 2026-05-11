@@ -30,6 +30,21 @@ For **torch-cNMF**, also ask: `--algo` (default `halsvar`), `--mode` (default `b
 
 For **sk-cNMF**, also ask: `--algo` (default `mu`), `--init` (default `random`), `--tol` (default `1e4` — **WARNING**: likely a bug, recommend `1e-4`), `--max_NMF_iter` (default `500`).
 
+### Minibatch / Dataloader parameters (torch-cNMF only)
+
+**When `--mode` is `minibatch` or `dataloader`, ALWAYS present the following parameters for user review.** These are critical for large datasets and should not be left at code defaults. Use the recommended defaults below:
+
+| Parameter | Code Default | Recommended Default | Description |
+|-----------|-------------|-------------------|-------------|
+| `--minibatch_size` | `5000` | `100000` | Cells per minibatch (larger = faster but more VRAM) |
+| `--minibatch_max_epoch` | `20` | `1000` | Max epochs through data |
+| `--minibatch_max_iter` | `200` | `1000` | Max iterations per minibatch |
+| `--minibatch_usage_tol` | `0.05` | `0.005` | Usage update tolerance (tighter = better convergence) |
+| `--minibatch_spectra_tol` | `0.05` | `0.005` | Spectra update tolerance |
+| `--batch_max_epoch` | `500` | `1000` | Max epochs for batch NMF |
+| `--batch_hals_max_iter` | `200` | `1000` | Max HALS inner iterations |
+| `--batch_hals_tol` | `0.05` | `0.005` | HALS tolerance |
+
 ### Workflow flags
 
 For a first run, include all:
@@ -66,23 +81,9 @@ Present a summary and ask if user wants to change any. Defaults are fine for mos
 | `--remove_noncoding` | off | Remove non-coding genes |
 | `--sk_cd_refit` | off | Use sklearn coordinate descent for refitting |
 
-#### torch-cNMF batch mode
+#### torch-cNMF batch/minibatch/dataloader mode
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--batch_max_epoch` | `500` | Max epochs for batch NMF |
-| `--batch_hals_tol` | `0.05` | HALS tolerance |
-| `--batch_hals_max_iter` | `200` | Max HALS inner iterations |
-
-#### torch-cNMF minibatch mode
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--minibatch_max_epoch` | `20` | Max epochs through data |
-| `--minibatch_size` | `5000` | Minibatch size |
-| `--minibatch_max_iter` | `200` | Max iterations per minibatch |
-| `--minibatch_usage_tol` | `0.05` | Usage update tolerance |
-| `--minibatch_spectra_tol` | `0.05` | Spectra update tolerance |
+See "Minibatch / Dataloader parameters" section above for the full table with recommended defaults.
 
 ## Step C: Estimate Resources & GPU Selection
 
@@ -100,7 +101,7 @@ Present a summary and ask if user wants to change any. Defaults are fine for mos
 | 200k-500k | <=300 | A100 (40/80GB) or L40S (48GB) |
 | >500k | any | H100 (80GB) or use sk-cNMF (CPU) |
 
-Present recommendation with VRAM estimate, confirm with user, pass `--gpu_sku` to generator.
+Present recommendation with VRAM estimate, confirm with user, pass `--gpu_min_mem <GB>` to generator (default). Only use `--gpu_sku` if user explicitly requests a specific SKU. The generator selects all GPUs with memory >= the minimum, maximizing scheduling flexibility.
 
 ### Memory & Time
 
