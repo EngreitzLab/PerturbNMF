@@ -80,6 +80,7 @@ def main():
     parser.add_argument('--organism', help='Organism/species for enrichment analysis (default: human)', type=str, default="human")
     parser.add_argument('--FDR_method', help='Method for FDR correction in perturbation association (default: StoreyQ)', type=str, default="StoreyQ")
     parser.add_argument('--n_top', type = int, help='Number of top loaded genes use to perform enrichment test(default: 300)',  default=300)
+    parser.add_argument('--use_cache', action="store_true", help='If set, load gene set libraries from cached JSON in Resources/ instead of downloading. Falls back to download if cache not found, and saves a cache copy after download.')
 
     args = parser.parse_args()
 
@@ -126,6 +127,10 @@ def main():
         X = X_norm.X
 
     # list of non-targeting guides
+    # NOTE: guide_annotation_path extracts guide NAMES (e.g. "non-targeting_00014")
+    # from the annotation table index, but compute_perturbation_association expects
+    # target GROUP names (e.g. "non-targeting") from mdata.uns["guide_targets"].
+    # Prefer using --guide_annotation_key (default: ["non-targeting"]) for key-based access.
     if args.guide_annotation_path is not None:
         df_target = pd.read_csv(args.guide_annotation_path, sep = "\t", index_col = 0)
         df_target_non = df_target[df_target["targeting"]==False]
@@ -151,6 +156,29 @@ def main():
                                                                                     run_name =args.run_name,
                                                                                     k=k,
                                                                                     sel_thresh = str(sel_thresh).replace('.','_')))
+
+            # Validate reference_targets against mdata guide_targets
+            mdata_targets = set(mdata[args.prog_key].uns[args.guide_targets_key])
+            matched_ref = mdata_targets.intersection(reference_targets)
+            print(f"[K={k}] reference_targets overlap with mdata guide_targets: {matched_ref}")
+            if len(matched_ref) == 0:
+                raise ValueError(
+                    f"No reference_targets found in mdata guide_targets. "
+                    f"reference_targets contains guide names (e.g. {reference_targets[:3]}), "
+                    f"but guide_targets contains group names (e.g. {list(mdata_targets)[:3]}). "
+                    f"Use --guide_annotation_key instead of --guide_annotation_path."
+                )
+
+            # Validate guide count between annotation file and mdata
+            if args.guide_annotation_path is not None:
+                n_file_guides = len(df_target)
+                n_mdata_guides = len(mdata[args.prog_key].uns[args.guide_names_key])
+                if n_file_guides != n_mdata_guides:
+                    raise ValueError(
+                        f"Guide count mismatch: annotation file has {n_file_guides} guides, "
+                        f"but mdata has {n_mdata_guides} guides. "
+                        f"Ensure the annotation file matches the mdata guide set."
+                    )
 
              # assign information
             if args.data_guide_path is not None:
@@ -185,7 +213,7 @@ def main():
                                                     organism=args.organism, library='Reactome_2022', method="fisher",
                                                     database='enrichr', n_top=args.n_top, n_jobs=-1,
                                                     inplace=False, user_geneset=None, use_loadings_gene=False,
-                                                    gene_names_key=args.gene_names_key) # use_loadings_gene:use all background genes
+                                                    gene_names_key=args.gene_names_key, use_cache=args.use_cache) # use_loadings_gene:use all background genes
                 pre_res.to_csv('{}/{}_geneset_enrichment.txt'.format(output_folder,k), sep='\t', index=False)
 
 
@@ -194,7 +222,7 @@ def main():
                                                     organism=args.organism, library='GO_Biological_Process_2023', method="fisher",
                                                     database='enrichr', n_top=args.n_top, n_jobs=-1,
                                                     inplace=False, user_geneset=None, use_loadings_gene=False,
-                                                    gene_names_key=args.gene_names_key) # use_loadings_gene: use all background genes
+                                                    gene_names_key=args.gene_names_key, use_cache=args.use_cache) # use_loadings_gene: use all background genes
                 pre_res.to_csv('{}/{}_GO_term_enrichment.txt'.format(output_folder,k), sep='\t', index=False)
 
 

@@ -69,7 +69,8 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Eval
         --gwas_data_path '/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz' \
         --sel_thresh 0.4 0.8 2.0 \
         --K 30 50 60 80 100 200 \
-        --FDR_method "StoreyQ"
+        --FDR_method "StoreyQ" \
+        --use_cache
         #--Perform_motif \
 
 
