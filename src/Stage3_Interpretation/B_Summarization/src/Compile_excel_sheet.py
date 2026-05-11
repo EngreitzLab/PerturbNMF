@@ -88,11 +88,18 @@ def add_specificity_scores_file(save_path, Perturbation_path_base, samp):
 # Compile simple sheets
 
 #-------------- helper methods for loading sheets--------------
-def compile_Program_loading_score_sheet_long(mdata, num_gene = 300):
+def compile_Program_loading_score_sheet_long(mdata, num_gene = 300, data_key='rna', gene_names_key=None):
 
     print('Load program loadings data in long form')
 
     program_loading_df = pd.DataFrame(data=mdata['cNMF'].varm["loadings"], columns=mdata['cNMF'].uns['var_names'], index=mdata['cNMF'].var_names)
+
+    # Rename columns to curated gene names
+    if gene_names_key is not None:
+        rename_map = dict(zip(mdata[data_key].var_names, mdata[data_key].var[gene_names_key]))
+    else:
+        rename_map = dict(zip(mdata['cNMF'].uns['var_names'], mdata[data_key].var_names))
+    program_loading_df.rename(columns=rename_map, inplace=True)
 
     top_df = program_loading_df.apply(
     lambda row: row.nlargest(num_gene).index.tolist(),
@@ -146,12 +153,19 @@ def compile_Program_loading_score_sheet_long(mdata, num_gene = 300):
 
     return annotation_df
 
-def compile_Program_loading_score_sheet_flat(mdata, num_gene = 300):
+def compile_Program_loading_score_sheet_flat(mdata, num_gene = 300, data_key='rna', gene_names_key=None):
 
     print('Load program loadings data in flat form')
 
 
     program_loading_df = pd.DataFrame(data=mdata['cNMF'].varm["loadings"], columns=mdata['cNMF'].uns['var_names'], index=mdata['cNMF'].var_names)
+
+    # Rename columns to curated gene names
+    if gene_names_key is not None:
+        rename_map = dict(zip(mdata[data_key].var_names, mdata[data_key].var[gene_names_key]))
+    else:
+        rename_map = dict(zip(mdata['cNMF'].uns['var_names'], mdata[data_key].var_names))
+    program_loading_df.rename(columns=rename_map, inplace=True)
 
     top_df = program_loading_df.apply(
     lambda row: row.nlargest(num_gene).index.tolist(),
@@ -531,6 +545,89 @@ def get_guide_mean_expr_per_day(mdata, categorical_key = "sample", prog_key = 'c
 
     return mean_expr_per_day
 
+def compute_kd_efficiency(mdata, categorical_key='sample', prog_key='cNMF', data_key='rna',
+                          gene_names_key=None, guide_targets_key='guide_targets',
+                          guide_assignment_key='guide_assignment',
+                          control_target_name='non-targeting', save_path=None):
+    """Compute knockdown efficiency for each perturbation target per condition.
+
+    Returns a DataFrame with index=target_name and columns=kd_efficiency_{condition}.
+    KD efficiency = (1 - mean_perturbed / mean_control) * 100, using CP10K-normalized expression.
+    """
+    print('Compute KD efficiency per target per condition')
+
+    guide_targets = mdata[prog_key].uns[guide_targets_key]
+    ga = mdata[prog_key].obsm[guide_assignment_key]
+    X = mdata[data_key].X
+
+    # Build gene name lookup: target_name -> column index in X
+    if gene_names_key is not None and gene_names_key in mdata[data_key].var.columns:
+        gene_names = mdata[data_key].var[gene_names_key].values
+    else:
+        gene_names = np.array(mdata[data_key].var_names)
+
+    gene_to_idx = {name: i for i, name in enumerate(gene_names)}
+
+    # Non-targeting control cell indices
+    nt_idx = np.where(guide_targets == control_target_name)[0]
+    control_mask = np.array(ga[:, nt_idx].sum(axis=1)).flatten() > 0
+
+    # Perturbation targets (including control for self-referencing KD)
+    targets = [t for t in guide_targets if t in gene_to_idx]
+
+    conditions = mdata[data_key].obs[categorical_key].unique()
+
+    # CP10K normalize once
+    if sparse.issparse(X):
+        row_sums = np.array(X.sum(axis=1)).flatten()
+    else:
+        row_sums = X.sum(axis=1)
+    row_sums[row_sums == 0] = 1
+
+    results = {}
+    for condition in conditions:
+        cond_mask = (mdata[data_key].obs[categorical_key] == condition).values
+        kd_vals = {}
+
+        for target in targets:
+            gene_idx = gene_to_idx[target]
+
+            # Extract normalized expression for this gene
+            if sparse.issparse(X):
+                gene_expr = np.array(X[:, gene_idx].todense()).flatten()
+            else:
+                gene_expr = np.asarray(X[:, gene_idx]).flatten()
+            gene_expr_norm = (gene_expr / row_sums) * 1e4
+
+            # Control cells in this condition
+            ctrl_mask = control_mask & cond_mask
+            ctrl_expr = gene_expr_norm[ctrl_mask]
+            ctrl_mean = np.mean(ctrl_expr) if ctrl_mask.sum() > 0 else 0
+
+            # Perturbed cells in this condition
+            target_idx = np.where(guide_targets == target)[0]
+            pert_mask = (np.array(ga[:, target_idx].sum(axis=1)).flatten() > 0) & cond_mask
+            pert_expr = gene_expr_norm[pert_mask]
+            pert_mean = np.mean(pert_expr) if pert_mask.sum() > 0 else np.nan
+
+            if ctrl_mean > 0 and not np.isnan(pert_mean):
+                kd_vals[target] = (1 - pert_mean / ctrl_mean) * 100
+            else:
+                kd_vals[target] = np.nan
+
+        results[f'kd_efficiency_{condition}'] = kd_vals
+
+    df_kd = pd.DataFrame(results)
+    df_kd.index.name = 'target_name'
+    df_kd['Mean KD efficiency (%) across conditions'] = df_kd.mean(axis=1)
+    df_kd.sort_index(inplace=True)
+
+    if save_path is not None:
+        os.makedirs(save_path, exist_ok=True)
+        df_kd.to_csv(os.path.join(save_path, 'kd_efficiency.txt'), sep='\t')
+
+    return df_kd
+
 # Function to get significant programs for each gene across all days
 def get_significant_programs(Perturbation_path, Sample = ["D0", "sample_D1","sample_D2","sample_D3"], adj_pval_threshold=0.05, effect_size='log2FC'):
 
@@ -647,27 +744,31 @@ def get_correlation_df(perturbation_path, Sample=["D0", "sample_D1", "sample_D2"
 
 # final function to compile target Summary sheet 
 def Compile_Target_Summary_sheet(mdata, perturbation_path, Sample = ["D0", "sample_D1","sample_D2","sample_D3"], adj_pval_threshold= 0.05,
-top_n=5, T= 0.5 , categorical_key = "sample", prog_key = 'cNMF', data_key = 'rna', guide_targets_key = "guide_targets", guide_assignment_key = "guide_assignment", save_path = None, effect_size='log2FC'):
+top_n=5, T= 0.5 , categorical_key = "sample", prog_key = 'cNMF', data_key = 'rna', guide_targets_key = "guide_targets", guide_assignment_key = "guide_assignment", save_path = None, effect_size='log2FC',
+gene_names_key=None, control_target_name='non-targeting'):
 
     print('Generate target summary sheet')
 
 
-    df_mean_expr_per_day = get_guide_mean_expr_per_day(mdata, categorical_key=categorical_key, prog_key=prog_key, data_key=data_key, 
+    df_mean_expr_per_day = get_guide_mean_expr_per_day(mdata, categorical_key=categorical_key, prog_key=prog_key, data_key=data_key,
     guide_targets_key=guide_targets_key)
-    df_guide_days = get_guide_cells_per_days(mdata,  categorical_key=categorical_key, guide_assignment_key=guide_assignment_key, prog_key=prog_key, 
+    df_guide_days = get_guide_cells_per_days(mdata,  categorical_key=categorical_key, guide_assignment_key=guide_assignment_key, prog_key=prog_key,
     data_key=data_key, guide_targets_key=guide_targets_key)
     df_significant_program = get_significant_programs_df(perturbation_path ,Sample=Sample, adj_pval_threshold=adj_pval_threshold, effect_size=effect_size)
     df_specificity_program =  get_specificity_program(perturbation_path, Sample=Sample, T = T, save_path = save_path, effect_size=effect_size) # save_path for saving specificity scores
     df_correlation = get_correlation_df(perturbation_path ,Sample=Sample, top_n=top_n, save_path = save_path, effect_size=effect_size)
+    df_kd = compute_kd_efficiency(mdata, categorical_key=categorical_key, prog_key=prog_key, data_key=data_key,
+        gene_names_key=gene_names_key, guide_targets_key=guide_targets_key,
+        guide_assignment_key=guide_assignment_key, control_target_name=control_target_name, save_path=save_path)
 
 
-    dfs = [df_mean_expr_per_day, df_guide_days, df_significant_program, df_specificity_program, df_correlation]
+    dfs = [df_mean_expr_per_day, df_guide_days, df_significant_program, df_specificity_program, df_correlation, df_kd]
 
     final_merged_df = reduce(
         lambda left, right: left.merge(right, left_index=True, right_index=True, how='outer'),
         dfs
     ).fillna('')
-    
+
     return final_merged_df
 
 
@@ -770,7 +871,7 @@ def simple_Summary_cols(df, k, df_GO, df_Perturbation, df_Program_loading, df_Ex
 
       # create explained variance summary col
       if df_Explained_Variance is not None:
-          df['variance_explained'] = df_Explained_Variance
+          df['variance_explained'] = df_Explained_Variance['VarianceExplained']
           
 # make the program info in summary sheet
 def get_program_info_Summary_cols(mdata, categorical_key = "sample"):
