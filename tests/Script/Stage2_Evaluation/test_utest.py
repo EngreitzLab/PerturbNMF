@@ -17,62 +17,93 @@ import pytest
 from scipy import sparse
 
 
+def _get_nontargeting_indices(guide_annotation_df, mdata, prog_key="cNMF"):
+    """Get mdata column indices for non-targeting guides by intersecting
+    annotation table guide names with mdata guide_names."""
+    nt_guide_names = guide_annotation_df[guide_annotation_df["targeting"] == False].index.values
+    mdata_guide_names = mdata[prog_key].uns["guide_names"]
+    nt_in_mdata = np.isin(mdata_guide_names, nt_guide_names)
+    return np.where(nt_in_mdata)[0]
+
+
+# ===========================================================================
+# Helpers to call the original U-test pipeline script
+# ===========================================================================
+
+def _load_utest_module():
+    """Import the U-test calibration module (has hyphens in path)."""
+    import importlib.util
+    script_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+        "src", "Stage2_Evaluation", "B_Calibration", "Slurm_version",
+        "U-test_perturbation_calibration", "U-test_perturbation_calibration.py",
+    )
+    spec = importlib.util.spec_from_file_location("utest_calibration", script_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _make_utest_args(inference_path, components, categorical_key="batch"):
+    """Create a mock args namespace for the U-test module."""
+    from types import SimpleNamespace
+    out_dir = os.path.dirname(os.path.dirname(inference_path))
+    run_name = os.path.basename(os.path.dirname(inference_path))
+    return SimpleNamespace(
+        out_dir=out_dir,
+        run_name=run_name,
+        components=components,
+        sel_thresh=[2.0],
+        guide_annotation_path=None,
+        guide_annotation_key=["non-targeting"],
+        data_key="rna",
+        prog_key="cNMF",
+        categorical_key=categorical_key,
+        guide_names_key="guide_names",
+        guide_targets_key="guide_targets",
+        guide_assignment_key="guide_assignment",
+        FDR_method="BH",
+        mdata_guide_path=None,
+    )
+
+
 # ===========================================================================
 # Tests for perturbation association (core of U-test calibration)
 # ===========================================================================
 
 class TestPerturbationAssociation:
+    """Run perturbation tests per K using the original U-test pipeline functions."""
 
-    def test_basic_perturbation_association(self, mdata_copy):
-        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
-        result = compute_perturbation_association(
-            mdata_copy, prog_key="cNMF",
-            collapse_targets=True, pseudobulk=False,
-            reference_targets=["non-targeting"],
-            FDR_method="BH", n_jobs=1, inplace=False,
-        )
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) > 0
-        assert "target_name" in result.columns
-        assert "program_name" in result.columns
-        assert "pval" in result.columns
+    def test_real_perturbation_per_k(self, mdata_copy_per_k, eval_output_dir_per_k, inference_path):
+        """Call compute_real_perturbation_tests from the original script, per K per batch."""
+        import matplotlib
+        matplotlib.use("Agg")
 
-    def test_perturbation_pvalues_valid(self, mdata_copy):
-        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
-        result = compute_perturbation_association(
-            mdata_copy, prog_key="cNMF",
-            collapse_targets=True, pseudobulk=False,
-            reference_targets=["non-targeting"],
-            FDR_method="BH", n_jobs=1, inplace=False,
-        )
-        assert (result["pval"] >= 0).all()
-        assert (result["pval"] <= 1).all()
+        utest_mod = _load_utest_module()
+        k = mdata_copy_per_k.uns["test_k"]
 
-    def test_perturbation_per_batch(self, mdata_copy):
-        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
-        batch = mdata_copy["rna"].obs["batch"].unique()[0]
-        mask = mdata_copy["rna"].obs["batch"] == batch
-        mdata_sub = mdata_copy[mask]
-        result = compute_perturbation_association(
-            mdata_sub, prog_key="cNMF",
-            collapse_targets=True, pseudobulk=False,
-            reference_targets=["non-targeting"],
-            FDR_method="BH", n_jobs=1, inplace=False,
-        )
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) > 0
+        utest_mod.args = _make_utest_args(inference_path, components=[k])
+        utest_mod.mdata_guide = None
 
-    def test_fdr_bh_correction(self, mdata_copy):
-        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
-        result = compute_perturbation_association(
-            mdata_copy, prog_key="cNMF",
-            collapse_targets=True, pseudobulk=False,
-            reference_targets=["non-targeting"],
-            FDR_method="BH", n_jobs=1, inplace=False,
+        result_df = utest_mod.compute_real_perturbation_tests()
+
+        assert isinstance(result_df, pd.DataFrame)
+        assert len(result_df) > 0
+        assert all(result_df["pval"].between(0, 1))
+        assert "adj_pval" in result_df.columns
+        assert result_df["sample"].nunique() > 1
+
+        # Save combined result
+        result_df.to_csv(
+            os.path.join(eval_output_dir_per_k, f"{k}_real_perturbation_all.txt"),
+            sep="\t", index=False,
         )
-        assert "adj_pval" in result.columns
-        assert (result["adj_pval"] >= 0).all()
-        assert (result["adj_pval"] <= 1).all()
+
+        # Violin plot via original function (saves per-(K, sel_thresh) folder)
+        result_df["real"] = True
+        utest_mod.plot_calibration_comparison(result_df)
+        expected_png = os.path.join(eval_output_dir_per_k, "U_test_perturbation_association_calibration.png")
+        assert os.path.exists(expected_png), f"Missing per-folder calibration plot: {expected_png}"
 
 
 # ===========================================================================
@@ -102,31 +133,37 @@ class TestFakeGuideCalibration:
         assert n_targeting == n_original_targeting + 3
 
     def test_subset_to_nontargeting_guides(self, mdata_copy, guide_annotation_df):
-        nt_mask = guide_annotation_df["targeting"] == False
-        nt_indices = np.where(nt_mask.values)[0]
+        # Replace collapsed guide_targets with individual guide_names
+        # so annotation file guide names match the Target column
         prog = mdata_copy["cNMF"]
+        prog.uns["guide_targets"] = prog.uns["guide_names"].copy()
+        nt_indices = _get_nontargeting_indices(guide_annotation_df, mdata_copy)
         assignment = prog.obsm["guide_assignment"]
         if sparse.issparse(assignment):
             assignment = assignment.toarray()
         original_n_guides = assignment.shape[1]
         subset_assignment = assignment[:, nt_indices]
-        assert subset_assignment.shape[1] == nt_mask.sum()
+        assert subset_assignment.shape[1] == len(nt_indices)
         assert subset_assignment.shape[1] < original_n_guides
 
-    def test_calibration_run_single_iteration(self, mdata_copy, guide_annotation_df):
-        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
-        rng = np.random.default_rng(789)
-        nt_mask = guide_annotation_df["targeting"] == False
-        nt_indices = np.where(nt_mask.values)[0]
-
+    def _setup_calibration_mdata(self, mdata_copy, guide_annotation_df, rng, use_file_access=False):
+        """Helper: subset mdata to non-targeting guides and assign fake targets."""
         prog = mdata_copy["cNMF"]
+        if use_file_access:
+            # Replace collapsed guide_targets with individual guide_names
+            prog.uns["guide_targets"] = prog.uns["guide_names"].copy()
+        nt_indices = _get_nontargeting_indices(guide_annotation_df, mdata_copy)
+
         assignment = prog.obsm["guide_assignment"]
         if sparse.issparse(assignment):
             assignment = assignment.toarray()
         prog.obsm["guide_assignment"] = assignment[:, nt_indices]
         prog.uns["guide_names"] = prog.uns["guide_names"][nt_indices]
 
-        new_targets = np.array(["non-targeting"] * len(nt_indices))
+        if use_file_access:
+            new_targets = prog.uns["guide_names"].copy()
+        else:
+            new_targets = np.array(["non-targeting"] * len(nt_indices))
         selected_idx = rng.choice(len(nt_indices), 3, replace=False)
         new_targets[selected_idx] = "targeting"
         prog.uns["guide_targets"] = new_targets
@@ -139,10 +176,37 @@ class TestFakeGuideCalibration:
         rna.uns["guide_names"] = prog.uns["guide_names"]
         rna.uns["guide_targets"] = new_targets
 
+        if use_file_access:
+            nt_guide_names = guide_annotation_df[guide_annotation_df["targeting"] == False].index.values
+            ref_targets = [g for g in nt_guide_names if g in prog.uns["guide_names"]]
+        else:
+            ref_targets = ["non-targeting"]
+        return ref_targets
+
+    def test_calibration_run_single_iteration_key(self, mdata_copy, guide_annotation_df):
+        """Calibration using key-based reference_targets=['non-targeting']."""
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
+        rng = np.random.default_rng(789)
+        ref_targets = self._setup_calibration_mdata(mdata_copy, guide_annotation_df, rng, use_file_access=False)
         result = compute_perturbation_association(
             mdata_copy, prog_key="cNMF",
             collapse_targets=True, pseudobulk=False,
-            reference_targets=["non-targeting"],
+            reference_targets=ref_targets,
+            FDR_method="BH", n_jobs=1, inplace=False,
+        )
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) > 0
+        assert result["pval"].median() > 0.01
+
+    def test_calibration_run_single_iteration_file(self, mdata_copy, guide_annotation_df):
+        """Calibration using file-based reference_targets (individual guide names)."""
+        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
+        rng = np.random.default_rng(789)
+        ref_targets = self._setup_calibration_mdata(mdata_copy, guide_annotation_df, rng, use_file_access=True)
+        result = compute_perturbation_association(
+            mdata_copy, prog_key="cNMF",
+            collapse_targets=True, pseudobulk=False,
+            reference_targets=ref_targets,
             FDR_method="BH", n_jobs=1, inplace=False,
         )
         assert isinstance(result, pd.DataFrame)
@@ -199,12 +263,16 @@ class TestCalibrationOutput:
         assert len(loaded) == len(result)
         assert "target_name" in loaded.columns
 
-    def test_multiple_iterations_concatenate(self, mdata_copy, guide_annotation_df):
+    def _run_multiple_iterations(self, mdata_copy, guide_annotation_df, use_file_access):
+        """Helper: run 3 calibration iterations with key or file-based access."""
         from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
         rng = np.random.default_rng(0)
         all_results = []
-        nt_mask = guide_annotation_df["targeting"] == False
-        nt_indices = np.where(nt_mask.values)[0]
+
+        if use_file_access:
+            mdata_copy["cNMF"].uns["guide_targets"] = mdata_copy["cNMF"].uns["guide_names"].copy()
+        nt_indices = _get_nontargeting_indices(guide_annotation_df, mdata_copy)
+        nt_guide_names = guide_annotation_df[guide_annotation_df["targeting"] == False].index.values
 
         for iteration in range(3):
             _mdata = mdata_copy.copy()
@@ -215,17 +283,25 @@ class TestCalibrationOutput:
             prog.obsm["guide_assignment"] = assignment[:, nt_indices]
             prog.uns["guide_names"] = prog.uns["guide_names"][nt_indices]
 
-            new_targets = np.array(["non-targeting"] * len(nt_indices))
+            if use_file_access:
+                new_targets = prog.uns["guide_names"].copy()
+            else:
+                new_targets = np.array(["non-targeting"] * len(nt_indices))
             selected = rng.choice(len(nt_indices), 3, replace=False)
             new_targets[selected] = "targeting"
             prog.uns["guide_targets"] = new_targets
             _mdata["rna"].uns["guide_names"] = prog.uns["guide_names"]
             _mdata["rna"].uns["guide_targets"] = new_targets
 
+            if use_file_access:
+                ref_targets = [g for g in nt_guide_names if g in prog.uns["guide_names"]]
+            else:
+                ref_targets = ["non-targeting"]
+
             result = compute_perturbation_association(
                 _mdata, prog_key="cNMF",
                 collapse_targets=True, pseudobulk=False,
-                reference_targets=["non-targeting"],
+                reference_targets=ref_targets,
                 FDR_method="BH", n_jobs=1, inplace=False,
             )
             result["run"] = iteration
@@ -234,6 +310,14 @@ class TestCalibrationOutput:
         combined = pd.concat(all_results, ignore_index=True)
         assert "run" in combined.columns
         assert combined["run"].nunique() == 3
+
+    def test_multiple_iterations_concatenate_key(self, mdata_copy, guide_annotation_df):
+        """Multiple iterations using key-based reference_targets=['non-targeting']."""
+        self._run_multiple_iterations(mdata_copy, guide_annotation_df, use_file_access=False)
+
+    def test_multiple_iterations_concatenate_file(self, mdata_copy, guide_annotation_df):
+        """Multiple iterations using file-based reference_targets (individual guide names)."""
+        self._run_multiple_iterations(mdata_copy, guide_annotation_df, use_file_access=True)
 
 
 # ===========================================================================
@@ -371,14 +455,15 @@ class TestSparseConversion:
         recovered = sp.toarray()
         np.testing.assert_array_equal(dense, recovered)
 
-    def test_dense_assignment_column_subsetting(self, test_mdata, guide_annotation_df):
-        assignment = test_mdata["cNMF"].obsm["guide_assignment"]
+    def test_dense_assignment_column_subsetting(self, mdata_copy, guide_annotation_df):
+        # Replace collapsed guide_targets with individual guide_names
+        mdata_copy["cNMF"].uns["guide_targets"] = mdata_copy["cNMF"].uns["guide_names"].copy()
+        assignment = mdata_copy["cNMF"].obsm["guide_assignment"]
         if sparse.issparse(assignment):
             assignment = assignment.toarray()
-        nt_mask = guide_annotation_df["targeting"] == False
-        nt_indices = np.where(nt_mask.values)[0]
+        nt_indices = _get_nontargeting_indices(guide_annotation_df, mdata_copy)
         subset = assignment[:, nt_indices]
-        assert subset.shape == (assignment.shape[0], nt_mask.sum())
+        assert subset.shape == (assignment.shape[0], len(nt_indices))
 
 
 # ===========================================================================
@@ -446,6 +531,81 @@ class TestCalibrationVisualization:
         pvals = rng.uniform(0, 1, 100)
         neg_log = -np.log(np.clip(pvals, 1e-300, None))
         assert all(np.isfinite(neg_log))
+
+    def test_qq_plot_saves_per_folder(self, tmp_path):
+        """plot_qq_comparison saves one PNG per (K, sel_thresh) into Evaluation/{K}_{thresh}/."""
+        import matplotlib
+        matplotlib.use("Agg")
+        from types import SimpleNamespace
+
+        utest_mod = _load_utest_module()
+
+        components = [5, 10, 15]
+        sel_thresh_list = [2.0]
+        run_name = "test_run"
+
+        utest_mod.args = SimpleNamespace(
+            out_dir=str(tmp_path),
+            run_name=run_name,
+            components=components,
+            sel_thresh=sel_thresh_list,
+        )
+
+        rng = np.random.default_rng(0)
+        rows = []
+        for k in components:
+            for st in sel_thresh_list:
+                for p in rng.uniform(0, 1, 50):
+                    rows.append({"K": k, "sel_thresh": st, "real": True, "target_name": "geneX", "pval": p})
+                for p in rng.uniform(0, 1, 50):
+                    rows.append({"K": k, "sel_thresh": st, "real": False, "target_name": "targeting", "pval": p})
+        test_stats_dfs = pd.DataFrame(rows)
+
+        utest_mod.plot_qq_comparison(test_stats_dfs)
+
+        for k in components:
+            for st in sel_thresh_list:
+                thresh_str = str(st).replace(".", "_")
+                expected = tmp_path / run_name / "Evaluation" / f"{k}_{thresh_str}" / "U_test_perturbation_association_qqplot.png"
+                assert expected.exists(), f"Missing per-folder QQ plot: {expected}"
+
+    def test_calibration_plot_saves_per_folder(self, tmp_path):
+        """plot_calibration_comparison saves one PNG per (K, sel_thresh) into Evaluation/{K}_{thresh}/."""
+        import matplotlib
+        matplotlib.use("Agg")
+        from types import SimpleNamespace
+
+        utest_mod = _load_utest_module()
+
+        components = [5, 10, 15]
+        sel_thresh_list = [2.0]
+        run_name = "test_run"
+
+        utest_mod.args = SimpleNamespace(
+            out_dir=str(tmp_path),
+            run_name=run_name,
+            components=components,
+            sel_thresh=sel_thresh_list,
+        )
+
+        rng = np.random.default_rng(0)
+        rows = []
+        for k in components:
+            for st in sel_thresh_list:
+                for samp in ["d0", "d1"]:
+                    for p in rng.uniform(1e-6, 1, 50):
+                        rows.append({"K": k, "sel_thresh": st, "real": True, "sample": samp, "pval": p})
+                    for p in rng.uniform(1e-6, 1, 50):
+                        rows.append({"K": k, "sel_thresh": st, "real": False, "sample": samp, "pval": p})
+        test_stats_dfs = pd.DataFrame(rows)
+
+        utest_mod.plot_calibration_comparison(test_stats_dfs)
+
+        for k in components:
+            for st in sel_thresh_list:
+                thresh_str = str(st).replace(".", "_")
+                expected = tmp_path / run_name / "Evaluation" / f"{k}_{thresh_str}" / "U_test_perturbation_association_calibration.png"
+                assert expected.exists(), f"Missing per-folder calibration plot: {expected}"
 
 
 if __name__ == "__main__":

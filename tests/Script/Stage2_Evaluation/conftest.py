@@ -140,16 +140,30 @@ def guide_annotation_path():
 
 @pytest.fixture(scope="session")
 def reference_targets_from_annotation(guide_annotation_path, test_mdata):
-    """Extract reference target group names by matching annotation table guides to mdata."""
+    """Extract reference target group names by matching annotation table guides to mdata.
+
+    NOTE: The annotation table index contains individual guide names (e.g. "non-targeting_00014"),
+    but compute_perturbation_association expects target GROUP names (e.g. "non-targeting")
+    from mdata.uns["guide_targets"]. This fixture intersects the two to resolve group names.
+    """
     df = pd.read_csv(guide_annotation_path, sep="\t", index_col=0)
     non_targeting_guides = df[df["targeting"] == False].index.values
-    # Map guide names → target group names via mdata
+    # Intersect annotation guide names with mdata guide_names, then get target group names
     guide_metadata = pd.DataFrame({
         "guide": test_mdata["cNMF"].uns["guide_names"],
         "target": test_mdata["cNMF"].uns["guide_targets"],
     })
     matched = guide_metadata[guide_metadata["guide"].isin(non_targeting_guides)]
+    print(f"[conftest] annotation non-targeting guides: {len(non_targeting_guides)}, "
+          f"matched in mdata: {len(matched)}")
     ref_targets = matched["target"].unique().tolist()
+    print(f"[conftest] resolved reference target groups: {ref_targets}")
+    if len(ref_targets) == 0:
+        raise ValueError(
+            f"No reference target groups found. annotation guide names don't match "
+            f"mdata guide_targets. Check that guide_names in mdata.uns intersect "
+            f"with the annotation table index."
+        )
     return ref_targets
 
 

@@ -53,14 +53,16 @@ class TestPerturbationPerK:
     def test_compute_perturbation(self, mdata_copy_per_k, eval_output_dir_per_k):
         from Stage2_Evaluation.A_Metrics.src.association_perturbation import compute_perturbation_association
         k = mdata_copy_per_k.uns["test_k"]
-        result = compute_perturbation_association(
-            mdata_copy_per_k, prog_key="cNMF",
-            reference_targets=["non-targeting"],pseudobulk=False,
-            collapse_targets=True, n_jobs=1, inplace=False, FDR_method="BH"
-        )
-        assert isinstance(result, pd.DataFrame)
-        assert all(result["pval"].between(0, 1))
-        result.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_perturbation_association_results.txt"), sep="\t", index=False)
+        for batch in mdata_copy_per_k["rna"].obs["batch"].unique():
+            mdata_batch = mdata_copy_per_k[mdata_copy_per_k["rna"].obs["batch"] == batch]
+            result = compute_perturbation_association(
+                mdata_batch, prog_key="cNMF",
+                reference_targets=["non-targeting"], pseudobulk=False,
+                collapse_targets=True, n_jobs=1, inplace=False, FDR_method="BH"
+            )
+            assert isinstance(result, pd.DataFrame)
+            assert all(result["pval"].between(0, 1))
+            result.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_perturbation_association_results_{batch}.txt"), sep="\t", index=False)
 
 
 class TestGenesetPerK:
@@ -82,7 +84,7 @@ class TestGenesetPerK:
             organism="human", library="Reactome_2022", method="fisher",
             database="enrichr", n_top=300, n_jobs=1,
             inplace=False, user_geneset=None, use_loadings_gene=False,
-            gene_names_key="symbol"
+            gene_names_key="symbol", use_cache=True
         )
         assert isinstance(result, pd.DataFrame)
         result.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_geneset_enrichment.txt"), sep="\t", index=False)
@@ -99,7 +101,7 @@ class TestGOEnrichmentPerK:
             organism="human", library="GO_Biological_Process_2023", method="fisher",
             database="enrichr", n_top=300, n_jobs=1,
             inplace=False, user_geneset=None, use_loadings_gene=False,
-            gene_names_key="symbol"
+            gene_names_key="symbol", use_cache=True
         )
         assert isinstance(result, pd.DataFrame)
         result.to_csv(os.path.join(eval_output_dir_per_k, f"{k}_GO_term_enrichment.txt"), sep="\t", index=False)
