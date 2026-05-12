@@ -233,9 +233,8 @@ def Compile_Association_sheet(Association_path, gene_num = 5):
     print('Load categorical associa data')
 
     df = pd.read_csv(Association_path, sep = "\t", index_col = 0)
-    df = df.reset_index(drop=True)
     df.index.name = "program_name"
-    df.sort_values(by = df.index.name, inplace = True, ascending=True)
+    df.sort_index(inplace=True, ascending=True)
 
     return df
 
@@ -692,8 +691,10 @@ def get_correlation_df(perturbation_path, Sample=["D0", "sample_D1", "sample_D2"
         print(f"Compute correlation for {day}")
         perturb_path = f"{perturbation_path}_{day}.txt"
 
-        # Read and pivot directly
-        df = pd.read_csv(perturb_path, sep='\t', index_col=0)
+        # Read and pivot directly. Real perturb files (U-test, CRT) have
+        # target_name as the first column, so we must NOT use index_col=0 —
+        # otherwise pivot_table can't find 'target_name'.
+        df = pd.read_csv(perturb_path, sep='\t')
         pivot_df = df.pivot_table(index='target_name', columns='program_name', values=effect_size)
 
         # Compute correlation matrix (genes x genes) — vectorized
@@ -923,6 +924,12 @@ def get_top_terms_Summary_cols(df_GO, df_Geneset, adjusted_pval_key='Adjusted P-
                 lambda x: ';'.join(x.sort_values(adjusted_pval_key).index[:10])
             )
 
+    # When both inputs are None, pd.DataFrame({col: None, col: None}) raises
+    # "If using all scalar values, you must pass an index". Return an empty
+    # frame with the expected columns instead.
+    if top_GO is None and top_Geneset is None:
+        return pd.DataFrame(columns=['top10_enriched_genesets', 'top10_enriched_go_terms'])
+
     top_terms = pd.DataFrame({
         'top10_enriched_genesets': top_Geneset,
         'top10_enriched_go_terms': top_GO
@@ -966,6 +973,17 @@ categorical_key = "sample",non_tagerting_key=None, effect_size='log2FC', adjuste
         right_index=True,
         how='outer'
     )
+
+    # df_top_terms comes from a groupby('program_name') on string-typed
+    # program_name columns; merged_df.index is int. An outer merge on
+    # mismatched dtypes produces duplicate rows (one per program from each
+    # side, never matching). Align dtypes before merging.
+    if len(df_top_terms) > 0:
+        try:
+            df_top_terms.index = df_top_terms.index.astype(merged_df.index.dtype)
+        except (ValueError, TypeError):
+            merged_df.index = merged_df.index.astype(str)
+            df_top_terms.index = df_top_terms.index.astype(str)
 
     final_merged_df = pd.merge(
         merged_df,
