@@ -54,7 +54,6 @@ echo "Running Python script..."
 python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/CRT.py \
         --out_dir "$OUT_DIR" \
         --run_name "$RUN_NAME" \
-        --mdata_guide_path "/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Data/raw_updated_withguide_030526.h5ad" \
         --guide_annotation_key "non-targeting" \
         --number_permutations 5000 \
         --number_guide 6 \

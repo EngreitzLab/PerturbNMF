@@ -144,10 +144,14 @@ def compute_fake_perturbation_tests():
         first_k = args.components[0]
         thresh_str = str(args.sel_thresh[0]).replace('.', '_')
         mdata_check = mu.read(f'{args.out_dir}/{args.run_name}/Inference/adata/cNMF_{first_k}_{thresh_str}.h5mu')
+
         guide_targets_arr = mdata_check[args.prog_key].uns[args.guide_targets_key]
         guide_names_arr = mdata_check[args.prog_key].uns[args.guide_names_key]
         non_targeting_idx = np.where(guide_targets_arr == 'non-targeting')[0]
+
         print(f'  Non-targeting guides: {len(non_targeting_idx)}')
+
+        # make a new annotation df when we don't have annotation file 
         guide_target = pd.DataFrame({
             args.guide_names_key: guide_names_arr[non_targeting_idx],
             'type': 'non-targeting'
@@ -159,8 +163,10 @@ def compute_fake_perturbation_tests():
         first_k = args.components[0]
         thresh_str = str(args.sel_thresh[0]).replace('.', '_')
         mdata_check = mu.read(f'{args.out_dir}/{args.run_name}/Inference/adata/cNMF_{first_k}_{thresh_str}.h5mu')
+
         n_file_guides = len(pd.read_csv(args.guide_annotation_path, sep='\t'))
         n_mdata_guides = len(mdata_check[args.prog_key].uns[args.guide_names_key])
+        
         if n_file_guides != n_mdata_guides:
             raise ValueError(
                 f"Guide count mismatch: annotation file has {n_file_guides} guides, "
@@ -469,23 +475,13 @@ def main():
     print("U-test Perturbation Calibration Analysis")
     print("=" * 80)
 
-    # Compute real perturbation tests
+    # Compute real perturbation tests (per-(K, sel_thresh, sample) files saved inside)
     if args.compute_real_perturbation_tests:
         test_stats_real_df = compute_real_perturbation_tests()
-        test_stats_real_df.to_csv(
-            f'{args.out_dir}/{args.run_name}/Evaluation/real_perturbation_association_all.txt',
-            sep='\t', index=False
-        )
-        print(f"Saved real perturbation results to {args.out_dir}/{args.run_name}/Evaluation/real_perturbation_association_all.txt")
 
-    # Compute fake perturbation tests
+    # Compute fake perturbation tests (per-(K, sel_thresh, sample) files saved inside)
     if args.compute_fake_perturbation_tests:
         test_stats_fake_df = compute_fake_perturbation_tests()
-        test_stats_fake_df.to_csv(
-            f'{args.out_dir}/{args.run_name}/Evaluation/fake_perturbation_association_all.txt',
-            sep='\t', index=False
-        )
-        print(f"Saved fake perturbation results to {args.out_dir}/{args.run_name}/Evaluation/fake_perturbation_association_all.txt")
 
     # Load Merge datasets for visualizations
     if args.visualizations:

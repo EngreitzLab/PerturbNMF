@@ -8,8 +8,7 @@ with optional skew-normal calibration.
 Usage:
   python CRT.py \
     --out_dir /path/to/output \
-    --run_name my_run \
-    --mdata_guide_path /path/to/guide.h5mu
+    --run_name my_run
 """
 
 import sys
@@ -38,35 +37,22 @@ from src.visualization import qq_plot_ntc_pvals
 
 
 # reformat adata info for CRT
-def reformat_data_for_CRT(mdata, mdata_guide, covariates=None, log_covariates=None):
+def reformat_data_for_CRT(mdata, covariates=None, log_covariates=None):
 
     adata = mdata["cNMF"].copy()
     adata.obsm["cnmf_usage"] = np.asarray(adata.X)  # ensure dense float
 
-    # Align gene modality to adata cells
-    g = mdata_guide[adata.obs_names].copy()
-
-    # Guide assignment (cell x guide)
-    adata.obsm["guide_assignment"] = g.obsm["guide_assignment"].copy()
+    # Guide assignment already lives in the cNMF modality of the input mdata
+    adata.obsm["guide_assignment"] = adata.obsm["guide_assignment"].copy()
 
     # Program names
     adata.uns["program_names"] = list(adata.var_names)
 
     # Guide names must match columns of guide_assignment
-    guide_names = list(mdata_guide.uns["guide_names"])
+    guide_names = list(adata.uns["guide_names"])
     adata.uns["guide_names"] = guide_names
 
-    # guide2gene must map guide_name -> gene name (keys must match guide_names)
-    '''
-    guide2gene = (
-        mdata_guide.uns["guide_targets"]
-        .loc[guide_names]
-        .to_dict()
-    )
-    '''
-
-    guide2gene = dict(zip(guide_names,mdata_guide.uns["guide_targets"]))
-
+    guide2gene = dict(zip(guide_names, adata.uns["guide_targets"]))
     adata.uns["guide2gene"] = guide2gene
 
     # Covariates
@@ -245,7 +231,6 @@ def main():
     parser.add_argument('--run_name', help='Name of the cNMF run to perform calibration on (must match name used during inference)', type=str, required=True)
     parser.add_argument('--components', nargs='*', type=int, help = "list of K values (number of components) to test (default: [30, 50, 60, 80, 100, 200, 250, 300])", default=None)
     parser.add_argument('--sel_thresh', nargs='*', type=float, help = "list of density threshold values for consensus selection (default: [0.4, 0.8, 2.0])", default=None)
-    parser.add_argument('--mdata_guide_path', type=str,  help='Path to MuData object (.h5mu) containing guide assignment information', required=True)
 
     # keys
     parser.add_argument('--categorical_key', help='Key in .obs to access cell condition/sample labels (default: sample)', type=str, default="sample")
@@ -292,10 +277,6 @@ def main():
         yaml.dump(config_to_save, f, default_flow_style=False, width=1000)
 
 
-    # read guide
-    mdata_guide = mu.read(args.mdata_guide_path)
-
-
     # run CRT for each K and dt
     for sel_thresh in args.sel_thresh:
         for k in args.components:
@@ -311,7 +292,7 @@ def main():
             mdata = mu.read(f'{args.out_dir}/{args.run_name}/Inference/adata/cNMF_{k}_{str(sel_thresh).replace(".","_")}.h5mu')
 
             # Assign guide
-            adata = reformat_data_for_CRT(mdata, mdata_guide,
+            adata = reformat_data_for_CRT(mdata,
                                           covariates=args.covariates,
                                           log_covariates=args.log_covariates)
 
