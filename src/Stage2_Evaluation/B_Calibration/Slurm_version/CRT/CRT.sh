@@ -63,7 +63,7 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Eval
         --log_covariates total_counts guides_per_cell \
         --covariates pct_counts_mt \
         --FDR_method 'StoreyQ' \
-        --save_dir '/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/Evaluation/50_0_2/CRT_other_covariates/total_counts_guides_per_cell_pct_counts_mt' \
+        --save_dir '/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/Evaluation/50_0_2/' \
 
 
 

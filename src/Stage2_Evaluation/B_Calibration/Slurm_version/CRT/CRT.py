@@ -70,7 +70,8 @@ def reformat_data_for_CRT(mdata, covariates=None, log_covariates=None):
 
 
 # run one CRT
-def run_CRT(adata, k, output_folder, args):
+def run_CRT(adata, k, sel_thresh, output_folder, args):
+    thresh_tag = str(sel_thresh).replace(".", "_")
 
     # perform CRT for each condition of cells 
     for condition in adata.obs[args.categorical_key].unique():
@@ -163,14 +164,21 @@ def run_CRT(adata, k, output_folder, args):
         plt.tight_layout()
 
         if output_folder:
-            plt.savefig(f"{output_folder}/CRT_{condition}.png", dpi=100)
-            save_result(out, k, output_folder, condition, args)
+            covar_tag = _covariate_tag(args)
+            plt.savefig(f"{output_folder}/{k}_{thresh_tag}_CRT_{condition}{covar_tag}.png", dpi=100)
+            save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag)
 
         plt.close()
 
 
+def _covariate_tag(args):
+    """Build filename suffix from covariate args, e.g. _percent_mito_log_n_counts."""
+    parts = list(args.covariates or []) + [f"log_{c}" for c in (args.log_covariates or [])]
+    return ("_" + "_".join(parts)) if parts else "_no_covariates"
+
+
 # save results
-def save_result(out, k, output_folder, condition, args):
+def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=None):
 
     pval_df = out['pvals_skew_df']
     beta_df = out['betas_df']
@@ -216,7 +224,9 @@ def save_result(out, k, output_folder, condition, args):
         result_df['adj_pval'] = qvalue(result_df['p-value'].values, threshold=0.05, verbose=False)[1]
 
 
-    result_df.to_csv(f'{output_folder}/{k}_CRT_{condition}.txt',sep='\t',index=False)
+    if covar_tag is None:
+        covar_tag = _covariate_tag(args)
+    result_df.to_csv(f'{output_folder}/{k}_{thresh_tag}_CRT_{condition}{covar_tag}.txt', sep='\t', index=False)
     
     return result_df
 
@@ -303,7 +313,7 @@ def main():
             adata.obsm["cnmf_usage"] = U
 
             # run CRT
-            result_df = run_CRT(adata, k, output_folder, args)
+            result_df = run_CRT(adata, k, sel_thresh, output_folder, args)
 
     print("Pipeline finished.")
     return 0
