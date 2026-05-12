@@ -131,6 +131,27 @@ def plot_top_gene_per_program(mdata, Target_Program,
         renamed_gene_list = rename_list_gene_dictionary(gene_names, file_to_dictionary)
         df_renamed = pd.DataFrame(data=X, columns=renamed_gene_list, index=mdata["cNMF"].var_names)
 
+    # Validate the program exists, and is unique, in the loading matrix.
+    matching_rows = (df_renamed.index == str(Target_Program)).sum()
+    if matching_rows == 0:
+        raise ValueError(
+            f"Program {str(Target_Program)!r} not found in the loading matrix. "
+            f"Available programs: {list(df_renamed.index)}."
+        )
+    if matching_rows > 1:
+        raise ValueError(
+            f"Program {str(Target_Program)!r} matches {matching_rows} rows in the "
+            f"loading matrix (duplicate program ids). Deduplicate before calling "
+            f"plot_top_gene_per_program."
+        )
+
+    n_genes = df_renamed.shape[1]
+    if num_gene > n_genes:
+        raise ValueError(
+            f"num_gene={num_gene} exceeds the number of genes available in the "
+            f"loading matrix ({n_genes}). Lower num_gene."
+        )
+
     # Sort top x genes for the program
     df_sorted = df_renamed.loc[str(Target_Program)].nlargest(num_gene)
     df_sorted = df_sorted.sort_values(ascending=True)

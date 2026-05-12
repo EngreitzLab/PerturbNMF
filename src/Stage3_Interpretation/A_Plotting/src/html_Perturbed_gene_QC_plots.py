@@ -64,6 +64,18 @@ def _build_top_programs(mdata, target_gene, top_n, ensembl_to_symbol_file, gene_
     df = pd.DataFrame(data=X, columns=col_names, index=mdata["cNMF"].var_names)
     if target_gene not in df.columns:
         return {"programs": [], "loadings": []}
+    matching_cols = (df.columns == target_gene).sum()
+    if matching_cols > 1:
+        raise ValueError(
+            f"Gene symbol {target_gene!r} maps to {matching_cols} columns in the "
+            f"loading matrix (duplicate symbols from multiple Ensembl IDs)."
+        )
+    n_programs = df.shape[0]
+    if top_n > n_programs:
+        raise ValueError(
+            f"top_n={top_n} exceeds the number of programs available "
+            f"in the loading matrix ({n_programs})."
+        )
     series = df[target_gene].nlargest(top_n).sort_values(ascending=True)
     return {
         "programs": [str(p) for p in series.index],

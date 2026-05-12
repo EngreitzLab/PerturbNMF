@@ -116,6 +116,23 @@ def _build_top_genes(mdata, target_program, num_gene, file_to_dictionary, gene_n
     if file_to_dictionary is not None:
         gene_names = rename_list_gene_dictionary(list(gene_names), file_to_dictionary)
     df = pd.DataFrame(data=X, columns=gene_names, index=mdata["cNMF"].var_names)
+    matching_rows = (df.index == str(target_program)).sum()
+    if matching_rows == 0:
+        raise ValueError(
+            f"Program {str(target_program)!r} not found in the loading matrix. "
+            f"Available programs: {list(df.index)}."
+        )
+    if matching_rows > 1:
+        raise ValueError(
+            f"Program {str(target_program)!r} matches {matching_rows} rows in the "
+            f"loading matrix (duplicate program ids)."
+        )
+    n_genes = df.shape[1]
+    if num_gene > n_genes:
+        raise ValueError(
+            f"num_gene={num_gene} exceeds the number of genes available "
+            f"in the loading matrix ({n_genes})."
+        )
     series = df.loc[str(target_program)].nlargest(num_gene).sort_values(ascending=True)
     return {"genes": list(series.index), "loadings": list(series.values)}
 

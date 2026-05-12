@@ -389,6 +389,25 @@ def plot_top_program_per_gene(mdata,  Target_Gene, ensembl_to_symbol_file = None
     
     
     
+    # Multiple Ensembl IDs collapsing to the same symbol would make
+    # df_renamed[Target_Gene] return a DataFrame and break nlargest().
+    # Fail explicitly rather than silently averaging or picking one column.
+    matching_cols = (df_renamed.columns == Target_Gene).sum()
+    if matching_cols > 1:
+        raise ValueError(
+            f"Gene symbol {Target_Gene!r} maps to {matching_cols} columns in the "
+            f"loading matrix (duplicate symbols from multiple Ensembl IDs). "
+            f"Deduplicate the gene→symbol mapping upstream before calling "
+            f"plot_top_program_per_gene."
+        )
+
+    n_programs = df_renamed.shape[0]
+    if top_n_programs > n_programs:
+        raise ValueError(
+            f"top_n_programs={top_n_programs} exceeds the number of programs "
+            f"available in the loading matrix ({n_programs}). Lower top_n_programs."
+        )
+
     # sort top x program
     df_sorted = df_renamed[Target_Gene].nlargest(top_n_programs)
     df_sorted = df_sorted.sort_values(ascending=True)
