@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import sys
+import warnings
 import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -354,4 +355,10 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    warnings.warn(
+        "C_Annotation / Literature_search is a BETA feature still being developed. "
+        "Outputs may change and edge cases are not fully tested.",
+        FutureWarning,
+        stacklevel=2,
+    )
     sys.exit(main())
