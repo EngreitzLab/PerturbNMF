@@ -14,13 +14,13 @@ import matplotlib
 matplotlib.use('Agg')
 from pathlib import Path
 
-PIPELINE_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
+PIPELINE_ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(PIPELINE_ROOT / "src"))
 
 BATCH_OUTPUT = PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch"
 INFERENCE_DIR = BATCH_OUTPUT / "Inference"
 EVAL_DIR = BATCH_OUTPUT / "Evaluation"
-PLOT_OUTPUT = PIPELINE_ROOT / "tests" / "output" / "Interpretation" / "Plotting" / "K-Selection"
+PLOT_OUTPUT = BATCH_OUTPUT / "Interpretation" / "Plotting" / "K-Selection"
 
 COMPONENTS = [5, 10, 15]
 SEL_THRESH = 2.0
@@ -68,7 +68,7 @@ def real_stability_stats(inference_dir):
 def real_enrichment_df(eval_dir):
     """Load enrichment data (GO, genesets, traits) from real evaluation output."""
     # Verify all required enrichment files exist before loading
-    sel_str = f"{SEL_THRESH:g}".replace('.', '_')
+    sel_str = str(SEL_THRESH).replace('.', '_')
     for k in COMPONENTS:
         k_folder = EVAL_DIR / f"{k}_{sel_str}"
         for pattern in ['{k}_GO_term_enrichment.txt', '{k}_geneset_enrichment.txt', '{k}_trait_enrichment.txt']:
@@ -87,7 +87,7 @@ def real_enrichment_df(eval_dir):
 @pytest.fixture(scope="session")
 def real_perturbation_df(eval_dir):
     """Load perturbation association results from real evaluation output."""
-    sel_str = f"{SEL_THRESH:g}".replace('.', '_')
+    sel_str = str(SEL_THRESH).replace('.', '_')
     for k in COMPONENTS:
         k_folder = EVAL_DIR / f"{k}_{sel_str}"
         for samp in SAMPLES:
@@ -106,7 +106,7 @@ def real_perturbation_df(eval_dir):
 @pytest.fixture(scope="session")
 def real_explained_var(eval_dir):
     """Load explained variance data from real evaluation output."""
-    sel_str = f"{SEL_THRESH:g}".replace('.', '_')
+    sel_str = str(SEL_THRESH).replace('.', '_')
     for k in COMPONENTS:
         fpath = EVAL_DIR / f"{k}_{sel_str}" / f"{k}_Explained_Variance_Summary.txt"
         if not fpath.exists():

@@ -34,10 +34,18 @@ from Stage3_Interpretation.A_Plotting.src.Perturbed_gene_QC_plots import (
 
 class TestPlotTopProgramPerGene:
 
+    def _pick_unique_symbol(self, test_mdata):
+        """Return a gene symbol that appears exactly once in rna.var['symbol']."""
+        symbols = test_mdata['rna'].var['symbol'].astype(str)
+        counts = symbols.value_counts()
+        unique = counts[counts == 1].index
+        if len(unique) == 0:
+            pytest.skip("No uniquely-mapped gene symbol available")
+        return unique[0]
+
     def test_returns_axes_and_saves(self, test_mdata, gene_output_dir):
-        """plot_top_program_per_gene returns Axes and saves SVG for a known gene."""
-        # Pick the first gene from the RNA var_names
-        gene = test_mdata['rna'].var_names[0]
+        """plot_top_program_per_gene returns Axes and saves SVG for a unique-symbol gene."""
+        gene = self._pick_unique_symbol(test_mdata)
         ax = plot_top_program_per_gene(
             test_mdata,
             Target_Gene=gene,
@@ -59,6 +67,35 @@ class TestPlotTopProgramPerGene:
         )
         plt.close('all')
         assert result is None
+
+    def test_duplicate_symbol_raises(self, test_mdata, gene_output_dir):
+        """Symbols that map from multiple Ensembl IDs should raise ValueError."""
+        symbols = test_mdata['rna'].var['symbol'].astype(str)
+        dup_counts = symbols.value_counts()
+        dups = dup_counts[dup_counts > 1].index
+        if len(dups) == 0:
+            pytest.skip("No duplicate-symbol gene available in this fixture")
+        with pytest.raises(ValueError, match="maps to .* columns"):
+            plot_top_program_per_gene(
+                test_mdata,
+                Target_Gene=dups[0],
+                top_n_programs=3,
+                save_path=gene_output_dir,
+                save_name="test_top_program_dup",
+            )
+
+    def test_top_n_exceeds_programs_raises(self, test_mdata, gene_output_dir):
+        """top_n_programs larger than n_programs should raise ValueError."""
+        gene = self._pick_unique_symbol(test_mdata)
+        n_programs = test_mdata['cNMF'].varm['loadings'].shape[0]
+        with pytest.raises(ValueError, match="exceeds the number of programs"):
+            plot_top_program_per_gene(
+                test_mdata,
+                Target_Gene=gene,
+                top_n_programs=n_programs + 5,
+                save_path=gene_output_dir,
+                save_name="test_top_program_too_many",
+            )
 
 
 class TestPlotLog2FC:

@@ -14,11 +14,11 @@ import matplotlib
 matplotlib.use('Agg')
 from pathlib import Path
 
-PIPELINE_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
+PIPELINE_ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(PIPELINE_ROOT / "src"))
 
-DEFAULT_INFERENCE_PATH = PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "dataloader" / "Inference"
-PLOT_OUTPUT = PIPELINE_ROOT / "tests" / "output" / "Interpretation" / "Plotting" / "Program"
+DEFAULT_INFERENCE_PATH = PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch" / "Inference"
+PLOT_OUTPUT = PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch" / "Interpretation" / "Plotting" / "Program"
 
 
 @pytest.fixture(scope="session")

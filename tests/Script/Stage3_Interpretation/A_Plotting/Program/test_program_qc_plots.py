@@ -88,6 +88,30 @@ class TestPlotTopGenePerProgram:
         assert ax is not None
         assert os.path.isfile(os.path.join(program_output_dir, "test_top_gene_per_program.svg"))
 
+    def test_missing_program_raises(self, test_mdata, program_output_dir):
+        """plot_top_gene_per_program raises ValueError for a program id that doesn't exist."""
+        with pytest.raises(ValueError, match="not found in the loading matrix"):
+            plot_top_gene_per_program(
+                test_mdata,
+                Target_Program="NONEXISTENT_PROGRAM",
+                num_gene=5,
+                save_path=program_output_dir,
+                save_name="test_top_gene_missing",
+            )
+
+    def test_num_gene_exceeds_genes_raises(self, test_mdata, program_output_dir):
+        """num_gene larger than n_genes should raise ValueError."""
+        prog_name = test_mdata['cNMF'].var_names[0]
+        n_genes = test_mdata['cNMF'].varm['loadings'].shape[1]
+        with pytest.raises(ValueError, match="exceeds the number of genes"):
+            plot_top_gene_per_program(
+                test_mdata,
+                Target_Program=prog_name,
+                num_gene=n_genes + 5,
+                save_path=program_output_dir,
+                save_name="test_top_gene_too_many",
+            )
+
 
 class TestPlotViolin:
 

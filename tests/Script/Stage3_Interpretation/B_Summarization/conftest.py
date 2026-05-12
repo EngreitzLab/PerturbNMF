@@ -11,7 +11,7 @@ from pathlib import Path
 from scipy import sparse
 
 TESTS_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-OUTPUT_DIR = TESTS_ROOT / "output" / "Interpretation" / "Summary_table"
+OUTPUT_DIR = TESTS_ROOT / "output" / "torch-cNMF" / "batch" / "Interpretation" / "Summarization"
 
 
 @pytest.fixture(scope="session")
@@ -109,9 +109,12 @@ def synthetic_geneset_df():
 
 @pytest.fixture(scope="session")
 def synthetic_explained_variance_df():
+    # Match the real `{K}_Explained_Variance.txt` format produced by Stage 2,
+    # which has columns: VarianceExplained, ProgramID, program_name.
+    # Compile_Summary_sheet's simple_Summary_cols looks up "VarianceExplained".
     return pd.DataFrame({
         "program_name": [0, 1, 2],
-        "variance_explained": [0.15, 0.10, 0.08],
+        "VarianceExplained": [0.15, 0.10, 0.08],
     }).set_index("program_name")
 
 

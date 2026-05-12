@@ -44,7 +44,8 @@ def _load_utest_module():
     return mod
 
 
-def _make_utest_args(inference_path, components, categorical_key="batch"):
+def _make_utest_args(inference_path, components, categorical_key="batch",
+                     sel_thresh=None, number_run=1, number_guide=3):
     """Create a mock args namespace for the U-test module."""
     from types import SimpleNamespace
     out_dir = os.path.dirname(os.path.dirname(inference_path))
@@ -53,7 +54,7 @@ def _make_utest_args(inference_path, components, categorical_key="batch"):
         out_dir=out_dir,
         run_name=run_name,
         components=components,
-        sel_thresh=[2.0],
+        sel_thresh=sel_thresh if sel_thresh is not None else [2.0],
         guide_annotation_path=None,
         guide_annotation_key=["non-targeting"],
         data_key="rna",
@@ -64,6 +65,8 @@ def _make_utest_args(inference_path, components, categorical_key="batch"):
         guide_assignment_key="guide_assignment",
         FDR_method="BH",
         mdata_guide_path=None,
+        number_run=number_run,
+        number_guide=number_guide,
     )
 
 
@@ -75,7 +78,13 @@ class TestPerturbationAssociation:
     """Run perturbation tests per K using the original U-test pipeline functions."""
 
     def test_real_perturbation_per_k(self, mdata_copy_per_k, eval_output_dir_per_k, inference_path):
-        """Call compute_real_perturbation_tests from the original script, per K per batch."""
+        """Call compute_real_perturbation_tests from the original script, per K per batch.
+
+        Verifies:
+        - Returns a combined results DataFrame with K / sel_thresh / sample / real columns
+        - Per-(K, sample) text files are saved into Evaluation/{K}_{thresh}/
+        - plot_calibration_comparison saves a PNG into the per-(K, sel_thresh) folder
+        """
         import matplotlib
         matplotlib.use("Agg")
 
@@ -92,126 +101,107 @@ class TestPerturbationAssociation:
         assert all(result_df["pval"].between(0, 1))
         assert "adj_pval" in result_df.columns
         assert result_df["sample"].nunique() > 1
+        assert set(result_df["K"].unique()) == {k}
+        assert set(result_df["sel_thresh"].unique()) == set(utest_mod.args.sel_thresh)
+        assert all(result_df["real"] == True)
 
-        # Save combined result
-        result_df.to_csv(
-            os.path.join(eval_output_dir_per_k, f"{k}_real_perturbation_all.txt"),
-            sep="\t", index=False,
-        )
+        # Per-(K, sample) text files in Evaluation/{K}_{thresh}/
+        for samp in result_df["sample"].unique():
+            expected_txt = os.path.join(
+                eval_output_dir_per_k,
+                f"{k}_perturbation_association_results_{samp}.txt",
+            )
+            assert os.path.exists(expected_txt), f"Missing per-(K, sample) file: {expected_txt}"
 
         # Violin plot via original function (saves per-(K, sel_thresh) folder)
-        result_df["real"] = True
         utest_mod.plot_calibration_comparison(result_df)
         expected_png = os.path.join(eval_output_dir_per_k, "U_test_perturbation_association_calibration.png")
         assert os.path.exists(expected_png), f"Missing per-folder calibration plot: {expected_png}"
 
+    def test_fake_perturbation_per_k(self, mdata_copy_per_k, eval_output_dir_per_k, inference_path):
+        """Call compute_fake_perturbation_tests from the original script, per K per batch.
 
-# ===========================================================================
-# Tests for fake guide calibration logic
-# ===========================================================================
+        Verifies per-(K, sample) fake result files are saved into Evaluation/{K}_{thresh}/.
+        """
+        np.random.seed(0)
 
-class TestFakeGuideCalibration:
+        utest_mod = _load_utest_module()
+        k = mdata_copy_per_k.uns["test_k"]
 
-    def test_random_guide_selection(self, guide_annotation_df):
-        rng = np.random.default_rng(123)
-        nt_guides = guide_annotation_df[guide_annotation_df["targeting"] == False]
-        n_select = 6
-        selected = rng.choice(nt_guides.index.values, n_select, replace=False)
-        assert len(selected) == n_select
-        assert len(set(selected)) == n_select
-        for g in selected:
-            assert g in nt_guides.index
-
-    def test_fake_targeting_assignment(self, guide_annotation_df):
-        rng = np.random.default_rng(456)
-        guide_ann = guide_annotation_df.copy()
-        nt_guides = guide_ann[guide_ann["targeting"] == False]
-        selected = rng.choice(nt_guides.index.values, 3, replace=False)
-        guide_ann.loc[selected, "type"] = "targeting"
-        n_targeting = (guide_ann["type"] == "targeting").sum()
-        n_original_targeting = (guide_annotation_df["targeting"] == True).sum()
-        assert n_targeting == n_original_targeting + 3
-
-    def test_subset_to_nontargeting_guides(self, mdata_copy, guide_annotation_df):
-        # Replace collapsed guide_targets with individual guide_names
-        # so annotation file guide names match the Target column
-        prog = mdata_copy["cNMF"]
-        prog.uns["guide_targets"] = prog.uns["guide_names"].copy()
-        nt_indices = _get_nontargeting_indices(guide_annotation_df, mdata_copy)
-        assignment = prog.obsm["guide_assignment"]
-        if sparse.issparse(assignment):
-            assignment = assignment.toarray()
-        original_n_guides = assignment.shape[1]
-        subset_assignment = assignment[:, nt_indices]
-        assert subset_assignment.shape[1] == len(nt_indices)
-        assert subset_assignment.shape[1] < original_n_guides
-
-    def _setup_calibration_mdata(self, mdata_copy, guide_annotation_df, rng, use_file_access=False):
-        """Helper: subset mdata to non-targeting guides and assign fake targets."""
-        prog = mdata_copy["cNMF"]
-        if use_file_access:
-            # Replace collapsed guide_targets with individual guide_names
-            prog.uns["guide_targets"] = prog.uns["guide_names"].copy()
-        nt_indices = _get_nontargeting_indices(guide_annotation_df, mdata_copy)
-
-        assignment = prog.obsm["guide_assignment"]
-        if sparse.issparse(assignment):
-            assignment = assignment.toarray()
-        prog.obsm["guide_assignment"] = assignment[:, nt_indices]
-        prog.uns["guide_names"] = prog.uns["guide_names"][nt_indices]
-
-        if use_file_access:
-            new_targets = prog.uns["guide_names"].copy()
-        else:
-            new_targets = np.array(["non-targeting"] * len(nt_indices))
-        selected_idx = rng.choice(len(nt_indices), 3, replace=False)
-        new_targets[selected_idx] = "targeting"
-        prog.uns["guide_targets"] = new_targets
-
-        rna = mdata_copy["rna"]
-        rna_assignment = rna.obsm["guide_assignment"]
-        if sparse.issparse(rna_assignment):
-            rna_assignment = rna_assignment.toarray()
-        rna.obsm["guide_assignment"] = rna_assignment[:, nt_indices]
-        rna.uns["guide_names"] = prog.uns["guide_names"]
-        rna.uns["guide_targets"] = new_targets
-
-        if use_file_access:
-            nt_guide_names = guide_annotation_df[guide_annotation_df["targeting"] == False].index.values
-            ref_targets = [g for g in nt_guide_names if g in prog.uns["guide_names"]]
-        else:
-            ref_targets = ["non-targeting"]
-        return ref_targets
-
-    def test_calibration_run_single_iteration_key(self, mdata_copy, guide_annotation_df):
-        """Calibration using key-based reference_targets=['non-targeting']."""
-        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
-        rng = np.random.default_rng(789)
-        ref_targets = self._setup_calibration_mdata(mdata_copy, guide_annotation_df, rng, use_file_access=False)
-        result = compute_perturbation_association(
-            mdata_copy, prog_key="cNMF",
-            collapse_targets=True, pseudobulk=False,
-            reference_targets=ref_targets,
-            FDR_method="BH", n_jobs=1, inplace=False,
+        utest_mod.args = _make_utest_args(
+            inference_path, components=[k], number_run=1, number_guide=3,
         )
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) > 0
-        assert result["pval"].median() > 0.01
+        utest_mod.mdata_guide = None
 
-    def test_calibration_run_single_iteration_file(self, mdata_copy, guide_annotation_df):
-        """Calibration using file-based reference_targets (individual guide names)."""
-        from Stage2_Evaluation.A_Metrics.src import compute_perturbation_association
-        rng = np.random.default_rng(789)
-        ref_targets = self._setup_calibration_mdata(mdata_copy, guide_annotation_df, rng, use_file_access=True)
-        result = compute_perturbation_association(
-            mdata_copy, prog_key="cNMF",
-            collapse_targets=True, pseudobulk=False,
-            reference_targets=ref_targets,
-            FDR_method="BH", n_jobs=1, inplace=False,
+        result_df = utest_mod.compute_fake_perturbation_tests()
+
+        assert isinstance(result_df, pd.DataFrame)
+        assert len(result_df) > 0
+        assert all(result_df["pval"].between(0, 1))
+        assert all(result_df["real"] == False)
+        assert set(result_df["K"].unique()) == {k}
+        assert set(result_df["sel_thresh"].unique()) == set(utest_mod.args.sel_thresh)
+
+        # Per-(K, sample) fake text files in Evaluation/{K}_{thresh}/
+        cat_key = utest_mod.args.categorical_key
+        for samp in result_df[cat_key].unique():
+            expected_txt = os.path.join(
+                eval_output_dir_per_k,
+                f"{k}_fake_perturbation_association_results_{samp}.txt",
+            )
+            assert os.path.exists(expected_txt), f"Missing per-(K, sample) fake file: {expected_txt}"
+
+    def test_plots_per_k_real_eval_folder(self, mdata_copy_per_k, eval_output_dir_per_k, inference_path):
+        """Run real + fake tests, then call both plot_qq_comparison and plot_calibration_comparison.
+
+        Verifies that BOTH ``U_test_perturbation_association_qqplot.png`` and
+        ``U_test_perturbation_association_calibration.png`` land in the real
+        Evaluation/{K}_{thresh}/ folder when fed the combined real+fake frame
+        (both plot functions require it: QQ filters on real==True/False with
+        target_name=='targeting'; the violin plot compares real vs fake side-by-side).
+        """
+        import matplotlib
+        matplotlib.use("Agg")
+        np.random.seed(0)
+
+        utest_mod = _load_utest_module()
+        k = mdata_copy_per_k.uns["test_k"]
+
+        utest_mod.args = _make_utest_args(
+            inference_path, components=[k], number_run=1, number_guide=3,
         )
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) > 0
-        assert result["pval"].median() > 0.01
+        utest_mod.mdata_guide = None
+
+        real_df = utest_mod.compute_real_perturbation_tests()
+        fake_df = utest_mod.compute_fake_perturbation_tests()
+
+        # Normalize fake_df:
+        # - QQ filter expects target_name == 'targeting'
+        # - violin plot expects an x='sample' column; fake uses the categorical_key
+        cat_key = utest_mod.args.categorical_key
+        fake_df = fake_df.copy()
+        if "target_name" not in fake_df.columns:
+            fake_df["target_name"] = "targeting"
+        if "sample" not in fake_df.columns and cat_key in fake_df.columns:
+            fake_df = fake_df.rename(columns={cat_key: "sample"})
+
+        combined = pd.concat([real_df, fake_df], ignore_index=True)
+
+        # Sanity: the combined frame must contain both real and fake rows for K.
+        sub = combined[combined.K == k]
+        assert (sub["real"] == True).any(), "Combined frame missing real==True rows"
+        assert (sub["real"] == False).any(), "Combined frame missing real==False rows"
+
+        utest_mod.plot_qq_comparison(combined)
+        utest_mod.plot_calibration_comparison(combined)
+
+        qq_png = os.path.join(eval_output_dir_per_k, "U_test_perturbation_association_qqplot.png")
+        cal_png = os.path.join(eval_output_dir_per_k, "U_test_perturbation_association_calibration.png")
+
+        assert os.path.exists(qq_png), f"Missing per-folder QQ plot: {qq_png}"
+        assert os.path.getsize(qq_png) > 1000, f"QQ plot looks empty: {qq_png}"
+        assert os.path.exists(cal_png), f"Missing per-folder calibration plot: {cal_png}"
+        assert os.path.getsize(cal_png) > 1000, f"Calibration plot looks empty: {cal_png}"
 
 
 # ===========================================================================
@@ -369,29 +359,6 @@ class TestEdgeCases:
 
 
 # ===========================================================================
-# Tests for calibration reproducibility
-# ===========================================================================
-
-class TestCalibrationReproducibility:
-
-    def test_same_seed_same_guide_selection(self, guide_annotation_df):
-        nt_guides = guide_annotation_df[guide_annotation_df["targeting"] == False].index.values
-        rng1 = np.random.default_rng(999)
-        sel1 = rng1.choice(nt_guides, 3, replace=False)
-        rng2 = np.random.default_rng(999)
-        sel2 = rng2.choice(nt_guides, 3, replace=False)
-        np.testing.assert_array_equal(sel1, sel2)
-
-    def test_different_seeds_differ(self, guide_annotation_df):
-        nt_guides = guide_annotation_df[guide_annotation_df["targeting"] == False].index.values
-        rng1 = np.random.default_rng(111)
-        sel1 = set(rng1.choice(nt_guides, 3, replace=False))
-        rng2 = np.random.default_rng(222)
-        sel2 = set(rng2.choice(nt_guides, 3, replace=False))
-        assert sel1 != sel2
-
-
-# ===========================================================================
 # Tests for condition-stratified calibration
 # ===========================================================================
 
@@ -440,33 +407,6 @@ class TestConditionStratifiedCalibration:
 
 
 # ===========================================================================
-# Tests for sparse-to-dense conversion
-# ===========================================================================
-
-class TestSparseConversion:
-
-    def test_sparse_to_dense_roundtrip(self, test_mdata):
-        assignment = test_mdata["cNMF"].obsm["guide_assignment"]
-        if sparse.issparse(assignment):
-            dense = assignment.toarray()
-        else:
-            dense = assignment.copy()
-        sp = sparse.csr_matrix(dense)
-        recovered = sp.toarray()
-        np.testing.assert_array_equal(dense, recovered)
-
-    def test_dense_assignment_column_subsetting(self, mdata_copy, guide_annotation_df):
-        # Replace collapsed guide_targets with individual guide_names
-        mdata_copy["cNMF"].uns["guide_targets"] = mdata_copy["cNMF"].uns["guide_names"].copy()
-        assignment = mdata_copy["cNMF"].obsm["guide_assignment"]
-        if sparse.issparse(assignment):
-            assignment = assignment.toarray()
-        nt_indices = _get_nontargeting_indices(guide_annotation_df, mdata_copy)
-        subset = assignment[:, nt_indices]
-        assert subset.shape == (assignment.shape[0], len(nt_indices))
-
-
-# ===========================================================================
 # Tests for guide-level (non-collapsed) perturbation association
 # ===========================================================================
 
@@ -505,35 +445,23 @@ class TestGuideLevelAssociation:
 # Tests for visualization helpers (no MuData needed)
 # ===========================================================================
 
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+
+
+def _assert_valid_png(path, min_bytes=1000):
+    """Assert that `path` exists, is non-empty, and starts with the PNG magic header."""
+    assert path.exists(), f"Missing plot: {path}"
+    size = path.stat().st_size
+    assert size > min_bytes, f"Plot too small ({size} bytes), likely empty figure: {path}"
+    with open(path, "rb") as fh:
+        header = fh.read(len(PNG_MAGIC))
+    assert header == PNG_MAGIC, f"File at {path} is not a valid PNG (header={header!r})"
+
+
 class TestCalibrationVisualization:
 
-    def test_violin_plot_structure(self):
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-
-        rng = np.random.default_rng(0)
-        df = pd.DataFrame({
-            "pval": rng.uniform(0, 1, 200),
-            "sample": rng.choice(["d0", "d1"], 200),
-            "K": [5] * 200,
-            "real": [True] * 100 + [False] * 100,
-        })
-        df["neg_log_pval"] = -np.log(df["pval"].clip(1e-300))
-        fig, ax = plt.subplots()
-        sns.violinplot(x="sample", y="neg_log_pval", hue="real", data=df, ax=ax)
-        assert ax.get_ylabel() != ""
-        plt.close(fig)
-
-    def test_neg_log_pval_no_inf(self):
-        rng = np.random.default_rng(0)
-        pvals = rng.uniform(0, 1, 100)
-        neg_log = -np.log(np.clip(pvals, 1e-300, None))
-        assert all(np.isfinite(neg_log))
-
     def test_qq_plot_saves_per_folder(self, tmp_path):
-        """plot_qq_comparison saves one PNG per (K, sel_thresh) into Evaluation/{K}_{thresh}/."""
+        """plot_qq_comparison saves one valid PNG per (K, sel_thresh) into Evaluation/{K}_{thresh}/."""
         import matplotlib
         matplotlib.use("Agg")
         from types import SimpleNamespace
@@ -541,7 +469,7 @@ class TestCalibrationVisualization:
         utest_mod = _load_utest_module()
 
         components = [5, 10, 15]
-        sel_thresh_list = [2.0]
+        sel_thresh_list = [0.2, 2.0]
         run_name = "test_run"
 
         utest_mod.args = SimpleNamespace(
@@ -563,14 +491,26 @@ class TestCalibrationVisualization:
 
         utest_mod.plot_qq_comparison(test_stats_dfs)
 
+        # Assert every (K, sel_thresh) QQ plot exists, is non-empty, and is a valid PNG.
+        produced_paths = []
         for k in components:
             for st in sel_thresh_list:
                 thresh_str = str(st).replace(".", "_")
                 expected = tmp_path / run_name / "Evaluation" / f"{k}_{thresh_str}" / "U_test_perturbation_association_qqplot.png"
-                assert expected.exists(), f"Missing per-folder QQ plot: {expected}"
+                _assert_valid_png(expected)
+                produced_paths.append(expected)
+
+        # Sanity check: number of plots equals K count x sel_thresh count.
+        assert len(produced_paths) == len(components) * len(sel_thresh_list)
+        # Each K must appear at least once in the produced set (one plot per sel_thresh per K).
+        for k in components:
+            matched = [p for p in produced_paths if f"/{k}_" in str(p)]
+            assert len(matched) == len(sel_thresh_list), (
+                f"Expected {len(sel_thresh_list)} QQ plots for K={k}, got {len(matched)}"
+            )
 
     def test_calibration_plot_saves_per_folder(self, tmp_path):
-        """plot_calibration_comparison saves one PNG per (K, sel_thresh) into Evaluation/{K}_{thresh}/."""
+        """plot_calibration_comparison saves one valid PNG per (K, sel_thresh) into Evaluation/{K}_{thresh}/."""
         import matplotlib
         matplotlib.use("Agg")
         from types import SimpleNamespace
@@ -578,7 +518,7 @@ class TestCalibrationVisualization:
         utest_mod = _load_utest_module()
 
         components = [5, 10, 15]
-        sel_thresh_list = [2.0]
+        sel_thresh_list = [0.2, 2.0]
         run_name = "test_run"
 
         utest_mod.args = SimpleNamespace(
@@ -601,11 +541,202 @@ class TestCalibrationVisualization:
 
         utest_mod.plot_calibration_comparison(test_stats_dfs)
 
+        # Assert every (K, sel_thresh) calibration density plot exists, is non-empty, and is a valid PNG.
+        produced_paths = []
         for k in components:
             for st in sel_thresh_list:
                 thresh_str = str(st).replace(".", "_")
                 expected = tmp_path / run_name / "Evaluation" / f"{k}_{thresh_str}" / "U_test_perturbation_association_calibration.png"
-                assert expected.exists(), f"Missing per-folder calibration plot: {expected}"
+                _assert_valid_png(expected)
+                produced_paths.append(expected)
+
+        assert len(produced_paths) == len(components) * len(sel_thresh_list)
+        for k in components:
+            matched = [p for p in produced_paths if f"/{k}_" in str(p)]
+            assert len(matched) == len(sel_thresh_list), (
+                f"Expected {len(sel_thresh_list)} calibration plots for K={k}, got {len(matched)}"
+            )
+
+    def test_qq_plot_skips_missing_k(self, tmp_path):
+        """plot_qq_comparison should skip (no file) for K values with no data, but write plots for the rest."""
+        import matplotlib
+        matplotlib.use("Agg")
+        from types import SimpleNamespace
+
+        utest_mod = _load_utest_module()
+
+        components = [5, 10, 15]
+        sel_thresh_list = [2.0]
+        run_name = "test_run_skip"
+
+        utest_mod.args = SimpleNamespace(
+            out_dir=str(tmp_path),
+            run_name=run_name,
+            components=components,
+            sel_thresh=sel_thresh_list,
+        )
+
+        # Only provide data for K=5 and K=15; K=10 is intentionally missing.
+        rng = np.random.default_rng(1)
+        rows = []
+        for k in [5, 15]:
+            for st in sel_thresh_list:
+                for p in rng.uniform(0, 1, 50):
+                    rows.append({"K": k, "sel_thresh": st, "real": True, "target_name": "geneX", "pval": p})
+                for p in rng.uniform(0, 1, 50):
+                    rows.append({"K": k, "sel_thresh": st, "real": False, "target_name": "targeting", "pval": p})
+        test_stats_dfs = pd.DataFrame(rows)
+
+        utest_mod.plot_qq_comparison(test_stats_dfs)
+
+        for k in [5, 15]:
+            for st in sel_thresh_list:
+                thresh_str = str(st).replace(".", "_")
+                expected = tmp_path / run_name / "Evaluation" / f"{k}_{thresh_str}" / "U_test_perturbation_association_qqplot.png"
+                _assert_valid_png(expected)
+
+        # K=10 had no data — no QQ PNG should have been written.
+        thresh_str = str(sel_thresh_list[0]).replace(".", "_")
+        missing = tmp_path / run_name / "Evaluation" / f"10_{thresh_str}" / "U_test_perturbation_association_qqplot.png"
+        assert not missing.exists(), f"QQ plot should not exist for empty K=10: {missing}"
+
+    def test_calibration_plot_skips_missing_k(self, tmp_path):
+        """plot_calibration_comparison should skip K values with no data."""
+        import matplotlib
+        matplotlib.use("Agg")
+        from types import SimpleNamespace
+
+        utest_mod = _load_utest_module()
+
+        components = [5, 10, 15]
+        sel_thresh_list = [2.0]
+        run_name = "test_run_skip_cal"
+
+        utest_mod.args = SimpleNamespace(
+            out_dir=str(tmp_path),
+            run_name=run_name,
+            components=components,
+            sel_thresh=sel_thresh_list,
+        )
+
+        rng = np.random.default_rng(2)
+        rows = []
+        for k in [5, 15]:
+            for st in sel_thresh_list:
+                for samp in ["d0", "d1"]:
+                    for p in rng.uniform(1e-6, 1, 50):
+                        rows.append({"K": k, "sel_thresh": st, "real": True, "sample": samp, "pval": p})
+                    for p in rng.uniform(1e-6, 1, 50):
+                        rows.append({"K": k, "sel_thresh": st, "real": False, "sample": samp, "pval": p})
+        test_stats_dfs = pd.DataFrame(rows)
+
+        utest_mod.plot_calibration_comparison(test_stats_dfs)
+
+        for k in [5, 15]:
+            for st in sel_thresh_list:
+                thresh_str = str(st).replace(".", "_")
+                expected = tmp_path / run_name / "Evaluation" / f"{k}_{thresh_str}" / "U_test_perturbation_association_calibration.png"
+                _assert_valid_png(expected)
+
+        thresh_str = str(sel_thresh_list[0]).replace(".", "_")
+        missing = tmp_path / run_name / "Evaluation" / f"10_{thresh_str}" / "U_test_perturbation_association_calibration.png"
+        assert not missing.exists(), f"Calibration plot should not exist for empty K=10: {missing}"
+
+
+# ===========================================================================
+# Tests for load_*_perturbation_tests (discover per-(K, sel_thresh, sample) files)
+# ===========================================================================
+
+class TestLoadFunctions:
+    """Tests for load_real_perturbation_tests and load_fake_perturbation_tests."""
+
+    def _write_dummy_results(self, tmp_path, run_name, components, sel_thresh_list,
+                             samples, fake=False, n_rows=10):
+        """Create dummy per-(K, sample) result files in Evaluation/{K}_{thresh}/."""
+        prefix = "fake_" if fake else ""
+        rng = np.random.default_rng(0)
+        for k in components:
+            for st in sel_thresh_list:
+                thresh_str = str(st).replace(".", "_")
+                folder = tmp_path / run_name / "Evaluation" / f"{k}_{thresh_str}"
+                folder.mkdir(parents=True, exist_ok=True)
+                for samp in samples:
+                    df = pd.DataFrame({
+                        "target_name": [f"g{i}" for i in range(n_rows)],
+                        "pval": rng.uniform(0, 1, n_rows),
+                        "adj_pval": rng.uniform(0, 1, n_rows),
+                    })
+                    if fake:
+                        df["K"] = k
+                        df["sel_thresh"] = st
+                        df["batch"] = samp
+                        df["run"] = 0
+                    fname = f"{k}_{prefix}perturbation_association_results_{samp}.txt"
+                    df.to_csv(folder / fname, sep="\t", index=False)
+
+    def test_load_real_perturbation_tests(self, tmp_path):
+        """load_real_perturbation_tests discovers samples and stacks per-(K, thresh, sample)."""
+        from types import SimpleNamespace
+        utest_mod = _load_utest_module()
+
+        run_name = "test_run"
+        components = [5, 10]
+        sel_thresh_list = [0.2, 2.0]
+        samples = ["d0", "d1"]
+        n_rows = 10
+
+        self._write_dummy_results(
+            tmp_path, run_name, components, sel_thresh_list, samples, fake=False, n_rows=n_rows,
+        )
+
+        utest_mod.args = SimpleNamespace(
+            out_dir=str(tmp_path),
+            run_name=run_name,
+            components=components,
+            sel_thresh=sel_thresh_list,
+        )
+
+        df = utest_mod.load_real_perturbation_tests()
+
+        assert isinstance(df, pd.DataFrame)
+        assert set(df["sample"].unique()) == set(samples)
+        assert set(df["K"].unique()) == set(components)
+        assert set(df["sel_thresh"].unique()) == set(sel_thresh_list)
+        assert all(df["real"] == True)
+        expected_rows = len(components) * len(sel_thresh_list) * len(samples) * n_rows
+        assert len(df) == expected_rows
+
+    def test_load_fake_perturbation_tests(self, tmp_path):
+        """load_fake_perturbation_tests discovers samples and stacks per-(K, thresh, sample)."""
+        from types import SimpleNamespace
+        utest_mod = _load_utest_module()
+
+        run_name = "test_run"
+        components = [5, 10]
+        sel_thresh_list = [0.2, 2.0]
+        samples = ["d0", "d1"]
+        n_rows = 10
+
+        self._write_dummy_results(
+            tmp_path, run_name, components, sel_thresh_list, samples, fake=True, n_rows=n_rows,
+        )
+
+        utest_mod.args = SimpleNamespace(
+            out_dir=str(tmp_path),
+            run_name=run_name,
+            components=components,
+            sel_thresh=sel_thresh_list,
+        )
+
+        df = utest_mod.load_fake_perturbation_tests()
+
+        assert isinstance(df, pd.DataFrame)
+        assert all(df["real"] == False)
+        assert set(df["K"].unique()) == set(components)
+        assert set(df["sel_thresh"].unique()) == set(sel_thresh_list)
+        assert set(df["batch"].unique()) == set(samples)
+        expected_rows = len(components) * len(sel_thresh_list) * len(samples) * n_rows
+        assert len(df) == expected_rows
 
 
 if __name__ == "__main__":
