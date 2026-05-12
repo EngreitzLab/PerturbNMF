@@ -219,26 +219,6 @@ def generate_script(args, passthrough_args):
         'echo "Python: $(python --version)"',
     ])
 
-    # CRT guide preprocessing (when --preprocess_guide_h5mu is set)
-    if args.stage == 'crt-calibration' and getattr(args, 'preprocess_guide_h5mu', None):
-        prep_script = os.path.join(SKILL_SCRIPTS, "prepare_guide_data.py")
-        guide_output = getattr(args, 'preprocess_guide_output', None) or \
-            f"{args.output_dir}/{args.run_name}/Evaluation/guide_data.h5ad"
-        assignment_key = getattr(args, 'preprocess_assignment_key', 'target_assignment')
-        names_key = getattr(args, 'preprocess_names_key', 'target_names')
-        lines.extend([
-            '',
-            '# Preprocess guide data: convert alternative keys to standard guide_* keys',
-            f'GUIDE_H5AD="{guide_output}"',
-            'echo "Preparing guide data h5ad..."',
-            f'python3 {prep_script} \\',
-            f'    --h5mu_path "{args.preprocess_guide_h5mu}" \\',
-            f'    --output_path "$GUIDE_H5AD" \\',
-            f'    --assignment_key "{assignment_key}" \\',
-            f'    --names_key "{names_key}"',
-            'echo "Guide preprocessing complete."',
-        ])
-
     lines.extend([
         '',
         f'# Run pipeline',
@@ -368,29 +348,6 @@ def main():
     parser.add_argument(
         '--no_structure', action='store_true',
         help='Skip h5mu structure file generation after inference'
-    )
-
-    # CRT guide preprocessing arguments
-    parser.add_argument(
-        '--preprocess_guide_h5mu', type=str, default=None,
-        help='(CRT only) Path to h5mu file for guide data extraction. '
-             'When set, the generated script includes a preprocessing step '
-             'that converts target_*/guide_* keys to the standard format '
-             'expected by CRT.py.'
-    )
-    parser.add_argument(
-        '--preprocess_guide_output', type=str, default=None,
-        help='(CRT only) Output path for the preprocessed guide h5ad '
-             '(default: <save_dir>/guide_data.h5ad if --save_dir is in '
-             'passthrough args, otherwise <output_dir>/<run_name>/Evaluation/guide_data.h5ad)'
-    )
-    parser.add_argument(
-        '--preprocess_assignment_key', type=str, default='target_assignment',
-        help='(CRT only) Source obsm key for guide assignment matrix (default: target_assignment)'
-    )
-    parser.add_argument(
-        '--preprocess_names_key', type=str, default='target_names',
-        help='(CRT only) Source uns key for guide/target names (default: target_names)'
     )
 
     # Parse only known args; the rest are passthrough to the pipeline script

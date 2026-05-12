@@ -12,9 +12,9 @@ Check the h5mu structure to identify how guide/perturbation data is stored:
 cat <out_dir>/<run_name>/Inference/adata/cNMF_<K>_<sel_thresh>_structure.txt
 ```
 
-Look for these keys in the cNMF modality:
-- **Standard keys** (CRT-compatible): `obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']` -> No preprocessing needed. Pass the h5mu or a guide h5ad directly as `--mdata_guide_path`.
-- **Alternative keys** (common in KO/village experiments): `obsm['target_assignment']`, `uns['target_names']` -> Preprocessing required. Use the `--preprocess_guide_h5mu` flag in `generate_slurm.py` to auto-inject a conversion step.
+CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) directly from the cNMF modality of each `cNMF_<K>_<thresh>.h5mu` — no separate `--mdata_guide_path` and no preprocessing required.
+
+If the h5mu uses alternative keys (e.g. `obsm['target_assignment']`, `uns['target_names']`), rename them into the cNMF modality before running CRT.
 
 ### Step B: Determine experiment type
 
@@ -31,7 +31,6 @@ Ask the user about their experiment type to determine these values.
 Required:
 - `--out_dir`: Parent directory containing the run
 - `--run_name`: cNMF run name
-- `--mdata_guide_path`: Path to guide h5ad (from preprocessing) or h5mu with standard guide keys
 
 Key parameters (always ask):
 
@@ -46,10 +45,12 @@ Key parameters (always ask):
 | `--FDR_method` | `BH` | FDR correction: `BH` or `StoreyQ` |
 | `--save_dir` | auto | Custom output directory |
 
-**Important:** Different covariate selections produce different results. Always use a unique `--save_dir` for each covariate combination to avoid overwriting previous runs. The convention is `Evaluation/{K}_{thresh}/CRT_{covariate_names}/`:
-- `--save_dir <out_dir>/<run_name>/Evaluation/<K>_<thresh>/CRT_no_covariates/`
-- `--save_dir <out_dir>/<run_name>/Evaluation/<K>_<thresh>/CRT_total_counts/`
-- `--save_dir <out_dir>/<run_name>/Evaluation/<K>_<thresh>/CRT_total_counts_guides_per_cell_pct_counts_mt/`
+**Output filenames** include the covariate set so different combinations can share a `--save_dir`:
+- `{K}_CRT_{condition}_<covariates>.txt`  (e.g. `30_CRT_1_percent_mito_log_n_counts.txt`)
+- `{K}_CRT_{condition}_<covariates>.png` (QQ plot)
+- No covariates → suffix is `_no_covariates`.
+
+The recommended directory convention is `Evaluation/Calibration/CRT_<covariate_names>/` (one folder per covariate combination), but the filename suffix means runs with different covariates can also coexist in the same directory.
 
 ### Step D: Select covariates
 
@@ -77,8 +78,6 @@ Present available continuous covariates from the h5mu obs columns. Common covari
 
 ### Step F: Generate SLURM script
 
-If guide data preprocessing is needed (Step A), include the `--preprocess_guide_h5mu` flag:
-
 ```bash
 python3 SKILL_DIR/scripts/generate_slurm.py \
   --stage crt-calibration \
@@ -87,16 +86,11 @@ python3 SKILL_DIR/scripts/generate_slurm.py \
   --run_name <run_name> \
   --cpus 40 --mem 256G --time 04:00:00 \
   --partition owners,engreitz,bigmem \
-  --preprocess_guide_h5mu <out_dir>/<run_name>/Inference/adata/cNMF_<smallest_K>_<sel_thresh>.h5mu \
-  --preprocess_guide_output <save_dir>/guide_data.h5ad \
-  [--preprocess_assignment_key target_assignment] \
-  [--preprocess_names_key target_names] \
   --log_dir <save_dir>/logs \
   --script_output_path <project_root>/Script/<run_name>_crt.sh \
   -- \
   --out_dir <out_dir> \
   --run_name <run_name> \
-  --mdata_guide_path <save_dir>/guide_data.h5ad \
   --guide_annotation_key <ntc_label> \
   --number_permutations 5000 \
   --number_guide <N> \
@@ -109,7 +103,7 @@ python3 SKILL_DIR/scripts/generate_slurm.py \
   --save_dir <save_dir>
 ```
 
-If no preprocessing is needed (standard guide keys), omit the `--preprocess_*` flags and point `--mdata_guide_path` directly to the guide data file.
+If any requested covariate isn't present in `cNMF.obs`, add a small prep step before CRT that injects it (e.g. compute `guides_per_cell` from `obsm['guide_assignment']`). Mutate each `cNMF_<K>_<thresh>.h5mu` directly — CRT reads guide info from there.
 
 ---
 

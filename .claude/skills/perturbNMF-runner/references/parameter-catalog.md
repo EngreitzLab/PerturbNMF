@@ -403,13 +403,14 @@ Same as sk-cNMF except:
 **Script**: `src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/CRT.py`
 **Conda**: `programDE`
 
+CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) directly from the cNMF modality of each `cNMF_<K>_<thresh>.h5mu` — no separate guide path required.
+
 ### Required
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `--out_dir` | str | Directory containing cNMF output |
 | `--run_name` | str | cNMF run name |
-| `--mdata_guide_path` | str | Path to MuData with guide assignments |
 
 ### Optional
 
