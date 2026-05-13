@@ -231,7 +231,7 @@ Same as sk-cNMF except:
 ## 4. K-Selection Plot
 
 **Script**: `src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_k_selection.py`
-**Conda**: `torch-cNMF`
+**Conda**: `torch-nmf-dl`
 
 | Parameter | Type | Default | Required | Description |
 |-----------|------|---------|----------|-------------|

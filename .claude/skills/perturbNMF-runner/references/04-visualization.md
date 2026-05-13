@@ -4,7 +4,7 @@
 
 ## K-Selection Plot (Stage 3a)
 
-**Conda**: `torch-cNMF`
+**Conda**: `torch-nmf-dl`
 
 ### Required parameters
 

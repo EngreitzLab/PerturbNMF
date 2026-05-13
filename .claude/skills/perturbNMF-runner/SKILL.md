@@ -27,11 +27,19 @@ REFERENCE_GTF=/oak/stanford/groups/engreitz/Users/opushkar/genome/IGVFFI9573KOZR
 ├── Result/                        # output directory (--output_directory / --out_dir)
 │   └── <run_name>/
 │       ├── Inference/             # Stage 1 output
-│       └── Evaluation/            # Stage 2 output
+│       ├── Evaluation/            # Stage 2 output
+│       └── Interpretation/        # Stage 3 output (plots, annotation, summary)
+│           ├── K_selection/       # k-selection plots
+│           ├── Program_analysis/  # program analysis plots
+│           ├── Perturbed_gene/    # perturbed gene plots
+│           ├── Annotation/        # LLM annotation
+│           └── Excel_summary/     # excel summary
 └── Script/                        # all generated SLURM .sh scripts
 ```
 
 Key: `--output_directory`/`--out_dir` -> `Result/`, `--script_output_path` -> `Script/<name>.sh` (sibling of Result/, NOT inside it).
+
+For plotting stages, default `--save_folder_name` to `<out_dir>/<run_name>/Interpretation/<Stage_Subdir>/` (e.g. `Interpretation/K_selection/`, `Interpretation/Program_analysis/`). Logs go in the `logs/` subfolder of that same directory.
 
 ## Step 1: Identify the Stage
 
@@ -45,7 +53,7 @@ Ask which stage to run (or infer from context). Then **read the matching referen
 | U-test calibration | `u-test-calibration` | `NMF_Benchmarking` | `references/03-calibration.md` |
 | CRT calibration | `crt-calibration` | `programDE` | `references/03-calibration.md` |
 | Matched Cell DE | `matched-cell-de` | `programDE` | `references/03-calibration.md` |
-| K-Selection Plot | `k-selection` | `torch-cNMF` | `references/04-visualization.md` |
+| K-Selection Plot | `k-selection` | `torch-nmf-dl` | `references/04-visualization.md` |
 | Program Analysis Plot | `program-analysis` | `NMF_Benchmarking` | `references/04-visualization.md` |
 | Perturbed Gene Plot | `perturbed-gene` | `NMF_Benchmarking` | `references/04-visualization.md` |
 | Annotation | `annotation` | `progexplorer` | `references/05-annotation-summary.md` |

@@ -45,7 +45,7 @@ STAGES = {
     },
     "k-selection": {
         "script": "src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_k_selection.py",
-        "conda_env": "torch-cNMF",
+        "conda_env": "torch-nmf-dl",
         "gpu": False,
     },
     "program-analysis": {
@@ -95,14 +95,23 @@ def generate_script(args, passthrough_args):
     needs_gpu = stage_info["gpu"] or args.gpu
 
     # Build log directory — each stage logs into its own folder
+    PLOT_SUBDIRS = {
+        "k-selection": "K_selection",
+        "program-analysis": "Program_analysis",
+        "perturbed-gene": "Perturbed_gene",
+        "annotation": "Annotation",
+        "excel-summary": "Excel_summary",
+    }
     if args.log_dir:
         log_dir = args.log_dir
     elif args.stage.startswith("inference"):
         log_dir = f"{args.output_dir}/{args.run_name}/Inference/logs"
     elif args.stage == "evaluation" or args.stage.endswith("-calibration"):
         log_dir = f"{args.output_dir}/{args.run_name}/Evaluation/logs"
+    elif args.stage in PLOT_SUBDIRS:
+        log_dir = f"{args.output_dir}/{args.run_name}/Interpretation/{PLOT_SUBDIRS[args.stage]}/logs"
     else:
-        log_dir = f"{args.output_dir}/{args.run_name}/Plots/logs"
+        log_dir = f"{args.output_dir}/{args.run_name}/Interpretation/logs"
 
     # GPU constraint lines
     gpu_lines = ""

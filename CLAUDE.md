@@ -39,8 +39,7 @@ flowchart TD
 | Environment | Used By |
 |-------------|---------|
 | `sk-cNMF` | sk-cNMF inference |
-| `torch-nmf-dl` | torch-cNMF inference |
-| `torch-cNMF` | K-selection plotting |
+| `torch-nmf-dl` | torch-cNMF inference, K-selection plotting |
 | `NMF_Benchmarking` | Evaluation, program analysis plotting, perturbed gene plotting, U-test calibration |
 | `programDE` | CRT calibration |
 
