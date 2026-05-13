@@ -140,7 +140,6 @@ This generates g × (g-1) p-values for null calibration
 |-----------|------|-------------|
 | out_dir | str | Directory containing cNMF output files |
 | run_name | str | Name of the cNMF run (must match name used during inference) |
-| mdata_guide_path | str | Path to MuData object (.h5mu) containing guide assignment information |
 
 ### Optional Parameters
 
