@@ -81,12 +81,12 @@ def compile_results(output_directory, run_name, sel_threshs = [2.0], components 
                                                                                             output_directory=output_directory,
                                                                                             run_name = run_name,
                                                                                             k=k,
-                                                                                            sel_thresh = i), sep='\t')
-            loadings.T.to_csv('{output_directory}/{run_name}/loading/cNMF_loadings_{k}_{sel_thresh}.txt'.format(     
+                                                                                            sel_thresh = str(i).replace('.','_')), sep='\t')
+            loadings.T.to_csv('{output_directory}/{run_name}/loading/cNMF_loadings_{k}_{sel_thresh}.txt'.format(
                                                                                             output_directory=output_directory,
                                                                                             run_name = run_name,
                                                                                             k=k,
-                                                                                            sel_thresh = i), sep='\t')
+                                                                                            sel_thresh = str(i).replace('.','_')), sep='\t')
 
             adata_.var_names_make_unique()
             adata_.obs_names_make_unique()

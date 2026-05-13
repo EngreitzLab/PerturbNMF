@@ -269,7 +269,7 @@ def main():
                                     sep='\t', index_col=0)
                 overlap = get_top_indices_fast(df, gene_num=args.num_gene)
                 annotate_genes_to_excel(overlap, species=args.species,
-                                        output_file=f'{inference_dir}/Annotation/{k}_{i}.xlsx')
+                                        output_file=f"{inference_dir}/Annotation/{k}_{str(i).replace('.','_')}.xlsx")
 
     # --- Diagnostic plots ---
     if args.run_diagnostic_plots:

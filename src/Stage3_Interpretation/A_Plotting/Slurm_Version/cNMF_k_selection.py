@@ -97,7 +97,7 @@ if __name__ == '__main__':
 
     missing = []
     for sel_thresh in sel_thresh_value:
-        sel_str = f"{sel_thresh:g}".replace('.', '_')
+        sel_str = str(sel_thresh).replace('.', '_')
         for k in k_value:
             k_folder = os.path.join(args.eval_folder_name, f"{k}_{sel_str}")
             for pat in [_go_pat, _gs_pat, _tr_pat, _ev_pat]:
