@@ -172,7 +172,6 @@ Same as sk-cNMF except:
 | `--sk_cd_refit` | flag | False | Use sklearn coordinate descent for refitting |
 | `--remove_noncoding` | flag | False | Remove non-coding genes by Ensembl prefix |
 | `--ensembl_prefix` | str | `ENSG` | Prefix for identifying non-coding genes |
-| `--gene_symbol_key` | str | `symbol` | Column in var with gene symbols |
 
 ---
 

@@ -165,16 +165,16 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
 
         if output_folder:
             covar_tag = _covariate_tag(args)
-            plt.savefig(f"{output_folder}/{k}_{thresh_tag}_CRT_{condition}{covar_tag}.png", dpi=100)
+            plt.savefig(f"{output_folder}/{k}_CRT_{covar_tag}_{condition}.png", dpi=100)
             save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag)
 
         plt.close()
 
 
 def _covariate_tag(args):
-    """Build filename suffix from covariate args, e.g. _percent_mito_log_n_counts."""
+    """Build filename token from covariate args, e.g. percent_mito_log_n_counts."""
     parts = list(args.covariates or []) + [f"log_{c}" for c in (args.log_covariates or [])]
-    return ("_" + "_".join(parts)) if parts else "_no_covariates"
+    return "_".join(parts) if parts else "no_covariates"
 
 
 # save results
@@ -226,7 +226,7 @@ def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=No
 
     if covar_tag is None:
         covar_tag = _covariate_tag(args)
-    result_df.to_csv(f'{output_folder}/{k}_{thresh_tag}_CRT_{condition}{covar_tag}.txt', sep='\t', index=False)
+    result_df.to_csv(f'{output_folder}/{k}_CRT_{covar_tag}_{condition}.txt', sep='\t', index=False)
     
     return result_df
 
@@ -254,7 +254,7 @@ def main():
     parser.add_argument('--number_permutations', help='Number of calibration iterations to run with (default: 1024)', type=int, default=1024)
     parser.add_argument('--guide_annotation_key', nargs='*', type=str,  help='Name of target for non-targeting/safe-targeting guides,default="non-targeting"', default='non-targeting')
     parser.add_argument('--FDR_method', type=str, choices=['BH', 'StoreyQ'], default='BH', help='FDR correction method: BH (Benjamini-Hochberg) or StoreyQ (Storey Q-value) (default: BH)')
-    parser.add_argument('--save_dir', type=str, default=None, help='Directory to save results and figures. If not provided, defaults to <out_dir>/<run_name>/Evaluation/<K>_<sel_thresh>/')
+    parser.add_argument('--save_dir', type=str, default=None, help='Base directory under which {K}_{thresh} subdirs are created. Default: <out_dir>/<run_name>/Evaluation/')
 
     args = parser.parse_args()
 
@@ -292,10 +292,11 @@ def main():
         for k in args.components:
             print(f"Processing K={k}, sel_thresh={sel_thresh}")
 
+            thresh_tag = str(sel_thresh).replace('.', '_')
             if args.save_dir:
-                output_folder = args.save_dir
+                output_folder = f"{args.save_dir}/{k}_{thresh_tag}"
             else:
-                output_folder = f"{args.out_dir}/{args.run_name}/Evaluation/{k}_{str(sel_thresh).replace('.','_')}"
+                output_folder = f"{args.out_dir}/{args.run_name}/Evaluation/{k}_{thresh_tag}"
             os.makedirs(output_folder, exist_ok=True)
 
             # Load mdata

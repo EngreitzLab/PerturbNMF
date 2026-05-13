@@ -80,27 +80,37 @@ def get_head_examples(series, n=3):
         return "..."
 
 
+def _safe_nunique(series):
+    """Return number of unique values (dropna=True), or None if it can't be computed."""
+    try:
+        return int(series.nunique(dropna=True))
+    except Exception:
+        return None
+
+
 def describe_column(series, n=3):
-    """Return a compact description of a pandas Series: dtype/cardinality + n example values.
+    """Return a compact description of a pandas Series: dtype + unique-count + n example values.
 
     Example:
-        "categorical[3]: 'A', 'B', 'C' | e.g. 'A', 'B', 'A'"
-        "int64: e.g. 12, 7, 33"
-        "float32: e.g. 0.12, 0.45, 0.78"
+        "categorical[3 unique]: 'A', 'B', 'C' | e.g. 'A', 'B', 'A'"
+        "int64 [842 unique]: e.g. 12, 7, 33"
+        "float32 [91866 unique]: e.g. 0.12, 0.45, 0.78"
     """
     try:
-        # Determine type label
+        n_unique = _safe_nunique(series)
+        unique_tag = f"{n_unique} unique" if n_unique is not None else "? unique"
+
+        # Categorical: show first n categories + first n head values
         if isinstance(series.dtype, pd.CategoricalDtype):
             n_cat = len(series.cat.categories)
             cats = list(series.cat.categories[:n])
             cat_str = ", ".join(_fmt_value(c) for c in cats)
             head_str = get_head_examples(series, n=n)
-            return f"categorical[{n_cat}] cats: {cat_str} | e.g. {head_str}"
+            return f"categorical[{n_cat} unique] cats: {cat_str} | e.g. {head_str}"
 
         dtype_name = str(series.dtype)
-        # Bool / object / numeric — show n head examples
         head_str = get_head_examples(series, n=n)
-        return f"{dtype_name}: e.g. {head_str}"
+        return f"{dtype_name} [{unique_tag}]: e.g. {head_str}"
     except Exception:
         return "..."
 

@@ -65,7 +65,7 @@ flowchart TD
 - **SLURM resources**: 96G memory, 10 CPUs, 5 hours, 1 GPU
 - **Parameters**: 33 total (21 shared with sk-cNMF + 12 GPU-specific)
 
-Additional parameters: `--mode`, `--use_gpu`, `--fp_precision`, `--alpha_usage`, `--alpha_spectra`, `--l1_ratio_usage`, `--l1_ratio_spectra`, `--online_usage_tol`, `--online_spectra_tol`, `--batch_max_iter`, `--batch_hals_tol`, `--batch_hals_max_iter`, `--online_max_pass`, `--online_chunk_size`, `--online_chunk_max_iter`, `--shuffle_cells`, `--sk_cd_refit`, `--remove_noncoding`, `--densify`
+Additional parameters: `--mode`, `--use_gpu`, `--fp_precision`, `--alpha_usage`, `--alpha_spectra`, `--l1_ratio_usage`, `--l1_ratio_spectra`, `--minibatch_usage_tol`, `--minibatch_spectra_tol`, `--batch_max_epoch`, `--batch_hals_tol`, `--batch_hals_max_iter`, `--minibatch_max_epoch`, `--minibatch_size`, `--minibatch_max_iter`, `--minibatch_shuffle`, `--sk_cd_refit`, `--remove_noncoding`, `--densify`
 
 #### Stage 2: Evaluation
 - **Script**: `Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py`
