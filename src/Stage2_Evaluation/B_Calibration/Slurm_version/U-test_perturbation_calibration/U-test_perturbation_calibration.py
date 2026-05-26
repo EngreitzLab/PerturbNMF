@@ -147,7 +147,14 @@ def compute_fake_perturbation_tests():
 
         guide_targets_arr = mdata_check[args.prog_key].uns[args.guide_targets_key]
         guide_names_arr = mdata_check[args.prog_key].uns[args.guide_names_key]
-        non_targeting_idx = np.where(guide_targets_arr == 'non-targeting')[0]
+        non_targeting_idx = np.where(np.isin(guide_targets_arr, args.guide_annotation_key))[0]
+
+        if len(non_targeting_idx) == 0:
+            raise ValueError(
+                f"No control guides found. --guide_annotation_key={args.guide_annotation_key} "
+                f"did not match any entries in mdata.uns['{args.guide_targets_key}']. "
+                f"Example mdata guide_targets values: {list(set(guide_targets_arr))[:5]}"
+            )
 
         print(f'  Non-targeting guides: {len(non_targeting_idx)}')
 
