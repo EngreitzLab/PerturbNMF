@@ -91,20 +91,31 @@ def _compute_stability_error_manual(output_directory, run_name, components,
     run_dir = os.path.join(output_directory, run_name)
     cnmf_tmp = os.path.join(run_dir, 'cnmf_tmp')
 
-    # Load normalized counts
+    # Load normalized counts — fall back to any per-K run dir if shared path missing
     norm_path = os.path.join(run_dir, run_name + '.norm_counts.h5ad')
     if not os.path.exists(norm_path):
-        # try alternative location
         norm_path = os.path.join(cnmf_tmp, run_name + '.norm_counts.h5ad')
+    if not os.path.exists(norm_path):
+        for k in components:
+            fallback = os.path.join(f'{output_directory}_K{k}', run_name, 'cnmf_tmp', run_name + '.norm_counts.h5ad')
+            if os.path.exists(fallback):
+                norm_path = fallback
+                print(f"  Using per-K norm_counts from K={k}: {fallback}")
+                break
     norm_counts = sc.read(norm_path)
 
     rows = []
     for k in components:
-        # Load merged spectra
+        # Load merged spectra — try shared run dir first, then per-K fallback
         spectra_path = os.path.join(cnmf_tmp, f'{run_name}.spectra.k_{k}.merged.df.npz')
         if not os.path.exists(spectra_path):
-            print(f"  Warning: merged spectra not found for k={k}, skipping: {spectra_path}")
-            continue
+            per_k_spectra = os.path.join(f'{output_directory}_K{k}', run_name, 'cnmf_tmp', f'{run_name}.spectra.k_{k}.merged.df.npz')
+            if os.path.exists(per_k_spectra):
+                spectra_path = per_k_spectra
+                print(f"  Using per-K spectra fallback for k={k}: {per_k_spectra}")
+            else:
+                print(f"  Warning: merged spectra not found for k={k}, skipping: {spectra_path}")
+                continue
         npz = np.load(spectra_path, allow_pickle=True)
         merged_spectra = pd.DataFrame(data=npz['data'], index=npz['index'], columns=npz['columns'])
 
@@ -119,13 +130,17 @@ def _compute_stability_error_manual(output_directory, run_name, components,
         median_spectra = l2_spectra.groupby(labels).median()
         median_spectra = (median_spectra.T / median_spectra.sum(axis=1)).T
 
-        # Load refit usages
+        # Load refit usages — try shared run dir first, then per-K fallback
         dt_str = str(density_threshold).replace('.', '_')
         usage_path = os.path.join(
             run_dir, f'{run_name}.usages.k_{k}.dt_{dt_str}.consensus.txt')
         if not os.path.exists(usage_path):
-            print(f"  Warning: usage file not found for k={k}, skipping: {usage_path}")
-            continue
+            per_k_usage = os.path.join(f'{output_directory}_K{k}', run_name, f'{run_name}.usages.k_{k}.dt_{dt_str}.consensus.txt')
+            if os.path.exists(per_k_usage):
+                usage_path = per_k_usage
+            else:
+                print(f"  Warning: usage file not found for k={k}, skipping: {usage_path}")
+                continue
         rf_usages = pd.read_csv(usage_path, sep='\t', index_col=0)
 
         # Align dimensions
@@ -267,6 +282,11 @@ def load_enrichment_data(folder, components = [30, 50, 60, 80, 100, 200, 250, 30
     # loading function
     def load(k, term, folder, term_col, adjpval_col):
         # read evaluation results
+        if os.path.getsize(folder) == 0:
+            df = pd.DataFrame(columns=[term_col, adjpval_col])
+            df['num_programs'] = k
+            df['test_term'] = term
+            return df
         df = pd.read_csv(folder, sep='\t')
         df = df.loc[df[adjpval_col]<=pval]
         df['num_programs'] = k
@@ -304,6 +324,10 @@ def load_enrichment_data(folder, components = [30, 50, 60, 80, 100, 200, 250, 30
         for col in count_df.columns:
             count_df.loc[k, col] = term_df.loc[(term_df['num_programs']==k) & (term_df['test_term']==col), 'Term'].unique().shape[0]
 
+    # ensure expected columns exist even when no significant results (e.g. no GWAS hits for mouse data)
+    for col in ['go_terms', 'genesets', 'traits']:
+        if col not in count_df.columns:
+            count_df[col] = 0
 
     #print out some stats
     print(f"min go_terms for {sel_thresh} is", count_df['go_terms'].min())

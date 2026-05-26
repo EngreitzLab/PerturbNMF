@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -138,12 +139,16 @@ figsize=(4, 30), show=False, ax=None):
 
 
     def get_gene_path(output_dir, run_name, k, sel_thresh):
-        """Helper to build path consistently"""
-        return '{output_dir}/{run_name}/adata/cNMF_{k}_{sel_thresh}.h5mu'.format(
-                                                                                output_dir=output_dir,
-                                                                                run_name = run_name,
-                                                                                k=k,
-                                                                                sel_thresh = str(sel_thresh).replace(".", "_"))
+        """Helper to build path consistently.
+        Tries shared run flat layout first, then per-K run layout as fallback."""
+        sel_str = str(sel_thresh).replace(".", "_")
+        primary = f'{output_dir}/{run_name}/adata/cNMF_{k}_{sel_str}.h5mu'
+        if os.path.isfile(primary):
+            return primary
+        per_k = f'{output_dir}/{run_name}_K{k}/Inference/adata/cNMF_{k}_{sel_str}.h5mu'
+        if os.path.isfile(per_k):
+            return per_k
+        return primary  # return primary so the original FileNotFoundError message is preserved
 
 
     # read in adata
