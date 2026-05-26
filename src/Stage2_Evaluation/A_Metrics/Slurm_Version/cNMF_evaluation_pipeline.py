@@ -157,17 +157,7 @@ def main():
                                                                                     k=k,
                                                                                     sel_thresh = str(sel_thresh).replace('.','_')))
 
-            # Validate reference_targets against mdata guide_targets
-            mdata_targets = set(mdata[args.prog_key].uns[args.guide_targets_key])
-            matched_ref = mdata_targets.intersection(reference_targets)
-            print(f"[K={k}] reference_targets overlap with mdata guide_targets: {matched_ref}")
-            if len(matched_ref) == 0:
-                raise ValueError(
-                    f"No reference_targets found in mdata guide_targets. "
-                    f"reference_targets contains guide names (e.g. {reference_targets[:3]}), "
-                    f"but guide_targets contains group names (e.g. {list(mdata_targets)[:3]}). "
-                    f"Use --guide_annotation_key instead of --guide_annotation_path."
-                )
+
 
             # Validate guide count between annotation file and mdata
             if args.guide_annotation_path is not None:
@@ -196,7 +186,17 @@ def main():
 
             # Run perturbation assocation
             if args.Perform_perturbation:
-                mdata['cNMF'].obsm['guide_assignment'] = mdata['cNMF'].obsm['guide_assignment'].todense()
+                # Validate reference_targets against mdata guide_targets
+                mdata_targets = set(mdata[args.prog_key].uns[args.guide_targets_key])
+                matched_ref = mdata_targets.intersection(reference_targets)
+                print(f"[K={k}] reference_targets overlap with mdata guide_targets: {matched_ref}")
+                if len(matched_ref) == 0:
+                    raise ValueError(
+                        f"No reference_targets found in mdata guide_targets. "
+                        f"reference_targets contains guide names (e.g. {reference_targets[:3]}), "
+                        f"but guide_targets contains group names (e.g. {list(mdata_targets)[:3]}). "
+                        f"Use --guide_annotation_key instead of --guide_annotation_path."
+                    )
                 for samp in mdata[args.data_key].obs[args.categorical_key].unique():
                     mdata_ = mdata[mdata['rna'].obs[args.categorical_key]==samp]
                     test_stats_df = compute_perturbation_association(mdata_, prog_key=args.prog_key,
