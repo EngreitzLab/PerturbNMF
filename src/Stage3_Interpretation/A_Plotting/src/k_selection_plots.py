@@ -77,6 +77,23 @@ def _filter_components(stats, components):
     return stats.loc[stats['k'].isin(requested)].sort_values('k').reset_index(drop=True)
 
 
+def _cache_has_all_components(stats, components):
+    """Return True only if every requested K is present in the cache.
+
+    Tier 1 uses this to decide whether to use the cache or fall through to
+    Tier 2 / Tier 3 recomputation. Stability and prediction error are stored
+    per-K, so a missing K means that row must be recomputed.
+    """
+    if stats is None or len(stats) == 0:
+        return False
+    available_k = set(stats['k'].astype(int))
+    missing_k = set(components) - available_k
+    if missing_k:
+        print(f"  Cache missing K values: {sorted(missing_k)} — falling through to next tier")
+        return False
+    return True
+
+
 def _print_stats_summary(stats):
     """Print min/max summary for stability and error."""
     print("min stablity is", stats['silhouette'].min())
@@ -189,18 +206,22 @@ def load_stablity_error_data(output_directory, run_name, components=[30, 50, 60,
     stats = None
 
     # --- Tier 1: load from file ---
+    # Validate completeness against requested K before accepting the cache;
+    # if any K is missing, drop stats and fall through to Tier 2 / Tier 3.
     if stability_file is not None:
         if os.path.exists(stability_file):
             print(f"Loading stability/error data from user-supplied file: {stability_file}")
-            stats = _load_stats_file(stability_file)
-            stats = _filter_components(stats, components)
+            cached = _load_stats_file(stability_file)
+            if _cache_has_all_components(cached, components):
+                stats = _filter_components(cached, components)
         else:
             print(f"Warning: stability_file not found: {stability_file}")
 
     if stats is None and os.path.exists(npz_path):
         print(f"Loading pre-computed stats from {npz_path}")
-        stats = _load_stats_file(npz_path)
-        stats = _filter_components(stats, components)
+        cached = _load_stats_file(npz_path)
+        if _cache_has_all_components(cached, components):
+            stats = _filter_components(cached, components)
 
     # --- Tier 2: compute via torch_cnmf ---
     if stats is None:

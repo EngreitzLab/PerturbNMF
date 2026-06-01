@@ -140,15 +140,18 @@ figsize=(4, 30), show=False, ax=None):
 
     def get_gene_path(output_dir, run_name, k, sel_thresh):
         """Helper to build path consistently.
-        Tries shared run flat layout first, then per-K run layout as fallback."""
+        Tries standard PerturbNMF layout, then flat shared-run, then per-K run layout."""
         sel_str = str(sel_thresh).replace(".", "_")
-        primary = f'{output_dir}/{run_name}/adata/cNMF_{k}_{sel_str}.h5mu'
-        if os.path.isfile(primary):
-            return primary
+        standard = f'{output_dir}/{run_name}/Inference/adata/cNMF_{k}_{sel_str}.h5mu'
+        if os.path.isfile(standard):
+            return standard
+        flat = f'{output_dir}/{run_name}/adata/cNMF_{k}_{sel_str}.h5mu'
+        if os.path.isfile(flat):
+            return flat
         per_k = f'{output_dir}/{run_name}_K{k}/Inference/adata/cNMF_{k}_{sel_str}.h5mu'
         if os.path.isfile(per_k):
             return per_k
-        return primary  # return primary so the original FileNotFoundError message is preserved
+        return standard
 
 
     # read in adata
@@ -206,47 +209,56 @@ figsize=(4, 30), show=False, ax=None):
 
 
 
-# Plot clustermap given paths to program by gene matrix 
-def consensus_clustermap(k, output_dir_1, output_dir_2, run_name_1, run_name_2, 
-                 sel_thresh_1=2.0, sel_thresh_2=2.0,gene_num = 300, 
-                 title = "top 300 gene Clustermap", figsize = (10, 10), gene_score=True):
+# Plot clustermap given paths to program by gene matrix
+def consensus_clustermap(k, output_dir_1, output_dir_2, run_name_1, run_name_2,
+                 sel_thresh_1=2.0, sel_thresh_2=2.0,gene_num = 300,
+                 title = "top 300 gene Clustermap", figsize = (10, 10), gene_score=True,
+                 label_1=None, label_2=None):
 
     def get_gene_path(output_dir, run_name, k, sel_thresh):
         """Helper to build path consistently"""
-        if gene_score: 
+        if gene_score:
             return '{output_dir}/{run_name}/{run_name}.gene_spectra_score.k_{k}.dt_{sel_thresh}.txt'.format(
                                                                                         output_dir=output_dir,
                                                                                         run_name = run_name,
                                                                                         k=k,
                                                                                         sel_thresh = str(sel_thresh).replace('.','_'))
-        else: 
+        else:
             return '{output_dir}/{run_name}/{run_name}.spectra.k_{k}.dt_{sel_thresh}.consensus.txt'.format(
                                                                                         output_dir=output_dir,
                                                                                         run_name = run_name,
                                                                                         k=k,
                                                                                         sel_thresh = str(sel_thresh).replace('.','_'))
 
-    # read in as df 
+    # read in as df
     df_1 = pd.read_csv(get_gene_path(output_dir_1, run_name_1, k, sel_thresh_1), sep="\t" , index_col = 0)
     df_2 = pd.read_csv(get_gene_path(output_dir_2, run_name_2, k, sel_thresh_2), sep="\t" , index_col = 0)
 
-    # perform overlap gene analysis 
+    # perform overlap gene analysis
     overlap = top_genes_overlap(df_1, df_2, gene_num = gene_num, percentage  = False)
     sorted_overlap = sort_corr_matrix(overlap)
 
+    # axis labels identifying which dataset each axis came from
+    label_1 = label_1 or run_name_1
+    label_2 = label_2 or run_name_2
 
-    # plot sorted program 
-    g = sns.clustermap(sorted_overlap, 
-                row_cluster=False,   
-                col_cluster=False,   
-                cmap='coolwarm',      
+    # plot sorted program
+    g = sns.clustermap(sorted_overlap,
+                row_cluster=False,
+                col_cluster=False,
+                cmap='coolwarm',
                 figsize= figsize,
-                center = 0,                
-                xticklabels=False, 
-                yticklabels=False)      
-                
+                center = 0,
+                xticklabels=False,
+                yticklabels=False)
+
+    g.ax_heatmap.yaxis.set_label_position('left')
+    g.ax_heatmap.xaxis.set_label_position('top')
+    g.ax_heatmap.set_ylabel(label_1, fontsize=13, fontweight='bold')
+    g.ax_heatmap.set_xlabel(label_2, fontsize=13, fontweight='bold')
+
     import textwrap
-    wrapped_title = "\n".join(textwrap.wrap(title, width=50))  
+    wrapped_title = "\n".join(textwrap.wrap(title, width=50))
     g.fig.suptitle(wrapped_title, fontsize=15,fontweight='bold')
     print("max value:", sorted_overlap.max().max())
    
