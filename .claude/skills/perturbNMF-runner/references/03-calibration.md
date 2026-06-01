@@ -1,5 +1,7 @@
 # Calibration Stage (CRT / U-test / Matched Cell DE)
 
+> **All-flags convention (mandatory for every generated `.sh`):** When invoking `generate_slurm.py`, list active flags first, then `---COMMENTED---`, then every remaining flag for this stage from `references/parameter-catalog.md` (Sections 7–9 — U-test, CRT, Matched Cell DE) with a sensible default/example value. The generator emits unused flags as `#     --flag value` lines below the python command so the user can toggle them later. See `SKILL.md` Step 5.
+
 ---
 
 ## CRT Calibration

@@ -1,5 +1,7 @@
 # Inference Stage (sk-cNMF / torch-cNMF)
 
+> **All-flags convention (mandatory for every generated `.sh`):** When invoking `generate_slurm.py`, list active flags first, then `---COMMENTED---`, then every remaining flag for this stage from `references/parameter-catalog.md` (Sections 1–2 for inference) with a sensible default/example value. The generator emits unused flags as `#     --flag value` lines below the python command so the user can toggle them later. See `SKILL.md` Step 5.
+
 ## Step A: Get Data Path & Validate
 
 Ask for the input data file path. Then run validation:

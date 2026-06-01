@@ -1,5 +1,7 @@
 # Visualization Stages (K-Selection / Program Analysis / Perturbed Gene)
 
+> **All-flags convention (mandatory for every generated `.sh`):** When invoking `generate_slurm.py`, list active flags first, then `---COMMENTED---`, then every remaining flag for this stage from `references/parameter-catalog.md` (Sections 4–6 — K-Selection, Program Analysis, Perturbed Gene) with a sensible default/example value. The generator emits unused flags as `#     --flag value` lines below the python command so the user can toggle them later. See `SKILL.md` Step 5.
+
 ---
 
 ## K-Selection Plot (Stage 3a)

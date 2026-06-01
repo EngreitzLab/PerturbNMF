@@ -119,29 +119,44 @@ def generate_script(args, passthrough_args):
         gpu_lines = "#SBATCH --gres=gpu:1                   # Request 1 GPU\n#SBATCH -C GPU_SKU:V100S_PCIE\n"
 
     # Build the passthrough args string
-    # Reconstruct tokens into "--key value" pairs for readable multi-line output
+    # Reconstruct tokens into "--key value" pairs for readable multi-line output.
+    # The sentinel '---COMMENTED---' splits tokens into active flags (before, emitted
+    # inside the python command) and unused flags (after, emitted as commented-out
+    # `#     --flag value` lines below the command for easy toggling).
+    COMMENT_SEP = '---COMMENTED---'
     passthrough_str = ""
+    commented_lines = []
     if passthrough_args:
-        # Strip leading '--' separator if present
         tokens = list(passthrough_args)
         if tokens and tokens[0] == '--':
             tokens = tokens[1:]
 
-        # Group tokens into lines: each --flag starts a new line with its values
-        lines = []
-        current_line = []
-        for token in tokens:
-            if token.startswith('--') and current_line:
-                lines.append("        " + " ".join(current_line))
-                current_line = [token]
-            else:
-                current_line.append(token)
-        if current_line:
-            lines.append("        " + " ".join(current_line))
+        if COMMENT_SEP in tokens:
+            idx = tokens.index(COMMENT_SEP)
+            active_tokens = tokens[:idx]
+            commented_tokens = tokens[idx + 1:]
+        else:
+            active_tokens = tokens
+            commented_tokens = []
 
-        if lines:
-            passthrough_str = " \\\n".join(lines)
-            passthrough_str = " \\\n" + passthrough_str
+        def _group_tokens(toks, prefix):
+            grouped = []
+            current = []
+            for tok in toks:
+                if tok.startswith('--') and current:
+                    grouped.append(prefix + " ".join(current))
+                    current = [tok]
+                else:
+                    current.append(tok)
+            if current:
+                grouped.append(prefix + " ".join(current))
+            return grouped
+
+        active_lines = _group_tokens(active_tokens, "        ")
+        commented_lines = _group_tokens(commented_tokens, "#     ")
+
+        if active_lines:
+            passthrough_str = " \\\n" + " \\\n".join(active_lines)
 
     # Build script as lines for clean formatting
     lines = [
@@ -233,6 +248,14 @@ def generate_script(args, passthrough_args):
         f'# Run pipeline',
         f'echo "Running: {args.stage}"',
         f'{stage_info.get("interpreter", "python3")} {script_path}{passthrough_str}',
+    ])
+
+    if commented_lines:
+        lines.append('')
+        lines.append('# Optional / unused flags for this stage (uncomment + add to the command above to enable):')
+        lines.extend(commented_lines)
+
+    lines.extend([
         '',
         '# Capture exit code',
         'EXIT_CODE=$?',

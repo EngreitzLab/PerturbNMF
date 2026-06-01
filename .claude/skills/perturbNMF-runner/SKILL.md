@@ -84,8 +84,18 @@ python3 SKILL_DIR/scripts/generate_slurm.py \
   --email <user_email> \
   --script_output_path <project_root>/Script/<run_name>_<stage>.sh \
   -- \
-  [all stage-specific args for the pipeline script...]
+  [active stage-specific args...] \
+  ---COMMENTED--- \
+  [all remaining stage flags as `--flag <default_or_example>` ...]
 ```
+
+**ALWAYS include every flag for the stage in the generated script — this applies to every stage (inference-sk, inference-torch, evaluation, u-test-calibration, crt-calibration, matched-cell-de, k-selection, program-analysis, perturbed-gene, annotation, excel-summary).** Active flags (the ones the user is using) go before the `---COMMENTED---` sentinel and appear inside the python command. All other flags listed for this stage in `references/parameter-catalog.md` go after the sentinel and appear as `#     --flag value` lines below the command, so the user can uncomment to toggle them on later.
+
+- Boolean flags: emit just `--flag_name` (no value) after the sentinel.
+- Value flags: emit `--flag_name <default_or_sensible_example>` so the user only has to uncomment + tweak.
+- Skip flags that have already been provided as active flags — don't duplicate them in the commented section.
+- Use `parameter-catalog.md` (Section 1–9 by stage) as the authoritative list. If an optional flag exists there but isn't being used, it belongs in the commented section.
+- This convention is mandatory — never emit a script that omits available stage flags. The commented block is part of the script's value to the user (toggling features without re-invoking the skill).
 
 Show the generated script to the user for review.
 
