@@ -36,13 +36,13 @@ def get_idconversion(var_names, organism='human', chunk_size=100):
     # Ensure var_names is a simple list
     var_names = list(var_names)
 
-    bm = Biomart()
     # Default to uppercase fallback
     gene_names = [v.upper() for v in var_names]
 
     # Detect Ensembl IDs by looking at the first element safely
     is_ensembl = (len(var_names) > 0 and var_names[0].lower().startswith('ens'))
     if is_ensembl:
+        bm = Biomart()
         dataset = (
             'hsapiens_gene_ensembl'
             if organism=='human'

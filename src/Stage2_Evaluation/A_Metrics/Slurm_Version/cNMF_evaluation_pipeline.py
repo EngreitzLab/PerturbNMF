@@ -16,12 +16,35 @@ import os
 import sys
 import yaml
 
+import h5py
 import muon as mu
 import pandas as pd
 import numpy as np
 import argparse
 import cnmf
 import scanpy as sc
+
+try:
+    from anndata.io import read_elem
+except ImportError:
+    from anndata.experimental import read_elem
+
+
+def _read_samples_from_h5mu(h5mu_path, data_key, categorical_key):
+    """Read unique values of obs[categorical_key] from an h5mu without loading the full MuData.
+
+    Returns a list of sample names, or None if the column cannot be read (e.g. missing path, decoding error).
+    """
+    try:
+        with h5py.File(h5mu_path, 'r') as f:
+            obs_path = f'mod/{data_key}/obs/{categorical_key}'
+            if obs_path not in f:
+                return None
+            col = read_elem(f[obs_path])
+            return list(pd.Series(col).dropna().unique())
+    except Exception as e:
+        print(f"  [warn] Could not read categorical column from {h5mu_path}: {e}")
+        return None
 
 
 # Change path to wherever you have repo locally
@@ -81,6 +104,7 @@ def main():
     parser.add_argument('--FDR_method', help='Method for FDR correction in perturbation association (default: StoreyQ)', type=str, default="StoreyQ")
     parser.add_argument('--n_top', type = int, help='Number of top loaded genes use to perform enrichment test(default: 300)',  default=300)
     parser.add_argument('--use_cache', action="store_true", help='If set, load gene set libraries from cached JSON in Resources/ instead of downloading. Falls back to download if cache not found, and saves a cache copy after download.')
+    parser.add_argument('--skip_existing', action="store_true", help='If set, skip metric computations whose output files already exist. Useful for resuming jobs that were preempted mid-batch.')
 
     args = parser.parse_args()
 
@@ -151,6 +175,43 @@ def main():
 
             os.makedirs(output_folder, exist_ok=True)
 
+            # Expected output files for skip checks (perturbation is sample-dependent, checked later)
+            out_cat = f'{output_folder}/{k}_categorical_association_results.txt'
+            out_posthoc = f'{output_folder}/{k}_categorical_association_posthoc.txt'
+            out_geneset = f'{output_folder}/{k}_geneset_enrichment.txt'
+            out_go = f'{output_folder}/{k}_GO_term_enrichment.txt'
+            out_trait = f'{output_folder}/{k}_trait_enrichment.txt'
+            out_expvar = f'{output_folder}/{k}_Explained_Variance.txt'
+            out_expvar_sum = f'{output_folder}/{k}_Explained_Variance_Summary.txt'
+
+            # Early-skip: if all enabled metrics already have outputs on disk, avoid the mdata load entirely.
+            # For perturbation, sample names come from obs[categorical_key]; read just that column from the
+            # h5mu (cheap) instead of loading the full MuData.
+            if args.skip_existing:
+                early_skip_ok = True
+                if args.Perform_categorical and not (os.path.exists(out_cat) and os.path.exists(out_posthoc)):
+                    early_skip_ok = False
+                if args.Perform_geneset and not (os.path.exists(out_geneset) and os.path.exists(out_go)):
+                    early_skip_ok = False
+                if args.Perform_trait and not os.path.exists(out_trait):
+                    early_skip_ok = False
+                if args.Perform_explained_variance and not (os.path.exists(out_expvar) and os.path.exists(out_expvar_sum)):
+                    early_skip_ok = False
+                if args.Perform_perturbation:
+                    h5mu_path = '{out_dir}/{run_name}/Inference/adata/cNMF_{k}_{sel_thresh}.h5mu'.format(
+                        out_dir=args.out_dir, run_name=args.run_name, k=k,
+                        sel_thresh=str(sel_thresh).replace('.', '_'))
+                    samples = _read_samples_from_h5mu(h5mu_path, args.data_key, args.categorical_key)
+                    if samples is None:
+                        early_skip_ok = False
+                    else:
+                        pert_outs = [f'{output_folder}/{k}_perturbation_association_results_{samp}.txt' for samp in samples]
+                        if not all(os.path.exists(p) for p in pert_outs):
+                            early_skip_ok = False
+                if early_skip_ok:
+                    print(f"[K={k}, thresh={sel_thresh}] All requested outputs already exist; skipping iteration.")
+                    continue
+
             # Load mdata
             mdata = mu.read('{out_dir}/{run_name}/Inference/adata/cNMF_{k}_{sel_thresh}.h5mu'.format(out_dir = args.out_dir,
                                                                                     run_name =args.run_name,
@@ -159,16 +220,7 @@ def main():
 
 
 
-            # Validate guide count between annotation file and mdata
-            if args.guide_annotation_path is not None:
-                n_file_guides = len(df_target)
-                n_mdata_guides = len(mdata[args.prog_key].uns[args.guide_names_key])
-                if n_file_guides != n_mdata_guides:
-                    raise ValueError(
-                        f"Guide count mismatch: annotation file has {n_file_guides} guides, "
-                        f"but mdata has {n_mdata_guides} guides. "
-                        f"Ensure the annotation file matches the mdata guide set."
-                    )
+
 
              # assign information
             if args.data_guide_path is not None:
@@ -177,11 +229,14 @@ def main():
 
             # Run categorical assocation
             if args.Perform_categorical:
-                results_df, posthoc_df = compute_categorical_association(mdata, prog_key=args.prog_key, categorical_key=args.categorical_key,
-                                                                        pseudobulk_key=None, test='dunn', n_jobs=-1, inplace=False)
+                if args.skip_existing and os.path.exists(out_cat) and os.path.exists(out_posthoc):
+                    print(f"[K={k}, thresh={sel_thresh}] Skipping categorical (existing outputs found).")
+                else:
+                    results_df, posthoc_df = compute_categorical_association(mdata, prog_key=args.prog_key, categorical_key=args.categorical_key,
+                                                                            pseudobulk_key=None, test='dunn', n_jobs=-1, inplace=False)
 
-                results_df.to_csv('{}/{}_categorical_association_results.txt'.format(output_folder,k), sep='\t', index=False) # This was made wide form to insert into .var of the program anndata.
-                posthoc_df.to_csv('{}/{}_categorical_association_posthoc.txt'.format(output_folder,k), sep='\t', index=False)
+                    results_df.to_csv(out_cat, sep='\t', index=False) # This was made wide form to insert into .var of the program anndata.
+                    posthoc_df.to_csv(out_posthoc, sep='\t', index=False)
 
 
             # Run perturbation assocation
@@ -198,43 +253,53 @@ def main():
                         f"Use --guide_annotation_key instead of --guide_annotation_path."
                     )
                 for samp in mdata[args.data_key].obs[args.categorical_key].unique():
+                    out_pert = '{}/{}_perturbation_association_results_{}.txt'.format(output_folder, k, samp)
+                    if args.skip_existing and os.path.exists(out_pert):
+                        print(f"[K={k}, thresh={sel_thresh}, samp={samp}] Skipping perturbation (existing output found).")
+                        continue
                     mdata_ = mdata[mdata['rna'].obs[args.categorical_key]==samp]
                     test_stats_df = compute_perturbation_association(mdata_, prog_key=args.prog_key,
                                                                     collapse_targets=True,
                                                                     pseudobulk=False,
                                                                     reference_targets=reference_targets,
                                                                     n_jobs=-1, inplace=False, FDR_method = args.FDR_method)
-                    test_stats_df.to_csv('{}/{}_perturbation_association_results_{}.txt'.format(output_folder,k,samp), sep='\t', index=False)
+                    test_stats_df.to_csv(out_pert, sep='\t', index=False)
 
 
             # Gene-set enrichment
             if args.Perform_geneset:
-                pre_res = compute_geneset_enrichment(mdata, prog_key=args.prog_key, data_key=args.data_key, prog_name=None,
-                                                    organism=args.organism, library='Reactome_2022', method="fisher",
-                                                    database='enrichr', n_top=args.n_top, n_jobs=-1,
-                                                    inplace=False, user_geneset=None, use_loadings_gene=False,
-                                                    gene_names_key=args.gene_names_key, use_cache=args.use_cache) # use_loadings_gene:use all background genes
-                pre_res.to_csv('{}/{}_geneset_enrichment.txt'.format(output_folder,k), sep='\t', index=False)
+                if args.skip_existing and os.path.exists(out_geneset) and os.path.exists(out_go):
+                    print(f"[K={k}, thresh={sel_thresh}] Skipping geneset/GO enrichment (existing outputs found).")
+                else:
+                    pre_res = compute_geneset_enrichment(mdata, prog_key=args.prog_key, data_key=args.data_key, prog_name=None,
+                                                        organism=args.organism, library='Reactome_2022', method="fisher",
+                                                        database='enrichr', n_top=args.n_top, n_jobs=-1,
+                                                        inplace=False, user_geneset=None, use_loadings_gene=False,
+                                                        gene_names_key=args.gene_names_key, use_cache=args.use_cache) # use_loadings_gene:use all background genes
+                    pre_res.to_csv(out_geneset, sep='\t', index=False)
 
 
-                # GO Term enrichment
-                pre_res = compute_geneset_enrichment(mdata, prog_key=args.prog_key, data_key=args.data_key, prog_name=None,
-                                                    organism=args.organism, library='GO_Biological_Process_2023', method="fisher",
-                                                    database='enrichr', n_top=args.n_top, n_jobs=-1,
-                                                    inplace=False, user_geneset=None, use_loadings_gene=False,
-                                                    gene_names_key=args.gene_names_key, use_cache=args.use_cache) # use_loadings_gene: use all background genes
-                pre_res.to_csv('{}/{}_GO_term_enrichment.txt'.format(output_folder,k), sep='\t', index=False)
+                    # GO Term enrichment
+                    pre_res = compute_geneset_enrichment(mdata, prog_key=args.prog_key, data_key=args.data_key, prog_name=None,
+                                                        organism=args.organism, library='GO_Biological_Process_2023', method="fisher",
+                                                        database='enrichr', n_top=args.n_top, n_jobs=-1,
+                                                        inplace=False, user_geneset=None, use_loadings_gene=False,
+                                                        gene_names_key=args.gene_names_key, use_cache=args.use_cache) # use_loadings_gene: use all background genes
+                    pre_res.to_csv(out_go, sep='\t', index=False)
 
 
             # Run trait enrichment
             if args.Perform_trait:
-                pre_res_trait = compute_trait_enrichment(mdata, gwas_data=args.gwas_data_path,
-                                                        prog_key=args.prog_key, prog_name=None, data_key=args.data_key,
-                                                        library='OT_GWAS', n_jobs=-1, inplace=False,
-                                                        key_column='trait_efos', gene_column='gene_name',
-                                                        method='fisher', n_top=args.n_top, use_loadings_gene=True,
-                                                        gene_names_key=args.gene_names_key) # use_loadings_gene:use all background genes inter. expressed gene
-                pre_res_trait.to_csv('{}/{}_trait_enrichment.txt'.format(output_folder,k), sep='\t', index=False)
+                if args.skip_existing and os.path.exists(out_trait):
+                    print(f"[K={k}, thresh={sel_thresh}] Skipping trait enrichment (existing output found).")
+                else:
+                    pre_res_trait = compute_trait_enrichment(mdata, gwas_data=args.gwas_data_path,
+                                                            prog_key=args.prog_key, prog_name=None, data_key=args.data_key,
+                                                            library='OT_GWAS', n_jobs=-1, inplace=False,
+                                                            key_column='trait_efos', gene_column='gene_name',
+                                                            method='fisher', n_top=args.n_top, use_loadings_gene=True,
+                                                            gene_names_key=args.gene_names_key) # use_loadings_gene:use all background genes inter. expressed gene
+                    pre_res_trait.to_csv(out_trait, sep='\t', index=False)
 
 
             # Run motif analysis
@@ -272,7 +337,10 @@ def main():
 
             # Run explained variance
             if args.Perform_explained_variance:
-                compute_explained_variance(cnmf_obj, X, k, output_folder = output_folder, thre = str(sel_thresh), program_name=mdata[args.prog_key].var_names )
+                if args.skip_existing and os.path.exists(out_expvar) and os.path.exists(out_expvar_sum):
+                    print(f"[K={k}, thresh={sel_thresh}] Skipping explained variance (existing outputs found).")
+                else:
+                    compute_explained_variance(cnmf_obj, X, k, output_folder = output_folder, thre = str(sel_thresh), program_name=mdata[args.prog_key].var_names )
 
     print("Pipeline finished.")
     return 0

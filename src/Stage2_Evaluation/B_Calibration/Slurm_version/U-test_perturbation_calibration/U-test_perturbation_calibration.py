@@ -90,25 +90,27 @@ def compute_real_perturbation_tests():
 
             # Run perturbation association for each sample
             for samp in mdata[args.data_key].obs[args.categorical_key].unique():
-                mdata_ = mdata[mdata[args.data_key].obs[args.categorical_key] == samp]
+                out_path = f'{output_folder}/{k}_perturbation_association_results_{samp}.txt'
 
-                test_stats_df = compute_perturbation_association(
-                    mdata_,
-                    prog_key=args.prog_key,
-                    collapse_targets=True,
-                    pseudobulk=False,
-                    reference_targets=reference_targets,
-                    FDR_method=args.FDR_method,
-                    n_jobs=-1,
-                    inplace=False
-                )
+                if args.skip_existing and os.path.exists(out_path):
+                    print(f"  Skipping K={k}, sel_thresh={sel_thresh}, samp={samp}: output exists")
+                    test_stats_df = pd.read_csv(out_path, sep='\t')
+                else:
+                    mdata_ = mdata[mdata[args.data_key].obs[args.categorical_key] == samp]
 
-                # Save results
-                test_stats_df.to_csv(
-                    f'{output_folder}/{k}_perturbation_association_results_{samp}.txt',
-                    sep='\t',
-                    index=False
-                )
+                    test_stats_df = compute_perturbation_association(
+                        mdata_,
+                        prog_key=args.prog_key,
+                        collapse_targets=True,
+                        pseudobulk=False,
+                        reference_targets=reference_targets,
+                        FDR_method=args.FDR_method,
+                        n_jobs=-1,
+                        inplace=False
+                    )
+
+                    # Save results
+                    test_stats_df.to_csv(out_path, sep='\t', index=False)
 
                 # Add metadata
                 test_stats_df['sample'] = samp
@@ -194,6 +196,17 @@ def compute_fake_perturbation_tests():
                 f'{args.out_dir}/{args.run_name}/Inference/adata/cNMF_{k}_{str(sel_thresh).replace(".","_")}.h5mu'
             )
 
+            # Skip this (K, sel_thresh) if all fake outputs already exist; load them into the accumulator.
+            if args.skip_existing:
+                samples_for_iter = list(mdata[args.data_key].obs[args.categorical_key].unique())
+                expected = [f'{output_folder}/{k}_fake_perturbation_association_results_{samp}.txt' for samp in samples_for_iter]
+                if all(os.path.exists(p) for p in expected):
+                    print(f"  Skipping K={k}, sel_thresh={sel_thresh}: all fake outputs exist; loading from disk")
+                    for samp, p in zip(samples_for_iter, expected):
+                        samp_df = pd.read_csv(p, sep='\t')
+                        test_stats_fake_dfs.append(samp_df)
+                    continue
+
             test_stats_fake_dfs_temp = []
             for i in range(args.number_run):
                 print(f"  Running iteration {i+1}/{args.number_run}")
@@ -226,7 +239,7 @@ def compute_fake_perturbation_tests():
                         prog_key=args.prog_key,
                         collapse_targets=True,
                         pseudobulk=False,
-                        reference_targets=args.guide_annotation_key,
+                        reference_targets=['non-targeting'],
                         FDR_method=args.FDR_method,
                         n_jobs=-1,
                         inplace=False
@@ -449,6 +462,7 @@ def main():
     parser.add_argument('--compute_real_perturbation_tests', help='If set, compute perturbation association tests on real targeting guides', action="store_true")
     parser.add_argument('--compute_fake_perturbation_tests', help='If set, compute perturbation association tests on fake targeting guides (calibration null distribution)', action="store_true")
     parser.add_argument('--visualizations', help='If set, generate and save QQ plots and violin plots comparing real vs null distributions', action="store_true")
+    parser.add_argument('--skip_existing', help='If set, skip per-(K, sel_thresh, sample) computations whose output files already exist. Existing outputs are loaded into the accumulator so visualizations still work. Useful for resuming preempted jobs.', action="store_true")
 
     args = parser.parse_args()
 
