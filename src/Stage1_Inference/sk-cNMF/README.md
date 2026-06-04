@@ -33,12 +33,20 @@
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | species | str | - | Species for gene annotation (required) |
-| parallel_running | flag | False | Compile files after parallel mode for multiple K values |
+| parallel_running | flag | False | Combine per-K spectra files from a parallel run into `{RUN_NAME}_all/Inference/cnmf_tmp/`. **Only use when the parallel jobs were submitted via `Slurm_Version/sk-cNMF_parallel.sh`** — it expects the nested layout `{OUT_DIR}/{RUN_NAME}/{RUN_NAME}_{K}/Inference/cnmf_tmp/`. Do not pass this flag for normal single-job runs; the merge will not find any files. |
 | num_gene | int | 300 | Number of top genes to use for program annotation |
 | run_refit | flag | False | Run the combine and consensus steps after factorization |
 | run_complie_annotation | flag | False | Compile results and generate gene annotations for all K values |
 | run_factorize | flag | False | Run the NMF factorization step |
 | run_diagnostic_plots | flag | False | Generate diagnostic plots (elbow curves, usage heatmaps, loading violins) after inference |
+| skip_existing | flag | False | If set, skip NMF replicates already completed on disk (pause/resume mode). Default re-runs all replicates from scratch |
+
+## Preprocessing Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| remove_noncoding | flag | False | Remove non-coding genes whose symbol starts with `ensembl_prefix` before factorization (requires `gene_names_key` set to a real var column, e.g. `symbol`) |
+| ensembl_prefix | str | "ENSG" | Ensembl ID prefix used to identify non-coding genes when `remove_noncoding` is set |
 
 ## Data Access Keys
 

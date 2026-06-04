@@ -39,6 +39,9 @@ Reconstruction error and stability are computed automatically.
 | `--organism` | `human` | Species for enrichment |
 | `--n_top` | `300` | Top genes for enrichment tests |
 | `--guide_annotation_key` | `["non-targeting"]` | Non-targeting guide identifiers (accepts multiple values) |
+| `--use_cache` | flag | Load enrichr gene set libraries from cached JSON in `Resources/` instead of downloading; falls back to download + cache on miss |
+| `--skip_existing` | flag | Skip metric computations whose output files already exist on disk; useful for resuming preempted batches |
+| `--reassign_name` | flag | Reassign `mdata[data_key].var_names` from `var[gene_names_key]` before running metrics (use when var index is Ensembl IDs) |
 
 ## SLURM Resources
 

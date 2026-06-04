@@ -43,6 +43,8 @@ Complete parameter reference for all pipeline stages, extracted from argparse de
 | `--run_refit` | Run combine, k_selection_plot, and consensus steps |
 | `--run_complie_annotation` | Compile results and generate gene annotations (**note typo**: use as-is) |
 | `--parallel_running` | Enable parallel processing for multiple K values |
+| `--run_diagnostic_plots` | Generate diagnostic plots (elbow curves, usage heatmaps, loading violins) after inference |
+| `--skip_existing` | Skip NMF replicates already completed on disk (pause/resume mode); default re-runs from scratch |
 
 ### Optional Parameters
 
@@ -51,6 +53,8 @@ Complete parameter reference for all pipeline stages, extracted from argparse de
 | `--nmf_seeds_path` | str | None | Path to .npy file with custom NMF seeds |
 | `--num_gene` | int | `300` | Top genes for annotation |
 | `--gene_names_key` | str | None | Column in adata.var with gene names for compiled results (e.g. `symbol`) |
+| `--remove_noncoding` | flag | False | Remove non-coding genes (whose symbol starts with `--ensembl_prefix`) before factorization. Requires `--gene_names_key` to be set to a real var column (e.g. `symbol`). |
+| `--ensembl_prefix` | str | `ENSG` | Prefix used to identify non-coding genes when `--remove_noncoding` is set |
 
 ### Keys
 
@@ -109,6 +113,7 @@ Same as sk-cNMF: `--counts_fn`, `--output_directory`, `--run_name`, `--species`
 | `--run_refit` | Run combine + k_selection + consensus |
 | `--run_compile_annotation` | Compile results and gene annotation (**fixed spelling**, not `complie`) |
 | `--parallel_running` | Enable parallel processing for multiple K values |
+| `--skip_existing` | Skip NMF replicates already completed on disk (pause/resume mode); default re-runs from scratch |
 
 ### Optional Parameters (shared with sk-cNMF)
 
@@ -149,19 +154,19 @@ Same as sk-cNMF except:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `--batch_max_epoch` | int | `500` | Max epochs for batch NMF |
-| `--batch_hals_tol` | float | `0.05` | HALS tolerance in batch mode |
-| `--batch_hals_max_iter` | int | `200` | Max HALS iterations |
+| `--batch_max_epoch` | int | `100` | Max epochs for batch NMF |
+| `--batch_hals_tol` | float | `0.005` | HALS tolerance in batch mode |
+| `--batch_hals_max_iter` | int | `1000` | Max HALS iterations |
 
 ### Minibatch Mode Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `--minibatch_max_epoch` | int | `20` | Max epochs through data |
-| `--minibatch_size` | int | `5000` | Minibatch size |
-| `--minibatch_max_iter` | int | `200` | Max iterations per minibatch |
-| `--minibatch_usage_tol` | float | `0.05` | Usage update tolerance |
-| `--minibatch_spectra_tol` | float | `0.05` | Spectra update tolerance |
+| `--minibatch_max_epoch` | int | `1000` | Max epochs through data |
+| `--minibatch_size` | int | `100000` | Minibatch size |
+| `--minibatch_max_iter` | int | `1000` | Max iterations per minibatch |
+| `--minibatch_usage_tol` | float | `0.005` | Usage update tolerance |
+| `--minibatch_spectra_tol` | float | `0.005` | Spectra update tolerance |
 
 ### Other torch-cNMF Parameters
 
@@ -207,12 +212,14 @@ Same as sk-cNMF except:
 | `--gwas_data_path` | str | None | Path to GWAS data (required only for trait enrichment) |
 | `--X_normalized_path` | str | None | Normalized counts h5ad (needed for explained variance). Path pattern: `<out_dir>/<run_name>/Inference/cnmf_tmp/Inference.norm_counts.h5ad` (prefix is always `Inference`, not the run_name) |
 | `--guide_annotation_path` | str | None | Guide annotation TSV |
-| `--data_guide_path` | str | None | MuData with additional guide info |
 | `--organism` | str | `human` | Species for enrichment |
 | `--FDR_method` | str | `StoreyQ` | FDR method: `StoreyQ` or `BH` |
 | `--n_top` | int | `300` | Top genes for enrichment tests |
 | `--gene_names_key` | str | `symbol` | Column in data_guide["rna"].var with gene names |
 | `--guide_annotation_key` | str (nargs=\*) | `["non-targeting"]` | Non-targeting guide identifiers (accepts multiple values) |
+| `--use_cache` | flag | False | Load enrichr gene set libraries from cached JSON in `Resources/` instead of re-downloading; falls back to download + cache on miss |
+| `--skip_existing` | flag | False | Skip metric computations whose output files already exist on disk; useful for resuming preempted batches |
+| `--reassign_name` | flag | False | Reassign `mdata[data_key].var_names` from `var[gene_names_key]` before running metrics (useful when default var index is Ensembl IDs) |
 
 ### Keys
 
@@ -256,6 +263,7 @@ Same as sk-cNMF except:
 | `--variance_file` | str | None | No | Explained variance file pattern (use `{k}`) |
 | `--variance_col` | str | `Total` | No | Variance column name |
 | `--stability_file` | str | None | No | Pre-computed stability/error file (TSV or NPZ) |
+| `--run_program_dotplot` | flag | False | No | Enable per-(K, sel_thresh) program dotplots; requires `{output_dir}/{run_name}/Inference/adata/cNMF_{K}_{thresh}.h5mu` to exist for each pair |
 
 ---
 
@@ -359,7 +367,8 @@ Same as sk-cNMF except:
 |-----------|------|-------------|
 | `--out_dir` | str | Directory containing cNMF output |
 | `--run_name` | str | cNMF run name |
-| `--mdata_guide_path` | str | Path to MuData with guide assignments |
+
+U-test reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) directly from each `cNMF_<K>_<thresh>.h5mu` — no separate `--mdata_guide_path` required.
 
 ### Optional
 
@@ -383,6 +392,7 @@ Same as sk-cNMF except:
 | `--compute_fake_perturbation_tests` | Run calibration null distribution |
 | `--visualizations` | Generate QQ and violin plots |
 | `--check_format` | Validate format first |
+| `--skip_existing` | Skip per-(K, sel_thresh, sample) computations whose output files already exist; existing outputs are loaded for visualizations |
 
 ### Keys
 

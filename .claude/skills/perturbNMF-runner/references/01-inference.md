@@ -55,6 +55,8 @@ For a first run, include all:
 
 For a rerun after factorization: `--run_refit --run_compile_annotation --run_diagnostic_plots`
 
+For pause/resume after a preempted factorize job: add `--skip_existing` (default off; with the flag, NMF replicates already completed on disk are skipped instead of recomputed).
+
 ### Tier 2 — Advanced parameters
 
 Present a summary and ask if user wants to change any. Defaults are fine for most runs.

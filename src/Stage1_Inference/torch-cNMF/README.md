@@ -49,19 +49,19 @@
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| batch_max_epoch | int | 500 | Maximum epochs for batch learning |
-| batch_hals_tol | float | 0.05 | HALS tolerance for halsvar algorithm |
-| batch_hals_max_iter | int | 200 | Maximum HALS iterations per H/W update |
+| batch_max_epoch | int | 100 | Maximum epochs for batch learning |
+| batch_hals_tol | float | 0.005 | HALS tolerance for halsvar algorithm |
+| batch_hals_max_iter | int | 1000 | Maximum HALS iterations per H/W update |
 
 ## Minibatch Mode Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| minibatch_max_epoch | int | 20 | Maximum passes over all data |
-| minibatch_size | int | 5000 | Size of mini-batches |
-| minibatch_max_iter | int | 200 | Maximum iterations for H/W update per mini-batch |
-| minibatch_usage_tol | float | 0.05 | Convergence tolerance for usage updates |
-| minibatch_spectra_tol | float | 0.05 | Convergence tolerance for spectra updates |
+| minibatch_max_epoch | int | 1000 | Maximum passes over all data |
+| minibatch_size | int | 100000 | Size of mini-batches |
+| minibatch_max_iter | int | 1000 | Maximum iterations for H/W update per mini-batch |
+| minibatch_usage_tol | float | 0.005 | Convergence tolerance for usage updates |
+| minibatch_spectra_tol | float | 0.005 | Convergence tolerance for spectra updates |
 | minibatch_shuffle | flag | False | Enable shuffling of samples across mini-batches each epoch |
 
 ## Refit Parameters
@@ -83,13 +83,13 @@
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | species | str | - | Species for gene annotation (required) |
-| parallel_running | flag | False | Compile files after parallel mode for multiple K values |
+| parallel_running | flag | False | Combine per-K spectra files from a parallel run into `{RUN_NAME}_all/Inference/cnmf_tmp/`. **Only use when the parallel jobs were submitted via `Slurm_Version/torch-cNMF_parallel.sh`** — it expects the nested layout `{OUT_DIR}/{RUN_NAME}/{RUN_NAME}_{K}/Inference/cnmf_tmp/`. Do not pass this flag for normal single-job runs; the merge will not find any files. |
 | num_gene | int | 300 | Number of top genes to include in annotation |
 | run_factorize | flag | False | Run the NMF factorization step |
 | run_refit | flag | False | Run the refit step (combine, k_selection_plot, and consensus) |
 | run_compile_annotation | flag | False | Run the compilation and annotation step |
 | run_diagnostic_plots | flag | False | Generate diagnostic plots (elbow curves, usage heatmaps, loading violins) after inference |
-| gene_names_key | str | "symbol" | Column in adata.var with gene names (e.g. "symbol"). If set, compiled results store these as var_names instead of default var index |
+| skip_existing | flag | False | If set, skip NMF replicates already completed on disk (pause/resume mode). Default re-runs all replicates from scratch |
 
 ## Data Access Keys
 

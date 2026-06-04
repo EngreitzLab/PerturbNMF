@@ -26,6 +26,7 @@
 | `--groupby` | `sample` | Grouping variable |
 | `--pval` | `0.05` | P-value threshold |
 | `--selected_k` | None | K value to highlight |
+| `--run_program_dotplot` | off | Enable per-(K, sel_thresh) program dotplots (default off; requires the inference h5mu artifact per K/threshold) |
 
 Enrichment file patterns use `{k}` placeholder (and `{sample}` for perturbation). See `references/parameter-catalog.md` Section 4 for all optional params.
 

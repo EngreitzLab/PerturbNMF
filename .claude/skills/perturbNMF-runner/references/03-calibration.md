@@ -113,7 +113,9 @@ If any requested covariate isn't present in `cNMF.obs`, add a small prep step be
 
 ### Required parameters
 
-- `--out_dir`, `--run_name`, `--mdata_guide_path`
+- `--out_dir`, `--run_name`
+
+U-test reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) directly from each `cNMF_<K>_<thresh>.h5mu` — no separate `--mdata_guide_path` required (same pattern as CRT).
 
 ### Key optional parameters
 
@@ -125,6 +127,7 @@ If any requested covariate isn't present in `cNMF.obs`, add a small prep step be
 | `--number_run` | `300` | Calibration iterations |
 | `--number_guide` | `6` | Fake targeting guides per iteration |
 | `--FDR_method` | `StoreyQ` | FDR correction method |
+| `--skip_existing` | flag | Resume preempted jobs by skipping per-(K, sel_thresh, sample) outputs that already exist on disk; visualizations still work via on-disk loads |
 
 ### SLURM resources
 
