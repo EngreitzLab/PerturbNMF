@@ -19,7 +19,6 @@ import yaml
 import os
 import pandas as pd
 import numpy as np
-import scanpy as sc
 
 # Change path to wherever you have repo locally
 sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
@@ -28,7 +27,8 @@ from torch_cnmf import cNMF
 
 from Stage1_Inference.src import (
     run_cnmf_consensus, get_top_indices_fast, annotate_genes_to_excel,
-    rename_and_move_files_NMF, rename_all_NMF, compile_results
+    rename_and_move_files_NMF, rename_all_NMF, compile_results,
+    filter_noncoding_genes,
 )
 from Stage1_Inference.src.plot_diagnostics import generate_all_plots
 
@@ -88,16 +88,16 @@ def main():
     parser.add_argument('--l1_ratio_spectra', type=float, default=0.0)
 
     # Batch-mode NMF
-    parser.add_argument('--batch_max_epoch', type=int, default=500)
-    parser.add_argument('--batch_hals_tol', type=float, default=0.05)
-    parser.add_argument('--batch_hals_max_iter', type=int, default=200)
+    parser.add_argument('--batch_max_epoch', type=int, default=100)
+    parser.add_argument('--batch_hals_tol', type=float, default=0.005)
+    parser.add_argument('--batch_hals_max_iter', type=int, default=1000)
 
     # Mini-batch / dataloader mode NMF
-    parser.add_argument('--minibatch_max_epoch', type=int, default=20)
-    parser.add_argument('--minibatch_size', type=int, default=5000)
-    parser.add_argument('--minibatch_max_iter', type=int, default=200)
-    parser.add_argument('--minibatch_usage_tol', type=float, default=0.05)
-    parser.add_argument('--minibatch_spectra_tol', type=float, default=0.05)
+    parser.add_argument('--minibatch_max_epoch', type=int, default=1000)
+    parser.add_argument('--minibatch_size', type=int, default=100000)
+    parser.add_argument('--minibatch_max_iter', type=int, default=1000)
+    parser.add_argument('--minibatch_usage_tol', type=float, default=0.005)
+    parser.add_argument('--minibatch_spectra_tol', type=float, default=0.005)
     parser.add_argument('--minibatch_shuffle', action='store_true',
                         help="Shuffle cells in minibatch mode (default: off)")
 
@@ -115,7 +115,7 @@ def main():
     parser.add_argument('--num_gene', type=int, default=300,
                         help="Number of top genes for annotation")
     parser.add_argument('--parallel_running', action='store_true',
-                        help="Enable parallel processing mode for multiple K values")
+                        help="Enable parallel processing mode for multiple K values on when using parallel.sh")
 
     # --- Preprocessing ---
     parser.add_argument('--remove_noncoding', action='store_true',
@@ -142,6 +142,9 @@ def main():
                         help="Run result compilation and gene annotation")
     parser.add_argument('--run_diagnostic_plots', action='store_true',
                         help="Generate diagnostic plots (elbow curves, usage heatmaps, loading violins)")
+    parser.add_argument('--skip_existing', action='store_true',
+                        help="If set, skip NMF replicates already completed on disk (pause/resume mode). "
+                             "Default: re-run all replicates from scratch.")
 
     args = parser.parse_args()
 
@@ -190,12 +193,12 @@ def main():
 
     # --- Optionally filter non-coding genes ---
     if args.remove_noncoding:
-        adata = sc.read(args.counts_fn)
-        mask = ~adata.var[args.gene_names_key].str.startswith(args.ensembl_prefix)
-        adata = adata[:, mask].copy()
-        filtered_path = f'{inference_dir}/adata_without_noncoding.h5ad'
-        adata.write(filtered_path)
-        args.counts_fn = filtered_path
+        args.counts_fn = filter_noncoding_genes(
+            counts_fn=args.counts_fn,
+            inference_dir=inference_dir,
+            gene_names_key=args.gene_names_key,
+            ensembl_prefix=args.ensembl_prefix,
+        )
 
     # ======================================================================
     # Initialise cNMF (torch_cnmf)
@@ -239,7 +242,7 @@ def main():
 
     # --- Factorize ---
     if args.run_factorize:
-        cnmf_obj.factorize(skip_completed_runs=True)
+        cnmf_obj.factorize(skip_completed_runs=args.skip_existing)
 
     # --- Combine + K selection + Consensus ---
     if args.run_refit:
@@ -284,12 +287,16 @@ def main():
 
     # --- Combine parallel K values ---
     if args.parallel_running:
-        rename_all_NMF(source_folder=inference_dir,
-                        destination_folder=f"{run_dir}/Inference_all/cnmf_tmp",
-                        file_name_input='Inference',
-                        file_name_output="Inference_all",
-                        len=args.numiter,
-                        components=args.K)
+        # Combiner: each parallel K job wrote to {output_directory}/{run_name}/{run_name}_{K}/Inference/cnmf_tmp/.
+        # Merge all into {output_directory}/{run_name}/{run_name}_all/Inference/cnmf_tmp/.
+        rename_all_NMF(
+            source_folder=f"{args.output_directory}/{args.run_name}/{args.run_name}",
+            destination_folder=f"{args.output_directory}/{args.run_name}/{args.run_name}_all/Inference/cnmf_tmp",
+            file_name_input='Inference',
+            file_name_output="Inference_all",
+            len=args.numiter,
+            components=args.K,
+        )
 
     print("Pipeline finished.")
     return 0

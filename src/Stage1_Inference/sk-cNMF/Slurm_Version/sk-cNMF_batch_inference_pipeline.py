@@ -26,7 +26,8 @@ sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
 
 from Stage1_Inference.src import (
     run_cnmf_consensus, get_top_indices_fast, annotate_genes_to_excel, \
-    rename_and_move_files_NMF, rename_all_NMF, compile_results
+    rename_and_move_files_NMF, rename_all_NMF, compile_results, \
+    filter_noncoding_genes
 )
 from Stage1_Inference.src.plot_diagnostics import generate_all_plots
 
@@ -63,6 +64,7 @@ def main():
     parser.add_argument('--run_complie_annotation', action="store_true", help='If set, compile results and generate gene annotations for all K values')
     parser.add_argument('--run_factorize', action="store_true", help='If set, run the NMF factorization step')
     parser.add_argument('--run_diagnostic_plots', action="store_true", help='Generate diagnostic plots (elbow curves, usage heatmaps, loading violins)')
+    parser.add_argument('--skip_existing', action="store_true", help='If set, skip NMF replicates already completed on disk (pause/resume mode). Default: re-run all replicates from scratch.')
 
     # keys
     parser.add_argument('--data_key', help='Key to access gene expression data in MuData object (default: rna)', type=str, default="rna")
@@ -73,6 +75,10 @@ def main():
     parser.add_argument('--guide_assignment_key', help='Key in .obsm to access guide assignment matrix (default: guide_assignment_key)', type=str, default="guide_assignment_key")
     parser.add_argument('--gene_names_key', type=str, default=None,
                         help="Column in adata.var with gene names to use in compiled results (e.g. 'symbol'). If None, uses var_names.")
+
+    # preprocessing
+    parser.add_argument('--remove_noncoding', action='store_true', help='If set, remove non-coding genes whose symbol starts with --ensembl_prefix before factorization (requires --gene_names_key set to a real var column, e.g. "symbol")')
+    parser.add_argument('--ensembl_prefix', type=str, default='ENSG', help='Ensembl ID prefix used to identify non-coding genes when --remove_noncoding is set (default: ENSG)')
 
 
 
@@ -125,6 +131,15 @@ def main():
     with open(f'{inference_dir}/config_{job_id}.yml', 'w') as f:
         yaml.dump(config_to_save, f, default_flow_style=False, width=1000)
 
+    # --- Optionally filter non-coding genes ---
+    if args.remove_noncoding:
+        args.counts_fn = filter_noncoding_genes(
+            counts_fn=args.counts_fn,
+            inference_dir=inference_dir,
+            gene_names_key=args.gene_names_key,
+            ensembl_prefix=args.ensembl_prefix,
+        )
+
     # running cnmf
     cnmf_obj = cnmf.cNMF(output_dir=run_dir, name='Inference')
 
@@ -134,7 +149,7 @@ def main():
 
     if args.run_factorize:
 
-        cnmf_obj.factorize(total_workers = 1,skip_completed_runs=True)
+        cnmf_obj.factorize(total_workers = 1, skip_completed_runs=args.skip_existing)
 
     if args.run_refit:
 
@@ -182,13 +197,16 @@ def main():
 
     # combine the parallel ran K value into "run_name_all" file
     if args.parallel_running:
-
-        rename_all_NMF(source_folder = inference_dir,
-                                destination_folder = f"{run_dir}/Inference_all/cnmf_tmp",
-                                file_name_input = 'Inference',
-                                file_name_output = "Inference_all",
-                                len = args.numiter,
-                                components = args.K)
+        # Combiner: each parallel K job wrote to {output_directory}/{run_name}/{run_name}_{K}/Inference/cnmf_tmp/.
+        # Merge all into {output_directory}/{run_name}/{run_name}_all/Inference/cnmf_tmp/.
+        rename_all_NMF(
+            source_folder=f"{args.output_directory}/{args.run_name}/{args.run_name}",
+            destination_folder=f"{args.output_directory}/{args.run_name}/{args.run_name}_all/Inference/cnmf_tmp",
+            file_name_input='Inference',
+            file_name_output="Inference_all",
+            len=args.numiter,
+            components=args.K,
+        )
 
     print("Pipeline finished.")
     return 0

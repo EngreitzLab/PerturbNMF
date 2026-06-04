@@ -60,7 +60,7 @@ echo "Python path: $(which python)"
 echo "Running Python script..."
 python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py \
         --counts_fn "/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Cell_data/100k_250genes_withguide.h5ad" \
-        --output_directory "$OUT_DIR" \
+        --output_directory "$OUT_DIR/$RUN_NAME" \
         --run_name "${RUN_NAME}_${K}" \
         --init "random" \
         --algo "cd" \
@@ -76,6 +76,22 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         --run_complie_annotation \
         --run_factorize \
         --nmf_seeds_path "/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Data/10_seeds_14_${K}.npy"
+
+        # Reference flags (uncomment + add to the python invocation above to enable):
+        #--loss "frobenius"
+        #--num_gene 300
+        #--parallel_running
+        #--run_diagnostic_plots
+        #--skip_existing
+        #--remove_noncoding
+        #--ensembl_prefix "ENSG"
+        #--data_key "rna"
+        #--prog_key "cNMF"
+        #--categorical_key "sample"
+        #--guide_names_key "guide_names"
+        #--guide_targets_key "guide_targets"
+        #--guide_assignment_key "guide_assignment_key"
+        #--gene_names_key "symbol"
 
 
 # Calculate and print elapsed time at the end

@@ -109,19 +109,40 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         --run_compile_annotation \
         --sel_thresh 0.2 2.0 \
         --numhvgenes 17538 \
-        --K 50 \
-        #--nmf_seeds_path \
-        #--densify \
-        #--sk_cd_refit \
-        #--data_key "rna" \
-        #--prog_key "cNMF" \
-        #--categorical_key "sample" \
-        #--guide_names_key "guide_names" \
-        #--guide_targets_key "guide_targets" \
-        #--guide_assignment_key "guide_assignment" \
-        #--remove_noncoding \
-        #--ensembl_prefix "ENSG" \
-        #--gene_names_key "symbol" \
+        --K 50
+
+        # Reference flags (uncomment + add to the python invocation above to enable):
+        #--nmf_seeds_path "/path/to/seeds.npy"
+        #--tpm_fn "/path/to/tpm.h5ad"
+        #--genes_file "/path/to/genes.txt"
+        #--densify
+        #--loss "frobenius"
+        #--n_jobs -1
+        #--seed 14
+        #--alpha_usage 0.0
+        #--alpha_spectra 0.0
+        #--l1_ratio_usage 0.0
+        #--l1_ratio_spectra 0.0
+        #--minibatch_max_epoch 1000
+        #--minibatch_size 100000
+        #--minibatch_max_iter 1000
+        #--minibatch_usage_tol 0.005
+        #--minibatch_spectra_tol 0.005
+        #--minibatch_shuffle
+        #--fp_precision "float"
+        #--sk_cd_refit
+        #--num_gene 300
+        #--remove_noncoding
+        #--ensembl_prefix "ENSG"
+        #--gene_names_key "symbol"
+        #--data_key "rna"
+        #--prog_key "cNMF"
+        #--categorical_key "sample"
+        #--guide_names_key "guide_names"
+        #--guide_targets_key "guide_targets"
+        #--guide_assignment_key "guide_assignment"
+        #--run_diagnostic_plots
+        #--skip_existing
 
 
 

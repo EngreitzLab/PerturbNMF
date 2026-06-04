@@ -67,6 +67,23 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         --run_refit \
         --run_factorize
 
+        # Reference flags (uncomment + add to the python invocation above to enable):
+        #--nmf_seeds_path "/path/to/seeds.npy"
+        #--loss "frobenius"
+        #--seed 14
+        #--num_gene 300
+        #--run_diagnostic_plots
+        #--skip_existing
+        #--remove_noncoding
+        #--ensembl_prefix "ENSG"
+        #--data_key "rna"
+        #--prog_key "cNMF"
+        #--categorical_key "sample"
+        #--guide_names_key "guide_names"
+        #--guide_targets_key "guide_targets"
+        #--guide_assignment_key "guide_assignment_key"
+        #--gene_names_key "symbol"
+
 
 # Calculate and print elapsed time at the end
 END_TIME=$(date +%s)

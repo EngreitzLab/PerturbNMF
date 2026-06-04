@@ -100,6 +100,7 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         --counts_fn "/oak/stanford/groups/engreitz/Users/ymo/Ronghao_100K_sample/Data/eRZ53_56_filtered_cNMF.h5ad" \
         --output_directory "$OUT_DIR/$RUN_NAME" \
         --run_name "${RUN_NAME}_${K}" \
+        # Nested layout: per-K jobs land at $OUT_DIR/$RUN_NAME/${RUN_NAME}_${K}/Inference/
         --K $K \
         --algo "halsvar" \
         --mode "batch" \
@@ -112,23 +113,44 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         --use_gpu \
         --numhvgenes 17538 \
         --run_factorize \
-        --species "human" \
-        #--nmf_seeds_path \
-        #--densify \
-        #--run_refit \
-        #--run_compile_annotation \
-        #--sk_cd_refit \
-        #--data_key "rna" \
-        #--prog_key "cNMF" \
-        #--sel_thresh 2.0 \
-        #--categorical_key "sample" \
-        #--guide_names_key "guide_names" \
-        #--guide_targets_key "guide_targets" \
-        #--guide_assignment_key "guide_assignment" \
-        #--remove_noncoding \
-        #--ensembl_prefix "ENSG" \
-        #--gene_names_key "symbol" \
-        #--parallel_running \
+        --species "human"
+
+        # Reference flags (uncomment + add to the python invocation above to enable):
+        #--nmf_seeds_path "/path/to/seeds.npy"
+        #--tpm_fn "/path/to/tpm.h5ad"
+        #--genes_file "/path/to/genes.txt"
+        #--densify
+        #--loss "frobenius"
+        #--n_jobs -1
+        #--seed 14
+        #--alpha_usage 0.0
+        #--alpha_spectra 0.0
+        #--l1_ratio_usage 0.0
+        #--l1_ratio_spectra 0.0
+        #--minibatch_max_epoch 1000
+        #--minibatch_size 100000
+        #--minibatch_max_iter 1000
+        #--minibatch_usage_tol 0.005
+        #--minibatch_spectra_tol 0.005
+        #--minibatch_shuffle
+        #--fp_precision "float"
+        #--sk_cd_refit
+        #--sel_thresh 2.0
+        #--num_gene 300
+        #--parallel_running
+        #--remove_noncoding
+        #--ensembl_prefix "ENSG"
+        #--gene_names_key "symbol"
+        #--data_key "rna"
+        #--prog_key "cNMF"
+        #--categorical_key "sample"
+        #--guide_names_key "guide_names"
+        #--guide_targets_key "guide_targets"
+        #--guide_assignment_key "guide_assignment"
+        #--run_refit
+        #--run_compile_annotation
+        #--run_diagnostic_plots
+        #--skip_existing
 
 
 

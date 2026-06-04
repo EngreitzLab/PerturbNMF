@@ -35,6 +35,29 @@ def run_cnmf_consensus(cnmf_obj=None, output_dir=None, name=None,
             cnmf_obj.consensus(k=k, density_threshold=thresh, show_clustering=True)
 
 
+def filter_noncoding_genes(counts_fn, inference_dir, gene_names_key='symbol', ensembl_prefix='ENSG'):
+    """Filter out non-coding genes (whose name starts with `ensembl_prefix`) and write a copy.
+
+    Returns the path to the filtered .h5ad. Caller should rebind whatever variable
+    holds the input counts path to this return value before downstream steps.
+
+    Args:
+        counts_fn: Path to input .h5ad.
+        inference_dir: Directory to write the filtered .h5ad into.
+        gene_names_key: Column in adata.var that holds the gene symbol/ID used for filtering.
+        ensembl_prefix: Strings starting with this prefix are dropped.
+
+    Returns:
+        Path to the filtered .h5ad written under `inference_dir`.
+    """
+    adata = sc.read(counts_fn)
+    mask = ~adata.var[gene_names_key].str.startswith(ensembl_prefix)
+    adata = adata[:, mask].copy()
+    filtered_path = f'{inference_dir}/adata_without_noncoding.h5ad'
+    adata.write(filtered_path)
+    return filtered_path
+
+
 def compile_results(output_directory, run_name, sel_threshs = [2.0], components = [30, 50, 60, 80, 100, 200, 250, 300],
  guide_names_key = "guide_names", guide_targets_key = "guide_targets", categorical_key= 'batch', guide_assignment_key ="guide_assignment",
  gene_names_key = None ):
@@ -330,82 +353,9 @@ def rename_all_NMF(file_name_input, file_name_output, source_folder, destination
 
     for k in components:
 
-        file_name_input_new = f"{file_name_input}_{k}.spectra.k_{k}.iter"
+        file_name_input_new = f"{file_name_input}.spectra.k_{k}.iter"
         file_name_output_new = f"{file_name_output}.spectra.k_{k}.iter"
 
-        source_folder_new = f"{source_folder}_{k}/cnmf_tmp"
+        source_folder_new = f"{source_folder}_{k}/Inference/cnmf_tmp"
 
         rename_and_move_files_NMF(file_name_input_new, file_name_output_new, source_folder_new, destination_folder, len=len)
-
-
-def rename_and_move_files(k, file_name_input, file_name_output, source_dir, dest_dir, len = 10, second = False):
-    """
-    Combine 2 cNMF results together for one K value.
-    
-    Merges results from two separate cNMF runs for the same k value.
-    
-    Args:
-        k: Number of components (k value)
-        file_name_input: Input filename pattern
-        file_name_output: Output filename pattern
-        source_dir: Source directory
-        dest_dir: Destination directory
-        len: Number of files to process
-        second: Whether this is the second batch (affects iteration numbering)
-    
-    Returns:
-        List of tuples with (source_file, new_filename) for processed files
-    """
-    
-    # Create destination folder if it doesn't exist
-    Path(dest_dir).mkdir(parents=True, exist_ok=True)
-    
-    processed_files = []
-    
-    # Process files for i 
-    for i in range(len):
-
-        source_file = f"{file_name_input}.spectra.k_{k}.iter_{i}.df.npz"
-        source_path = os.path.join(source_dir, source_file )
-
-        # Check if source file exists
-        if os.path.exists(source_dir): 
-
-            if second: 
-                i = i + 10
-            
-            # Create new filename
-            new_filename = f"{file_name_output}.spectra.k_{k}.iter_{i}.df.npz"
-            destination_path = os.path.join(dest_dir, new_filename)
-            
-            try:
-                # Copy and rename file to destination
-                shutil.copy2(source_path, destination_path)
-                print(f"Successfully processed: {source_file} -> {new_filename}")
-                processed_files.append((source_file , new_filename))
-                
-            except Exception as e:
-                print(f"Error processing {file_name_input}: {e}")
-        else:
-            print(f"File not found: {file_name_input}")
-            print(source_path)
-    
-    return processed_files
-
-
-def rename_all(file_name_input, file_name_output, source_dir, dest_dir, components = [30, 50, 60, 80, 100, 200, 250, 300], second = False):
-    """
-    Rename and move files for all k values.
-    
-    Processes file renaming and moving for multiple k values in batch.
-    
-    Args:
-        file_name_input: Input filename pattern
-        file_name_output: Output filename pattern
-        source_dir: Source directory
-        dest_dir: Destination directory
-        components: List of k values to process
-        second: Whether this is the second batch (affects iteration numbering)
-    """
-    for k in components:
-        data = rename_and_move_files(k, file_name_input, file_name_output, source_dir, dest_dir, second = second)
