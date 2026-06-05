@@ -71,7 +71,7 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         --tol 1e-4 \
         --seed 14 \
         --species "human" \
-        --sel_thresh 0.2 2.0 \
+        --sel_threshs 0.2 2.0 \
         --run_refit \
         --run_complie_annotation \
         --run_factorize \

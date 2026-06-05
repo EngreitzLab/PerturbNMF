@@ -59,7 +59,7 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         --max_NMF_iter 1000 \
         --tol 1e-4 \
         --K 50 \
-        --sel_thresh 0.2 2.0 \
+        --sel_threshs 0.2 2.0 \
         --numhvgenes 17538 \
         --numiter 10 \
         --species "human" \

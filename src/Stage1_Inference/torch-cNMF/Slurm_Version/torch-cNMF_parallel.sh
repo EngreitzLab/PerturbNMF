@@ -55,7 +55,7 @@ echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 # Activate conda base environment
 echo "Activating conda base environment..."
 eval "$(conda shell.bash hook)"
-conda activate torch-cnmf
+conda activate torch-cNMF
 export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
@@ -135,7 +135,7 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         #--minibatch_shuffle
         #--fp_precision "float"
         #--sk_cd_refit
-        #--sel_thresh 2.0
+        #--sel_threshs 2.0
         #--num_gene 300
         #--parallel_running
         #--remove_noncoding
