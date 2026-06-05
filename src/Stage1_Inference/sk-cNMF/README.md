@@ -16,7 +16,7 @@
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| K | list of int | [30, 50, 60, 80, 100, 200, 250, 300] | Values of K (number of components) to run NMF for |
+| K | list of int | [30, 50, 70, 80, 100, 200, 300] | Values of K (number of components) to run NMF for |
 | numiter | int | 10 | Number of NMF replicates to run |
 | seed | int | 14 | Random seed for reproducibility |
 | loss | str | "frobenius" | Loss function: "frobenius" (L2), "kullback-leibler" (KL), "itakura-saito" (IS), or float |
@@ -25,7 +25,7 @@
 | init | str | "random" | Initialization method: "random", "nndsvd", "nndsvda", "nndsvdar" |
 | max_NMF_iter | int | 500 | Maximum number of iterations per individual NMF run |
 | tol | float | 1e4 | Tolerance for NMF convergence |
-| sel_thresh | list of float | [2.0] (fallback: [0.4, 0.8, 2.0]) | Density threshold(s) for consensus selection |
+| sel_threshs | list of float | [0.2, 2.0] | Density threshold(s) for consensus selection |
 | nmf_seeds_path | str | None | Path to .npy file containing custom NMF seeds for reproducibility |
 
 ## Annotation and Compilation Parameters
