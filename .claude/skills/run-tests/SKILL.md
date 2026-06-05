@@ -211,7 +211,6 @@ tests/
 ## Troubleshooting
 
 - **Zero components after density filtering** — increase `n_iter` (need >= 5 for thresh=2.0)
-- **ModuleNotFoundError: No module named 'cnmf'** in torch tests — `format_checking.py` should not import `cnmf`
 - **sk-cNMF output empty** — run pytest from the pipeline root directory
 - **Custom seeds error** — `nmf_seeds` array length must equal `n_iter`
 - **Evaluation tests skip** — need inference output from at least one mode (torch-cNMF/batch preferred, then dataloader, minibatch, sk-cNMF)

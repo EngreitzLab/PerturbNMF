@@ -14,7 +14,7 @@ Check the h5mu structure to identify how guide/perturbation data is stored:
 cat <out_dir>/<run_name>/Inference/adata/cNMF_<K>_<sel_thresh>_structure.txt
 ```
 
-CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) directly from the cNMF modality of each `cNMF_<K>_<thresh>.h5mu` — no separate `--mdata_guide_path` and no preprocessing required.
+CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) directly from the cNMF modality of each `cNMF_<K>_<thresh>.h5mu` — no separate `mdata_guide_path` flag (formerly required) and no preprocessing needed.
 
 If the h5mu uses alternative keys (e.g. `obsm['target_assignment']`, `uns['target_names']`), rename them into the cNMF modality before running CRT.
 
@@ -38,14 +38,16 @@ Key parameters (always ask):
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--components` | `[30,50,60,80,100,200,250,300]` | K values to test |
-| `--sel_thresh` | `[0.4,0.8,2.0]` | Density thresholds |
+| `--K` | `[30, 50, 70, 80, 100, 200, 300]` | K values to test (formerly named `--components`) |
+| `--sel_threshs` | `[0.2, 2.0]` | Density thresholds |
 | `--categorical_key` | `sample` | Key to split cells into conditions for per-condition CRT |
 | `--guide_annotation_key` | `non-targeting` | Label for non-targeting/control guides (see Step B) |
 | `--number_permutations` | `1024` | CRT permutations (recommend `5000` for production) |
 | `--number_guide` | `6` | Guides per gene (see Step B) |
+| `--covariates` | None | obs columns to include as-is (e.g. `pct_counts_mt doublet_scores`) |
+| `--log_covariates` | None | obs columns to log1p-transform before inclusion (e.g. `total_counts n_genes`) |
 | `--FDR_method` | `BH` | FDR correction: `BH` or `StoreyQ` |
-| `--save_dir` | auto | Custom output directory |
+| `--save_dir` | auto | Custom output directory (default: `<out_dir>/<run_name>/Evaluation/`) |
 
 **Output filenames** include the covariate set so different combinations can share a `--save_dir`:
 - `{K}_CRT_{condition}_<covariates>.txt`  (e.g. `30_CRT_1_percent_mito_log_n_counts.txt`)
@@ -96,8 +98,8 @@ python3 SKILL_DIR/scripts/generate_slurm.py \
   --guide_annotation_key <ntc_label> \
   --number_permutations 5000 \
   --number_guide <N> \
-  --components <K_values> \
-  --sel_thresh <thresholds> \
+  --K <K_values> \
+  --sel_threshs <thresholds> \
   --categorical_key <key> \
   --log_covariates <cols...> \
   --covariates <cols...> \
@@ -115,18 +117,24 @@ If any requested covariate isn't present in `cNMF.obs`, add a small prep step be
 
 - `--out_dir`, `--run_name`
 
-U-test reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) directly from each `cNMF_<K>_<thresh>.h5mu` — no separate `--mdata_guide_path` required (same pattern as CRT).
+U-test reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) directly from each `cNMF_<K>_<thresh>.h5mu` — no separate `mdata_guide_path` flag required (same pattern as CRT).
 
 ### Key optional parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--components` | `[30,50,60,80,100,200,250,300]` | K values |
-| `--sel_thresh` | `[0.4,0.8,2.0]` | Density thresholds |
+| `--K` | `[30, 50, 70, 80, 100, 200, 300]` | K values (formerly named `--components`) |
+| `--sel_threshs` | `[0.2, 2.0]` | Density thresholds |
 | `--guide_annotation_key` | `['non-targeting']` | Non-targeting guide label |
+| `--guide_annotation_path` | None | TSV with a `targeting` column (alternative to `--guide_annotation_key`) |
+| `--reference_gtf_path` | None | Reference GTF for validating gene names during `--check_format` |
 | `--number_run` | `300` | Calibration iterations |
 | `--number_guide` | `6` | Fake targeting guides per iteration |
 | `--FDR_method` | `StoreyQ` | FDR correction method |
+| `--compute_real_perturbation_tests` | flag | Compute perturbation association on real targeting guides |
+| `--compute_fake_perturbation_tests` | flag | Compute perturbation association on fake targeting guides (null) |
+| `--visualizations` | flag | Generate QQ plots and violin plots comparing real vs null distributions |
+| `--check_format` | flag | Validate MuData format + required keys before running calibration |
 | `--skip_existing` | flag | Resume preempted jobs by skipping per-(K, sel_thresh, sample) outputs that already exist on disk; visualizations still work via on-disk loads |
 
 ### SLURM resources

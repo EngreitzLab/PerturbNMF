@@ -1,0 +1,165 @@
+Pipeline flag count: 231
+Catalog table-row flag count: 161
+
+Pipeline flags MISSING from parameter-catalog.md: 97
+  --all-significant  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py)
+  --annotation-context  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py...)
+  --annotation-role  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py...)
+  --annotations-dir  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/05_generate_html_report.py)
+  --api-key  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py)
+  --batch-file  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --batch-id  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --bucket  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --cache-dir  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py)
+  --celltype-dir  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --celltype-enrichment  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py...)
+  --celltype-file  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --celltype-summary-out  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py)
+  --config  (in 6 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py...)
+  --correlation  (in 1 script(s): src/Stage2_Evaluation/A_Metrics/src/enrichment_motif.py)
+  --csv-out  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py...)
+  --days  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/compile_regulators.py)
+  --domain-keywords  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/Slurm_Version/run_literature_search.py)
+  --enrichment-dir  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/05_generate_html_report.py)
+  --enrichment-file  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --excel  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/Slurm_Version/run_literature_search.py)
+  --figures-dir  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py)
+  --figures-only  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py)
+  --force-refresh  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py)
+  --force-restart  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/run_pipeline.py)
+  --full-summaries  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py)
+  --gcs-prefix  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/04_parse_and_summarize.py...)
+  --gene-file  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --gene-loading  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/run_pipeline.py)
+  --gene-loading-csv  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/05_generate_html_report.py)
+  --gene-loading-file  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/04_parse_and_summarize.py)
+  --gene-loading-out  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py)
+  --gene-summary-source  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py)
+  --gene_name_key  (in 2 script(s): src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_program_analysis.py...)
+  --genes-json  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py)
+  --genes-per-term  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --interactions  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/Slurm_Version/run_literature_search.py)
+  --job-name  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --json-out  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py...)
+  --keyword  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py...)
+  --llm-max-tokens  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/Slurm_Version/run_literature_search.py)
+  --llm-model  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/Slurm_Version/run_literature_search.py)
+  --llm-provider  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/Slurm_Version/run_literature_search.py)
+  --markdown-dir  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/04_parse_and_summarize.py)
+  --max-llm-queries  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/Slurm_Version/run_literature_search.py)
+  --max-papers  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/Slurm_Version/run_literature_search.py)
+  --max-pubtator-results  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/Slurm_Version/run_literature_search.py)
+  --max-regulators  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py)
+  --max-tokens  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --model  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --n-top  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py...)
+  --ncbi-file  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --no-parse  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/04_parse_and_summarize.py)
+  --no-resume  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/run_pipeline.py...)
+  --no-summary  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/04_parse_and_summarize.py)
+  --num-genes  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/src/preprocess_input.py)
+  --num-programs  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py)
+  --num-topics  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --num_genes  (in 1 script(s): src/Stage2_Evaluation/A_Metrics/src/enrichment_motif.py)
+  --out-csv-filtered  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py)
+  --out-csv-full  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py)
+  --output  (in 5 script(s): src/Stage2_Evaluation/A_Metrics/src/enrichment_motif.py...)
+  --output-dir  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/run_pipeline.py...)
+  --output-file  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --output-html  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/05_generate_html_report.py)
+  --pattern  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/compile_regulators.py)
+  --pseudobulk_key  (in 1 script(s): src/Stage2_Evaluation/A_Metrics/src/association_categorical.py)
+  --regulator-file  (in 3 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py...)
+  --regulator-pmids  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py)
+  --regulator-significance-threshold  (in 4 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py...)
+  --rename  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/compile_regulators.py)
+  --restart-from  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/run_pipeline.py)
+  --results-jsonl  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/04_parse_and_summarize.py)
+  --resume  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py...)
+  --retries  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py)
+  --search-keyword  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --semantic-check  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/Slurm_Version/run_literature_search.py)
+  --sheet-name  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/src/preprocess_input.py)
+  --significance  (in 1 script(s): src/Stage2_Evaluation/A_Metrics/src/enrichment_motif.py)
+  --sleep  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/01_genes_to_string_enrichment.py)
+  --start-from  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/run_pipeline.py)
+  --stop-after  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/run_pipeline.py)
+  --store_files  (in 1 script(s): src/Stage2_Evaluation/A_Metrics/src/enrichment_motif.py)
+  --summary-csv  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/04_parse_and_summarize.py...)
+  --summary-excel  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/src/preprocess_input.py)
+  --test  (in 1 script(s): src/Stage2_Evaluation/A_Metrics/src/association_categorical.py)
+  --top-enrichment  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py)
+  --top-genes-col  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/Literature_search/src/preprocess_input.py)
+  --top-loading  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py...)
+  --top-member  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py)
+  --top-negative-regulators  (in 3 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py...)
+  --top-positive-regulators  (in 3 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py...)
+  --top-regulators  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py)
+  --top-unique  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py...)
+  --topics  (in 4 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/02_fetch_ncbi_data.py...)
+  --volcano-csv  (in 1 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/05_generate_html_report.py)
+  --wait  (in 2 script(s): src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/03_submit_and_monitor_batch.py...)
+
+Catalog flags NOT in any pipeline (potential rename/orphan): 27
+  --batch_id
+  --bootstrap_ncpus
+  --categorical_covariates
+  --cell_metadata
+  --cnmf_usages
+  --condition
+  --de_level
+  --gene_batch_file
+  --gene_expression
+  --gene_perturbations_sparse
+  --gene_spectra_tpm
+  --log_transform_covariates
+  --matching_calipers
+  --matching_method
+  --matching_ratio
+  --max_control_cells
+  --method
+  --methods
+  --min_cells_per_gene
+  --n_bootstrap
+  --n_permutations
+  --output_dir
+  --perturbation_names
+  --response_gene_names
+  --save_matched_cells
+  --script_dir
+  --test_type
+
+Per-step file: flags referenced that are not in any pipeline .py
+  01-inference.md: ['gpu_min_mem', 'gpu_sku']
+  02-evaluation.md: clean
+  03-calibration.md: ['batch_id', 'cell_metadata', 'cnmf_usages', 'components', 'condition', 'cpus', 'de_level', 'gene_batch_file', 'gene_perturbations_sparse', 'job_name', 'log_dir', 'matching_ratio', 'mem', 'methods', 'min_cells_per_gene', 'output_dir', 'partition', 'perturbation_names', 'script_dir', 'script_output_path', 'stage', 'test_type', 'time']
+  04-visualization.md: clean
+  05-annotation-summary.md: ['execute']
+
+Default spot-check (flag → pipeline defaults vs catalog default cell):
+  --K: not in pipeline
+  --sel_threshs:
+      pipeline src/Stage2_Evaluation/B_Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py: default=[0.2
+      pipeline src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/CRT.py: default=[0.2
+      pipeline src/Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py: default=[0.2
+      pipeline src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_k_selection.py: default=[0.2
+      pipeline src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py: default=[0.2
+      pipeline src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py: default=[0.2
+      catalog row: | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds for consensus filtering |
+      catalog row: | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | |
+      catalog row: | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds |
+      catalog row: | `--sel_threshs` | float (nargs=\*) | (from data) | No | Density thresholds |
+      catalog row: | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds |
+      catalog row: | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds |
+  --numhvgenes:
+      pipeline src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py: default=5451
+      pipeline src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py: default=2000
+      catalog row: | `--numhvgenes` | int | `5451` | Number of highly variable genes |
+      catalog row: | `--numhvgenes` | int | `2000` | **Different from sk-cNMF** |
+  --tol:
+      pipeline src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py: default=1e4
+      pipeline src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py: default=1e-4
+      catalog row: | `--tol` | float | `1e4` | Convergence tolerance (**WARNING**: likely a bug, should be `1e-4` -- see torch-cNMF) |
+      catalog row: | `--tol` | float | `1e-4` | **Different from sk-cNMF** |
+
+Total alignment problems: 124

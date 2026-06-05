@@ -16,7 +16,31 @@ LLM-driven gene program annotation. Runs the PerturbNMF Annotation pipeline whic
 |-----------|-------------|
 | `--config` | Path to pipeline config YAML (see `src/Stage3_Interpretation/C_Annotation/configs/pipeline_config.yaml` for template) |
 
-The config YAML specifies: input spectra file, output directory, LLM model, STRING parameters, and literature mining settings.
+The config YAML specifies: input spectra file, output directory, LLM model, STRING parameters, and literature mining settings. Any of the YAML keys can also be overridden on the command line — see `references/parameter-catalog.md` (Annotation section) for the full list.
+
+### Common CLI overrides (skip the YAML for one-offs)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--gene-loading` | (from YAML) | Path to gene loading matrix CSV |
+| `--celltype-enrichment` | None | Raw cell-type enrichment CSV (auto-summarized if provided) |
+| `--output-dir` | (from YAML) | Output directory for all results |
+| `--regulator-file` | None | SCEPTRE regulator results CSV |
+| `--topics` | all | Comma-separated topic IDs to process (e.g. `2,6,33`) |
+| `--species` | `10090` | NCBI taxonomy ID (`10090` = mouse, `9606` = human) |
+| `--keyword` | (from YAML) | PubMed search keyword for tissue/cell type |
+| `--annotation-role` | (from YAML) | Specialist role used in the LLM prompt header |
+| `--annotation-context` | (from YAML) | Dataset/cell-type description for the prompt header |
+| `--top-positive-regulators` | (from YAML) | Number of positive regulators per program |
+| `--top-negative-regulators` | (from YAML) | Number of negative regulators per program |
+| `--regulator-significance-threshold` | (from YAML) | Adjusted p-value cutoff when regulator file lacks a `significant` column |
+| `--start-from` | None | Resume from a step: `string_enrichment`, `literature_fetch`, `batch_prepare`, `batch_submit`, `parse_results`, `html_report` |
+| `--stop-after` | None | Stop after a step (same choices as `--start-from`) |
+| `--restart-from` | None | Re-run from the specified step (overwrites later state) |
+| `--gcs-prefix` | None | GCS prefix for batch results (for resuming at `parse_results`) |
+| `--no-resume` | off | Disable resume/caching; re-query all APIs |
+| `--wait` | off | Wait for LLM batch completion (default: submit and exit; resume later) |
+| `--force-restart` | off | Ignore existing state and restart pipeline (overwrites prior output) |
 
 ### SLURM resources
 
@@ -24,6 +48,44 @@ The config YAML specifies: input spectra file, output directory, LLM model, STRI
 - CPUs: 4
 - Memory: 32G
 - Time: 1-2h (depends on number of programs and LLM response time)
+
+---
+
+## Literature Search (optional companion to Annotation)
+
+**Conda**: `progexplorer`
+
+Mines PubMed/PubTator for evidence supporting the program annotations produced by the Annotation stage. Run after Annotation if you want literature citations attached to each program.
+
+### Required parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `--excel` | Input Excel with one row per program (typically the Annotation HTML report's source workbook) |
+| `--output-dir` | Output directory for per-program literature pages |
+
+### Common optional parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--programs` | all | Comma-separated program IDs (e.g. `2,6,33,34`) |
+| `--interactions` | (built-in 17-verb list) | Comma-separated interaction verbs used to formulate queries |
+| `--domain-keywords` | (built-in vascular set) | Comma-separated domain keywords for evidence scoring |
+| `--max-papers` | `30` | Max papers per program |
+| `--max-pubtator-results` | `50` | Max results per PubTator query |
+| `--max-llm-queries` | `8` | Max LLM-generated queries per program |
+| `--llm-provider` | `stanford` | One of `anthropic`, `stanford`, `openai`, `deepseek`, `gemini` |
+| `--llm-model` | None (provider default) | LLM model name |
+| `--llm-max-tokens` | `4096` | Max tokens for LLM output |
+| `--semantic-check` | off | Enable LLM semantic verification (costs tokens) |
+| `--resume` / `--no-resume` | resume on | Enable/disable resume/caching |
+
+### SLURM resources
+
+- Partition: `engreitz,owners`
+- CPUs: 4
+- Memory: 32G
+- Time: 1-3h (depends on `--max-papers` and LLM throughput)
 
 ---
 

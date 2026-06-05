@@ -24,10 +24,10 @@ Complete parameter reference for all pipeline stages, extracted from argparse de
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `--K` | int (nargs=\*) | `[30,50,60,80,100,200,250,300]` | K values (number of components) |
+| `--K` | int (nargs=\*) | `[30, 50, 70, 80, 100, 200, 300]` | K values (number of components) |
 | `--numiter` | int | `10` | Number of NMF replicates |
 | `--numhvgenes` | int | `5451` | Number of highly variable genes |
-| `--sel_thresh` | float (nargs=\*) | `[2.0]` | Density thresholds for consensus filtering |
+| `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds for consensus filtering |
 | `--seed` | int | `14` | Random seed |
 | `--init` | str | `random` | NMF initialization (`random`, `nndsvd`, `nndsvda`, `nndsvdar`) |
 | `--loss` | str | `frobenius` | NMF loss function |
@@ -77,15 +77,13 @@ Complete parameter reference for all pipeline stages, extracted from argparse de
 torch-cNMF shares most parameters with sk-cNMF but has these important differences:
 - Does NOT have `--max_NMF_iter` (use `--batch_max_epoch` instead)
 - Does NOT have `--check_format`, `--guide_annotation_path`, or `--reference_gtf_path`
-- `--K` default is `[5, 7, 10]` (smaller testing range)
 - `--numhvgenes` default is `2000` (not `5451`)
-- `--sel_thresh` default is `[2.0]`
 - `--algo` default is `halsvar` (not `mu`)
 - `--tol` default is `1e-4` (correct, unlike sk-cNMF's `1e4`)
 - `--guide_assignment_key` default is `guide_assignment` (not `guide_assignment_key`)
 - `--run_compile_annotation` has the correct spelling (no typo)
-- "online" mode is now called "minibatch"; all `--online_*` parameters are now `--minibatch_*`
-- `--batch_max_iter` is now `--batch_max_epoch`
+- "online" mode is now called "minibatch"; all `--online_*` parameters are renamed to `--minibatch_*`
+- `--batch_max_iter` is renamed to `--batch_max_epoch`
 
 ### Required Parameters
 
@@ -95,10 +93,10 @@ Same as sk-cNMF: `--counts_fn`, `--output_directory`, `--run_name`, `--species`
 
 | Parameter | Type | Default | Notes |
 |-----------|------|---------|-------|
-| `--K` | int (nargs=\*) | `[5, 7, 10]` | **Different from sk-cNMF** |
+| `--K` | int (nargs=\*) | `[30, 50, 70, 80, 100, 200, 300]` | |
 | `--numiter` | int | `10` | |
 | `--numhvgenes` | int | `2000` | **Different from sk-cNMF** |
-| `--sel_thresh` | float (nargs=\*) | `[2.0]` | |
+| `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | |
 | `--seed` | int | `14` | |
 | `--init` | str | `random` | |
 | `--loss` | str | `frobenius` | |
@@ -113,6 +111,7 @@ Same as sk-cNMF: `--counts_fn`, `--output_directory`, `--run_name`, `--species`
 | `--run_refit` | Run combine + k_selection + consensus |
 | `--run_compile_annotation` | Compile results and gene annotation (**fixed spelling**, not `complie`) |
 | `--parallel_running` | Enable parallel processing for multiple K values |
+| `--run_diagnostic_plots` | Generate diagnostic plots (elbow curves, usage heatmaps, loading violins) after inference |
 | `--skip_existing` | Skip NMF replicates already completed on disk (pause/resume mode); default re-runs from scratch |
 
 ### Optional Parameters (shared with sk-cNMF)
@@ -207,8 +206,8 @@ Same as sk-cNMF except:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `--K` | int (nargs=\*) | `[30,50,60,80,100,200,250,300]` | K values to evaluate |
-| `--sel_thresh` | float (nargs=\*) | `[0.4,0.8,2.0]` | Density thresholds |
+| `--K` | int (nargs=\*) | `[30, 50, 70, 80, 100, 200, 300]` | K values to evaluate |
+| `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds |
 | `--gwas_data_path` | str | None | Path to GWAS data (required only for trait enrichment) |
 | `--X_normalized_path` | str | None | Normalized counts h5ad (needed for explained variance). Path pattern: `<out_dir>/<run_name>/Inference/cnmf_tmp/Inference.norm_counts.h5ad` (prefix is always `Inference`, not the run_name) |
 | `--guide_annotation_path` | str | None | Guide annotation TSV |
@@ -249,7 +248,7 @@ Same as sk-cNMF except:
 | `--sel_threshs` | float (nargs=\*) | (from data) | No | Density thresholds |
 | `--groupby` | str | `sample` | No | Grouping variable |
 | `--pval` | float | `0.05` | No | P-value threshold |
-| `--samples` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | No | Sample names |
+| `--Conditions` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | No | Condition labels (formerly `--samples`); matches the categorical key used during evaluation |
 | `--selected_k` | int | None | No | K value to highlight |
 | `--go_file` | str | None | No | GO enrichment file pattern (use `{k}` placeholder) |
 | `--geneset_file` | str | None | No | Geneset enrichment file pattern (use `{k}` placeholder) |
@@ -290,9 +289,11 @@ Same as sk-cNMF except:
 | `--up_thred_log` | float | `0.00` | No | Upper volcano threshold |
 | `--figsize` | float (nargs=2) | `35 35` | No | Figure size |
 | `--show` | flag | | No | Display interactively |
-| `--PDF` | flag | | No | Save as PDF (else SVG) |
+| `--output_format` | str | `SVG` | No | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-program interactive Plotly pages |
+| `--html_share_path` | str | `{pdf_save_path}/html_share` | No | Output directory for HTML report (only used when `--output_format HTML`) |
+| `--skip_existing` | flag | | No | Turn OFF skipping; re-process every program (default is to skip programs whose output already exists) |
 | `--square_plots` | flag | | No | Square aspect ratio |
-| `--sample` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | No | Sample names |
+| `--Conditions` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | No | Condition names (formerly `--sample`) |
 | `--programs` | int (nargs=+) | None | No | Specific program numbers to plot (e.g. `4 5 6`). If omitted, all programs plotted |
 | `--subsample_frac` | float | None | No | Fraction of cells to subsample for UMAP (e.g. `0.1` for 10%) |
 | `--corr_matrix_path` | str | None | No | Base path for precomputed waterfall correlation matrices |
@@ -338,12 +339,14 @@ Same as sk-cNMF except:
 | `--volcano_log2fc_max` | float | `0.00` | No | Upper volcano threshold |
 | `--figsize` | float (nargs=2) | `35 35` | No | Figure size |
 | `--show` | flag | | No | Display interactively |
-| `--PDF` | flag | | No | Save as PDF (else SVG) |
+| `--output_format` | str | `SVG` | No | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-gene interactive Plotly pages |
+| `--html_share_path` | str | `{save_path}/html_share` | No | Output directory for HTML report (only used when `--output_format HTML`) |
+| `--skip_existing` | flag | | No | Turn OFF skipping; re-process every gene (default is to skip genes whose output already exists) |
 | `--square_plots` | flag | | No | Square aspect ratio |
 | `--n_processes` | int | `-1` | No | Parallel processes |
 | `--umap_dot_size` | int | `10` | No | UMAP dot size |
 | `--expressed_only` | flag | | No | Only plot expressed perturbed genes |
-| `--sample` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | No | Sample names |
+| `--Conditions` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | No | Condition names (formerly `--sample`) |
 | `--gene_list_file` | str | None | No | File with gene names to process (one per line, overrides auto-detection) |
 | `--subsample_frac` | float | None | No | Fraction of cells to subsample for UMAP |
 | `--parallel` | flag | | No | Use fork-based multiprocessing (Linux only) |
@@ -368,14 +371,14 @@ Same as sk-cNMF except:
 | `--out_dir` | str | Directory containing cNMF output |
 | `--run_name` | str | cNMF run name |
 
-U-test reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) directly from each `cNMF_<K>_<thresh>.h5mu` — no separate `--mdata_guide_path` required.
+U-test reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) directly from each `cNMF_<K>_<thresh>.h5mu` — no separate `mdata_guide_path` flag required (formerly used).
 
 ### Optional
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `--components` | int (nargs=\*) | `[30,50,60,80,100,200,250,300]` | K values |
-| `--sel_thresh` | float (nargs=\*) | `[0.4,0.8,2.0]` | Density thresholds |
+| `--K` | int (nargs=\*) | `[30, 50, 70, 80, 100, 200, 300]` | K values (formerly named `--components`) |
+| `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds |
 | `--guide_annotation_path` | str | None | Guide annotation TSV |
 | `--guide_annotation_key` | str | `['non-targeting']` | Non-targeting guide label |
 | `--reference_gtf_path` | str | None | Reference GTF |
@@ -425,8 +428,8 @@ CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['gu
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `--components` | int (nargs=\*) | `[30,50,60,80,100,200,250,300]` | K values |
-| `--sel_thresh` | float (nargs=\*) | `[0.4,0.8,2.0]` | Density thresholds |
+| `--K` | int (nargs=\*) | `[30, 50, 70, 80, 100, 200, 300]` | K values (formerly named `--components`) |
+| `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds |
 | `--categorical_key` | str | `sample` | Sample/condition key |
 | `--covariates` | str (nargs=\*) | None | Covariate keys in obs (used as-is) |
 | `--log_covariates` | str (nargs=\*) | None | Covariate keys to log1p-transform |
@@ -496,3 +499,75 @@ This is an R-based calibration method using propensity score matching with OLS r
 | `--de_level` | str | `programs` | DE level: `programs`, `genes`, or `both` |
 | `--gene_expression` | str | `""` | Path to gene_expression_sparse.tsv for direct gene DE |
 | `--response_gene_names` | str | `""` | Path to response_gene_names.txt |
+
+---
+
+## 10. Annotation (ProgramExplorer orchestrator)
+
+**Script**: `src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/run_pipeline.py`
+**Conda**: `progexplorer`
+
+Driven by a YAML config (`--config`); any YAML key can be overridden on the command line. Internal numbered step scripts (`01_*.py` … `05_*.py`) are called by the orchestrator and aren't user-facing CLIs.
+
+### Required (one of)
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `--config` / `-c` | str | Path to YAML config (see `src/Stage3_Interpretation/C_Annotation/ProgramExplorer/configs/pipeline_config.yaml`) |
+| `--gene-loading` + `--output-dir` | str | Direct CLI invocation (required if `--config` is not given) |
+
+### CLI overrides
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--gene-loading` | str | (from YAML) | Path to gene loading matrix CSV |
+| `--celltype-enrichment` | str | None | Raw cell-type enrichment CSV (auto-summarized if provided) |
+| `--output-dir` | str | (from YAML) | Output directory for all results |
+| `--regulator-file` | str | None | SCEPTRE regulator results CSV |
+| `--topics` | str | all | Comma-separated topic IDs to process (e.g. `2,6,33`) |
+| `--species` | int | `10090` | NCBI taxonomy ID (`10090` = mouse, `9606` = human) |
+| `--keyword` | str | (from YAML) | PubMed search keyword for tissue/cell type |
+| `--annotation-role` | str | (from YAML) | Specialist role used in the LLM prompt header |
+| `--annotation-context` | str | (from YAML) | Dataset/cell-type description for the prompt header |
+| `--top-positive-regulators` | int | (from YAML) | Positive regulators per program |
+| `--top-negative-regulators` | int | (from YAML) | Negative regulators per program |
+| `--regulator-significance-threshold` | float | (from YAML) | Adjusted p-value cutoff when regulator file lacks a `significant` column |
+| `--start-from` | str | None | Resume from a step: `string_enrichment`, `literature_fetch`, `batch_prepare`, `batch_submit`, `parse_results`, `html_report` |
+| `--stop-after` | str | None | Stop after a step (same choices as `--start-from`) |
+| `--restart-from` | str | None | Re-run from the specified step (overwrites later state) |
+| `--gcs-prefix` | str | None | GCS prefix for batch results (for resuming at `parse_results`) |
+| `--no-resume` | flag | False | Disable resume/caching; re-query all APIs |
+| `--wait` | flag | False | Wait for LLM batch completion (default: submit and exit; resume later) |
+| `--force-restart` | flag | False | Ignore existing state and restart pipeline (overwrites prior output) |
+
+---
+
+## 11. Literature Search
+
+**Script**: `src/Stage3_Interpretation/C_Annotation/Literature_search/Slurm_Version/run_literature_search.py`
+**Conda**: `progexplorer`
+
+Runs after Annotation to attach PubMed/PubTator evidence to each program.
+
+### Required
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `--excel` | str | Input Excel with one row per program |
+| `--output-dir` | str | Output directory for per-program literature pages |
+
+### Optional
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--programs` | str | all | Comma-separated program IDs (e.g. `2,6,33,34`) |
+| `--interactions` | str | (built-in 17-verb list) | Comma-separated interaction verbs for query formulation |
+| `--domain-keywords` | str | (built-in vascular set) | Comma-separated domain keywords for evidence scoring |
+| `--max-papers` | int | `30` | Max papers per program |
+| `--max-pubtator-results` | int | `50` | Max results per PubTator query |
+| `--max-llm-queries` | int | `8` | Max LLM-generated queries per program |
+| `--llm-provider` | str | `stanford` | One of `anthropic`, `stanford`, `openai`, `deepseek`, `gemini` |
+| `--llm-model` | str | None (provider default) | LLM model name |
+| `--llm-max-tokens` | int | `4096` | Max tokens for LLM output |
+| `--semantic-check` | flag | False | Enable LLM semantic verification (costs tokens) |
+| `--resume` / `--no-resume` | flag | resume on | Enable/disable resume/caching |

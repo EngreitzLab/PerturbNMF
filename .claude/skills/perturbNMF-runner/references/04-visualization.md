@@ -21,11 +21,13 @@
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--K` | (from data) | K values |
-| `--sel_threshs` | (from data) | Density thresholds |
+| `--K` | `[30, 50, 70, 80, 100, 200, 300]` | K values |
+| `--sel_threshs` | `[0.2, 2.0]` | Density thresholds |
+| `--Conditions` | `['D0', 'sample_D1', 'sample_D2', 'sample_D3']` | Condition labels matching the categorical key used during evaluation |
 | `--groupby` | `sample` | Grouping variable |
 | `--pval` | `0.05` | P-value threshold |
-| `--selected_k` | None | K value to highlight |
+| `--selected_k` | None | K value to highlight with a red dashed line |
+| `--stability_file` | None | Pre-computed stability/error TSV/NPZ (bypasses `cnmf.consensus()`; for torch-cNMF runs) |
 | `--run_program_dotplot` | off | Enable per-(K, sel_thresh) program dotplots (default off; requires the inference h5mu artifact per K/threshold) |
 
 Enrichment file patterns use `{k}` placeholder (and `{sample}` for perturbation). See `references/parameter-catalog.md` Section 4 for all optional params.
@@ -58,7 +60,10 @@ Enrichment file patterns use `{k}` placeholder (and `{sample}` for perturbation)
 | `--p_value` | `0.05` | Significance threshold |
 | `--programs` | None | Specific program numbers (e.g. `4 5 6`); if omitted, all plotted |
 | `--subsample_frac` | None | Fraction of cells to subsample for UMAP |
-| `--PDF` | off | Save as PDF (else SVG) |
+| `--output_format` | `SVG` | One of `PDF` / `SVG` / `HTML` |
+| `--corr_matrix_path` | None | Base path for precomputed waterfall correlation matrices (`<base>_<sample>.txt`); falls back to computing |
+| `--skip_existing` | on (default) | Default skips programs whose output already exists. Pass `--skip_existing` to force re-process all (inverted flag) |
+| `--tagert_col_name` | `program_name` | Column name for target programs in perturbation results (**note typo**: use as-is) |
 
 See `references/parameter-catalog.md` Section 5 for all optional params.
 
@@ -90,7 +95,12 @@ See `references/parameter-catalog.md` Section 5 for all optional params.
 | `--gene_list_file` | None | File with gene names to process (one per line) |
 | `--subsample_frac` | None | Fraction of cells to subsample for UMAP |
 | `--parallel` | off | Use fork-based multiprocessing (Linux only) |
-| `--PDF` | off | Save as PDF (else SVG) |
+| `--n_processes` | `-1` | Number of parallel processes (`-1` = all available cores) |
+| `--expressed_only` | off | Only plot perturbed genes found in the gene expression matrix |
+| `--control_target_name` | `non-targeting` | Name of non-targeting control in `guide_targets` (e.g. `non-targeting`, `CTRL`) |
+| `--corr_matrix_path` | None | Directory for precomputed gene waterfall correlation matrices (`corr_gene_matrix_<sample>.txt`); falls back to computing |
+| `--skip_existing` | on (default) | Default skips genes whose output already exists. Pass `--skip_existing` to force re-process all (inverted flag) |
+| `--output_format` | `SVG` | One of `PDF` / `SVG` / `HTML` |
 
 See `references/parameter-catalog.md` Section 6 for all optional params.
 

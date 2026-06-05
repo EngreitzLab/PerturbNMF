@@ -6,8 +6,6 @@ Checks input .h5ad or .h5mu files for required structure, reports dataset
 statistics (cell count, gene count, sparsity, file size), and validates
 guide information when present.
 
-Reuses logic from Stage1_Inference/src/format_checking.py.
-
 Exit code 0 = valid, 1 = issues found.
 """
 
@@ -41,6 +39,184 @@ def compute_sparsity(X):
         nnz = np.count_nonzero(X)
         total = X.size
     return 1.0 - (nnz / total) if total > 0 else 0.0
+
+
+def check_data_format(adata, guide_names_key="guide_names", guide_targets_key="guide_targets",
+                      categorical_key="batch", guide_assignment_key="guide_assignment"):
+    """Validate that an AnnData has the keys cNMF inference relies on."""
+    is_valid = True
+    if categorical_key not in adata.obs:
+        print(f"WARNING: Not found in adata.obs['{categorical_key}']\n")
+        is_valid = False
+    else:
+        print(f"Found adata.obs['{categorical_key}']\n")
+
+    if guide_names_key not in adata.uns:
+        print(f"WARNING: Not found in adata.uns['{guide_names_key}']\n")
+        is_valid = False
+    else:
+        print(f"Found adata.uns['{guide_names_key}']\n")
+
+    if guide_targets_key not in adata.uns:
+        print(f"WARNING: Not found in adata.uns['{guide_targets_key}']\n")
+        is_valid = False
+    else:
+        print(f"Found adata.uns['{guide_targets_key}']\n")
+
+    if "X_pca" not in adata.obsm:
+        print("WARNING: Not found adata.obsm['X_pca']\n")
+        is_valid = False
+    else:
+        print("Found adata.obsm['X_pca']\n")
+
+    if "X_umap" not in adata.obsm:
+        print("WARNING: Not found adata.obsm['X_umap']\n")
+        is_valid = False
+    else:
+        print("Found adata.obsm['X_umap']\n")
+
+    if guide_assignment_key not in adata.obsm:
+        print(f"WARNING: Not found adata.obsm['{guide_assignment_key}']\n")
+        is_valid = False
+    else:
+        guide_assignment = adata.obsm[guide_assignment_key]
+        print(f"Found adata.obsm['{guide_assignment_key}']\n")
+        try:
+            import scipy.sparse as sp
+            if sp.issparse(guide_assignment):
+                print(f"WARNING: '{guide_assignment_key}' is sparse. Converting to dense array...")
+                dense_array = guide_assignment.toarray()
+                adata.obsm[guide_assignment_key] = dense_array
+                print(f"'{guide_assignment_key}' converted to dense array (shape: {dense_array.shape})\n")
+            else:
+                print(f"'{guide_assignment_key}' is already dense (shape: {guide_assignment.shape})\n")
+        except Exception as e:
+            print(f"WARNING: Error checking '{guide_assignment_key}' sparsity: {e}\n")
+            is_valid = False
+    return is_valid
+
+
+def _validate_against_reference_gtf(rna_gene_names, gtf_path):
+    """Compare RNA var_names against gene_name attributes extracted from a GTF."""
+    import pandas as pd
+    validation = {"is_valid": True, "gtf_genes": set(), "not_in_gtf": []}
+    try:
+        gtf_df = pd.read_csv(
+            gtf_path, sep="\t", comment="#", header=None,
+            dtype={0: str, 1: str, 2: str, 3: int, 4: int, 5: str, 6: str, 7: str, 8: str},
+        )
+        extracted = gtf_df[8].str.extract(r'gene_name "([^"]+)"')[0]
+        if extracted.notna().sum() == 0:
+            print("gene_name not found in any rows\n")
+        else:
+            print(f"Successfully extracted gene_name from {extracted.notna().sum()} rows")
+            extracted = set(extracted)
+            validation["gtf_genes"] = extracted
+
+        rna_not_in_gtf = rna_gene_names - extracted
+        print(f"Found {len(rna_gene_names)} gene names in adata.var_name")
+        if rna_not_in_gtf:
+            print(f"WARNING: {len(rna_not_in_gtf)}/{len(rna_gene_names)} adata.var RNA NOT found in reference GTF."
+                  "\n This might be caused by the adata.var RNA being Ensembl ID instead of gene symbols.")
+            print(f"Examples: {list(rna_not_in_gtf)[:5]}\n")
+            validation["not_in_gtf"] = sorted(list(rna_not_in_gtf))
+        else:
+            print("All RNA genes found in reference GTF\n")
+    except FileNotFoundError:
+        print(f"ERROR: Reference GTF file not found at {gtf_path}\n")
+        validation["is_valid"] = False
+    except Exception as e:
+        print(f"ERROR: Failed to read reference GTF: {e}\n")
+        validation["is_valid"] = False
+    return validation
+
+
+def check_guide_names(adata, guide_names_key="guide_names", guide_targets_key="guide_targets",
+                     categorical_key="batch", reference_gtf_path=None, guide_annotation_path=None,
+                     guide_assignment_key="guide_assignment", check_var_names_align_with_guide_targets=True):
+    """Validate guide/RNA name consistency, optionally against a GTF and/or guide annotation TSV."""
+    import pandas as pd
+
+    results = {"is_valid": True, "missing_from_rna": [], "gtf_validation": None}
+    results["is_valid"] = check_data_format(
+        adata, guide_names_key=guide_names_key, guide_targets_key=guide_targets_key,
+        categorical_key=categorical_key, guide_assignment_key=guide_assignment_key,
+    )
+
+    rna_gene_names = set(adata.var_names)
+    guide_targets = adata.uns[guide_targets_key]
+    guide_names = adata.uns[guide_names_key]
+
+    if isinstance(guide_targets, (list, tuple)):
+        guide_gene_targets = set(guide_targets)
+        guide_gene_names = set(guide_names)
+    elif isinstance(guide_targets, (pd.Index, pd.Series)):
+        guide_gene_targets = set(guide_targets.values)
+        guide_gene_names = set(guide_names.values)
+    else:
+        guide_gene_targets = set(guide_targets)
+        guide_gene_names = set(guide_names)
+
+    if len(guide_targets) != len(guide_names) and len(guide_gene_targets) != adata.obsm[guide_assignment_key].shape[1]:
+        print("WARNING: guide_targets and guide_names and guide_assignment col should be equal length but not in here\n")
+        results["is_valid"] = False
+
+    if check_var_names_align_with_guide_targets:
+        guide_not_in_rna = guide_gene_targets - rna_gene_names
+        print(f"Found {len(guide_gene_targets)} genes in gene_targets")
+        if guide_not_in_rna:
+            print(f"WARNING: {len(guide_not_in_rna)}/{len(guide_gene_targets)} gene names in guide_targets but NOT in adata.var.\n"
+                  "                This might be caused by mismatch between gene symbol vs Ensembl ID or some perturbed genes are not expressed in the dataset."
+                  " Might cause issue in evalutation or plotting if naming conventions are different.")
+            print(f"Examples: {list(guide_not_in_rna)[:5]}\n")
+            results["missing_from_rna"] = sorted(list(guide_not_in_rna))
+        else:
+            print("All guide_targets found in RNA gene names\n")
+
+    if reference_gtf_path is None:
+        print("No reference GTF provided (optional check skipped)")
+        results["gtf_validation"] = None
+    else:
+        gtf_validation = _validate_against_reference_gtf(rna_gene_names, reference_gtf_path)
+        results["gtf_validation"] = gtf_validation
+        if not gtf_validation["is_valid"]:
+            results["is_valid"] = False
+
+    if guide_annotation_path is None:
+        print("\nNo reference guide annotation provided (optional check skipped)")
+        results["guide_annotation"] = None
+    else:
+        guide_annotation_df = pd.read_csv(guide_annotation_path, sep="\t", index_col=0)
+        if guide_names_key not in guide_annotation_df.columns:
+            print(f"{guide_names_key} not in guide annotation file")
+            results["is_valid"] = False
+            return results
+        annotation_guide_names = set(guide_annotation_df[guide_names_key].values)
+
+        if guide_targets_key not in guide_annotation_df.columns:
+            results["is_valid"] = False
+            print(f"{guide_targets_key} not in guide annotation file")
+            return results
+        annotation_guide_targets = set(guide_annotation_df[guide_targets_key].values)
+
+        if "targeting" not in guide_annotation_df.columns:
+            results["is_valid"] = False
+            print("'targeting' not in guide annotation file")
+
+        guide_targets_not_in_annotation = guide_gene_targets - annotation_guide_targets
+        guide_names_not_in_annotation = guide_gene_names - annotation_guide_names
+        if guide_targets_not_in_annotation or guide_names_not_in_annotation:
+            if guide_targets_not_in_annotation:
+                print(f"\n WARNING: {len(guide_targets_not_in_annotation)}/{len(guide_gene_targets)} guide targets in data but NOT in annotation.")
+                print(f"Examples: {list(guide_targets_not_in_annotation)[:5]}\n")
+            if guide_names_not_in_annotation:
+                print(f"\n WARNING: {len(guide_names_not_in_annotation)}/{len(guide_gene_names)} guide names in data but NOT in annotation.")
+                print(f"Examples: {list(guide_names_not_in_annotation)[:5]}\n")
+            results["is_valid"] = False
+        else:
+            print("All guide_targets and guide_names match guide annotation\n")
+
+    return results
 
 
 def validate_adata(adata, args):
@@ -233,7 +409,6 @@ def main():
     # Optional: run full format checking from pipeline
     if args.reference_gtf_path or args.guide_annotation_path:
         try:
-            from Stage1_Inference.src import check_guide_names
             if ext == '.h5mu':
                 adata_check = mdata[args.data_key]
             else:

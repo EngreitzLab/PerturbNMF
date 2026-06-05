@@ -22,10 +22,10 @@ Add `--categorical_key`, `--guide_names_key`, etc. if user specifies non-default
 | **Run name** | (required) | (required) | Convention: `MMDDYY_<description>` |
 | **Species** | (required) | (required) | `human` or `mouse` |
 | **Email** | (ask user) | (ask user) | Email for SLURM job notifications |
-| `--K` | `30 50 60 80 100 200 250 300` | `5 7 10` | K values (number of programs) |
+| `--K` | `30 50 70 80 100 200 300` | `30 50 70 80 100 200 300` | K values (number of programs) |
 | `--numiter` | `10` | `10` | Number of NMF replicates per K |
 | `--numhvgenes` | `5451` | `2000` | Highly variable genes to use |
-| `--sel_thresh` | `2.0` | `2.0` | Density thresholds |
+| `--sel_threshs` | `0.2 2.0` | `0.2 2.0` | Density thresholds |
 | `--seed` | `14` | `14` | Random seed |
 
 For **torch-cNMF**, also ask: `--algo` (default `halsvar`), `--mode` (default `batch`), `--tol` (default `1e-4`).
@@ -69,20 +69,25 @@ Present a summary and ask if user wants to change any. Defaults are fine for mos
 | `--nmf_seeds_path` | None | Custom NMF seeds file (text file with one integer per line) |
 | `--num_gene` | `300` | Top genes for annotation |
 | `--gene_names_key` | None | Column in adata.var with gene names for compiled results (e.g. `symbol`) |
+| `--remove_noncoding` | off | Remove non-coding genes whose symbol starts with `--ensembl_prefix` (requires `--gene_names_key` set to a real var column) |
+| `--ensembl_prefix` | `ENSG` | Ensembl ID prefix used to identify non-coding genes when `--remove_noncoding` is set |
+| `--parallel_running` | off | Enable parallel processing mode for combining results from multiple K values (used with `*_parallel.sh` array jobs) |
 
 #### torch-cNMF only
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--n_jobs` | `-1` | Parallel jobs (-1 = all cores) |
+| `--use_gpu` | off | Use GPU acceleration (required for GPU factorization; default keeps CPU fallback) |
 | `--densify` | off | Densify sparse matrix before factorization |
+| `--tpm_fn` | None | Pre-computed TPM file path (skips internal TPM normalization if provided) |
+| `--genes_file` | None | Path to a custom gene list file (overrides HVG selection) |
 | `--fp_precision` | `float` | `float` (32-bit) or `double` (64-bit) |
 | `--alpha_usage` | `0.0` | Regularization for usage matrix (W) |
 | `--alpha_spectra` | `0.0` | Regularization for spectra matrix (H) |
 | `--l1_ratio_usage` | `0.0` | L1 vs L2 ratio for usage (0=L2, 1=L1) |
 | `--l1_ratio_spectra` | `0.0` | L1 vs L2 ratio for spectra |
 | `--minibatch_shuffle` | off | Shuffle cells in minibatch mode |
-| `--remove_noncoding` | off | Remove non-coding genes |
 | `--sk_cd_refit` | off | Use sklearn coordinate descent for refitting |
 
 #### torch-cNMF batch/minibatch/dataloader mode

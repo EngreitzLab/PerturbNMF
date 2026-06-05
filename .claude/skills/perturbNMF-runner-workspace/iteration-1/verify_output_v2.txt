@@ -1,0 +1,50 @@
+  --matching_calipers
+  --matching_method
+  --matching_ratio
+  --max_control_cells
+  --method
+  --methods
+  --min_cells_per_gene
+  --n_bootstrap
+  --n_permutations
+  --output_dir
+  --perturbation_names
+  --response_gene_names
+  --save_matched_cells
+  --script_dir
+  --test_type
+
+Per-step file: flags referenced that are not in any pipeline .py
+  01-inference.md: ['gpu_min_mem', 'gpu_sku']
+  02-evaluation.md: clean
+  03-calibration.md: ['batch_id', 'cell_metadata', 'cnmf_usages', 'components', 'condition', 'cpus', 'de_level', 'gene_batch_file', 'gene_perturbations_sparse', 'job_name', 'log_dir', 'matching_ratio', 'mem', 'methods', 'min_cells_per_gene', 'output_dir', 'partition', 'perturbation_names', 'script_dir', 'script_output_path', 'stage', 'test_type', 'time']
+  04-visualization.md: clean
+  05-annotation-summary.md: ['execute']
+
+Default spot-check (flag → pipeline defaults vs catalog default cell):
+  --K: not in pipeline
+  --sel_threshs:
+      pipeline src/Stage2_Evaluation/B_Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py: default=[0.2
+      pipeline src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/CRT.py: default=[0.2
+      pipeline src/Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py: default=[0.2
+      pipeline src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_k_selection.py: default=[0.2
+      pipeline src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py: default=[0.2
+      pipeline src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py: default=[0.2
+      catalog row: | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds for consensus filtering |
+      catalog row: | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | |
+      catalog row: | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds |
+      catalog row: | `--sel_threshs` | float (nargs=\*) | (from data) | No | Density thresholds |
+      catalog row: | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds |
+      catalog row: | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds |
+  --numhvgenes:
+      pipeline src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py: default=5451
+      pipeline src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py: default=2000
+      catalog row: | `--numhvgenes` | int | `5451` | Number of highly variable genes |
+      catalog row: | `--numhvgenes` | int | `2000` | **Different from sk-cNMF** |
+  --tol:
+      pipeline src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py: default=1e4
+      pipeline src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py: default=1e-4
+      catalog row: | `--tol` | float | `1e4` | Convergence tolerance (**WARNING**: likely a bug, should be `1e-4` -- see torch-cNMF) |
+      catalog row: | `--tol` | float | `1e-4` | **Different from sk-cNMF** |
+
+Total alignment problems: 96

@@ -34,6 +34,7 @@ Reconstruction error and stability are computed automatically.
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--gwas_data_path` | None | Path to GWAS data (use GWAS_DATA constant) |
+| `--guide_annotation_path` | None | TSV with a `targeting` column to identify non-targeting controls (alternative to `--guide_annotation_key`) |
 | `--gene_names_key` | `symbol` | Column in data_guide["rna"].var with gene names |
 | `--FDR_method` | `StoreyQ` | FDR correction: `StoreyQ` or `BH` |
 | `--organism` | `human` | Species for enrichment |

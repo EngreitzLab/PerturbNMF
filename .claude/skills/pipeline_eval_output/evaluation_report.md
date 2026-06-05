@@ -52,7 +52,7 @@ flowchart TD
 | `--algo` | str | mu | No |
 | `--max_NMF_iter` | int | 500 | No |
 | `--tol` | float | **1e4 (BUG)** | No |
-| `--sel_thresh` | float list | [2.0] | No |
+| `--sel_threshs` | float list | [2.0] | No |
 | `--run_factorize` | flag | False | No |
 | `--run_refit` | flag | False | No |
 | `--run_complie_annotation` | flag | False | No |
@@ -308,7 +308,7 @@ python3 Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py \
     --run_name my_test_run \
     --gwas_data_path Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz \
     --K 30 \
-    --sel_thresh 2.0 \
+    --sel_threshs 2.0 \
     --Perform_categorical \
     --Perform_explained_variance \
     --Perform_geneset
