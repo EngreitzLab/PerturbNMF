@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # SLURM job configuration
-#SBATCH --job-name=102325_100K_cells_20iter_torch_halsvar_online_e7_RTX_0_2    # Job name
-#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Results/torch-cNMF_evaluation/online/0_2/102325_100K_cells_20iter_torch_halsvar_online_e7_RTX_0_2/Inference/logs/%j.out      # Output file (%j = job ID)
-#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Results/torch-cNMF_evaluation/online/0_2/102325_100K_cells_20iter_torch_halsvar_online_e7_RTX_0_2/Inference/logs/%j.err       # Error file
+#SBATCH --job-name=102325_100K_cells_20iter_torch_halsvar_minibatch_e7_RTX_0_2    # Job name
+#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Results/torch-cNMF_evaluation/minibatch/0_2/102325_100K_cells_20iter_torch_halsvar_minibatch_e7_RTX_0_2/Inference/logs/%j.out      # Output file (%j = job ID)
+#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Results/torch-cNMF_evaluation/minibatch/0_2/102325_100K_cells_20iter_torch_halsvar_minibatch_e7_RTX_0_2/Inference/logs/%j.err       # Error file
 #SBATCH --partition=gpu                # partition name
 #SBATCH --time=02:00:00                # Time limit 
 #SBATCH --nodes=1                      # Number of nodes
@@ -32,8 +32,8 @@ echo "Working directory: $(pwd)"
 
 
 # Configuration - Set your log directory here
-OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Results/torch-cNMF_evaluation/online/0_2"
-RUN_NAME="102325_100K_cells_20iter_torch_halsvar_online_e7_RTX_0_2"
+OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Results/torch-cNMF_evaluation/minibatch/0_2"
+RUN_NAME="102325_100K_cells_20iter_torch_halsvar_minibatch_e7_RTX_0_2"
 LOG_DIR="$OUT_DIR/$RUN_NAME/Inference/logs"
 
 # Create logs directory if it doesn't exist
@@ -48,7 +48,7 @@ echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 # Activate conda base environment
 echo "Activating conda base environment..."
 eval "$(conda shell.bash hook)"
-conda activate torch-cNMF
+conda activate torch-nmf-dl
 export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"

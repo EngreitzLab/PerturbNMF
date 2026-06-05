@@ -113,11 +113,6 @@ def generate_script(args, passthrough_args):
     else:
         log_dir = f"{args.output_dir}/{args.run_name}/Interpretation/logs"
 
-    # GPU constraint lines
-    gpu_lines = ""
-    if needs_gpu:
-        gpu_lines = "#SBATCH --gres=gpu:1                   # Request 1 GPU\n#SBATCH -C GPU_SKU:V100S_PCIE\n"
-
     # Build the passthrough args string
     # Reconstruct tokens into "--key value" pairs for readable multi-line output.
     # The sentinel '---COMMENTED---' splits tokens into active flags (before, emitted
