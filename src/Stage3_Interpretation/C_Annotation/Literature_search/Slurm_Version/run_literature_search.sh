@@ -64,7 +64,7 @@ python3 "$SLURM_DIR/run_literature_search.py" \
         --interactions "regulates,induces,promotes,inhibits,suppresses,activates,binds,modulates" \
         --domain-keywords "angiogenesis,permeability,barrier,inflammation,proliferation,migration,sprouting,hypoxia,metabolism" \
         #--semantic-check \
-        #--no-resume \
+        #--resume \
 
 # Cleanup function — runs on both success and failure
 cleanup() {

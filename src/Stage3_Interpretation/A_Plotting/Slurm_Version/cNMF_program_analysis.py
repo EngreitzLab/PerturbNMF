@@ -44,18 +44,13 @@ if __name__ == '__main__':
     parser.add_argument('--square_plots', action="store_true", help='use square aspect ratio for plots')
     parser.add_argument('--figsize', type=float, nargs=2, default=(35, 35), help='figure size as width height')
     parser.add_argument('--show', action="store_true", help='display plots interactively')
-    parser.add_argument('--output_format', type=str, default='SVG', choices=['PDF', 'SVG', 'HTML'],
-                        help='output format: PDF (matplotlib + PyPDF2 merge), SVG (matplotlib + svglib merge), HTML (interactive Plotly share folder)')
-    parser.add_argument('--html_share_path', type=str, default=None,
-                        help='output folder for HTML mode (default: {pdf_save_path}/html_share)')
-    parser.add_argument('--PDF', action="store_true",
-                        help='[DEPRECATED] alias for --output_format PDF')
-    parser.add_argument('--sample', nargs='*', type=str, default=None, help='list of sample names (default: D0 sample_D1 sample_D2 sample_D3)')
+    parser.add_argument('--output_format', type=str, default='SVG', choices=['PDF', 'SVG', 'HTML'], help='output format: PDF (matplotlib + PyPDF2 merge), SVG (matplotlib + svglib merge), HTML (interactive Plotly share folder)')
+    parser.add_argument('--html_share_path', type=str, default=None,help='output folder for HTML mode (default: {pdf_save_path}/html_share)')
+    parser.add_argument('--Conditions', nargs='*', type=str, default=['D0', 'sample_D1', 'sample_D2', 'sample_D3'], help='list of condition names')
     parser.add_argument('--programs', nargs='+', type=int, default=None, help='specific program numbers to plot (e.g. 4 5 6 ... 100). If omitted, all programs are plotted.')
     parser.add_argument('--subsample_frac', type=float, default=None, help='fraction of cells to subsample for UMAP plots (e.g. 0.1 for 10%%). Default: None (plot all cells)')
     parser.add_argument('--corr_matrix_path', type=str, default=None, help='base path for precomputed waterfall correlation matrices (e.g. /path/to/corr_matrix). Files are expected as <base>_<sample>.txt. Falls back to computing if not found.')
-    parser.add_argument('--no-resume', dest='resume', action='store_false', help='re-process every program; do not skip ones whose output already exists. Default: resume is on.')
-    parser.set_defaults(resume=True)
+    parser.add_argument('--skip_existing', action='store_false', help='[default on] skip programs whose output already exists. Pass --skip_existing to force re-process all.')
 
     # keys
     parser.add_argument('--data_key', type=str, default="rna", help='key to access gene expression data in MuData')
@@ -66,13 +61,6 @@ if __name__ == '__main__':
 
 
     args = parser.parse_args()
-
-    if args.PDF:
-        print("WARNING: --PDF is deprecated; use --output_format PDF instead.", file=sys.stderr)
-        args.output_format = 'PDF'
-
-    if args.sample is None:
-        args.sample = ['D0', 'sample_D1', 'sample_D2', 'sample_D3']
 
     if args.html_share_path is None:
         args.html_share_path = os.path.join(args.pdf_save_path, 'html_share')
@@ -130,7 +118,7 @@ if __name__ == '__main__':
     # compute correlations
     waterfall_correlation = {}
 
-    for samp in args.sample:
+    for samp in args.Conditions:
         precomputed = f"{args.corr_matrix_path}/corr_program_matrix_{samp}.txt" if args.corr_matrix_path else None
         save = f"{args.corr_matrix_path}/corr_program_matrix_{samp}.txt" if args.corr_matrix_path else None
         df = compute_program_waterfall_cor(f"{args.perturb_path_base}_{samp}.txt", precomputed_path=precomputed, save_path=save, log2fc_col=args.log2fc_col)
@@ -143,9 +131,9 @@ if __name__ == '__main__':
 
     programs_to_plot = args.programs if args.programs is not None else list(mdata[args.prog_key].var_names)
 
-    # Resume support: build the set of programs that actually need processing,
+    # Skip-existing support: build the set of programs that actually need processing,
     # but keep `programs_to_plot` as the full ordered list so HTML nav/index stay correct.
-    if args.resume:
+    if args.skip_existing:
         if args.output_format == 'HTML':
             done = {p.parent.name[len('program_'):]
                     for p in Path(args.html_share_path).glob('program_*/metadata.json')}
@@ -155,7 +143,7 @@ if __name__ == '__main__':
         process_set = {str(p) for p in programs_to_plot if str(p) not in done}
         skipped = len(programs_to_plot) - len(process_set)
         if skipped:
-            print(f"Resume: skipping {skipped} already-produced program(s); {len(process_set)} remaining.")
+            print(f"Skip-existing: skipping {skipped} already-produced program(s); {len(process_set)} remaining.")
     else:
         process_set = {str(p) for p in programs_to_plot}
 
@@ -177,7 +165,7 @@ if __name__ == '__main__':
                 Target_Program=str(program),
                 program_correlation=program_correlation,
                 waterfall_correlation=waterfall_correlation,
-                sample=args.sample,
+                sample=args.Conditions,
                 perturbed_gene_found=perturbed_gene_found,
                 html_share_path=args.html_share_path,
                 top_program=args.top_program,
@@ -217,7 +205,7 @@ if __name__ == '__main__':
                 save_path=args.pdf_save_path,
                 save_name=str(program),
                 figsize=args.figsize,
-                sample=args.sample,
+                sample=args.Conditions,
                 square_plots=args.square_plots,
                 show=args.show,
                 PDF=(args.output_format == 'PDF'),

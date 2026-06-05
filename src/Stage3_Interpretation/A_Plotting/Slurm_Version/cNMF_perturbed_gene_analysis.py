@@ -45,22 +45,17 @@ if __name__ == '__main__':
     parser.add_argument('--square_plots', action="store_true", help='use square aspect ratio for plots')
     parser.add_argument('--figsize', type=float, nargs=2, default=(35, 35), help='figure size as width height')
     parser.add_argument('--show', action="store_true", help='display plots interactively')
-    parser.add_argument('--output_format', type=str, default='SVG', choices=['PDF', 'SVG', 'HTML'],
-                        help='output format: PDF (matplotlib + PyPDF2 merge), SVG (matplotlib + svglib merge), HTML (interactive Plotly share folder)')
-    parser.add_argument('--html_share_path', type=str, default=None,
-                        help='output folder for HTML mode (default: {save_path}/html_share)')
-    parser.add_argument('--PDF', action="store_true",
-                        help='[DEPRECATED] alias for --output_format PDF')
+    parser.add_argument('--output_format', type=str, default='SVG', choices=['PDF', 'SVG', 'HTML'], help='output format: PDF (matplotlib + PyPDF2 merge), SVG (matplotlib + svglib merge), HTML (interactive Plotly share folder)')
+    parser.add_argument('--html_share_path', type=str, default=None, help='output folder for HTML mode (default: {save_path}/html_share)')
     parser.add_argument('--n_processes', type=int, default=-1, help='number of parallel processes (-1 for all available cores)')
-    parser.add_argument('--sample', nargs='*', type=str, default=None, help='list of sample names (default: D0 sample_D1 sample_D2 sample_D3)')
+    parser.add_argument('--Conditions', nargs='*', type=str, default=['D0', 'sample_D1', 'sample_D2', 'sample_D3'], help='list of condition names')
     parser.add_argument('--umap_dot_size', type=int, default=10, help='dot size for UMAP plots')
     parser.add_argument('--expressed_only', action="store_true", help='only plot perturbed genes found in the gene expression matrix (default: plot all perturbed genes)')
     parser.add_argument('--gene_list_file', type=str, default=None, help='path to a file with one gene name per line to process (overrides automatic perturbed gene detection)')
     parser.add_argument('--subsample_frac', type=float, default=None, help='fraction of cells to subsample for UMAP plots (e.g. 0.1 for 10%%). Default: None (plot all cells)')
     parser.add_argument('--parallel', action="store_true", help='use fork-based multiprocessing to plot genes in parallel (Linux only)')
     parser.add_argument('--corr_matrix_path', type=str, default=None, help='directory for precomputed gene waterfall correlation matrices. Files are expected as <dir>/corr_gene_matrix_<sample>.txt. Falls back to computing if not found.')
-    parser.add_argument('--no-resume', dest='resume', action='store_false', help='re-process every gene; do not skip ones whose output already exists. Default: resume is on.')
-    parser.set_defaults(resume=True)
+    parser.add_argument('--skip_existing', action='store_false', help='[default on] skip genes whose output already exists. Pass --skip_existing to force re-process all.')
 
     # keys
     parser.add_argument('--data_key', type=str, default="rna", help='key to access gene expression data in MuData')
@@ -72,16 +67,8 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
 
-    if args.PDF:
-        print("WARNING: --PDF is deprecated; use --output_format PDF instead.", file=sys.stderr)
-        args.output_format = 'PDF'
-
-    if args.sample is None:
-        args.sample = ['D0', 'sample_D1', 'sample_D2', 'sample_D3']
-
     if args.html_share_path is None:
         args.html_share_path = os.path.join(args.save_path, 'html_share')
-
 
 
     # save comfigs used         
@@ -90,7 +77,6 @@ if __name__ == '__main__':
     os.makedirs(f'{args.save_path}', exist_ok=True)
     with open(f'{args.save_path}/config_{job_id}.yml', 'w') as f:
         yaml.dump(args_dict, f, default_flow_style=False, width=1000)
-
 
 
     #read mdata
@@ -141,9 +127,9 @@ if __name__ == '__main__':
     else:
         genes_to_plot = sorted(perturbed_gene.tolist())
 
-    # Resume support: build the set of genes that actually need processing,
+    # Skip-existing support: build the set of genes that actually need processing,
     # but keep `genes_to_plot` as the full ordered list so HTML nav/index stay correct.
-    if args.resume:
+    if args.skip_existing:
         if args.output_format == 'HTML':
             done = {p.parent.name[len('gene_'):]
                     for p in Path(args.html_share_path).glob('gene_*/metadata.json')}
@@ -153,7 +139,7 @@ if __name__ == '__main__':
         process_set = {g for g in genes_to_plot if g not in done}
         skipped = len(genes_to_plot) - len(process_set)
         if skipped:
-            print(f"Resume: skipping {skipped} already-produced gene(s); {len(process_set)} remaining.")
+            print(f"Skip-existing: skipping {skipped} already-produced gene(s); {len(process_set)} remaining.")
     else:
         process_set = set(genes_to_plot)
 
@@ -162,13 +148,11 @@ if __name__ == '__main__':
     correlation_matrix = compute_gene_correlation_matrix(mdata, ensembl_to_symbol_file=args.ensembl_to_symbol_file)
 
     waterfall_correlation = {}
-    for samp in args.sample:
+    for samp in args.Conditions:
         precomputed = f"{args.corr_matrix_path}/corr_gene_matrix_{samp}.txt" if args.corr_matrix_path else None
         save = f"{args.corr_matrix_path}/corr_gene_matrix_{samp}.txt" if args.corr_matrix_path else None
         df = compute_gene_waterfall_cor(f"{args.perturb_path_base}_{samp}.txt", perturb_log2fc_col=args.perturb_log2fc_col, precomputed_path=precomputed, save_path=save)
         waterfall_correlation[samp] = (df)
-
-
 
 
     # Graph all genes
@@ -186,7 +170,7 @@ if __name__ == '__main__':
                 Target_Gene=gene,
                 gene_loading_corr_matrix=correlation_matrix,
                 perturb_corr_by_sample=waterfall_correlation,
-                sample=args.sample,
+                sample=args.Conditions,
                 html_share_path=args.html_share_path,
                 top_n_programs=args.top_n_programs,
                 top_corr_genes=args.top_corr_genes,
@@ -230,7 +214,7 @@ if __name__ == '__main__':
                 significance_threshold=args.significance_threshold,
                 save_path=args.save_path,
                 figsize=args.figsize,
-                sample=args.sample,
+                sample=args.Conditions,
                 square_plots=args.square_plots,
                 show=args.show,
                 PDF=(args.output_format == 'PDF'),
@@ -266,7 +250,7 @@ if __name__ == '__main__':
                 save_path=args.save_path,
                 save_name=gene,
                 figsize=args.figsize,
-                sample=args.sample,
+                sample=args.Conditions,
                 square_plots=args.square_plots,
                 show=args.show,
                 PDF=(args.output_format == 'PDF'),
@@ -281,5 +265,6 @@ if __name__ == '__main__':
         merge_pdfs_in_folder(args.save_path, output_filename="gene.pdf")
     elif args.output_format == 'SVG':
         merge_svgs_to_pdf(args.save_path)
+   
     # HTML: index already written inside the HTML branch above
 

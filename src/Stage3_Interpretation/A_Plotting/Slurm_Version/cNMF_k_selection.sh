@@ -38,7 +38,7 @@ mkdir -p "$LOG_DIR/Plot/k_selection/logs"
 
 # Activate conda base environment (change deponds on the sk or torch)
 echo "Activating conda base environment..."
-source activate torch-cNMF 
+source activate Interpretation
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
 echo "Python version: $(python --version)"
@@ -55,8 +55,12 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Inte
         --groupby "batch" \
         --K 30 50 60 \
         --sel_threshs 2.0 0.4 \
-        --samples 1 2 3 \
+        --Conditions 1 2 3 \
         --selected_k 50
+        # Optional: p-value threshold for plots (default 0.05):
+        # --pval 0.05 \
+        # Optional: enable per-(K, sel_thresh) program dotplots (requires the inference h5mu for each pair):
+        # --run_program_dotplot \
         # Optional: for torch-cNMF runs where cnmf is not installed, provide a pre-computed stats file:
         # --stability_file "$OUT_DIR/$RUN_NAME/$RUN_NAME.k_selection_stats.df.npz" \
         # Optional: for non-default file names and column names (e.g. Morphic data), add:
@@ -68,7 +72,9 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Inte
         # --perturbation_file "cNMF_gene_time_point_perturbation_association_{sample}.txt" \
         # --perturb_adjpval_col "adj_pval" \
         # --perturb_target_col "target_name" \
-        # --perturb_log2fc_col "log2FC"
+        # --perturb_log2fc_col "log2FC" \
+        # --variance_file "cNMF_variance_explained_ratio.txt" \
+        # --variance_col "variance_explained_ratio"
 
 
 # Calculate and print elapsed time at the end

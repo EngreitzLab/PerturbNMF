@@ -37,7 +37,7 @@ mkdir -p "$LOG_DIR/logs"
 
 # Activate conda base environment
 echo "Activating conda base environment..."
-source activate NMF_Benchmarking
+source activate Interpretation
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
 echo "Python version: $(python --version)"
@@ -60,8 +60,8 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Inte
         --save_path "$LOG_DIR" \
         --square_plots \
         --figsize 35 35 \
-        --sample D0 D1 D2 D3 \
-        --PDF \
+        --Conditions D0 D1 D2 D3 \
+        --output_format PDF \
         --n_processes -1 \
         --umap_dot_size 10 \
         --data_key 'rna' \
@@ -71,12 +71,17 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Inte
         --control_target_name 'non-targeting' \
         --subsample_frac 0.1 \
         --parallel
-        # --expressed_only
-        # --show
-        # --ensembl_to_symbol_file None
-        # --reference_gtf_path None
-        # --gene_list_file None
-        # --corr_matrix_path None
+
+        # Reference flags (uncomment + add to the python invocation above to enable):
+        #--output_format "SVG"                # one of PDF | SVG | HTML
+        #--html_share_path "$LOG_DIR/html_share"
+        #--skip_existing                      # turn OFF skipping; re-process every gene (default is to skip already-done)
+        #--expressed_only
+        #--show
+        #--ensembl_to_symbol_file None
+        #--reference_gtf_path None
+        #--gene_list_file None
+        #--corr_matrix_path None
 
 
 

@@ -7,7 +7,7 @@ Usage:
         --summary-excel /path/to/summary_table.xlsx \
         --output /path/to/lit_search_input.xlsx \
         --sheet-name "Summary" \
-        --conditions "D0,sample_D1,sample_D2,sample_D3"
+        --Conditions "D0,sample_D1,sample_D2,sample_D3"
 """
 from __future__ import annotations
 
@@ -156,7 +156,7 @@ def main(argv=None):
         help="Truncate gene list to this many genes (default: all)"
     )
     parser.add_argument(
-        "--conditions", type=str, required=True,
+        "--Conditions", type=str, required=True,
         help="Comma-separated condition/sample names (e.g. 'D0,sample_D1,sample_D2,sample_D3')"
     )
     parser.add_argument(
@@ -171,7 +171,7 @@ def main(argv=None):
     if not args.summary_excel.exists():
         parser.error(f"Summary Excel not found: {args.summary_excel}")
 
-    conditions = [c.strip() for c in args.conditions.split(",")]
+    conditions = [c.strip() for c in args.Conditions.split(",")]
 
     # Load summary table
     logger.info("Loading summary table from %s (sheet: %s)", args.summary_excel, args.sheet_name)
