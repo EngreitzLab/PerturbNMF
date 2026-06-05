@@ -1,3 +1,4 @@
+
 """
 torch-cNMF Inference Pipeline (Updated for torch_cnmf)
 
@@ -50,10 +51,10 @@ def main():
                         help="Path to text file with custom NMF seeds (one integer per line)")
 
     # --- cNMF parameters ---
-    parser.add_argument('--K', nargs='*', type=int, default=None,
-                        help="K values to test (default: [5, 7, 10])")
-    parser.add_argument('--sel_thresh', nargs='*', type=float, default=None,
-                        help="Density thresholds for consensus (default: [2.0])")
+    parser.add_argument('--K', nargs='*', type=int, default=[30, 50, 70, 80, 100, 200, 300],
+                        help="K values to test")
+    parser.add_argument('--sel_threshs', nargs='*', type=float, default=[0.2, 2.0],
+                        help="Density thresholds for consensus")
     parser.add_argument('--numiter', type=int, default=10,
                         help="NMF iterations per K")
     parser.add_argument('--densify', action='store_true',
@@ -147,12 +148,6 @@ def main():
                              "Default: re-run all replicates from scratch.")
 
     args = parser.parse_args()
-
-    # --- Defaults ---
-    if args.K is None:
-        args.K = [5, 7, 10]
-    if args.sel_thresh is None:
-        args.sel_thresh = [2.0]
 
     # --- Load custom seeds ---
     nmf_seeds = None
@@ -250,12 +245,12 @@ def main():
         cnmf_obj.k_selection_plot()
         run_cnmf_consensus(cnmf_obj,
                            components=args.K,
-                           density_thresholds=args.sel_thresh)
+                           density_thresholds=args.sel_threshs)
 
     # --- Compile results & annotate ---
     if args.run_compile_annotation:
         compile_results(run_dir, 'Inference',
-                        components=args.K, sel_threshs=args.sel_thresh,
+                        components=args.K, sel_threshs=args.sel_threshs,
                         guide_names_key=args.guide_names_key,
                         guide_targets_key=args.guide_targets_key,
                         categorical_key=args.categorical_key,
@@ -263,7 +258,7 @@ def main():
                         gene_names_key=args.gene_names_key)
 
         os.makedirs(f'{inference_dir}/Annotation', exist_ok=True)
-        for i in args.sel_thresh:
+        for i in args.sel_threshs:
             for k in args.K:
                 df = pd.read_csv('{inference_dir}/Inference.gene_spectra_score.k_{k}.dt_{sel_thresh}.txt'.format(
                                     inference_dir=inference_dir,
@@ -281,7 +276,7 @@ def main():
             run_dir=run_dir,
             run_name='Inference',
             K_list=args.K,
-            sel_thresh_list=args.sel_thresh,
+            sel_thresh_list=args.sel_threshs,
             categorical_key=args.categorical_key,
         )
 

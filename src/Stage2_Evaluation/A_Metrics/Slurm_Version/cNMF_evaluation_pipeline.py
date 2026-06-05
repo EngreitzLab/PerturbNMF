@@ -60,8 +60,8 @@ from Stage2_Evaluation.A_Metrics.src import (
 )
 
 
-def _assign_guide(mdata, _data_guide, gene_names_key='symbol'):
-    mdata['rna'].var_names = _data_guide['rna'].var[gene_names_key].astype(str)
+def _reassign_name(mdata, gene_names_key='symbol', data_key = 'rna'):
+    mdata[data_key].var_names = mdata[data_key].var[gene_names_key].astype(str)
 
 
 def main():
@@ -72,8 +72,8 @@ def main():
     #IO info
     parser.add_argument('--out_dir', help='Directory containing cNMF output files to evaluate', type=str, required=True)
     parser.add_argument('--run_name', help='Name of the cNMF run to evaluate (must match name used during inference)', type=str, required=True)
-    parser.add_argument('--K', nargs='*', type=int, default=None, help='List of K values (number of components) to evaluate. If not provided, defaults to [30, 50, 60, 80, 100, 200, 250, 300]')
-    parser.add_argument('--sel_thresh', nargs='*', type=float, default=None, help='List of density thresholds to evaluate. If not provided, defaults to [0.4, 0.8, 2.0]')
+    parser.add_argument('--K', nargs='*', type=int, default=[30, 50, 70, 80, 100, 200, 300], help='List of K values (number of components) to evaluate')
+    parser.add_argument('--sel_threshs', nargs='*', type=float, default=[0.2, 2.0], help='List of density thresholds to evaluate')
 
     # running different tests
     parser.add_argument('--Perform_categorical', action="store_true", help='If set, compute categorical association between programs and sample labels (Kruskal-Wallis test)')
@@ -87,7 +87,6 @@ def main():
     parser.add_argument('--X_normalized_path', type=str,  help='Path to normalized cell x gene matrix (.h5ad) from cNMF pipeline (required for explained variance)', default=None)
     parser.add_argument('--guide_annotation_path', type=str,  help='Path to tab-separated file with guide annotations including "targeting" column to identify non-targeting controls (optional)')
     parser.add_argument('--gwas_data_path', type=str,  help='Path to GWAS data file for trait enrichment analysis (required for trait enrichment)', default=None)
-    parser.add_argument('--data_guide_path', type=str,  help='Path to mdata that contains additional information (optional)', default = None)
 
     # keys
     parser.add_argument('--data_key', help='Key to access gene expression data in MuData object (default: rna)', type=str, default="rna")
@@ -105,19 +104,12 @@ def main():
     parser.add_argument('--n_top', type = int, help='Number of top loaded genes use to perform enrichment test(default: 300)',  default=300)
     parser.add_argument('--use_cache', action="store_true", help='If set, load gene set libraries from cached JSON in Resources/ instead of downloading. Falls back to download if cache not found, and saves a cache copy after download.')
     parser.add_argument('--skip_existing', action="store_true", help='If set, skip metric computations whose output files already exist. Useful for resuming jobs that were preempted mid-batch.')
+    parser.add_argument('--reassign_name', action="store_true",  help='Reform the data if needed')
 
     args = parser.parse_args()
 
     if args.Perform_trait and args.gwas_data_path is None:
         parser.error("--gwas_data_path is required when --Perform_trait is set")
-
-    # either change the array here or run each component in parallel
-    if args.K is None:
-        args.K = [30, 50, 60, 80, 100, 200, 250, 300]
-
-    if args.sel_thresh is None:
-        args.sel_thresh = [0.4, 0.8, 2.0]
-
 
     # create output directory
     os.makedirs((f'{args.out_dir}/{args.run_name}/Evaluation'), exist_ok=True)
@@ -163,12 +155,7 @@ def main():
         reference_targets = args.guide_annotation_key
 
 
-    # read data guide
-    if args.data_guide_path is not None:
-        _data_guide = mu.read(args.data_guide_path)
-
-
-    for sel_thresh in args.sel_thresh:
+    for sel_thresh in args.sel_threshs:
         for k in args.K:
 
             output_folder = f"{args.out_dir}/{args.run_name}/Evaluation/{k}_{str(sel_thresh).replace('.','_')}"
@@ -221,10 +208,9 @@ def main():
 
 
 
-
              # assign information
-            if args.data_guide_path is not None:
-                _assign_guide(mdata, _data_guide, gene_names_key=args.gene_names_key)
+            if args.reassign_name:
+                _reassign_name(mdata,  gene_names_key=args.gene_names_ke, data_key = args.data_key)
 
 
             # Run categorical assocation
@@ -241,6 +227,7 @@ def main():
 
             # Run perturbation assocation
             if args.Perform_perturbation:
+                
                 # Validate reference_targets against mdata guide_targets
                 mdata_targets = set(mdata[args.prog_key].uns[args.guide_targets_key])
                 matched_ref = mdata_targets.intersection(reference_targets)
@@ -252,6 +239,8 @@ def main():
                         f"but guide_targets contains group names (e.g. {list(mdata_targets)[:3]}). "
                         f"Use --guide_annotation_key instead of --guide_annotation_path."
                     )
+
+                # perform association per condition 
                 for samp in mdata[args.data_key].obs[args.categorical_key].unique():
                     out_pert = '{}/{}_perturbation_association_results_{}.txt'.format(output_folder, k, samp)
                     if args.skip_existing and os.path.exists(out_pert):

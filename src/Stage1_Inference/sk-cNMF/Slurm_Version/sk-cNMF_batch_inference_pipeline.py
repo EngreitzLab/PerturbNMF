@@ -48,13 +48,13 @@ def main():
     parser.add_argument('--numiter', type = int, default = 10, help='Number of NMF replicates to run (default: 10)')
     parser.add_argument('--numhvgenes', type = int, default = 5451, help='Number of highly variable genes to use (default: 5451)')
     parser.add_argument('--seed', type = int, default = 14, help='Random seed for reproducibility (default: 14)')
-    parser.add_argument('--K', nargs='*', type=int, default=None, help='List of K values (number of components) to test. If not provided, defaults to [30, 50, 60, 80, 100, 200, 250, 300]')
+    parser.add_argument('--K', nargs='*', type=int, default=[30, 50, 70, 80, 100, 200, 300], help='List of K values (number of components) to test')
     parser.add_argument('--init', type = str, default = 'random', help='Initialization method for NMF (default: random)')
     parser.add_argument('--loss', default = 'frobenius', help='Loss function for NMF (default: frobenius)')
     parser.add_argument('--algo', type = str, default = 'mu', help='Algorithm for NMF optimization (default: mu - multiplicative update)')
     parser.add_argument('--max_NMF_iter', type = int , default = 500, help='Maximum number of iterations for NMF (default: 500)')
     parser.add_argument('--tol', type = float , default = 1e4, help='Tolerance for NMF convergence (default: 1e4)')
-    parser.add_argument('--sel_thresh', nargs='*', type=float, default=[2.0], help='Density threshold(s) for consensus matrix filtering. If not provided, defaults to [0.4, 0.8, 2.0]')
+    parser.add_argument('--sel_threshs', nargs='*', type=float, default=[0.2, 2.0], help='Density threshold(s) for consensus matrix filtering')
 
     # annotation parameters
     parser.add_argument('--species', type=str, required=True, help='Species for gene annotation (e.g., human, mouse)')
@@ -83,14 +83,6 @@ def main():
 
 
     args = parser.parse_args()
-
-    # either change the array here or run each component in parallel
-    if args.K is None:
-        args.K = [30, 50, 60, 80, 100, 200, 250, 300]
-
-    if args.sel_thresh is None:
-        args.sel_thresh = [0.4, 0.8, 2.0]
-
 
     # read seeds
     if args.nmf_seeds_path is not None:
@@ -160,12 +152,12 @@ def main():
         # Consensus plots with all k to choose thresh
         run_cnmf_consensus(cnmf_obj,
                             components=args.K,
-                            density_thresholds=args.sel_thresh)
+                            density_thresholds=args.sel_threshs)
 
     if args.run_complie_annotation:
 
         # Save all cNMF scores in separate mudata objects
-        compile_results(run_dir, 'Inference', components= args.K, sel_threshs = args.sel_thresh,
+        compile_results(run_dir, 'Inference', components= args.K, sel_threshs = args.sel_threshs,
         guide_names_key = args.guide_names_key, guide_targets_key = args.guide_targets_key, categorical_key= args.categorical_key,
         guide_assignment_key = args.guide_assignment_key, gene_names_key = args.gene_names_key )
 
@@ -173,7 +165,7 @@ def main():
         os.makedirs(f'{inference_dir}/Annotation', exist_ok=True)
 
         # annotation for all K
-        for i in args.sel_thresh:
+        for i in args.sel_threshs:
             for k in args.K:
                 df = pd.read_csv('{inference_dir}/Inference.gene_spectra_scores.k_{k}.dt_{sel_thresh}.txt'.format(
                                                                                         inference_dir=inference_dir,
@@ -191,7 +183,7 @@ def main():
             run_dir=run_dir,
             run_name='Inference',
             K_list=args.K,
-            sel_thresh_list=args.sel_thresh,
+            sel_thresh_list=args.sel_threshs,
             categorical_key=args.categorical_key,
         )
 
