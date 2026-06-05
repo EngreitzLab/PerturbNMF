@@ -22,11 +22,10 @@ import mudata as mu
 
 from .conftest import (
     TEST_K, TEST_NUMITER, TEST_NUMHVGENES, TEST_SEL_THRESH, TEST_SEED,
-    PERSISTENT_OUTPUT,
+    PERSISTENT_OUTPUT, check_data_format,
 )
 
 from torch_cnmf import cNMF
-from Stage1_Inference.src.format_checking import check_data_format
 from Stage1_Inference.src.run_cNMF import run_cnmf_consensus, compile_results
 from Stage1_Inference.src.plot_diagnostics import generate_all_plots
 

@@ -53,3 +53,70 @@ def setup_logging(output_dir):
     fh = logging.FileHandler(os.path.join(logs_dir, "test_run.log"), mode="w")
     fh.setLevel(logging.INFO)
     logging.root.addHandler(fh)
+
+
+def check_data_format(
+    adata,
+    guide_names_key="guide_names",
+    guide_targets_key="guide_targets",
+    categorical_key="batch",
+    guide_assignment_key="guide_assignment",
+):
+    """Validate that an AnnData has the keys cNMF inference relies on.
+
+    Checks for `obs[categorical_key]`, `uns[{guide_names,guide_targets}]`,
+    `obsm[{X_pca, X_umap, guide_assignment}]`. If `guide_assignment` is sparse,
+    converts it to dense in-place. Returns True iff every required key is present.
+    """
+    is_valid = True
+
+    if categorical_key not in adata.obs:
+        print(f"WARNING: Not found in adata.obs['{categorical_key}']\n")
+        is_valid = False
+    else:
+        print(f"Found adata.obs['{categorical_key}']\n")
+
+    if guide_names_key not in adata.uns:
+        print(f"WARNING: Not found in adata.uns['{guide_names_key}']\n")
+        is_valid = False
+    else:
+        print(f"Found adata.uns['{guide_names_key}']\n")
+
+    if guide_targets_key not in adata.uns:
+        print(f"WARNING: Not found in adata.uns['{guide_targets_key}']\n")
+        is_valid = False
+    else:
+        print(f"Found adata.uns['{guide_targets_key}']\n")
+
+    if "X_pca" not in adata.obsm:
+        print("WARNING: Not found adata.obsm['X_pca']\n")
+        is_valid = False
+    else:
+        print("Found adata.obsm['X_pca']\n")
+
+    if "X_umap" not in adata.obsm:
+        print("WARNING: Not found adata.obsm['X_umap']\n")
+        is_valid = False
+    else:
+        print("Found adata.obsm['X_umap']\n")
+
+    if guide_assignment_key not in adata.obsm:
+        print(f"WARNING: Not found adata.obsm['{guide_assignment_key}']\n")
+        is_valid = False
+    else:
+        guide_assignment = adata.obsm[guide_assignment_key]
+        print(f"Found adata.obsm['{guide_assignment_key}']\n")
+        try:
+            import scipy.sparse as sp
+            if sp.issparse(guide_assignment):
+                print(f"WARNING: '{guide_assignment_key}' is sparse. Converting to dense array...")
+                dense_array = guide_assignment.toarray()
+                adata.obsm[guide_assignment_key] = dense_array
+                print(f"'{guide_assignment_key}' converted to dense array (shape: {dense_array.shape})\n")
+            else:
+                print(f"'{guide_assignment_key}' is already dense (shape: {guide_assignment.shape})\n")
+        except Exception as e:
+            print(f"WARNING: Error checking '{guide_assignment_key}' sparsity: {e}\n")
+            is_valid = False
+
+    return is_valid
