@@ -57,13 +57,28 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Eval
         --guide_annotation_key "non-targeting" \
         --number_permutations 5000 \
         --number_guide 6 \
-        --components 50 \
-        --sel_thresh 0.2 \
+        --K 50 \
+        --sel_threshs 0.2 \
         --categorical_key "batch" \
         --log_covariates total_counts guides_per_cell \
         --covariates pct_counts_mt \
         --FDR_method 'StoreyQ' \
         --save_dir '/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/Evaluation/50_0_2/' \
+
+        # Reference: all CRT.py flags shown above are required for this invocation.
+        # Defaults if removed:
+        #   --K            default [30, 50, 70, 80, 100, 200, 300]
+        #   --sel_threshs            default [0.2, 2.0]
+        #   --categorical_key       default "sample"
+        #   --number_guide          default 6
+        #   --number_permutations   default 1024
+        #   --guide_annotation_key  default "non-targeting"
+        #   --FDR_method            default "BH"   (choices: "BH", "StoreyQ")
+        #   --save_dir              default <out_dir>/<run_name>/Evaluation/{K}_{thresh}/
+        #   --covariates            default None  (e.g. --covariates pct_counts_mt doublet_scores)
+        #   --log_covariates        default None  (e.g. --log_covariates total_counts guides_per_cell)
+        #   --skip_existing         off by default; append to resume a preempted job
+        #                           (skips any (K, sel_thresh, condition) whose .txt already exists)
 
 
 

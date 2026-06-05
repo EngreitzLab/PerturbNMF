@@ -73,10 +73,16 @@ def reformat_data_for_CRT(mdata, covariates=None, log_covariates=None):
 def run_CRT(adata, k, sel_thresh, output_folder, args):
     thresh_tag = str(sel_thresh).replace(".", "_")
 
-    # perform CRT for each condition of cells 
+    # perform CRT for each condition of cells
     for condition in adata.obs[args.categorical_key].unique():
+        covar_tag = _covariate_tag(args)
+        out_txt = f"{output_folder}/{k}_CRT_{covar_tag}_{condition}.txt"
+        if args.skip_existing and os.path.exists(out_txt):
+            print(f"  Skipping K={k}, sel_thresh={sel_thresh}, condition={condition}: output exists ({out_txt})")
+            continue
+
         adata_con = adata[adata.obs[args.categorical_key] == condition].copy()
-        
+
         inputs = prepare_crt_inputs(
             adata=adata_con,
             usage_key="cnmf_usage",
@@ -164,7 +170,6 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
         plt.tight_layout()
 
         if output_folder:
-            covar_tag = _covariate_tag(args)
             plt.savefig(f"{output_folder}/{k}_CRT_{covar_tag}_{condition}.png", dpi=100)
             save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag)
 
@@ -239,8 +244,8 @@ def main():
     #IO info
     parser.add_argument('--out_dir', help='Directory containing cNMF output files for calibration analysis', type=str, required=True)
     parser.add_argument('--run_name', help='Name of the cNMF run to perform calibration on (must match name used during inference)', type=str, required=True)
-    parser.add_argument('--components', nargs='*', type=int, help = "list of K values (number of components) to test (default: [30, 50, 60, 80, 100, 200, 250, 300])", default=None)
-    parser.add_argument('--sel_thresh', nargs='*', type=float, help = "list of density threshold values for consensus selection (default: [0.4, 0.8, 2.0])", default=None)
+    parser.add_argument('--K', nargs='*', type=int, help="list of K values (number of components) to test", default=[30, 50, 70, 80, 100, 200, 300])
+    parser.add_argument('--sel_threshs', nargs='*', type=float, help="list of density threshold values for consensus selection", default=[0.2, 2.0])
 
     # keys
     parser.add_argument('--categorical_key', help='Key in .obs to access cell condition/sample labels (default: sample)', type=str, default="sample")
@@ -255,15 +260,9 @@ def main():
     parser.add_argument('--guide_annotation_key', nargs='*', type=str,  help='Name of target for non-targeting/safe-targeting guides,default="non-targeting"', default='non-targeting')
     parser.add_argument('--FDR_method', type=str, choices=['BH', 'StoreyQ'], default='BH', help='FDR correction method: BH (Benjamini-Hochberg) or StoreyQ (Storey Q-value) (default: BH)')
     parser.add_argument('--save_dir', type=str, default=None, help='Base directory under which {K}_{thresh} subdirs are created. Default: <out_dir>/<run_name>/Evaluation/')
+    parser.add_argument('--skip_existing', help='If set, skip per-(K, sel_thresh, condition) computations whose output .txt files already exist. Useful for resuming preempted jobs.', action='store_true')
 
     args = parser.parse_args()
-
-    # either change the array here or run each component in parallel
-    if args.components is None:
-        args.components = [30, 50, 60, 80, 100, 200, 250, 300]
-
-    if args.sel_thresh is None:
-        args.sel_thresh = [0.4, 0.8, 2.0]
 
     # --- Save config (incl. SLURM info) ---
     slurm_info = {
@@ -288,8 +287,8 @@ def main():
 
 
     # run CRT for each K and dt
-    for sel_thresh in args.sel_thresh:
-        for k in args.components:
+    for sel_thresh in args.sel_threshs:
+        for k in args.K:
             print(f"Processing K={k}, sel_thresh={sel_thresh}")
 
             thresh_tag = str(sel_thresh).replace('.', '_')
@@ -314,7 +313,7 @@ def main():
             adata.obsm["cnmf_usage"] = U
 
             # run CRT
-            result_df = run_CRT(adata, k, sel_thresh, output_folder, args)
+            run_CRT(adata, k, sel_thresh, output_folder, args)
 
     print("Pipeline finished.")
     return 0

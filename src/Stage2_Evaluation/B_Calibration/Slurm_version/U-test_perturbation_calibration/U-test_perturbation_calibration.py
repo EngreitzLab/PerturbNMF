@@ -50,8 +50,8 @@ def compute_real_perturbation_tests():
     test_stats_real_df = []
 
     # Validate once using the first K and sel_thresh
-    first_k = args.components[0]
-    first_thresh = args.sel_thresh[0]
+    first_k = args.K[0]
+    first_thresh = args.sel_threshs[0]
     thresh_str = str(first_thresh).replace('.', '_')
     mdata_check = mu.read(f'{args.out_dir}/{args.run_name}/Inference/adata/cNMF_{first_k}_{thresh_str}.h5mu')
 
@@ -78,8 +78,8 @@ def compute_real_perturbation_tests():
 
     del mdata_check
 
-    for sel_thresh in args.sel_thresh:
-        for k in args.components:
+    for sel_thresh in args.sel_threshs:
+        for k in args.K:
             print(f"Processing K={k}, sel_thresh={sel_thresh}")
 
             output_folder = f"{args.out_dir}/{args.run_name}/Evaluation/{k}_{str(sel_thresh).replace('.','_')}"
@@ -143,8 +143,8 @@ def compute_fake_perturbation_tests():
 
     # Extract guide info from mdata if no annotation file provided
     if guide_target is None:
-        first_k = args.components[0]
-        thresh_str = str(args.sel_thresh[0]).replace('.', '_')
+        first_k = args.K[0]
+        thresh_str = str(args.sel_threshs[0]).replace('.', '_')
         mdata_check = mu.read(f'{args.out_dir}/{args.run_name}/Inference/adata/cNMF_{first_k}_{thresh_str}.h5mu')
 
         guide_targets_arr = mdata_check[args.prog_key].uns[args.guide_targets_key]
@@ -169,8 +169,8 @@ def compute_fake_perturbation_tests():
 
     # Validate guide count between annotation file and mdata
     if args.guide_annotation_path is not None:
-        first_k = args.components[0]
-        thresh_str = str(args.sel_thresh[0]).replace('.', '_')
+        first_k = args.K[0]
+        thresh_str = str(args.sel_threshs[0]).replace('.', '_')
         mdata_check = mu.read(f'{args.out_dir}/{args.run_name}/Inference/adata/cNMF_{first_k}_{thresh_str}.h5mu')
 
         n_file_guides = len(pd.read_csv(args.guide_annotation_path, sep='\t'))
@@ -184,8 +184,8 @@ def compute_fake_perturbation_tests():
             )
         del mdata_check
 
-    for sel_thresh in args.sel_thresh:
-        for k in args.components:
+    for sel_thresh in args.sel_threshs:
+        for k in args.K:
             print(f"Processing K={k}, sel_thresh={sel_thresh}")
 
             # Load mdata
@@ -276,8 +276,8 @@ def load_real_perturbation_tests():
     """Load pre-computed real perturbation test results"""
 
     # Discover sample names from the first K directory
-    first_k = args.components[0]
-    thresh_str = str(args.sel_thresh[0]).replace('.', '_')
+    first_k = args.K[0]
+    thresh_str = str(args.sel_threshs[0]).replace('.', '_')
     first_dir = f'{args.out_dir}/{args.run_name}/Evaluation/{first_k}_{thresh_str}'
     sample_files = [f for f in os.listdir(first_dir) if f.startswith(f'{first_k}_perturbation_association_results_') and f.endswith('.txt')]
     samples = [f.replace(f'{first_k}_perturbation_association_results_', '').replace('.txt', '') for f in sample_files]
@@ -285,8 +285,8 @@ def load_real_perturbation_tests():
 
     test_stats_real_df = []
 
-    for sel_thresh in args.sel_thresh:
-        for k in args.components:
+    for sel_thresh in args.sel_threshs:
+        for k in args.K:
             for samp in samples:
                 thresh_str = str(sel_thresh).replace('.', '_')
                 test_stats_df_ = pd.read_csv(
@@ -308,8 +308,8 @@ def load_fake_perturbation_tests():
     """Load pre-computed fake perturbation test results (per condition)"""
 
     # Discover sample names from the first K directory
-    first_k = args.components[0]
-    thresh_str = str(args.sel_thresh[0]).replace('.', '_')
+    first_k = args.K[0]
+    thresh_str = str(args.sel_threshs[0]).replace('.', '_')
     first_dir = f'{args.out_dir}/{args.run_name}/Evaluation/{first_k}_{thresh_str}'
     sample_files = [f for f in os.listdir(first_dir) if f.startswith(f'{first_k}_fake_perturbation_association_results_') and f.endswith('.txt')]
     samples = [f.replace(f'{first_k}_fake_perturbation_association_results_', '').replace('.txt', '') for f in sample_files]
@@ -317,8 +317,8 @@ def load_fake_perturbation_tests():
 
     test_stats_fake_df = []
 
-    for sel_thresh in args.sel_thresh:
-        for k in args.components:
+    for sel_thresh in args.sel_threshs:
+        for k in args.K:
             for samp in samples:
                 thresh_str = str(sel_thresh).replace('.', '_')
                 test_stats_df_ = pd.read_csv(
@@ -337,8 +337,8 @@ def load_fake_perturbation_tests():
 def plot_calibration_comparison(test_stats_dfs):
     """Save a violin plot comparing real vs fake perturbation tests for each (K, sel_thresh) into its own folder"""
 
-    for sel_thresh in args.sel_thresh:
-        for k in args.components:
+    for sel_thresh in args.sel_threshs:
+        for k in args.K:
             thresh_str = str(sel_thresh).replace('.', '_')
             output_folder = f"{args.out_dir}/{args.run_name}/Evaluation/{k}_{thresh_str}"
             os.makedirs(output_folder, exist_ok=True)
@@ -377,8 +377,8 @@ def plot_calibration_comparison(test_stats_dfs):
 def plot_qq_comparison(test_stats_dfs):
     """Save a QQ plot comparing real and null distributions for each (K, sel_thresh) into its own folder"""
 
-    for sel_thresh in args.sel_thresh:
-        for k in args.components:
+    for sel_thresh in args.sel_threshs:
+        for k in args.K:
             thresh_str = str(sel_thresh).replace('.', '_')
             output_folder = f"{args.out_dir}/{args.run_name}/Evaluation/{k}_{thresh_str}"
             os.makedirs(output_folder, exist_ok=True)
@@ -434,11 +434,10 @@ def main():
     #IO info
     parser.add_argument('--out_dir', help='Directory containing cNMF output files for calibration analysis', type=str, required=True)
     parser.add_argument('--run_name', help='Name of the cNMF run to perform calibration on (must match name used during inference)', type=str, required=True)
-    parser.add_argument('--components', nargs='*', type=int, help = "list of K values (number of components) to test (default: [30, 50, 60, 80, 100, 200, 250, 300])", default=None)
-    parser.add_argument('--sel_thresh', nargs='*', type=float, help = "list of density threshold values for consensus selection (default: [0.4, 0.8, 2.0])", default=None)
+    parser.add_argument('--K', nargs='*', type=int, help="list of K values (number of components) to test", default=[30, 50, 70, 80, 100, 200, 300])
+    parser.add_argument('--sel_threshs', nargs='*', type=float, help="list of density threshold values for consensus selection", default=[0.2, 2.0])
 
     # resources
-    parser.add_argument('--mdata_guide_path', type=str,  help='Path to MuData object (.h5mu) containing guide assignment information (optional if guide info already in h5mu)', default=None)
     parser.add_argument('--guide_annotation_path', type=str,  help='Path to tab-separated file with guide annotations including "targeting" column (True/False) to identify non-targeting guides for calibration')
     parser.add_argument('--guide_annotation_key', nargs='+', type=str, help='Name of target for non-targeting/safe-targeting guides, default="non-targeting"', default=['non-targeting'])
     parser.add_argument('--reference_gtf_path', type=str,  help='Path to reference GTF file for validating gene names during format checking (optional)')
@@ -465,13 +464,6 @@ def main():
     parser.add_argument('--skip_existing', help='If set, skip per-(K, sel_thresh, sample) computations whose output files already exist. Existing outputs are loaded into the accumulator so visualizations still work. Useful for resuming preempted jobs.', action="store_true")
 
     args = parser.parse_args()
-
-    # either change the array here or run each component in parallel
-    if args.components is None:
-        args.components = [30, 50, 60, 80, 100, 200, 250, 300]
-
-    if args.sel_thresh is None:
-        args.sel_thresh = [0.4, 0.8, 2.0]
 
     # --- Save config (incl. SLURM info) ---
     slurm_info = {

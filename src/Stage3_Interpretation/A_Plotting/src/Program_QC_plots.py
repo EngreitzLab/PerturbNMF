@@ -343,8 +343,8 @@ save_path=None, save_name = None, figsize = (5, 4),show=False, ax=None):
     target_correlations = target_correlations.drop(str(Target_Program)) # Remove self-correlation
     
     # Sort correlations
-    sorted_correlations = target_correlations.sort_values(ascending=True)
-    
+    sorted_correlations = target_correlations.sort_values(ascending=False)
+
     # Get top and bottom gene
     top = sorted_correlations[sorted_correlations > 0].head(num_program)
     bottom = sorted_correlations[sorted_correlations < 0].tail(num_program)

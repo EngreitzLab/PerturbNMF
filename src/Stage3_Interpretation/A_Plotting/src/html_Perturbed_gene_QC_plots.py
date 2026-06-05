@@ -24,9 +24,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 import plotly.graph_objects as go
@@ -87,7 +84,7 @@ def _build_gene_correlations(corr_matrix, target_gene, top_n):
     """Top ± correlated genes from the gene × gene correlation matrix."""
     if target_gene not in corr_matrix.columns:
         return {"programs": [], "r": [], "direction": []}
-    s = corr_matrix.loc[target_gene].drop(target_gene, errors="ignore").sort_values(ascending=True)
+    s = corr_matrix.loc[target_gene].drop(target_gene, errors="ignore").sort_values(ascending=False)
     top = s[s > 0].head(top_n)
     bottom = s[s < 0].tail(top_n)
     combined = pd.concat([bottom, top])
@@ -305,7 +302,9 @@ def _make_top_programs_fig(data):
         marker=dict(color=COLOR_NEUTRAL, line=dict(width=0)),
         hovertemplate="Program %{y}<br>Loading: %{x:.3g}<extra></extra>",
     ))
-    fig.update_layout(xaxis_title="Gene loading", yaxis_title="Program")
+    fig.update_layout(xaxis_title="Gene loading", yaxis_title="Program",
+                      xaxis=dict(exponentformat="none"),
+                      yaxis=dict(type="category"))
     return _fmt_layout(fig)
 
 

@@ -24,9 +24,6 @@ from typing import Iterable
 
 import numpy as np
 import pandas as pd
-import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 import plotly.graph_objects as go
@@ -156,7 +153,7 @@ def _build_go_terms(GO_path, target_program, num_term, p_value_name, term_col):
 def _build_correlations(program_correlation, target_program, num_program):
     if str(target_program) not in program_correlation.columns:
         return {"programs": [], "r": [], "direction": []}
-    s = program_correlation.loc[str(target_program)].drop(str(target_program)).sort_values(ascending=True)
+    s = program_correlation.loc[str(target_program)].drop(str(target_program)).sort_values(ascending=False)
     top = s[s > 0].head(num_program)
     bottom = s[s < 0].tail(num_program)
     combined = pd.concat([bottom, top])
@@ -386,7 +383,8 @@ def _make_correlations_fig(data):
         hovertemplate="Program %{y}<br>r = %{x:.3f}<extra></extra>",
     ))
     fig.add_vline(x=0, line_width=0.5, line_color="#555")
-    fig.update_layout(xaxis_title="Pearson r", yaxis_title="Program")
+    fig.update_layout(xaxis_title="Pearson r", yaxis_title="Program",
+                      yaxis=dict(type="category"))
     return _fmt_layout(fig)
 
 

@@ -1,6 +1,7 @@
 import os
 import math
 import mudata
+import muon as mu
 import scanpy as sc
 import numpy as np
 import pandas as pd
@@ -96,10 +97,10 @@ def _cache_has_all_components(stats, components):
 
 def _print_stats_summary(stats):
     """Print min/max summary for stability and error."""
-    print("min stablity is", stats['silhouette'].min())
-    print("max stablity is", stats['silhouette'].max())
-    print("min error is", stats['prediction_error'].min())
-    print("max error is", stats['prediction_error'].max())
+    print("min stablity is", stats['silhouette'].min(), flush=True)
+    print("max stablity is", stats['silhouette'].max(), flush=True)
+    print("min error is", stats['prediction_error'].min(), flush=True)
+    print("max error is", stats['prediction_error'].max(), flush=True)
 
 
 def _compute_stability_error_manual(output_directory, run_name, components,
@@ -271,7 +272,6 @@ def plot_stablity_error(stats, folder_name=None, file_name=None, selected_k=None
         fig1.savefig(f"{folder_name}/{file_name}_stability.png", dpi=300, bbox_inches="tight")
 
     plt.show()
-    plt.close(fig1)
 
     # --- Error ---
     fig2, ax2 = plt.subplots(figsize=(4, 3.5))
@@ -289,7 +289,6 @@ def plot_stablity_error(stats, folder_name=None, file_name=None, selected_k=None
         fig2.savefig(f"{folder_name}/{file_name}_error.png", dpi=300, bbox_inches="tight")
 
     plt.show()
-    plt.close(fig2)
 
 
 
@@ -351,14 +350,14 @@ def load_enrichment_data(folder, components = [30, 50, 60, 80, 100, 200, 250, 30
             count_df[col] = 0
 
     #print out some stats
-    print(f"min go_terms for {sel_thresh} is", count_df['go_terms'].min())
-    print(f"max go_terms for {sel_thresh} is", count_df['go_terms'].max())
+    print(f"min go_terms for {sel_thresh} is", count_df['go_terms'].min(), flush=True)
+    print(f"max go_terms for {sel_thresh} is", count_df['go_terms'].max(), flush=True)
 
-    print(f"min genesets for {sel_thresh} is", count_df['genesets'].min())
-    print(f"max genesets for {sel_thresh} is", count_df['genesets'].max())
+    print(f"min genesets for {sel_thresh} is", count_df['genesets'].min(), flush=True)
+    print(f"max genesets for {sel_thresh} is", count_df['genesets'].max(), flush=True)
 
-    print(f"min traits for {sel_thresh}  is", count_df['traits'].min())
-    print(f"max traits for {sel_thresh}  is", count_df['traits'].max())
+    print(f"min traits for {sel_thresh}  is", count_df['traits'].min(), flush=True)
+    print(f"max traits for {sel_thresh}  is", count_df['traits'].max(), flush=True)
 
     #print("min motif is", count_df['motifs'].min())
     #print("max motif is", count_df['motifs'].max())
@@ -393,12 +392,11 @@ def plot_enrichment(count_df, folder_name=None, file_name=None, selected_k=None)
             fig.savefig(f"{folder_name}/{file_name}_{col}.png", dpi=300, bbox_inches="tight")
 
         plt.show()
-        plt.close(fig)
 
 
 # load perturbation data
 def load_perturbation_data(folder, pval = 0.000335, components = [30, 50, 60, 80, 100, 200, 250, 300], sel_thresh = 2.0,
- samples = ['D0', 'sample_D1', 'sample_D2', 'sample_D3'], perturbation_file=None,
+ conditions = ['D0', 'sample_D1', 'sample_D2', 'sample_D3'], perturbation_file=None,
  perturb_adjpval_col='adj_pval', perturb_target_col='target_name', perturb_log2fc_col='log2FC'):
 
     # Default file name pattern (original IGVF convention): {k}_perturbation_association_results_{sample}.txt
@@ -411,12 +409,12 @@ def load_perturbation_data(folder, pval = 0.000335, components = [30, 50, 60, 80
 
     for k in components:
         # Run perturbation assocation
-        for samp in samples:
+        for cond in conditions:
             file_path = '{}/{}_{}/{}'.format(
                 folder, k, str(sel_thresh).replace('.','_'),
-                perturbation_file.format(k=k, sample=samp))
+                perturbation_file.format(k=k, sample=cond))
             test_stats_df_ = pd.read_csv(file_path, sep='\t')
-            test_stats_df_['sample'] = samp
+            test_stats_df_['condition'] = cond
             test_stats_df_['K'] = k
             test_stats_df.append(test_stats_df_)
 
@@ -436,8 +434,8 @@ def load_perturbation_data(folder, pval = 0.000335, components = [30, 50, 60, 80
     # pring some stats
     plotting_df = test_stats_df.loc[test_stats_df.adj_pval < pval, ['K','target_name']].drop_duplicates().groupby(['K']).count().reset_index()
 
-    print("min regulators is", plotting_df["target_name"].min())
-    print("max regulators is", plotting_df["target_name"].max())
+    print("min regulators is", plotting_df["target_name"].min(), flush=True)
+    print("max regulators is", plotting_df["target_name"].max(), flush=True)
 
     return test_stats_df
 
@@ -450,27 +448,26 @@ def plot_perturbation(test_stats_df, pval=0.000335, folder_name=None, file_name=
     fig1, ax1 = plt.subplots(figsize=(4, 3.5))
 
     plotting_df_sample = (test_stats_df
-        .loc[test_stats_df.adj_pval <= pval, ['K', 'sample', 'target_name']]
+        .loc[test_stats_df.adj_pval <= pval, ['K', 'condition', 'target_name']]
         .drop_duplicates()
-        .groupby(['K', 'sample']).count().reset_index())
-    sns.lineplot(x='K', y='target_name', hue='sample', data=plotting_df_sample,
-                 palette=_PALETTE, linewidth=1.5, marker='o', markersize=4,
+        .groupby(['K', 'condition']).count().reset_index())
+    sns.lineplot(x='K', y='target_name', hue='condition', data=plotting_df_sample,
+                 palette=_PALETTE[:plotting_df_sample['condition'].nunique()], linewidth=1.5, marker='o', markersize=4,
                  ax=ax1, legend='brief')
     if selected_k is not None:
         ax1.axvline(x=selected_k, color='red', linestyle='--', linewidth=1, zorder=2)
     _style_ax(ax1, xlabel='Number of components (k)', ylabel='No. unique regulators',
-              title=f'Unique regulators per sample') # (adj. p-value \u2264 {pval_str})')
-    ax1.legend(title='Sample', fontsize=8, title_fontsize=9,
+              title=f'Unique regulators per condition') # (adj. p-value \u2264 {pval_str})')
+    ax1.legend(title='Condition', fontsize=8, title_fontsize=9,
                frameon=True, fancybox=False, edgecolor='#cccccc',
                bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0)
     ax1.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
 
     if folder_name and file_name:
-        fig1.savefig(f"{folder_name}/{file_name}_per_sample.svg", bbox_inches="tight")
-        fig1.savefig(f"{folder_name}/{file_name}_per_sample.png", dpi=300, bbox_inches="tight")
+        fig1.savefig(f"{folder_name}/{file_name}_per_condition.svg", bbox_inches="tight")
+        fig1.savefig(f"{folder_name}/{file_name}_per_condition.png", dpi=300, bbox_inches="tight")
 
     plt.show()
-    plt.close(fig1)
 
     # --- Aggregated plot ---
     fig2, ax2 = plt.subplots(figsize=(4, 3.5))
@@ -488,15 +485,14 @@ def plot_perturbation(test_stats_df, pval=0.000335, folder_name=None, file_name=
     if selected_k is not None:
         ax2.axvline(x=selected_k, color='red', linestyle='--', linewidth=1, zorder=2)
     _style_ax(ax2, xlabel='Number of components (k)', ylabel='No. unique regulators',
-              title=f'Unique regulators for all samples') #(adj. p-value \u2264 {pval_str})')
+              title=f'Unique regulators for all conditions') #(adj. p-value \u2264 {pval_str})')
     ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
 
     if folder_name and file_name:
-        fig2.savefig(f"{folder_name}/{file_name}_all_samples.svg", bbox_inches="tight")
-        fig2.savefig(f"{folder_name}/{file_name}_all_samples.png", dpi=300, bbox_inches="tight")
+        fig2.savefig(f"{folder_name}/{file_name}_all_conditions.svg", bbox_inches="tight")
+        fig2.savefig(f"{folder_name}/{file_name}_all_conditions.png", dpi=300, bbox_inches="tight")
 
     plt.show()
-    plt.close(fig2)
 
     return plotting_df
 
@@ -523,8 +519,8 @@ def load_explained_variance_data(folder, components = [30, 50, 60, 80, 100, 200,
             stats[k] = df[variance_col].sum()
 
     
-    print("min Explained_variance is", min(stats.values()))
-    print("max Explained_variance is", max(stats.values()))
+    print("min Explained_variance is", min(stats.values()), flush=True)
+    print("max Explained_variance is", max(stats.values()), flush=True)
 
     return stats
 
@@ -550,14 +546,13 @@ def plot_explained_variance(stats, folder_name=None, file_name=None, selected_k=
         fig.savefig(f"{folder_name}/{file_name}.png", dpi=300, bbox_inches="tight")
 
     plt.show()
-    plt.close(fig)
 
 
 
 # Combined panel figure: 3 rows x 3 columns
 # Row 1: Stability, Error, Explained variance
 # Row 2: GO terms, Gene sets, Traits
-# Row 3: Regulators (all samples), Regulators (per sample)
+# Row 3: Regulators (all conditions), Regulators (per condition)
 def plot_k_selection_panel(stability_stats, count_df, test_stats_df, explained_var_stats,
                            pval=0.05, folder_name=None, file_name=None, selected_k=None):
 
@@ -620,7 +615,7 @@ def plot_k_selection_panel(stability_stats, count_df, test_stats_df, explained_v
         _style_ax(ax, xlabel='Number of components (k)', ylabel=ylabel, title=title)
         ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
 
-    # --- Row 3, Col 0: Regulators (all samples) ---
+    # --- Row 3, Col 0: Regulators (all conditions) ---
     ax = axes[2, 0]
     plotting_df = (test_stats_df
         .loc[test_stats_df.adj_pval <= pval, ['K', 'target_name']]
@@ -632,22 +627,22 @@ def plot_k_selection_panel(stability_stats, count_df, test_stats_df, explained_v
     ax.fill_between(plotting_df['K'], plotting_df['target_name'], alpha=0.08, color=_COLORS['perturbation'])
     _add_vline(ax)
     _style_ax(ax, xlabel='Number of components (k)', ylabel='No. unique regulators',
-              title='Unique regulators for all samples')
+              title='Unique regulators for all conditions')
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
 
     # --- Row 3, Col 1: Regulators (per sample) ---
     ax = axes[2, 1]
     plotting_df_sample = (test_stats_df
-        .loc[test_stats_df.adj_pval <= pval, ['K', 'sample', 'target_name']]
+        .loc[test_stats_df.adj_pval <= pval, ['K', 'condition', 'target_name']]
         .drop_duplicates()
-        .groupby(['K', 'sample']).count().reset_index())
-    sns.lineplot(x='K', y='target_name', hue='sample', data=plotting_df_sample,
-                 palette=_PALETTE, linewidth=1.5, marker='o', markersize=4,
+        .groupby(['K', 'condition']).count().reset_index())
+    sns.lineplot(x='K', y='target_name', hue='condition', data=plotting_df_sample,
+                 palette=_PALETTE[:plotting_df_sample['condition'].nunique()], linewidth=1.5, marker='o', markersize=4,
                  ax=ax, legend='brief')
     _add_vline(ax)
     _style_ax(ax, xlabel='Number of components (k)', ylabel='No. unique regulators',
-              title='Unique regulators per sample')
-    ax.legend(title='Sample', fontsize=7, title_fontsize=8,
+              title='Unique regulators per condition')
+    ax.legend(title='Condition', fontsize=7, title_fontsize=8,
               frameon=True, fancybox=False, edgecolor='#cccccc',
               bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0)
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
@@ -667,13 +662,12 @@ def plot_k_selection_panel(stability_stats, count_df, test_stats_df, explained_v
         fig.savefig(f"{folder_name}/{file_name}.png", dpi=300, bbox_inches="tight")
 
     plt.show()
-    plt.close(fig)
 
 
 # Combined panel figure: 3 rows x 3 columns (no trait enrichment)
 # Row 1: Stability, Error, Explained variance
 # Row 2: GO terms, Gene sets
-# Row 3: Regulators (all samples), Regulators (per sample)
+# Row 3: Regulators (all conditions), Regulators (per condition)
 def plot_k_selection_panel_no_traits(stability_stats, count_df, test_stats_df, explained_var_stats,
                                      pval=0.05, folder_name=None, file_name=None, selected_k=None):
 
@@ -738,7 +732,7 @@ def plot_k_selection_panel_no_traits(stability_stats, count_df, test_stats_df, e
     # --- Row 2, Col 2: hide empty panel ---
     axes[1, 2].set_visible(False)
 
-    # --- Row 3, Col 0: Regulators (all samples) ---
+    # --- Row 3, Col 0: Regulators (all conditions) ---
     ax = axes[2, 0]
     plotting_df = (test_stats_df
         .loc[test_stats_df.adj_pval <= pval, ['K', 'target_name']]
@@ -750,22 +744,22 @@ def plot_k_selection_panel_no_traits(stability_stats, count_df, test_stats_df, e
     ax.fill_between(plotting_df['K'], plotting_df['target_name'], alpha=0.08, color=_COLORS['perturbation'])
     _add_vline(ax)
     _style_ax(ax, xlabel='Number of components (k)', ylabel='No. unique regulators',
-              title='Unique regulators for all samples')
+              title='Unique regulators for all conditions')
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
 
     # --- Row 3, Col 1: Regulators (per sample) ---
     ax = axes[2, 1]
     plotting_df_sample = (test_stats_df
-        .loc[test_stats_df.adj_pval <= pval, ['K', 'sample', 'target_name']]
+        .loc[test_stats_df.adj_pval <= pval, ['K', 'condition', 'target_name']]
         .drop_duplicates()
-        .groupby(['K', 'sample']).count().reset_index())
-    sns.lineplot(x='K', y='target_name', hue='sample', data=plotting_df_sample,
-                 palette=_PALETTE, linewidth=1.5, marker='o', markersize=4,
+        .groupby(['K', 'condition']).count().reset_index())
+    sns.lineplot(x='K', y='target_name', hue='condition', data=plotting_df_sample,
+                 palette=_PALETTE[:plotting_df_sample['condition'].nunique()], linewidth=1.5, marker='o', markersize=4,
                  ax=ax, legend='brief')
     _add_vline(ax)
     _style_ax(ax, xlabel='Number of components (k)', ylabel='No. unique regulators',
-              title='Unique regulators per sample')
-    ax.legend(title='Sample', fontsize=7, title_fontsize=8,
+              title='Unique regulators per condition')
+    ax.legend(title='Condition', fontsize=7, title_fontsize=8,
               frameon=True, fancybox=False, edgecolor='#cccccc',
               bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0)
     ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
@@ -785,80 +779,89 @@ def plot_k_selection_panel_no_traits(stability_stats, count_df, test_stats_df, e
         fig.savefig(f"{folder_name}/{file_name}.png", dpi=300, bbox_inches="tight")
 
     plt.show()
-    plt.close(fig)
 
 
-''' Faster stability + error calculation & error calculation is a bit off 
-because the refit_usages is not the same as the saved one, it needs to refit but it takes time 
-def load_stablity_error_data_(k, cnmf_obj, norm_counts, rf_usages_path, density_threshold, local_neighborhood_size):
+# --- per-(K, sel_thresh) program dotplot (moved here from k_quality_plots.py) ---
+def programs_dotplots(k, output_dir, run_name, sel_thresh = 2.0, groupby='sample', save_name=None, save_path=None, 
+figsize=(4, 30), show=False, ax=None):
 
-    # load files 
-    merged_spectra = cnmf.load_df_from_npz(cnmf_obj.paths['merged_spectra']%k)
-    rf_usages = pd.read_csv(rf_usages_path, sep="\t")
+    standalone_mode = ax is None
+
+
+    def get_gene_path(output_dir, run_name, k, sel_thresh):
+        """Helper to build path consistently.
+        Tries standard PerturbNMF layout, then flat shared-run, then per-K run layout."""
+        sel_str = str(sel_thresh).replace(".", "_")
+        standard = f'{output_dir}/{run_name}/Inference/adata/cNMF_{k}_{sel_str}.h5mu'
+        if os.path.isfile(standard):
+            return standard
+        flat = f'{output_dir}/{run_name}/adata/cNMF_{k}_{sel_str}.h5mu'
+        if os.path.isfile(flat):
+            return flat
+        per_k = f'{output_dir}/{run_name}_K{k}/Inference/adata/cNMF_{k}_{sel_str}.h5mu'
+        if os.path.isfile(per_k):
+            return per_k
+        return standard
+
+
+    # read in adata
+    path = get_gene_path(output_dir, run_name, k, sel_thresh)
+    if not os.path.isfile(path):
+        print(f"[programs_dotplots] WARNING: h5mu not found for K={k}, sel_thresh={sel_thresh}; "
+              f"tried standard / flat / per-K layouts. Skipping this combination.")
+        return None
+    mdata = mu.read_h5mu(path)
+    adata_new = mdata['cNMF'].copy()
     
-    # calculate stability 
-    n_neighbors = int(local_neighborhood_size * merged_spectra.shape[0]/k)
-    l2_spectra = (merged_spectra.T/np.sqrt((merged_spectra**2).sum(axis=1))).T
-
-    kmeans_model = KMeans(n_clusters=k, n_init=10, random_state=1)
-    kmeans_model.fit(l2_spectra)
-    kmeans_cluster_labels = pd.Series(kmeans_model.labels_+1, index=l2_spectra.index)
-    silhouette = silhouette_score(l2_spectra.values, kmeans_cluster_labels, metric='euclidean')
-
-    # Find median usage for each gene across cluster
-    median_spectra = l2_spectra.groupby(kmeans_cluster_labels).median()
-
-    # Normalize median spectra to probability distributions.
-    median_spectra = (median_spectra.T/median_spectra.sum(1)).T
-
-    # reset index and col names 
-    median_spectra.columns = range(len(median_spectra.columns))
-    median_spectra = median_spectra.reset_index(drop=True)
-
+    if save_name is None:
+        save_name = "Program Loadings by Days"
     
-
-    rf_usages = rf_usages.drop("bc_wells", axis = 1)
-    rf_usages.columns = range(len(rf_usages.columns))
-    rf_usages = rf_usages.reset_index(drop=True)
-
-
-    # Compute prediction error as a frobenius norm
-    rf_pred_norm_counts = rf_usages.dot(median_spectra)        
-    if sp.issparse(norm_counts.X):
-        prediction_error = ((norm_counts.X.todense() - rf_pred_norm_counts)**2).sum().sum()
+    # Create the dotplot
+    if ax is None:
+        # Standalone mode - let scanpy create its own figure
+                
+        grogram_list = adata_new.var_names.tolist()
+        dp = sc.pl.dotplot(adata_new, grogram_list, groupby=groupby,
+                          figsize=figsize, swap_axes=True, dendrogram=False,
+                          show=False, return_fig=True)
+        dp.make_figure()
+        fig = dp.fig
+        ax = dp.ax_dict['mainplot_ax']
     else:
-        prediction_error = ((norm_counts.X - rf_pred_norm_counts)**2).sum().sum()    
-        
-    return pd.DataFrame([k, density_threshold, silhouette,  prediction_error],
-            index = ['k', 'local_density_threshold', 'silhouette', 'prediction_error'],
-            columns = ['stats'])
-
-
-def load_stablity_error_data(output_directory, run_name, local_neighborhood_size=0.30, 
-   density_threshold=2.0, components = [30, 50, 60, 80, 100, 200, 250, 300]):
-
-    cnmf_obj = cnmf.cNMF(output_dir=output_directory, name=run_name)
-
-    stats = []
-    norm_counts = sc.read(cnmf_obj.paths['normalized_counts'])
+        # Gridspec mode - use provided ax
+        fig = ax.get_figure()
+        grogram_list = adata_new.var_names.tolist()
+        dp = sc.pl.dotplot(adata_new, grogram_list, groupby=groupby,
+                          swap_axes=True, dendrogram=False, show=False,
+                          return_fig=True, ax=ax)
+        dp.make_figure()
     
-    for k in components:
-        rf_usages_path = '{output_directory}/{run_name}/{run_name}.usages.k_{k}.dt_{sel_thresh}.consensus.txt'.format(
-                                                                                output_directory=output_directory,
-                                                                                run_name = run_name,
-                                                                                k=k,
-                                                                                sel_thresh = str(sel_thresh).replace('.','_')
+    ax.set_title(save_name, fontsize=14, fontweight='bold', loc='center')
+    ax.set_ylabel('Program', fontsize=10, fontweight='bold', loc='center')
+    ax.set_xlabel(groupby, fontsize=10, fontweight='bold', loc='center')
+    
+    # Get labels and set ticks properly
+    label = list(mdata['rna'].obs[groupby].cat.categories)  # Use categories instead
+    
+    # Set both ticks and labels together
+    tick_positions = range(len(label))
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(label, fontsize=8)
 
-        stats.append(load_stablity_error_data_(k, cnmf_obj, norm_counts, rf_usages_path, density_threshold, local_neighborhood_size))
+    
+    # save fig (only in standalone mode)
+    if save_name and save_path and standalone_mode:
+        fig.savefig(f"{save_path}/{save_name}.png", format='png', bbox_inches='tight', dpi=300)  # Changed to png
+    
+    # Control whether to display the plot (only in standalone mode)
+    if ax is None:
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
+    
+    return ax
 
-    arr = np.array(stats).squeeze()
-    df = pd.DataFrame(arr, columns=['k', 'local_density_threshold', 'silhouette', 'prediction_error'])
 
-    print("min stablity is", df['silhouette'].min())
-    print("max stablity is", df['silhouette'].max())
 
-    print("min error is",df['prediction_error'].min())
-    print("max error is",df['prediction_error'].max())
-
-    return df
-'''
+# Plot clustermap given paths to program by gene matrix

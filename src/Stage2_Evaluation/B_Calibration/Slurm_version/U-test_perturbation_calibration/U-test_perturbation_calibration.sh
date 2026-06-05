@@ -41,7 +41,7 @@ mkdir -p "$LOG_DIR/Evaluation/logs"
 # Activate conda environment
 echo "Activating conda environment..."
 eval "$(conda shell.bash hook)"
-conda activate NMF_Benchmarking
+conda activate Evaluation_metric
 export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
@@ -65,11 +65,17 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Eval
         --FDR_method "StoreyQ" \
         --number_run 10 \
         --number_guide 6 \
-        --components 5 10 15 \
-        --sel_thresh 2.0 \
+        --K 5 10 15 \
+        --sel_threshs 2.0 \
         --compute_fake_perturbation_tests
+
+        # Reference flags (uncomment + add to the python invocation above to enable):
         #--compute_real_perturbation_tests
         #--visualizations
+        #--skip_existing
+        #--guide_annotation_path "/path/to/guide_metadata.tsv"
+        #--reference_gtf_path "/path/to/reference.gtf.gz"
+        #--check_format
 
 
 # Calculate and print elapsed time at the end
