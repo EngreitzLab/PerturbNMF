@@ -3,7 +3,22 @@
 ## Overview
 A pipeline for testing differential effect (DE) of gene targets on gene programs. This pipeline implements a Conditional Randomization Test (CRT) to assess the statistical significance of perturbations.
 
-The core analysis pipeline lives in the `src.sceptre` module. Environment downloading guide on the github for this test: https://github.com/edtnguyen/programDE/tree/main (Written by Tri Nguyen). 
+The core analysis pipeline lives in the `src.sceptre` module. Environment downloading guide on the github for this test: https://github.com/edtnguyen/programDE/tree/main (Written by Tri Nguyen).
+
+## Setup (required)
+
+The sibling `environment.yml` lists every package currently installed in the `programDE` conda env, but the `src.sceptre` package itself is **not on PyPI** — you must install it from GitHub *after* creating the conda env:
+
+```bash
+# 1. Create the conda env from the export
+conda env create -f environment.yml
+conda activate programDE
+
+# 2. Install the programDE/sceptre wrapper from GitHub
+pip install git+https://github.com/edtnguyen/programDE.git
+```
+
+Without step 2, `python CRT.py ...` will fail with `ModuleNotFoundError: No module named 'src.sceptre'` (or similar). The env-creation script does not do this automatically because `git+` URLs make the `environment.yml` brittle to share across machines that lack git/SSH access.
 
 ---
 
@@ -145,8 +160,8 @@ This generates g × (g-1) p-values for null calibration
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| components | list of int | [30, 50, 60, 80, 100, 200, 250, 300] | K values (number of components) to test |
-| sel_thresh | list of float | [0.4, 0.8, 2.0] | Density threshold values for consensus selection |
+| K | list of int | [30, 50, 70, 80, 100, 200, 300] | K values (number of components) to test |
+| sel_threshs | list of float | [0.2, 2.0] | Density threshold values for consensus selection |
 | categorical_key | str | "sample" | Key in .obs for cell condition/sample labels |
 
 ### Covariate Parameters
@@ -165,3 +180,8 @@ This generates g × (g-1) p-values for null calibration
 | guide_annotation_key | list of str | "non-targeting" | Name of target label for non-targeting/safe-targeting guides |
 | FDR_method | str | "BH" | FDR correction method: "BH" (Benjamini-Hochberg) or "StoreyQ" (Storey Q-value) |
 | save_dir | str | None | Directory to save results and figures. If not provided, defaults to `<out_dir>/<run_name>/Evaluation/<K>_<sel_thresh>/` |
+| skip_existing | flag | off | If set, skip any (K, sel_thresh, condition) whose output `.txt` already exists. Use to resume a preempted SLURM job without recomputing finished conditions. |
+
+### Resuming a preempted job
+
+CRT writes one `{K}_CRT_{covar_tag}_{condition}.txt` (plus matching `.png`) per (K, sel_thresh, condition). To resume after preemption, append `--skip_existing` to the `python3 CRT.py ...` invocation in `CRT.sh` and resubmit — already-finished conditions are skipped, only missing ones are recomputed. Existing `.txt` / `.png` files are not overwritten.
