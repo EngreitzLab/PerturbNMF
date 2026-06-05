@@ -18,7 +18,7 @@
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| K | list of int | [5, 7, 10] | Values of K (number of components) to run NMF for |
+| K | list of int | [30, 50, 70, 80, 100, 200, 300] | Values of K (number of components) to run NMF for |
 | numiter | int | 10 | Number of NMF iterations per K value |
 | densify | flag | False | Densify sparse matrix before factorization |
 | tpm_fn | str | None | Path to TPM normalized data (optional) |
@@ -34,7 +34,7 @@
 | n_jobs | int | -1 | Number of CPU threads for PyTorch (-1 uses PyTorch default) |
 | fp_precision | str | "float" | Numeric precision: "float" (32-bit) or "double" (64-bit) |
 | nmf_seeds_path | str | None | Path to .npy file containing custom NMF seeds for reproducibility |
-| sel_thresh | list of float | [2.0] | Density threshold(s) for consensus selection |
+| sel_threshs | list of float | [0.2, 2.0] | Density threshold(s) for consensus selection |
 
 ## Regularization Parameters
 

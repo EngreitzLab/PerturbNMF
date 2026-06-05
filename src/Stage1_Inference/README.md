@@ -22,8 +22,7 @@ Stage1_Inference/
 │   ├── __init__.py
 │   ├── run_cNMF.py        ← run_cnmf_consensus, compile_results, filter_noncoding_genes,
 │   │                        rename_all_NMF, get_top_indices_fast, annotate_genes_to_excel
-│   ├── plot_diagnostics.py ← generate_all_plots (elbow, usage heatmap, loading violins)
-│   └── format_checking.py
+│   └── plot_diagnostics.py ← generate_all_plots (elbow, usage heatmap, loading violins)
 ├── sk-cNMF/
 │   ├── README.md          ← per-flag table for the sk-cNMF pipeline
 │   ├── environment.yml    ← conda env `sk-cNMF`
@@ -99,6 +98,6 @@ For exact column semantics of `.h5mu`, see Stage 2 docs and the per-pipeline REA
 4. If needed, run targeted sweeps with denser sampling around the best-performing K range identified in step 3.
 5. Examine perturbation calibration plots (Stage 2b) to choose the right p-value estimation method and the minimal covariate set.
 6. Select the optimal K by integrating stability, biological-term metrics, and gene annotations.
-7. Re-test density thresholds (`--sel_thresh`) on the selected K.
+7. Re-test density thresholds (`--sel_threshs`) on the selected K.
 8. Generate the full set of downstream analyses and visualizations for the chosen K.
 
