@@ -2,6 +2,17 @@
 
 This folder contains three statistical tests for evaluating perturbation effects on gene programs identified by cNMF. Each test provides different statistical frameworks for assessing whether perturbations significantly affect gene program activity.
 
+> **⚠️ Conda environments differ across Stage 2 substages — do NOT use the same env for everything.**
+>
+> | Substage | Path | Required conda env |
+> |---|---|---|
+> | 2a Evaluation Metrics | `src/Stage2_Evaluation/A_Metrics/` | `NMF_Benchmarking` |
+> | **2b U-test calibration** (this folder) | `src/Stage2_Evaluation/B_Calibration/Slurm_version/U-test_perturbation_calibration/` | `NMF_Benchmarking` |
+> | **2b CRT calibration** (this folder) | `src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/` | `programDE` |
+> | **2b Matched Cell DE (R)** (this folder) | `src/Stage2_Evaluation/B_Calibration/Slurm_version/Matched_cell_programDE/` | `gene_propagation` |
+>
+> Each subfolder ships its own `environment.yml`. Running a script under the wrong env will fail with `ModuleNotFoundError` (Python) or `package not found` (R). Always activate the env shown above before launching a `.sh` from that folder.
+
 ## Overview of Tests
 
 ### 1. U-test Perturbation Calibration

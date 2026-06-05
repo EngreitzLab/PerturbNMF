@@ -35,10 +35,9 @@ The evaluation pipeline tests cNMF programs against various criteria to assess t
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| K | list of int | [30, 50, 60, 80, 100, 200, 250, 300] | K values to evaluate |
-| sel_thresh | list of float | [0.4, 0.8, 2.0] | Selection thresholds |
+| K | list of int | [30, 50, 70, 80, 100, 200, 300] | K values to evaluate |
+| sel_threshs | list of float | [0.2, 2.0] | Selection thresholds |
 | X_normalized_path | str | None | Path to normalized cell x gene matrix (.h5ad), required for explained variance |
-| data_guide_path | str | None | Path to MuData (.h5mu) containing additional guide/gene information |
 | guide_annotation_path | str | None | Path to tab-separated guide annotation file with "targeting" column |
 | gwas_data_path | str | None | Path to GWAS data file for trait enrichment (required when --Perform_trait is set) |
 | organism | str | "human" | Organism/species for enrichment analysis |
@@ -68,6 +67,9 @@ The evaluation pipeline tests cNMF programs against various criteria to assess t
 | --Perform_trait | Enable trait enrichment analysis |
 | --Perform_explained_variance | Enable explained variance analysis |
 | --Perform_motif | Enable motif enrichment analysis |
+| --use_cache | Load gene set libraries from cached JSON in `Resources/` instead of downloading; falls back to download + cache on miss |
+| --skip_existing | Skip metric computations whose output files already exist on disk; useful for resuming preempted batches |
+| --reassign_name | Reassign `mdata[data_key].var_names` from `var[gene_names_key]` before running metrics |
 
 
 ## Output Organization
