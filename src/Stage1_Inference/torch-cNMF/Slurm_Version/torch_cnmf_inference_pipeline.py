@@ -239,13 +239,14 @@ def main():
     if args.run_factorize:
         cnmf_obj.factorize(skip_completed_runs=args.skip_existing)
 
-    # --- Combine + K selection + Consensus ---
+    # --- Combine + K selection + Consensus + Density-filtering diagnostic ---
     if args.run_refit:
         cnmf_obj.combine()
         cnmf_obj.k_selection_plot()
         run_cnmf_consensus(cnmf_obj,
                            components=args.K,
                            density_thresholds=args.sel_threshs)
+        cnmf_obj.density_filtering_plot(close_fig=True)
 
     # --- Compile results & annotate ---
     if args.run_compile_annotation:
