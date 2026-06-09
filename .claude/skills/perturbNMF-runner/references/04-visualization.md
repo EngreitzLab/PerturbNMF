@@ -49,7 +49,7 @@ Enrichment file patterns use `{k}` placeholder (and `{sample}` for perturbation)
 | `--mdata_path` | Path to .h5mu file |
 | `--perturb_path_base` | Base path for perturbation results |
 | `--GO_path` | Path to GO enrichment results |
-| `--pdf_save_path` | Output directory for plots |
+| `--save_path` | Output directory (PDF/SVG files or HTML share tree) |
 
 ### Common optional parameters
 
@@ -97,6 +97,7 @@ See `references/parameter-catalog.md` Section 5 for all optional params.
 | `--parallel` | off | Use fork-based multiprocessing (Linux only) |
 | `--n_processes` | `-1` | Number of parallel processes (`-1` = all available cores) |
 | `--expressed_only` | off | Only plot perturbed genes found in the gene expression matrix |
+| `--guide_targets_key` | `guide_targets` | Key in `.uns` to access guide target genes |
 | `--control_target_name` | `non-targeting` | Name of non-targeting control in `guide_targets` (e.g. `non-targeting`, `CTRL`) |
 | `--corr_matrix_path` | None | Directory for precomputed gene waterfall correlation matrices (`corr_gene_matrix_<sample>.txt`); falls back to computing |
 | `--skip_existing` | on (default) | Default skips genes whose output already exists. Pass `--skip_existing` to force re-process all (inverted flag) |

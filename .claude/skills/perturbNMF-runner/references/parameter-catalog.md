@@ -276,7 +276,7 @@ Same as sk-cNMF except:
 | `--mdata_path` | str | -- | Yes | Path to .h5mu file |
 | `--perturb_path_base` | str | -- | Yes | Base path for perturbation results |
 | `--GO_path` | str | -- | Yes | Path to GO enrichment results |
-| `--pdf_save_path` | str | -- | Yes | Output directory for plots |
+| `--save_path` | str | -- | Yes | Output directory (PDF/SVG files or HTML share tree) |
 | `--file_to_dictionary` | str | None | No | Gene name mapping file |
 | `--reference_gtf_path` | str | None | No | Reference GTF |
 | `--tagert_col_name` | str | `program_name` | No | Target column in perturbation results |
@@ -289,8 +289,7 @@ Same as sk-cNMF except:
 | `--up_thred_log` | float | `0.00` | No | Upper volcano threshold |
 | `--figsize` | float (nargs=2) | `35 35` | No | Figure size |
 | `--show` | flag | | No | Display interactively |
-| `--output_format` | str | `SVG` | No | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-program interactive Plotly pages |
-| `--html_share_path` | str | `{pdf_save_path}/html_share` | No | Output directory for HTML report (only used when `--output_format HTML`) |
+| `--output_format` | str | `SVG` | No | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-program interactive Plotly pages directly under `save_path` |
 | `--skip_existing` | flag | | No | Turn OFF skipping; re-process every program (default is to skip programs whose output already exists) |
 | `--square_plots` | flag | | No | Square aspect ratio |
 | `--Conditions` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | No | Condition names (formerly `--sample`) |
@@ -319,7 +318,6 @@ Same as sk-cNMF except:
 - `--p_value` → `--significance_threshold`
 - `--down_thred_log` → `--volcano_log2fc_min`
 - `--up_thred_log` → `--volcano_log2fc_max`
-- `--pdf_save_path` → `--save_path`
 - `--dot_size` → `--umap_dot_size`
 
 | Parameter | Type | Default | Required | Description |
@@ -339,8 +337,7 @@ Same as sk-cNMF except:
 | `--volcano_log2fc_max` | float | `0.00` | No | Upper volcano threshold |
 | `--figsize` | float (nargs=2) | `35 35` | No | Figure size |
 | `--show` | flag | | No | Display interactively |
-| `--output_format` | str | `SVG` | No | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-gene interactive Plotly pages |
-| `--html_share_path` | str | `{save_path}/html_share` | No | Output directory for HTML report (only used when `--output_format HTML`) |
+| `--output_format` | str | `SVG` | No | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-gene interactive Plotly pages directly under `save_path` |
 | `--skip_existing` | flag | | No | Turn OFF skipping; re-process every gene (default is to skip genes whose output already exists) |
 | `--square_plots` | flag | | No | Square aspect ratio |
 | `--n_processes` | int | `-1` | No | Parallel processes |
@@ -352,10 +349,11 @@ Same as sk-cNMF except:
 | `--parallel` | flag | | No | Use fork-based multiprocessing (Linux only) |
 | `--corr_matrix_path` | str | None | No | Directory for precomputed correlation matrices |
 | `--control_target_name` | str | `non-targeting` | No | Name of non-targeting control in guide_targets |
+| `--guide_targets_key` | str | `guide_targets` | No | Key in `.uns` to access guide target genes |
 
 ### Keys
 
-`--data_key` (rna), `--prog_key` (cNMF), `--gene_name_key` (gene_names), `--categorical_key` (sample)
+`--data_key` (rna), `--prog_key` (cNMF), `--gene_name_key` (gene_names), `--categorical_key` (sample), `--guide_targets_key` (guide_targets)
 
 ---
 
