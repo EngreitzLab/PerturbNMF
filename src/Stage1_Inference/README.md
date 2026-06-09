@@ -90,14 +90,5 @@ After a successful run (regardless of which pipeline), the on-disk layout is:
 
 For exact column semantics of `.h5mu`, see Stage 2 docs and the per-pipeline READMEs.
 
-## Recommended workflow for K selection
 
-1. Select as many genes as possible as highly variable genes (HVGs), within time and memory constraints, to maximize enriched-term coverage.
-2. For larger datasets, use a tighter convergence tolerance and more iterations to maximize solution stability.
-3. Run a broad sweep across a wide range of K values to inspect overall K-selection trends in stability and biological metrics.
-4. If needed, run targeted sweeps with denser sampling around the best-performing K range identified in step 3.
-5. Examine perturbation calibration plots (Stage 2b) to choose the right p-value estimation method and the minimal covariate set.
-6. Select the optimal K by integrating stability, biological-term metrics, and gene annotations.
-7. Re-test density thresholds (`--sel_threshs`) on the selected K.
-8. Generate the full set of downstream analyses and visualizations for the chosen K.
 
