@@ -99,12 +99,11 @@ Produces one comprehensive panel per cNMF program. Loops over all programs in th
 | `--p_value` | float | `0.05` | P-value threshold for significance |
 | `--down_thred_log` | float | `-0.00` | Lower log2FC threshold for volcano plot |
 | `--up_thred_log` | float | `0.00` | Upper log2FC threshold for volcano plot |
-| `--pdf_save_path` | str | **required** | Directory path to save output plots |
+| `--save_path` | str | **required** | Directory path to save output (PDF/SVG files or HTML share tree) |
 | `--square_plots` | flag | off | Use square aspect ratio for plots |
 | `--figsize` | float list (2) | `35 35` | Figure size as `width height` |
 | `--show` | flag | off | Display plots interactively |
-| `--output_format` | str (choice) | `SVG` | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-program interactive Plotly pages |
-| `--html_share_path` | str | `{pdf_save_path}/html_share` | Output folder for HTML mode (used only with `--output_format HTML`) |
+| `--output_format` | str (choice) | `SVG` | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-program interactive Plotly pages directly under `save_path` |
 | `--Conditions` | str list | `D0 sample_D1 sample_D2 sample_D3` | List of condition names |
 | `--programs` | int list | `None` (all) | Specific program numbers to plot (e.g. `4 5 6`). If omitted, every program in the h5mu is plotted |
 | `--subsample_frac` | float | `None` (all) | Fraction of cells to subsample for UMAP plots (e.g. `0.1` for 10%) |
@@ -124,7 +123,7 @@ Produces one comprehensive panel per cNMF program. Loops over all programs in th
 - Program-program correlation waterfall
 - Combined panel → one page in the PDF
 
-Set `--output_format HTML` to also emit a shareable HTML report (path defaults to `{pdf_save_path}/html_share`).
+Set `--output_format HTML` to emit a shareable HTML report under `save_path` (per-program subdirectories).
 
 Sample output: [Example/Program_PDF_Report_Example.pdf](Example/Program_PDF_Report_Example.pdf).
 
@@ -151,12 +150,11 @@ Produces one comprehensive panel per **perturbed gene** — counterpart to the p
 | `--significance_threshold` | float | `0.05` | P-value threshold for significance |
 | `--volcano_log2fc_min` | float | `-0.00` | Lower log2FC threshold for volcano plot |
 | `--volcano_log2fc_max` | float | `0.00` | Upper log2FC threshold for volcano plot |
-| `--save_path` | str | **required** | Directory path to save output plots |
+| `--save_path` | str | **required** | Directory path to save output (PDF/SVG files or HTML share tree) |
 | `--square_plots` | flag | off | Use square aspect ratio for plots |
 | `--figsize` | float list (2) | `35 35` | Figure size as `width height` |
 | `--show` | flag | off | Display plots interactively |
-| `--output_format` | str (choice) | `SVG` | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-gene interactive Plotly pages |
-| `--html_share_path` | str | `{save_path}/html_share` | Output folder for HTML mode (used only with `--output_format HTML`) |
+| `--output_format` | str (choice) | `SVG` | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-gene interactive Plotly pages directly under `save_path` |
 | `--n_processes` | int | `-1` | Number of parallel processes (`-1` = all available cores) |
 | `--Conditions` | str list | `D0 sample_D1 sample_D2 sample_D3` | List of condition names |
 | `--umap_dot_size` | int | `10` | Dot size for UMAP plots |
@@ -170,6 +168,7 @@ Produces one comprehensive panel per **perturbed gene** — counterpart to the p
 | `--prog_key` | str | `cNMF` | Key to access cNMF programs in MuData |
 | `--gene_name_key` | str | `gene_names` | Key to access gene names in var |
 | `--categorical_key` | str | `sample` | Key to access sample/condition labels in obs |
+| `--guide_targets_key` | str | `guide_targets` | Key in `.uns` to access guide target genes |
 | `--control_target_name` | str | `non-targeting` | Name of non-targeting control in `guide_targets` (e.g. `non-targeting`, `CTRL`) |
 
 ### Outputs per gene
@@ -187,7 +186,7 @@ Sample output: [Example/Gene_PDF_Report_Example.pdf.pdf](Example/Gene_PDF_Report
 
 ## Common conventions
 
-- **Output format**: each script supports `--output_format {PDF, SVG, HTML}`. PDF is default for sharing; HTML mode emits a self-contained report viewable in any browser (use `--html_share_path` to also drop a shareable index).
+- **Output format**: each script supports `--output_format {PDF, SVG, HTML}`. PDF is default for sharing; HTML mode emits a self-contained report viewable in any browser, written directly under `--save_path`.
 - **Figure size**: `--figsize WIDTH HEIGHT` (default `35 35`).
 - **Square aspect**: `--square_plots` for camera-ready figures.
 - **Subsampling**: `--subsample_frac 0.1` to render UMAP from 10% of cells (useful for >500k-cell runs).
