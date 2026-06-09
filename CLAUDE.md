@@ -64,6 +64,13 @@ eval "$(conda shell.bash hook)" && conda activate <env_name> && <command>
 - **Log directories**: `<out_dir>/<run_name>/Inference/logs/` for inference, `<out_dir>/<run_name>/Evaluation/logs/` for evaluation, `<out_dir>/<run_name>/Plots/logs/` for interpretation
 - **Config saving**: Each job saves its config to `config_<SLURM_JOB_ID>.yml`
 
-## Interactive Skill
+## Claude Code Skills
 
-Use the `perturbNMF-runner` skill (say "run PerturbNMF", "run cNMF", "submit inference", etc.) for guided, interactive pipeline execution. It validates data, recommends SLURM resources, generates scripts, and submits jobs.
+Four skills under `.claude/skills/`. The `description:` frontmatter in each `SKILL.md` lists trigger phrases.
+
+| Skill | When to use | Detailed docs |
+|---|---|---|
+| `perturbNMF-runner` | "run PerturbNMF", "run cNMF", "submit inference" — guided pipeline execution with SLURM script generation. | [`.claude/skills/perturbNMF-runner/SKILL.md`](.claude/skills/perturbNMF-runner/SKILL.md) (+ `references/`) |
+| `run-tests` | "run tests", "test the pipeline" — end-to-end test suite (sk-cNMF + torch-cNMF + evaluation). | [`.claude/skills/run-tests/SKILL.md`](.claude/skills/run-tests/SKILL.md) |
+| `h5mu-structure` | "inspect this h5mu", "structure of this MuData" — emits a tree-format structure summary `.txt`. | [`.claude/skills/h5mu-structure/SKILL.md`](.claude/skills/h5mu-structure/SKILL.md) |
+| `pipeline-drift-check` | "check drift", "are the docs in sync" — cross-checks argparse vs READMEs / `.sh` / skill markdown. Run on demand mid-session (a SessionStart hook also runs this automatically at every session start). | [`.claude/skills/pipeline-drift-check/SKILL.md`](.claude/skills/pipeline-drift-check/SKILL.md) |

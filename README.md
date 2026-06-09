@@ -71,3 +71,14 @@ See [`src/Stage2_Evaluation/B_Calibration/README.md`](src/Stage2_Evaluation/B_Ca
 - **Annotation**: LLM-driven gene program annotation (PubTator3 literature mining, verfiication of LLM generated contents)
 
 See [`src/Stage3_Interpretation/README.md`](src/Stage3_Interpretation/README.md) for detailed parameters and output format.
+
+## Claude Code Skills
+
+This repo ships four Claude Code skills under `.claude/skills/` for guided pipeline execution, validation, and maintenance. Open the linked `SKILL.md` for trigger phrases, detailed usage, and helper script references.
+
+| Skill | What it does | Detailed docs |
+|---|---|---|
+| **perturbNMF-runner** | Interactive runner for the full pipeline (inference → evaluation → calibration → plotting → annotation → Excel summary). Validates input data, recommends SLURM resources, generates and submits scripts. | [`.claude/skills/perturbNMF-runner/SKILL.md`](.claude/skills/perturbNMF-runner/SKILL.md) — see also `references/01-inference.md` … `05-annotation-summary.md`, `parameter-catalog.md`, `data-format-spec.md` |
+| **run-tests** | Runs the end-to-end test suite: clean previous outputs, submit sk-cNMF (CPU) and torch-cNMF (GPU/SLURM) inference tests, then evaluation tests, and summarizes pass/fail. | [`.claude/skills/run-tests/SKILL.md`](.claude/skills/run-tests/SKILL.md) |
+| **h5mu-structure** | Inspects an `.h5mu` file and emits a tree-format `.txt` summary listing modalities, `obs`/`var`/`uns`/`obsm`/`layers` keys. | [`.claude/skills/h5mu-structure/SKILL.md`](.claude/skills/h5mu-structure/SKILL.md) |
+| **pipeline-drift-check** | Detects parameter drift between `add_argument` calls in `src/**/*.py` (and `make_option` in `.R`) and the `--flag` mentions in sibling READMEs, SLURM `.sh` runners, and skill markdown. Run after editing any argparse or doc. | [`.claude/skills/pipeline-drift-check/SKILL.md`](.claude/skills/pipeline-drift-check/SKILL.md) |
