@@ -6,10 +6,11 @@ src/Stage2_Evaluation/Resources/
 tests/output/
 tests/tests/output/
 tests/resources/
+tests/developing_test/
 
 # Example output (generated)
-examples/example_output/
-examples/data/
+examples/**/example_output/
+examples/**/data/
 
 # Python
 __pycache__/
