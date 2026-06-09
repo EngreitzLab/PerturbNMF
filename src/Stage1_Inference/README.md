@@ -11,6 +11,19 @@ Run consensus NMF (cNMF) on a single-cell counts matrix to extract gene programs
 
 sk-cNMF updates one matrix element at a time (can't be parallelized on GPU). torch-cNMF's HALS solver updates a column of elements per step, which maps well to GPU kernels. Results are comparable between the two solvers.
 
+> **⚠️ Conda environments differ between the two pipelines — do NOT reuse one for the other.**
+>
+> | Pipeline | Path | Required conda env |
+> |---|---|---|
+> | sk-cNMF (CPU) | `src/Stage1_Inference/sk-cNMF/` | `sk-cNMF` |
+> | torch-cNMF (GPU) | `src/Stage1_Inference/torch-cNMF/` | `torch-nmf-dl` |
+>
+> Each pipeline ships its own `environment.yml`. Activate the env shown above before launching any `.sh` from that folder, e.g.
+> ```bash
+> eval "$(conda shell.bash hook)" && conda activate torch-nmf-dl
+> ```
+> Running under the wrong env will fail with `ModuleNotFoundError` (e.g. `torch` missing in `sk-cNMF`, or `gseapy` missing in `torch-nmf-dl`).
+
 Benchmarking result: https://docs.google.com/presentation/d/1Z25ew7xrnhXD_eQx7e7eg6vtHx_T4uVD/edit?usp=sharing&ouid=103348313942131245812&rtpof=true&sd=true
 
 ## Directory layout
