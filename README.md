@@ -29,7 +29,7 @@ The linked doc covers, in depth:
 
 - **Required input data format for every step** — `.h5ad` schema (obs, var, X), MuData (`.h5mu`) modalities, guide annotation TSV layout, GWAS reference, motif reference, GTF reference, and which keys (`guide_assignment`, `guide_targets`, `categorical_key`, etc.) are required at each stage.
 - **How to run the pipeline end-to-end** — concrete invocations of each SLURM `.sh`, expected output paths, recommended resource requests, and how the stages chain together.
-- **How to choose K (number of programs)** — interpretation of the 8-panel K-selection plot, the saturation-elbow rule, and what to do when panels disagree. See also the quick-reference [`examples/Interpretation/README.md`](examples/Interpretation/README.md).
+- **How to choose K (number of programs)** — interpretation of the 8-panel K-selection plot, the saturation-elbow rule, and what to do when panels disagree.
 - **How to choose density threshold (`sel_thresh`)** — interpretation of `Inference.density_filtering.dt_<X>.png`, trade-offs between strict filtering (fewer but more reproducible programs) and lax filtering (more programs, more noise), and how survival rate scales with K.
 
 If anything in this top-level README is ambiguous, the doc above is the authoritative source.
