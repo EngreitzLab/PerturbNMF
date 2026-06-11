@@ -72,7 +72,7 @@ import pandas as pd
 mdata = mu.read_h5mu(f"{out_dir}/{run_name}/Inference/adata/cNMF_{k}_{thresh_str}.h5mu")
 
 (df_loading_long, df_loading_flat, df_GO, df_Geneset, df_Trait,
- df_Perturbation, df_Association, df_ExpVar, df_Perturbation_sig) = load_simple_sheets(
+ df_Perturbation, df_Association, df_ExpVar) = load_simple_sheets(
     mdata, out_dir=out_dir, run_name=run_name,
     k=k, sel_thresh=sel_thresh, num_gene=300,
     Sample=Conditions,                       # e.g. ['D0', 'sample_D1', 'sample_D2', 'sample_D3']

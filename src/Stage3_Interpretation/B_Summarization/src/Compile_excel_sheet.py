@@ -63,11 +63,11 @@ def check_program_name_match(mdata, dataframes, prog_key='cNMF'):
             print(f"  file programs: {file_sorted}")
 
 # merge to have specificity score added for perturbation results
-def add_specificity_scores_file(save_path, Perturbation_path_base, samp):                                                                                                                                                    
-                                                                                                                                                                                                                     
-      PMI = pd.read_csv(f'{save_path}/specificity_score_{samp}.txt', sep='\t', index_col=0)                                                                                                                          
-      df_perturbation = pd.read_csv(f'{Perturbation_path_base}_{samp}.txt', sep='\t')                                                                                                                                     
-                                                                                                                                                                                                                     
+def add_specificity_scores_file(save_path, Perturbation_path_base, samp, adj_pval_threshold=0.05):
+
+      PMI = pd.read_csv(f'{save_path}/specificity_score_{samp}.txt', sep='\t', index_col=0)
+      df_perturbation = pd.read_csv(f'{Perturbation_path_base}_{samp}.txt', sep='\t')
+
       # convert PMI to long form
       df_PMI = PMI.reset_index().melt(id_vars="target_name", var_name="program_name", value_name="specificity_scores")
 
@@ -78,9 +78,13 @@ def add_specificity_scores_file(save_path, Perturbation_path_base, samp):
       # merge to have specificity score added for perturbation results
       df_perturbation_merged = df_PMI.merge(df_perturbation, on=["target_name", "program_name"])
 
-      df_perturbation_merged.to_csv(f'{save_path}/perturbation_merged_{samp}.txt', sep='\t')
+      # significant-only subset, derived from the merged frame so it keeps specificity_scores
+      df_sig_df_perturbation_merged = df_perturbation_merged[df_perturbation_merged['adj_pval'] < adj_pval_threshold]
 
-      return df_perturbation_merged
+      df_perturbation_merged.to_csv(f'{save_path}/perturbation_merged_{samp}.txt', sep='\t')
+      df_sig_df_perturbation_merged.to_csv(f'{save_path}/perturbation_merged_{samp}_significant.txt', sep='\t')
+
+      return df_perturbation_merged, df_sig_df_perturbation_merged
 
 
 
@@ -294,12 +298,9 @@ def load_simple_sheets(mdata, out_dir, run_name, k, sel_thresh, num_gene = 300, 
     perturbation_files = [f"{Perturbation_path_base}_{samp}.txt" for samp in Sample]
     if any(os.path.exists(f) for f in perturbation_files):
         df_Perturbation = Compile_Perturbation_sheet(Perturbation_path_base, Sample = Sample, sample_key = Perturbation_Sample_key)
-
-        df_Perturbation_significant_gene_only = df_Perturbation[df_Perturbation['adj_pval'] < 0.05]
     else:
         print(f'No perturbation files found for base: {Perturbation_path_base}')
         df_Perturbation = None
-        df_Perturbation_significant_gene_only = None
 
     # compile association
     if os.path.exists(Association_path):
@@ -315,7 +316,7 @@ def load_simple_sheets(mdata, out_dir, run_name, k, sel_thresh, num_gene = 300, 
         print(f'Explained variance file not found: {Explained_Variance_path}')
         df_Explained_Variance = None
 
-    return df_Program_loading_long, df_Program_loading_flat, df_GO, df_Geneset, df_Trait, df_Perturbation, df_Association, df_Explained_Variance, df_Perturbation_significant_gene_only
+    return df_Program_loading_long, df_Program_loading_flat, df_GO, df_Geneset, df_Trait, df_Perturbation, df_Association, df_Explained_Variance
 
 
 
