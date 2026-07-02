@@ -45,8 +45,11 @@
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| remove_noncoding | flag | False | Remove non-coding genes whose symbol starts with `ensembl_prefix` before factorization (requires `gene_names_key` set to a real var column, e.g. `symbol`) |
-| ensembl_prefix | str | "ENSG" | Ensembl ID prefix used to identify non-coding genes when `remove_noncoding` is set |
+| remove_noncoding | flag | False | Remove non-coding genes before factorization. With `gtf_path`, keeps only genes annotated as `protein_coding` in the GTF (matched by Ensembl ID); otherwise falls back to the Ensembl-prefix heuristic on `gene_names_key` |
+| ensembl_prefix | str | "ENSG" | Ensembl ID prefix used by the (fallback) prefix-based non-coding filter |
+| gtf_path | str | None | Path to a GENCODE/Ensembl GTF(.gz). Enables GTF-based `remove_noncoding` and `add_gene_names_from_gtf` |
+| gene_id_key | str | "gene_id" | Column in adata.var holding Ensembl gene IDs (used for GTF-based filtering / gene-name annotation). Falls back to var_names if absent |
+| add_gene_names_from_gtf | flag | False | Populate `adata.var[gene_names_key]` with gene symbols looked up from `gtf_path` by Ensembl ID (from `gene_id_key`). Unmatched IDs keep their Ensembl ID. Requires `gtf_path` |
 
 ## Data Access Keys
 

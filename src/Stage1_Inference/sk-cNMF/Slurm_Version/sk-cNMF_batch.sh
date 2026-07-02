@@ -76,6 +76,9 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         #--skip_existing
         #--remove_noncoding
         #--ensembl_prefix "ENSG"
+        #--gtf_path "/oak/stanford/groups/engreitz/Users/ymo/Tools/AGeneTic/refs/gencode.v43.annotation.gtf.gz"
+        #--gene_id_key "gene_id"
+        #--add_gene_names_from_gtf
         #--data_key "rna"
         #--prog_key "cNMF"
         #--categorical_key "sample"

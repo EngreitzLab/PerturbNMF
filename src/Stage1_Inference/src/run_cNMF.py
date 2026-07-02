@@ -58,6 +58,193 @@ def filter_noncoding_genes(counts_fn, inference_dir, gene_names_key='symbol', en
     return filtered_path
 
 
+def _strip_ensembl_version(ids):
+    """Return Ensembl IDs with any trailing `.<version>` removed (e.g. ENSG0001.12 -> ENSG0001)."""
+    return pd.Index(ids).astype(str).str.split('.').str[0]
+
+
+def load_protein_coding_ids(gtf_path, gene_type='protein_coding'):
+    """Parse a (optionally gzipped) GENCODE/Ensembl GTF and return the set of
+    version-stripped gene IDs whose `gene` feature line has the requested `gene_type`.
+
+    Args:
+        gtf_path: Path to a GTF/GTF.gz file.
+        gene_type: gene_type attribute value to keep (default 'protein_coding').
+
+    Returns:
+        A set of version-stripped Ensembl gene IDs (e.g. {'ENSG00000121410', ...}).
+    """
+    import gzip
+    import re
+
+    gene_id_re = re.compile(r'gene_id "([^"]+)"')
+    gene_type_re = re.compile(r'gene_type "([^"]+)"')
+
+    opener = gzip.open if str(gtf_path).endswith('.gz') else open
+    keep = set()
+    with opener(gtf_path, 'rt') as fh:
+        for line in fh:
+            if line.startswith('#'):
+                continue
+            cols = line.split('\t', 8)
+            if len(cols) < 9 or cols[2] != 'gene':
+                continue
+            attrs = cols[8]
+            gt = gene_type_re.search(attrs)
+            if gt is None or gt.group(1) != gene_type:
+                continue
+            gid = gene_id_re.search(attrs)
+            if gid is not None:
+                keep.add(gid.group(1).split('.')[0])
+    return keep
+
+
+def filter_noncoding_genes_gtf(counts_fn, inference_dir, gtf_path,
+                               gene_id_key='gene_id', gene_type='protein_coding'):
+    """Keep only genes whose Ensembl ID is annotated as `gene_type` in `gtf_path`; drop the rest.
+
+    Unlike `filter_noncoding_genes` (a prefix heuristic on the symbol column), this
+    uses the GTF as ground truth: any gene whose Ensembl ID is not listed as a
+    `protein_coding` `gene` feature in the GTF is removed. Ensembl version suffixes
+    (`.<n>`) are stripped on both sides before matching.
+
+    Returns the path to the filtered .h5ad. Caller should rebind whatever variable
+    holds the input counts path to this return value before downstream steps.
+
+    Args:
+        counts_fn: Path to input .h5ad.
+        inference_dir: Directory to write the filtered .h5ad into.
+        gtf_path: Path to a GTF/GTF.gz file (GENCODE/Ensembl).
+        gene_id_key: Column in adata.var holding the Ensembl gene ID. If absent,
+            falls back to adata.var_names.
+        gene_type: gene_type attribute value to keep (default 'protein_coding').
+
+    Returns:
+        Path to the filtered .h5ad written under `inference_dir`.
+    """
+    coding_ids = load_protein_coding_ids(gtf_path, gene_type=gene_type)
+    if len(coding_ids) == 0:
+        raise ValueError(
+            f"No '{gene_type}' gene features found in GTF: {gtf_path}. "
+            "Check the file path and that it is a GENCODE/Ensembl GTF with gene_type attributes."
+        )
+
+    adata = sc.read(counts_fn)
+    if gene_id_key in adata.var.columns:
+        raw_ids = adata.var[gene_id_key]
+    else:
+        print(f"WARNING: '{gene_id_key}' not in adata.var columns; falling back to var_names.")
+        raw_ids = adata.var_names
+    base_ids = _strip_ensembl_version(raw_ids)
+    mask = np.asarray(base_ids.isin(coding_ids))
+
+    n_keep = int(mask.sum())
+    if n_keep == 0:
+        raise ValueError(
+            f"0 of {adata.n_vars} genes matched '{gene_type}' IDs from the GTF. "
+            f"Check that adata.var['{gene_id_key}'] holds Ensembl gene IDs (e.g. ENSG...)."
+        )
+    print(f"GTF filter: keeping {n_keep}/{adata.n_vars} genes "
+          f"({gene_type} in {os.path.basename(str(gtf_path))}).")
+
+    adata = adata[:, mask].copy()
+    filtered_path = f'{inference_dir}/adata_without_noncoding.h5ad'
+    adata.write(filtered_path)
+    return filtered_path
+
+
+def load_gene_id_to_name(gtf_path):
+    """Parse a (optionally gzipped) GENCODE/Ensembl GTF and return a mapping from
+    version-stripped gene_id to gene_name (from the `gene` feature lines).
+
+    Args:
+        gtf_path: Path to a GTF/GTF.gz file.
+
+    Returns:
+        dict {version-stripped Ensembl gene ID -> gene_name}
+        (e.g. {'ENSG00000121410': 'A1BG', ...}).
+    """
+    import gzip
+    import re
+
+    gene_id_re = re.compile(r'gene_id "([^"]+)"')
+    gene_name_re = re.compile(r'gene_name "([^"]+)"')
+
+    opener = gzip.open if str(gtf_path).endswith('.gz') else open
+    id2name = {}
+    with opener(gtf_path, 'rt') as fh:
+        for line in fh:
+            if line.startswith('#'):
+                continue
+            cols = line.split('\t', 8)
+            if len(cols) < 9 or cols[2] != 'gene':
+                continue
+            attrs = cols[8]
+            gid = gene_id_re.search(attrs)
+            name = gene_name_re.search(attrs)
+            if gid is not None and name is not None:
+                id2name[gid.group(1).split('.')[0]] = name.group(1)
+    return id2name
+
+
+def add_gene_names_from_gtf(counts_fn, inference_dir, gtf_path,
+                            gene_id_key='gene_id', gene_names_key='symbol',
+                            keep_unmatched=True):
+    """Add/overwrite adata.var[gene_names_key] with gene symbols looked up from the
+    GTF by (version-stripped) Ensembl ID, then write a copy.
+
+    Returns the path to the annotated .h5ad. Caller should rebind whatever variable
+    holds the input counts path to this return value before downstream steps.
+
+    Args:
+        counts_fn: Path to input .h5ad.
+        inference_dir: Directory to write the annotated .h5ad into.
+        gtf_path: Path to a GTF/GTF.gz file (GENCODE/Ensembl).
+        gene_id_key: Column in adata.var holding the Ensembl gene ID. If absent,
+            falls back to adata.var_names.
+        gene_names_key: Column in adata.var to write the resolved gene symbols into
+            (created if absent, overwritten if present).
+        keep_unmatched: If True, IDs with no GTF match keep their original Ensembl ID
+            as the name; if False, unmatched names are set to empty string.
+
+    Returns:
+        Path to the annotated .h5ad written under `inference_dir`.
+    """
+    id2name = load_gene_id_to_name(gtf_path)
+    if len(id2name) == 0:
+        raise ValueError(
+            f"No gene_id->gene_name pairs found in GTF: {gtf_path}. "
+            "Check the file path and that it is a GENCODE/Ensembl GTF with gene_name attributes."
+        )
+
+    adata = sc.read(counts_fn)
+    if gene_id_key in adata.var.columns:
+        raw_ids = adata.var[gene_id_key]
+    else:
+        print(f"WARNING: '{gene_id_key}' not in adata.var columns; falling back to var_names.")
+        raw_ids = adata.var_names
+    base_ids = _strip_ensembl_version(raw_ids)
+
+    mapped = base_ids.map(id2name)
+    n_matched = int(mapped.notna().sum())
+    if n_matched == 0:
+        raise ValueError(
+            f"0 of {adata.n_vars} genes matched a gene_name from the GTF. "
+            f"Check that adata.var['{gene_id_key}'] holds Ensembl gene IDs (e.g. ENSG...)."
+        )
+
+    fallback = pd.Index(base_ids).astype(str) if keep_unmatched else ""
+    names = mapped.where(mapped.notna(), fallback)
+    adata.var[gene_names_key] = np.asarray(names)
+
+    print(f"GTF gene names: matched {n_matched}/{adata.n_vars} genes; "
+          f"wrote adata.var['{gene_names_key}'] from {os.path.basename(str(gtf_path))}.")
+
+    annotated_path = f'{inference_dir}/adata_with_gene_names.h5ad'
+    adata.write(annotated_path)
+    return annotated_path
+
+
 def compile_results(output_directory, run_name, sel_threshs = [2.0], components = [30, 50, 60, 80, 100, 200, 250, 300],
  guide_names_key = "guide_names", guide_targets_key = "guide_targets", categorical_key= 'batch', guide_assignment_key ="guide_assignment",
  gene_names_key = None ):

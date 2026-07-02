@@ -29,7 +29,7 @@ from torch_cnmf import cNMF
 from Stage1_Inference.src import (
     run_cnmf_consensus, get_top_indices_fast, annotate_genes_to_excel,
     rename_and_move_files_NMF, rename_all_NMF, compile_results,
-    filter_noncoding_genes,
+    filter_noncoding_genes, filter_noncoding_genes_gtf,
 )
 from Stage1_Inference.src.plot_diagnostics import generate_all_plots
 
@@ -120,11 +120,21 @@ def main():
 
     # --- Preprocessing ---
     parser.add_argument('--remove_noncoding', action='store_true',
-                        help="Remove non-coding genes by Ensembl prefix")
+                        help="Remove non-coding genes. With --gtf_path, keeps only genes annotated "
+                             "as protein_coding in the GTF; otherwise falls back to the Ensembl-prefix heuristic.")
     parser.add_argument('--ensembl_prefix', type=str, default='ENSG',
-                        help="Ensembl ID prefix for non-coding filter")
+                        help="Ensembl ID prefix for the (fallback) prefix-based non-coding filter")
+    parser.add_argument('--gtf_path', type=str, default=None,
+                        help="Path to a GENCODE/Ensembl GTF(.gz). When set with --remove_noncoding, "
+                             "genes whose Ensembl ID is not a protein_coding 'gene' in the GTF are removed.")
+    parser.add_argument('--gene_id_key', type=str, default='gene_id',
+                        help="Column in adata.var holding Ensembl gene IDs (used for the GTF-based non-coding filter)")
+    parser.add_argument('--add_gene_names_from_gtf', action='store_true',
+                        help="Populate adata.var[gene_names_key] with gene symbols looked up from --gtf_path "
+                             "by Ensembl ID (from gene_id_key). Requires --gtf_path.")
     parser.add_argument('--gene_names_key', type=str, default='symbol',
-                        help="Column in adata.var with gene names (used for non-coding filter and compiled results)")
+                        help="Column in adata.var with gene names (used for non-coding filter, GTF gene-name "
+                             "annotation, and compiled results)")
 
     # --- Metadata keys ---
     parser.add_argument('--data_key', type=str, default='rna')
@@ -188,11 +198,33 @@ def main():
 
     # --- Optionally filter non-coding genes ---
     if args.remove_noncoding:
-        args.counts_fn = filter_noncoding_genes(
+        if args.gtf_path:
+            # GTF-based: keep only genes annotated as protein_coding in the GTF.
+            args.counts_fn = filter_noncoding_genes_gtf(
+                counts_fn=args.counts_fn,
+                inference_dir=inference_dir,
+                gtf_path=args.gtf_path,
+                gene_id_key=args.gene_id_key,
+            )
+        else:
+            # Fallback heuristic: drop genes whose symbol still starts with the Ensembl prefix.
+            args.counts_fn = filter_noncoding_genes(
+                counts_fn=args.counts_fn,
+                inference_dir=inference_dir,
+                gene_names_key=args.gene_names_key,
+                ensembl_prefix=args.ensembl_prefix,
+            )
+
+    # --- Optionally add gene names from the GTF (looked up by Ensembl ID) ---
+    if args.add_gene_names_from_gtf:
+        if not args.gtf_path:
+            raise ValueError("--add_gene_names_from_gtf requires --gtf_path.")
+        args.counts_fn = add_gene_names_from_gtf(
             counts_fn=args.counts_fn,
             inference_dir=inference_dir,
+            gtf_path=args.gtf_path,
+            gene_id_key=args.gene_id_key,
             gene_names_key=args.gene_names_key,
-            ensembl_prefix=args.ensembl_prefix,
         )
 
     # ======================================================================

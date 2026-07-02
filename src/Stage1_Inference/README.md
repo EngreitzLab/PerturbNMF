@@ -34,6 +34,7 @@ Stage1_Inference/
 ├── src/                   ← shared library (used by both pipelines)
 │   ├── __init__.py
 │   ├── run_cNMF.py        ← run_cnmf_consensus, compile_results, filter_noncoding_genes,
+│   │                        filter_noncoding_genes_gtf, add_gene_names_from_gtf,
 │   │                        rename_all_NMF, get_top_indices_fast, annotate_genes_to_excel
 │   └── plot_diagnostics.py ← generate_all_plots (elbow, usage heatmap, loading violins)
 ├── sk-cNMF/
