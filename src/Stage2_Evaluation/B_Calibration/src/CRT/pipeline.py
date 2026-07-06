@@ -32,8 +32,6 @@ from .pipeline_helpers import (
     _stack_skew_outputs,
 )
 from .propensity import fit_propensity_logistic
-from .crt import crt_betas_for_gene
-from .diagnostics import crt_null_pvals_from_null_stats_matrix
 
 
 @dataclass
@@ -228,102 +226,6 @@ def run_one_gene_union_crt(
         skew_params=skew_params,
         pvals_raw=pvals_raw,
     )
-
-
-def compute_gene_null_pvals(
-    gene: str,
-    inputs: CRTInputs,
-    B: int = 1023,
-    base_seed: int = 123,
-    propensity_model: Callable = fit_propensity_logistic,
-    side_code: int = 0,
-) -> np.ndarray:
-    """
-    Compute CRT-null p-values for a single gene by resampling.
-    Returns a (B, K) array of p-values for each null resample and program.
-    """
-    if B <= 0:
-        raise ValueError("B must be positive.")
-
-    obs_idx = _gene_obs_idx(inputs, gene)
-    if obs_idx.size == 0 or obs_idx.size == inputs.C.shape[0]:
-        raise ValueError(
-            "Cannot compute CRT-null p-values when gene is all/none treated."
-        )
-
-    p = _fit_propensity(inputs, obs_idx, propensity_model)
-    seed = _gene_seed(gene, base_seed)
-    indptr, idx = _sample_crt_indices(p, B, seed)
-
-    _, beta_null = crt_betas_for_gene(
-        indptr,
-        idx,
-        inputs.C,
-        inputs.Y,
-        inputs.A,
-        inputs.CTY,
-        obs_idx.astype(np.int32),
-        B,
-    )
-    if side_code not in (-1, 0, 1):
-        raise ValueError("side_code must be -1, 0, or 1.")
-    if side_code == 0:
-        return crt_null_pvals_from_null_stats_matrix(beta_null, two_sided=True)
-    if side_code == 1:
-        return crt_null_pvals_from_null_stats_matrix(beta_null, two_sided=False)
-    return crt_null_pvals_from_null_stats_matrix(-beta_null, two_sided=False)
-
-
-def compute_guide_set_null_pvals(
-    guide_idx: Iterable[int],
-    inputs: CRTInputs,
-    B: int = 1023,
-    base_seed: int = 123,
-    propensity_model: Callable = fit_propensity_logistic,
-    side_code: int = 0,
-) -> np.ndarray:
-    """
-    Compute CRT-null p-values for a guide set by resampling.
-    Returns a (B, K) array of p-values for each null resample and program.
-    """
-    if B <= 0:
-        raise ValueError("B must be positive.")
-
-    guide_idx = np.asarray(list(guide_idx), dtype=np.int32)
-    if guide_idx.size == 0:
-        raise ValueError("guide_idx must contain at least one column index.")
-    guide_idx = np.unique(guide_idx)
-
-    obs_idx = union_obs_idx_from_cols(inputs.G, guide_idx)
-    if obs_idx.size == 0 or obs_idx.size == inputs.C.shape[0]:
-        raise ValueError(
-            "Cannot compute CRT-null p-values when guide set is all/none treated."
-        )
-
-    p = _fit_propensity(inputs, obs_idx, propensity_model)
-    seed = int(base_seed)
-    for val in guide_idx:
-        seed = (seed * 1000003) ^ int(val)
-    seed &= 0xFFFFFFFF
-    indptr, idx = _sample_crt_indices(p, B, seed)
-
-    _, beta_null = crt_betas_for_gene(
-        indptr,
-        idx,
-        inputs.C,
-        inputs.Y,
-        inputs.A,
-        inputs.CTY,
-        obs_idx.astype(np.int32),
-        B,
-    )
-    if side_code not in (-1, 0, 1):
-        raise ValueError("side_code must be -1, 0, or 1.")
-    if side_code == 0:
-        return crt_null_pvals_from_null_stats_matrix(beta_null, two_sided=True)
-    if side_code == 1:
-        return crt_null_pvals_from_null_stats_matrix(beta_null, two_sided=False)
-    return crt_null_pvals_from_null_stats_matrix(-beta_null, two_sided=False)
 
 
 def run_all_genes_union_crt(

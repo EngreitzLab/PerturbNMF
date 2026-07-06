@@ -209,7 +209,7 @@ def make_ntc_groups_ensemble(
 
 
 def _validate_group_sizes(
-    groups: Mapping[str, Sequence[str]],
+    groups: Mapping[str, Sequence[str]],  # CHANGED: dropped `expected_size` param — size now follows --number_guide, not a hardcoded value
 ) -> Dict[str, float]:
     sizes = np.array([len(guides) for guides in groups.values()], dtype=np.int32)
     if sizes.size == 0:
@@ -227,8 +227,9 @@ def _validate_group_sizes(
         stats["median"],
         stats["max"],
     )
-    # NTC groups are all built at the same group_size (= --number_guide); we
-    # don't hardcode the expected value, only require the groups to be consistent.
+    # CHANGED: was `if np.any(sizes != expected_size)` comparing to a hardcoded
+    # 6. NTC groups are all built at the same group_size (= --number_guide), so we
+    # don't hardcode the expected value — only require the groups to be consistent.
     if stats["min"] != stats["max"]:
         raise ValueError(
             f"NTC groups have inconsistent sizes: min={stats['min']} "
@@ -287,6 +288,8 @@ def crt_pvals_for_ntc_groups_ensemble(
     B: int,
     seed0: int,
     propensity_model=fit_propensity_logistic,
+    # CHANGED: removed `expected_group_size: int = 6` param (it defaulted to 6 and
+    # crashed for any other --number_guide); group size is inferred from the groups now
 ) -> Dict[int, pd.DataFrame]:
     """
     Returns mapping e -> DataFrame(rows=group_id, cols=programs).
@@ -295,7 +298,7 @@ def crt_pvals_for_ntc_groups_ensemble(
     out: Dict[int, pd.DataFrame] = {}
 
     for e, groups in enumerate(ntc_groups_ens):
-        _validate_group_sizes(groups)
+        _validate_group_sizes(groups)  # CHANGED: no longer passes expected_group_size
         rows: List[np.ndarray] = []
         group_ids: List[str] = []
         for group_id, guides in groups.items():
@@ -327,6 +330,8 @@ def crt_pvals_for_ntc_groups_ensemble_skew(
     seed0: int,
     propensity_model=fit_propensity_logistic,
     side_code: int = 0,
+    # CHANGED: removed `expected_group_size: int = 6` param (it defaulted to 6 and
+    # crashed for any other --number_guide); group size is inferred from the groups now
 ) -> Dict[int, pd.DataFrame]:
     """
     Returns mapping e -> DataFrame(rows=group_id, cols=programs) of skew p-values.
@@ -335,7 +340,7 @@ def crt_pvals_for_ntc_groups_ensemble_skew(
     out: Dict[int, pd.DataFrame] = {}
 
     for e, groups in enumerate(ntc_groups_ens):
-        _validate_group_sizes(groups)
+        _validate_group_sizes(groups)  # CHANGED: no longer passes expected_group_size
         rows: List[np.ndarray] = []
         group_ids: List[str] = []
         for group_id, guides in groups.items():

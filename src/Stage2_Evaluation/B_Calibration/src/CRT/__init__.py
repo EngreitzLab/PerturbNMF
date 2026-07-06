@@ -27,13 +27,6 @@ from .crt import (
     crt_index_sampler_fast_numba,
     crt_pvals_for_gene,
 )
-from .diagnostics import (
-    crt_null_pvals_from_null_stats_fast,
-    crt_null_pvals_from_null_stats_matrix,
-    crt_null_stats_for_test,
-    is_bh_adjusted_like,
-    qq_expected_grid,
-)
 from .ntc_groups import (
     build_ntc_group_inputs,
     crt_pvals_for_guide_set,
@@ -46,8 +39,6 @@ from .ntc_groups import (
 from .pipeline import (
     CRTGeneResult,
     CRTInputs,
-    compute_guide_set_null_pvals,
-    compute_gene_null_pvals,
     prepare_crt_inputs,
     run_all_genes_union_crt,
     run_one_gene_union_crt,
@@ -61,7 +52,7 @@ from .skew_normal import (
     fit_and_evaluate_skew_normal,
     fit_skew_normal,
 )
-from .qq_plot import qq_plot_ntc_pvals
+from .qq_plot import qq_plot_real_vs_null
 
 __all__ = [
     "THREAD_ENV_VARS",
@@ -77,11 +68,6 @@ __all__ = [
     "crt_pvals_for_gene",
     "crt_betas_for_gene",
     "compute_null_pvals_from_null_stats",
-    "crt_null_pvals_from_null_stats_fast",
-    "crt_null_pvals_from_null_stats_matrix",
-    "crt_null_stats_for_test",
-    "qq_expected_grid",
-    "is_bh_adjusted_like",
     "guide_frequency",
     "make_ntc_groups_matched_by_freq",
     "make_ntc_groups_ensemble",
@@ -91,8 +77,6 @@ __all__ = [
     "build_ntc_group_inputs",
     "CRTGeneResult",
     "CRTInputs",
-    "compute_guide_set_null_pvals",
-    "compute_gene_null_pvals",
     "prepare_crt_inputs",
     "run_all_genes_union_crt",
     "run_one_gene_union_crt",
@@ -103,5 +87,5 @@ __all__ = [
     "check_sn_tail",
     "check_for_outliers",
     "fit_and_evaluate_skew_normal",
-    "qq_plot_ntc_pvals",
+    "qq_plot_real_vs_null",
 ]
