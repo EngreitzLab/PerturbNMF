@@ -21,18 +21,17 @@ import muon as mu
 import pandas as pd
 import numpy as np
 
-from tests.synthetic_data import make_sceptre_style_synth
-from src.sceptre import prepare_crt_inputs
+# Point at B_Calibration/src so the CRT package (src/CRT/) is importable.
+sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/B_Calibration/src')
 
-from src.sceptre import (
+from CRT import (
+    prepare_crt_inputs,
     build_ntc_group_inputs,
-    compute_guide_set_null_pvals,
     crt_pvals_for_ntc_groups_ensemble,
-    crt_pvals_for_ntc_groups_ensemble_skew,
     make_ntc_groups_ensemble,
     run_all_genes_union_crt,
+    qq_plot_real_vs_null,
 )
-from src.visualization import qq_plot_ntc_pvals
 
 
 
@@ -129,40 +128,10 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
             seed0=23,
         )
 
-        # Compute skew-calibrated CRT p-values for each NTC group in each ensemble
-        ntc_group_pvals_skew_ens = crt_pvals_for_ntc_groups_ensemble_skew(
-            inputs=inputs,
-            ntc_groups_ens=ntc_groups_ens,
-            B=args.number_permutations,
-            seed0=23,
-        )
-
-        # Build CRT-null p-values matched to NTC group units (recommended)
-        guide_to_col = {g: i for i, g in enumerate(inputs.guide_names)}
-        null_pvals = np.concatenate(
-            [
-                # Each entry is a (B, K) matrix of null p-values for one NTC group
-                compute_guide_set_null_pvals(
-                    guide_idx=[guide_to_col[g] for g in guides],
-                    inputs=inputs,
-                    B=args.number_permutations,
-                ).ravel()
-                for groups in ntc_groups_ens
-                for guides in groups.values()
-            ]
-        )
-
-        ax = qq_plot_ntc_pvals(
-            pvals_raw_df=out["pvals_raw_df"],
-            guide2gene=adata.uns["guide2gene"],
-            ntc_genes=ntc_labels,
-            pvals_skew_df=out["pvals_df"],
-            null_pvals=null_pvals,
-            ntc_group_pvals_ens=ntc_group_pvals_ens,
-            ntc_group_pvals_skew_ens=ntc_group_pvals_skew_ens,
-            show_ntc_ensemble_band=True,
-            show_all_pvals=True,
-            title=f"QQ plot: grouped NTC controls (raw vs skew) vs CRT null for {condition}",
+        ax = qq_plot_real_vs_null(
+            real_pvals=out["pvals_raw_df"],
+            null_pvals=ntc_group_pvals_ens,
+            title=f"CRT QQ: real vs null (NTC) p-values for {condition}",
         )
 
         import matplotlib.pyplot as plt
@@ -212,7 +181,7 @@ def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=No
     result_df = result_df[[ 'target_name', 'program_name', 'log2FC', 'p-value']]
 
     # effect size of CRT is not log2fc, its approx_log2FC = [K / (K - 1)] * beta_hat / ln(2)
-    #result_df['log2FC'] = result_df['log2FC']/np.log(2)
+    # result_df['log2FC'] = result_df['log2FC']/np.log(2)
 
     # Correct for multiple testing
     if args.FDR_method == 'BH':
