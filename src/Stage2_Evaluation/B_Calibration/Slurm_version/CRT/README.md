@@ -35,14 +35,16 @@ Y_{ik} = \beta_k X_i + \sum_j \gamma_j C_{ij} + \varepsilon_i
 **Expanded form:**
 
 ```math
+\begin{aligned}
 Y_{ik} = \beta_k X_i
-+ \gamma_1 (\%\mathrm{mito})_i
-+ \gamma_2 (\mathrm{replicate})_i
-+ \gamma_3 (\mathrm{total\ counts})_i
-+ \gamma_4 (\mathrm{guide\ UMI})_i
-+ \gamma_5 (\mathrm{guide\ number})_i
-+ \gamma_6 (\mathrm{gene\ number})_i
+&+ \gamma_1\,(\%\,\mathrm{mito})_i
++ \gamma_2\,(\mathrm{replicate})_i
++ \gamma_3\,(\mathrm{total\ counts})_i \\
+&+ \gamma_4\,(\mathrm{guide\ UMI})_i
++ \gamma_5\,(\mathrm{guide\ number})_i
++ \gamma_6\,(\mathrm{gene\ number})_i
 + \varepsilon_i
+\end{aligned}
 ```
 
 Solve the system of equations above to obtain the effect sizes $\beta_k$ via OLS in Python.
@@ -85,7 +87,7 @@ To control the false discovery rate (FDR) across the full set of regulator–pro
 
 ### Null calibration via NTC guide-group ensembles
 
-To check that the CRT p-values are well calibrated, we generate a **negative-control null** from the non-targeting control (NTC) guides and compare it against the real target p-values on a QQ plot. This replaces the older leave-one-out-on-$\hat\beta$ scheme.
+To check that the CRT p-values are well calibrated, we generate a **negative-control null** from the non-targeting control (NTC) guides and compare it against the real target p-values on a QQ plot.
 
 The null is built to look like real targets rather than being drawn arbitrarily:
 
@@ -101,11 +103,7 @@ The null is built to look like real targets rather than being drawn arbitrarily:
 
 The NTC null is meaningful only if each synthetic NTC "pseudo-gene" looks like a *real* gene in the one respect that drives its CRT statistic: the per-guide prevalence of the guides it is built from (rarely-detected guides tag few cells and produce noisier, differently-distributed effect sizes than common guides). To point each NTC pseudo-gene at a real gene's prevalence profile, the pipeline does the following (all in `build_ntc_group_inputs` → `make_ntc_groups_matched_by_freq`):
 
-1. **Per-guide prevalence** (`guide_frequency`). For *every* guide $g$ — real and NTC alike — compute
-   ```math
-   \mathrm{freq}(g) = \frac{1}{N}\sum_{i=1}^{N}\mathbf{1}\{G_{ig} > 0\},
-   ```
-   the fraction of cells in which that guide is detected.
+1. **Per-guide prevalence** (`guide_frequency`). For *every* guide $g$ — real and NTC alike — compute $\mathrm{freq}(g) = \frac{1}{N}\sum_{i=1}^{N}\mathbf{1}\{G_{ig} > 0\}$, the fraction of cells in which that guide is detected.
 
 2. **Bin edges from the real guides only** (`_guide_bins_from_real_freqs`). Take the prevalences of the **real (targeting) guides** and compute `n_bins` (default 20) quantile edges over that distribution. Every guide — real *and* NTC — is then assigned a bin index by digitizing its own prevalence against these shared edges. Because the edges come from the real-guide distribution, an NTC guide's bin tells you which real guides it is prevalence-comparable to.
 
