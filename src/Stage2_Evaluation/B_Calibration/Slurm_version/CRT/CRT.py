@@ -22,7 +22,10 @@ import pandas as pd
 import numpy as np
 
 # Point at B_Calibration/src so the CRT package (src/CRT/) is importable.
-sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/B_Calibration/src')
+# insert(0, ...) — not append — so the package wins over this same-named script
+# (this file is CRT.py; the interpreter puts its own dir on sys.path[0], which would
+# otherwise shadow the `CRT` package and cause a circular self-import).
+sys.path.insert(0, '/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/B_Calibration/src')
 
 from CRT import (
     prepare_crt_inputs,
@@ -75,9 +78,16 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
     # perform CRT for each condition of cells
     for condition in adata.obs[args.categorical_key].unique():
         covar_tag = _covariate_tag(args)
-        out_txt = f"{output_folder}/{k}_CRT_{covar_tag}_{condition}.txt"
-        if args.skip_existing and os.path.exists(out_txt):
-            print(f"  Skipping K={k}, sel_thresh={sel_thresh}, condition={condition}: output exists ({out_txt})")
+        real_txt = f"{output_folder}/{k}_CRT_{covar_tag}_{condition}.txt"
+        fake_txt = f"{output_folder}/{k}_CRT_fake_{covar_tag}_{condition}.txt"
+        png = f"{output_folder}/{k}_CRT_{covar_tag}_{condition}.png"
+
+        # Cache path: if both real and fake results already exist, skip the (expensive)
+        # CRT recompute and just (re)generate the QQ plot from the cached raw p-values.
+        if args.skip_existing and os.path.exists(real_txt) and os.path.exists(fake_txt):
+            print(f"  Cached K={k}, sel_thresh={sel_thresh}, condition={condition}: "
+                  f"skipping compute, plotting from cache")
+            plot_qq_from_cache(real_txt, fake_txt, png, condition)
             continue
 
         adata_con = adata[adata.obs[args.categorical_key] == condition].copy()
@@ -120,7 +130,7 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
             max_groups=None,
         )
 
-        # Compute raw CRT p-values for each NTC group in each ensemble
+        # Compute raw CRT p-values for each NTC group in each ensemble (null distribution)
         ntc_group_pvals_ens = crt_pvals_for_ntc_groups_ensemble(
             inputs=inputs,
             ntc_groups_ens=ntc_groups_ens,
@@ -128,20 +138,20 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
             seed0=23,
         )
 
-        ax = qq_plot_real_vs_null(
+        # Save real + fake (NTC null) results (raw p-values for both, so they are comparable)
+        save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag)
+        save_fake_result(ntc_group_pvals_ens, k, output_folder, condition, args, covar_tag)
+
+        # QQ plot: real raw vs null (NTC) raw p-values
+        import matplotlib.pyplot as plt
+
+        qq_plot_real_vs_null(
             real_pvals=out["pvals_raw_df"],
             null_pvals=ntc_group_pvals_ens,
             title=f"CRT QQ: real vs null (NTC) p-values for {condition}",
         )
-
-        import matplotlib.pyplot as plt
-
         plt.tight_layout()
-
-        if output_folder:
-            plt.savefig(f"{output_folder}/{k}_CRT_{covar_tag}_{condition}.png", dpi=100)
-            save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag)
-
+        plt.savefig(png, dpi=100)
         plt.close()
 
 
@@ -151,43 +161,12 @@ def _covariate_tag(args):
     return "_".join(parts) if parts else "no_covariates"
 
 
-# save results
-def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=None):
-
-    pval_df = out['pvals_skew_df']
-    beta_df = out['betas_df']
-
-    pval_long = pval_df.reset_index().melt(
-        id_vars='index',
-        var_name='program_name',
-        value_name='p-value'
-    ).rename(columns={'index': 'target_name'})
-    
-    # Melt beta dataframe
-    beta_long = beta_df.reset_index().melt(
-        id_vars='index',
-        var_name='program_name',
-        value_name='log2FC'
-    ).rename(columns={'index': 'target_name'})
-    
-    # Merge on program and target_gene
-    result_df = pval_long.merge(
-        beta_long,
-        on=['program_name', 'target_name'],
-        how='inner'
-    )
-    
-    # Reorder columns
-    result_df = result_df[[ 'target_name', 'program_name', 'log2FC', 'p-value']]
-
-    # effect size of CRT is not log2fc, its approx_log2FC = [K / (K - 1)] * beta_hat / ln(2)
-    # result_df['log2FC'] = result_df['log2FC']/np.log(2)
-
-    # Correct for multiple testing
+def _add_adj_pval(df, pcol, args, out_col='adj_pval'):
+    """Add column `out_col` = FDR-corrected p-values from column `pcol` (BH or StoreyQ)."""
     if args.FDR_method == 'BH':
 
         from statsmodels.stats.multitest import multipletests
-        result_df['adj_pval'] = multipletests(result_df['p-value'], method='fdr_bh')[1]
+        df[out_col] = multipletests(df[pcol], method='fdr_bh')[1]
 
     elif args.FDR_method == 'StoreyQ':
 
@@ -195,14 +174,101 @@ def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=No
         import builtins
         if not hasattr(builtins, 'xrange'):
             builtins.xrange = range
-        result_df['adj_pval'] = qvalue(result_df['p-value'].values, threshold=0.05, verbose=False)[1]
+        df[out_col] = qvalue(df[pcol].values, threshold=0.05, verbose=False)[1]
 
+    return df
+
+
+def _melt_programs(df, value_name):
+    """Melt a genes(rows) x programs(cols) DataFrame to long (target_name, program_name, value)."""
+    return df.reset_index().melt(
+        id_vars='index',
+        var_name='program_name',
+        value_name=value_name,
+    ).rename(columns={'index': 'target_name'})
+
+
+# save real perturbation results
+def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=None):
+
+    pval_long = _melt_programs(out['pvals_skew_df'], 'p-value')
+    beta_long = _melt_programs(out['betas_df'], 'log2FC')
+
+    # Merge on program and target_gene
+    result_df = pval_long.merge(
+        beta_long,
+        on=['program_name', 'target_name'],
+        how='inner'
+    )
+
+    # Also carry the raw (uncalibrated) CRT p-value so real and NTC-null are on the
+    # same scale (the null / QQ plot use raw p-values).
+    has_raw = 'pvals_raw_df' in out
+    if has_raw:
+        raw_long = _melt_programs(out['pvals_raw_df'], 'p-value_raw')
+        result_df = result_df.merge(raw_long, on=['program_name', 'target_name'], how='left')
+
+    # effect size of CRT is not log2fc, its approx_log2FC = [K / (K - 1)] * beta_hat / ln(2)
+    # result_df['log2FC'] = result_df['log2FC']/np.log(2)
+
+    # Multiple-testing correction: FDR for the skew-calibrated AND the raw p-values.
+    result_df = _add_adj_pval(result_df, 'p-value', args, out_col='adj_pval')
+    if has_raw:
+        result_df = _add_adj_pval(result_df, 'p-value_raw', args, out_col='adj_pval_raw')
+
+    # Reorder columns (each p-value followed by its adjusted p-value)
+    cols = ['target_name', 'program_name', 'log2FC', 'p-value', 'adj_pval']
+    if has_raw:
+        cols += ['p-value_raw', 'adj_pval_raw']
+    result_df = result_df[cols]
 
     if covar_tag is None:
         covar_tag = _covariate_tag(args)
     result_df.to_csv(f'{output_folder}/{k}_CRT_{covar_tag}_{condition}.txt', sep='\t', index=False)
-    
+
     return result_df
+
+
+# save fake / null (NTC group ensemble) raw p-values
+def save_fake_result(ntc_group_pvals_ens, k, output_folder, condition, args, covar_tag=None):
+    """
+    Write the NTC null distribution (raw p-values only) so it can be re-analyzed /
+    re-plotted offline. `ntc_group_pvals_ens` is a dict {ensemble -> DataFrame(rows=NTC
+    group id, cols=programs)}. Columns: ensemble, target_name (NTC pseudo-gene id, e.g.
+    'ntc_3'), program_name, p-value_raw, adj_pval_raw.
+    """
+    frames = []
+    for e in sorted(ntc_group_pvals_ens.keys()):
+        long_e = _melt_programs(ntc_group_pvals_ens[e], 'p-value_raw')
+        long_e['ensemble'] = e
+        frames.append(long_e)
+
+    fake_df = pd.concat(frames, ignore_index=True)
+    fake_df = _add_adj_pval(fake_df, 'p-value_raw', args, out_col='adj_pval_raw')
+    fake_df = fake_df[['ensemble', 'target_name', 'program_name', 'p-value_raw', 'adj_pval_raw']]
+
+    if covar_tag is None:
+        covar_tag = _covariate_tag(args)
+    fake_df.to_csv(f'{output_folder}/{k}_CRT_fake_{covar_tag}_{condition}.txt', sep='\t', index=False)
+
+    return fake_df
+
+
+# regenerate the QQ plot from cached result files (no CRT recompute)
+def plot_qq_from_cache(real_txt, fake_txt, png, condition):
+    import matplotlib.pyplot as plt
+
+    real_df = pd.read_csv(real_txt, sep='\t')
+    fake_df = pd.read_csv(fake_txt, sep='\t')
+
+    qq_plot_real_vs_null(
+        real_pvals=real_df['p-value_raw'],
+        null_pvals=fake_df['p-value_raw'],
+        title=f"CRT QQ: real vs null (NTC) p-values for {condition}",
+    )
+    plt.tight_layout()
+    plt.savefig(png, dpi=100)
+    plt.close()
 
 
 def main():
