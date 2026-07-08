@@ -8,10 +8,14 @@ This folder contains three statistical tests for evaluating perturbation effects
 > |---|---|---|
 > | 2a Evaluation Metrics | `src/Stage2_Evaluation/A_Metrics/` | `NMF_Benchmarking` |
 > | **2b U-test calibration** (this folder) | `src/Stage2_Evaluation/B_Calibration/Slurm_version/U-test_perturbation_calibration/` | `NMF_Benchmarking` |
-> | **2b CRT calibration** (this folder) | `src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/` | `programDE` |
+> | **2b CRT calibration** (this folder) | `src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/` | `NMF_Benchmarking` |
 > | **2b Matched Cell DE (R)** (this folder) | `src/Stage2_Evaluation/B_Calibration/Slurm_version/Matched_cell_programDE/` | `gene_propagation` |
 >
-> Each subfolder ships its own `environment.yml`. Running a script under the wrong env will fail with `ModuleNotFoundError` (Python) or `package not found` (R). Always activate the env shown above before launching a `.sh` from that folder.
+> **U-test** and **CRT** calibration are written in Python and share the **same `NMF_Benchmarking` env as the Stage 2a evaluation metrics** — no separate install is needed if you already have that env.
+>
+> **Matched Cell DE** is written in **R** and requires a **separate `gene_propagation` env** with additional packages installed (it ships its own `environment.yml`).
+>
+> Running a script under the wrong env will fail with `ModuleNotFoundError` (Python) or `package not found` (R). Always activate the env shown above before launching a `.sh` from that folder.
 
 ## Overview of Tests
 
