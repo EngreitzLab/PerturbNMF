@@ -93,9 +93,29 @@ The null is built to look like real targets rather than being drawn arbitrarily:
 
 2. **Matched NTC groups** (`make_ntc_groups_ensemble` → `make_ntc_groups_matched_by_freq`). Randomly partition the NTC guides into synthetic "pseudo-gene" groups of size `--number_guide`, choosing guides so each group's frequency-bin composition matches a randomly drawn real-gene bin signature. This is repeated `n_ensemble` times (different seeds) to build an ensemble of null groupings. Because the NTC groups match real genes in both group size and per-guide prevalence, they form a fair null.
 
-3. **Null p-values** (`crt_pvals_for_ntc_groups_ensemble`). Run the exact same union-CRT (§2.1–2.4) on each NTC pseudo-gene group across all programs, producing a null distribution of p-values.
+3. **Null p-values** (`crt_pvals_for_ntc_groups_ensemble`). Run the exact same union-CRT (propensity → Bernoulli resampling → empirical p-value, as above) on each NTC pseudo-gene group across all programs, producing a null distribution of p-values.
 
 4. **QQ diagnostic** (`qq_plot_real_vs_null`). Plot expected vs observed $-\log_{10}(p)$ for the real target p-values (purple) against the NTC null (blue). Well-calibrated null points track the $y=x$ diagonal; real points rising above it indicate genuine perturbation signal. One `{K}_CRT_{covariates}_{condition}.png` is written per (K, sel_thresh, condition).
+
+#### How NTC guides are binned against real guides to build pseudo-genes
+
+The NTC null is meaningful only if each synthetic NTC "pseudo-gene" looks like a *real* gene in the one respect that drives its CRT statistic: the per-guide prevalence of the guides it is built from (rarely-detected guides tag few cells and produce noisier, differently-distributed effect sizes than common guides). To point each NTC pseudo-gene at a real gene's prevalence profile, the pipeline does the following (all in `build_ntc_group_inputs` → `make_ntc_groups_matched_by_freq`):
+
+1. **Per-guide prevalence** (`guide_frequency`). For *every* guide $g$ — real and NTC alike — compute
+   ```math
+   \mathrm{freq}(g) = \frac{1}{N}\sum_{i=1}^{N}\mathbf{1}\{G_{ig} > 0\},
+   ```
+   the fraction of cells in which that guide is detected.
+
+2. **Bin edges from the real guides only** (`_guide_bins_from_real_freqs`). Take the prevalences of the **real (targeting) guides** and compute `n_bins` (default 20) quantile edges over that distribution. Every guide — real *and* NTC — is then assigned a bin index by digitizing its own prevalence against these shared edges. Because the edges come from the real-guide distribution, an NTC guide's bin tells you which real guides it is prevalence-comparable to.
+
+3. **Real-gene "bin signature"** (`_real_gene_bin_signatures`). For each real gene, take its guides, sort them by prevalence, keep the first `--number_guide` of them, and record the multiset of their bin indices. This length-`--number_guide` vector of bins is the gene's *bin signature* — a compact fingerprint of "this gene is targeted by guides of these prevalence levels."
+
+4. **Match NTC guides to a real gene's signature** (`make_ntc_groups_matched_by_freq`). Pool the NTC guides by bin. Repeatedly draw a real-gene bin signature at random and try to assemble a pseudo-gene by pulling NTC guides from exactly the bins that signature calls for (e.g. a signature `[2,2,5,7,7,9]` pulls two NTC guides from bin 2, one from bin 5, two from bin 7, one from bin 9). Guides are drawn without replacement within a replicate; if a bin is short of NTC guides the draw is skipped and another signature is tried. Each successful group is labelled `ntc_{idx}` and, by construction, carries the **same size and the same per-guide prevalence composition as some real gene** — so its union of tagged cells, propensity model, and resulting CRT p-value are directly comparable to a real gene's.
+
+5. **Ensemble over seeds** (`make_ntc_groups_ensemble`). Repeat the matched partitioning `n_ensemble` times with different seeds so the null is averaged over many random NTC→real-gene assignments rather than one arbitrary partition.
+
+The p-values from step 5 are exactly the **NTC null p-values** written to `{K}_CRT_fake_{covar_tag}_{condition}.txt` and plotted (blue) against the real target p-values on the QQ diagnostic.
 
 > **Note:** the NTC group size is controlled by `--number_guide` — it is no longer hardcoded to 6, so it must match how many guides-per-gene your real targets use. The ensemble count (`n_ensemble`), bin count (`n_bins`), and seeds are currently set inside `CRT.py`/the package, not exposed as CLI flags.
 
