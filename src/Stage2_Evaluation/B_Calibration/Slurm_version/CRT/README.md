@@ -3,147 +3,101 @@
 ## Overview
 A pipeline for testing differential effect (DE) of gene targets on gene programs. This pipeline implements a Conditional Randomization Test (CRT) to assess the statistical significance of perturbations.
 
-The core analysis pipeline lives in the `src.sceptre` module. Environment downloading guide on the github for this test: https://github.com/edtnguyen/programDE/tree/main (Written by Tri Nguyen).
+The core CRT logic is **vendored locally** in the `CRT` package at `src/Stage2_Evaluation/B_Calibration/src/CRT/` (adapted from the SCEPTRE-style tests in https://github.com/edtnguyen/programDE, written by Tri Nguyen). `CRT.py` imports it directly by appending `B_Calibration/src` to `sys.path` — no external/PyPI install of `src.sceptre` is required anymore.
 
 ## Setup (required)
 
-The sibling `environment.yml` lists every package currently installed in the `programDE` conda env, but the `src.sceptre` package itself is **not on PyPI** — you must install it from GitHub *after* creating the conda env:
+CRT is written in Python and runs in the **`NMF_Benchmarking`** conda env — the **same env as the Stage 2a evaluation metrics and the U-test calibration**. If you already have that env, no separate install is needed. Otherwise create it from the sibling `environment.yml`, which contains every dependency the vendored `CRT` package needs (`numba`, `scipy`, `statsmodels`, `joblib`, `muon`, `scanpy`, `multipy`, ...):
 
 ```bash
-# 1. Create the conda env from the export
 conda env create -f environment.yml
-conda activate programDE
-
-# 2. Install the programDE/sceptre wrapper from GitHub
-pip install git+https://github.com/edtnguyen/programDE.git
+conda activate NMF_Benchmarking
 ```
 
-Without step 2, `python CRT.py ...` will fail with `ModuleNotFoundError: No module named 'src.sceptre'` (or similar). The env-creation script does not do this automatically because `git+` URLs make the `environment.yml` brittle to share across machines that lack git/SSH access.
+> **Note:** Earlier versions used a dedicated `programDE` env and installed the wrapper from GitHub (`pip install git+https://github.com/edtnguyen/programDE.git`), importing `src.sceptre`. Both steps are no longer needed — the package is now vendored under `src/CRT/` and imported locally, and CRT shares the `NMF_Benchmarking` env with the other Python evaluation metrics. `CRT.sh` / `CRT_parallel.sh` also export `PYTHONPATH=.../PerturbNMF/src` for good measure.
 
 ---
 
 ## Method overview
 
-This pipeline tests **target gene → program usage** effects using a Conditional Randomization Test (CRT) with optional skew-normal calibration.
+This pipeline tests **candidate regulator → program usage** effects using a per-program linear model, and assigns significance with a Conditional Randomization Test (CRT) followed by Storey q-value FDR control.
 
-### Notation
+### Model
 
-* Cells: $i = 1,\dots,N$
-* Programs: $k = 1,\dots,K$ (here $K \approx 70$)
-* Covariates: $C \in \mathbb{R}^{N \times p}$ (includes an intercept column)
-* cNMF usage (composition): $u_i \in \Delta^{K-1}$ with $\sum_{k=1}^K u_{ik}=1$ and $u_{ik}\ge 0$
+Let $i$ index cells and $k$ index programs. $Y_{i,k}$ denotes the CLR-transformed usage of program $k$ in cell $i$, $X_i$ is a binary indicator of whether a guide targeting the candidate regulator is present in cell $i$, and $C_{ij}$ indicates the covariate values for the given cell $i$. The coefficient $\beta_k$ captures the perturbation effect on program $k$, while each $\gamma_j$ captures the effect of covariate $j$. The fitted $\beta_k$ serves as the covariate-adjusted effect size of that regulator on the program.
 
-## 1) Linear model for gene effect on program usage
-
-### 1.1 Gene-level perturbation indicator (union)
-
-For each target gene $g$, define a **gene-level union indicator**:
+**Compact form:**
 
 ```math
-x_i \in \{0,1\},\qquad
-x_i = \mathbf{1}\{ \exists\ \mathrm{guide\ targeting}\ g\ \mathrm{in\ cell}\ i \}.
+Y_{ik} = \beta_k X_i + \sum_j \gamma_j C_{ij} + \varepsilon_i
 ```
 
-### 1.2 CLR transform of program usage
-
-Because program usages are compositional (each row sums to 1), we apply a **centered log-ratio (CLR)** transform. After flooring and renormalization (to avoid $\log 0$), define:
+**Expanded form:**
 
 ```math
-u'_{ik}=\frac{\max(u_{ik},\varepsilon)}{\sum_{j=1}^K \max(u_{ij},\varepsilon)}.
+Y_{ik} = \beta_k X_i
++ \gamma_1 (\%\mathrm{mito})_i
++ \gamma_2 (\mathrm{replicate})_i
++ \gamma_3 (\mathrm{total\ counts})_i
++ \gamma_4 (\mathrm{guide\ UMI})_i
++ \gamma_5 (\mathrm{guide\ number})_i
++ \gamma_6 (\mathrm{gene\ number})_i
++ \varepsilon_i
 ```
 
-Then the CLR-transformed outcome is:
+Solve the system of equations above to obtain the effect sizes $\beta_k$ via OLS in Python.
+
+### Conditional Randomization Test (CRT)
+
+P-values were computed by comparing the observed effect size to a null distribution of resampled effect sizes, following the CRT framework. For each cell $i$, we first estimated the propensity score — the probability that the cell carries a guide targeting the candidate regulator given its covariates — using a logistic regression model fit on the same set of covariates $C_i$:
+
+**Propensity model:**
 
 ```math
-Y_{ik}=\mathrm{CLR}(u'_i)_k
-= \log u'_{ik} - \frac{1}{K}\sum_{j=1}^K \log u'_{ij}.
+p_i = P(X_i = 1 \mid C_i) = \frac{1}{1 + e^{-t_i}},
 ```
 
-Collect outcomes in $Y \in \mathbb{R}^{N \times K}$.
+where $t_i = \sum_j \gamma_j C_{ij}$ is the linear predictor from the propensity model. We then generated $B$ resampled guide assignments by drawing from the Bernoulli distribution defined by each cell's propensity score:
 
-### 1.3 Per-program linear regression
-
-For each program $k$, fit:
+**Resampling step:**
 
 ```math
-Y_{ik} = \beta_k\, x_i + C_i^\top \gamma_k + \varepsilon_{ik}.
+x_i^{(b)} \sim \mathrm{Bernoulli}(p_i), \qquad b = 1, 2, 3, \dots, B.
 ```
 
-where $\beta_k$ is the gene effect on program $k$ (on the CLR scale), and $\gamma_k$ are covariate effects.
+For each resample $b$, we refit the regression model with the resampled guide indicator to obtain a null effect size $\beta_k^{(b)}$:
 
-**Test statistic:** the OLS coefficient $\hat\beta_k$.
-
-## 2) Conditional Randomization Test (CRT)
-
-The CRT tests $H_0: Y \perp x \mid C$ by resampling $x$ from its conditional distribution given covariates.
-
-### 2.1 Propensity model
-
-Fit a regularized logistic regression for the union indicator:
+**Null regression:**
 
 ```math
-p_i = \mathbb{P}(x_i = 1 \mid C_i)
-= \sigma\!\left(C_i^\top \theta\right),
-\qquad
-\sigma(t)=\frac{1}{1+e^{-t}}.
+Y_{ik} = \beta_k^{(b)} x_i^{(b)} + \sum_j \gamma_j^{(b)} C_{ij} + \varepsilon_i.
 ```
 
-### 2.2 Null resampling of $x$
+The empirical two-sided p-value for program $k$ was then computed as the fraction of resampled effect sizes whose magnitude equaled or exceeded the observed effect size, with the standard $+1$ correction in both numerator and denominator to prevent p-values of zero:
 
-Generate $B$ synthetic perturbation vectors:
+**Empirical p-value:**
 
 ```math
-\tilde x_i^{(b)} \sim \mathrm{Bernoulli}(p_i),
-\qquad b=1,\dots,B,\ i=1,\dots,N.
+P_k = \frac{1 + \sum_{b=1}^{B} \mathbf{1}\!\left(\left|\beta_k^{(b)}\right| \ge \left|\beta_k^{(\mathrm{obs})}\right|\right)}{B + 1}.
 ```
 
-**Efficient Bernoulli resampling (index sampler).** Instead of drawing $B$ Bernoullis for every cell, we use an equivalent two-stage procedure per cell $i$:
+To control the false discovery rate (FDR) across the full set of regulator–program tests, we applied the Storey q-value procedure. Regulator–program pairs with $q < 0.05$ were considered to be significant.
 
-1. Draw how many resamples include cell $i$ as treated:
+### Null calibration via NTC guide-group ensembles
 
-```math
-M_i \sim \mathrm{Binomial}(B, p_i).
-```
+To check that the CRT p-values are well calibrated, we generate a **negative-control null** from the non-targeting control (NTC) guides and compare it against the real target p-values on a QQ plot. This replaces the older leave-one-out-on-$\hat\beta$ scheme.
 
-2. Sample $M_i$ distinct resample indices uniformly without replacement:
+The null is built to look like real targets rather than being drawn arbitrarily:
 
-```math
-S_i \subset \{1,\dots,B\},\quad |S_i|=M_i,\quad S_i\ \mathrm{uniform}.
-```
+1. **Frequency binning** (`build_ntc_group_inputs`). Compute each guide's prevalence $\mathrm{freq}(g)=\text{mean}(G[:,g]>0)$. Bin the *real* (targeting) guides into `n_bins` frequency quantiles, and record, for every real gene, the frequency-bin composition ("bin signature") of its guide set.
 
-3. Set $\tilde x_i^{(b)}=1$ for $b\in S_i$ and $\tilde x_i^{(b)}=0$ otherwise.
+2. **Matched NTC groups** (`make_ntc_groups_ensemble` → `make_ntc_groups_matched_by_freq`). Randomly partition the NTC guides into synthetic "pseudo-gene" groups of size `--number_guide`, choosing guides so each group's frequency-bin composition matches a randomly drawn real-gene bin signature. This is repeated `n_ensemble` times (different seeds) to build an ensemble of null groupings. Because the NTC groups match real genes in both group size and per-guide prevalence, they form a fair null.
 
-This yields exactly the same distribution as i.i.d. Bernoulli draws across $b$, but is faster when $p_i$ is small (sparse perturbations).
+3. **Null p-values** (`crt_pvals_for_ntc_groups_ensemble`). Run the exact same union-CRT (§2.1–2.4) on each NTC pseudo-gene group across all programs, producing a null distribution of p-values.
 
-### 2.3 Recompute the test statistic under the null
+4. **QQ diagnostic** (`qq_plot_real_vs_null`). Plot expected vs observed $-\log_{10}(p)$ for the real target p-values (purple) against the NTC null (blue). Well-calibrated null points track the $y=x$ diagonal; real points rising above it indicate genuine perturbation signal. One `{K}_CRT_{covariates}_{condition}.png` is written per (K, sel_thresh, condition).
 
-For each resample $b$, compute OLS coefficients $\hat\beta_k^{(b)}$ for all programs using $\tilde x^{(b)}$:
-
-```math
-Y_{ik} = \beta_k^{(b)}\, \tilde x_i^{(b)} + C_i^\top \gamma_k^{(b)} + \varepsilon_{ik}^{(b)}.
-```
-
-In the implementation, $\hat\beta_k^{(b)}$ is computed using precomputed OLS summary quantities (no repeated least-squares solves).
-
-### 2.4 Empirical CRT p-values
-
-Let $\hat\beta_k^{(\mathrm{obs})}$ be from observed $x$, and $\hat\beta_k^{(b)}$ from resample $b$. The two-sided CRT p-value is:
-
-```math
-p_k
-=
-\frac{
-1 + \sum_{b=1}^B \mathbf{1}\!\left(\left|\hat\beta_k^{(b)}\right| \ge \left|\hat\beta_k^{(\mathrm{obs})}\right|\right)
-}{
-B+1
-}.
-```
-
-### 2.5 Null Model Testing
-Using the beta_hat matrix (program p × gene g), perform leave-one-out validation:
-
-Compare beta_hat[i] vs beta_hat[b-i] for each gene
-This generates g × (g-1) p-values for null calibration
+> **Note:** the NTC group size is controlled by `--number_guide` — it is no longer hardcoded to 6, so it must match how many guides-per-gene your real targets use. The ensemble count (`n_ensemble`), bin count (`n_bins`), and seeds are currently set inside `CRT.py`/the package, not exposed as CLI flags.
 
 ---
 
@@ -180,8 +134,20 @@ This generates g × (g-1) p-values for null calibration
 | guide_annotation_key | list of str | "non-targeting" | Name of target label for non-targeting/safe-targeting guides |
 | FDR_method | str | "BH" | FDR correction method: "BH" (Benjamini-Hochberg) or "StoreyQ" (Storey Q-value) |
 | save_dir | str | None | Directory to save results and figures. If not provided, defaults to `<out_dir>/<run_name>/Evaluation/<K>_<sel_thresh>/` |
-| skip_existing | flag | off | If set, skip any (K, sel_thresh, condition) whose output `.txt` already exists. Use to resume a preempted SLURM job without recomputing finished conditions. |
+| skip_existing | flag | off | If set, skip the CRT recompute for any (K, sel_thresh, condition) whose **both** result files (real `.txt` and fake `.txt`) already exist, and instead **regenerate the QQ `.png` from the cached raw p-values**. Use to resume a preempted job or to re-plot without recomputing. |
 
-### Resuming a preempted job
+## Outputs
 
-CRT writes one `{K}_CRT_{covar_tag}_{condition}.txt` (plus matching `.png`) per (K, sel_thresh, condition). To resume after preemption, append `--skip_existing` to the `python3 CRT.py ...` invocation in `CRT.sh` and resubmit — already-finished conditions are skipped, only missing ones are recomputed. Existing `.txt` / `.png` files are not overwritten.
+Per (K, sel_thresh, condition) CRT writes three files into the output folder:
+
+| File | Contents |
+|------|----------|
+| `{K}_CRT_{covar_tag}_{condition}.txt` | **Real** perturbation results — columns: `target_name, program_name, log2FC, p-value` (skew-calibrated), `adj_pval` (FDR of skew), `p-value_raw` (raw CRT), `adj_pval_raw` (FDR of raw) |
+| `{K}_CRT_fake_{covar_tag}_{condition}.txt` | **Fake / NTC null** distribution — columns: `ensemble, target_name` (NTC pseudo-gene id, e.g. `ntc_3`), `program_name, p-value_raw, adj_pval_raw` (raw p-values only, no effect size) |
+| `{K}_CRT_{covar_tag}_{condition}.png` | QQ plot of real (raw) vs NTC-null (raw) p-values |
+
+Real and null are saved with **raw** p-values so they are directly comparable (the QQ plot and any downstream calibration use the raw scale); the skew-calibrated p-value is retained on the real file for significance calls.
+
+### Resuming / re-plotting a preempted job
+
+To resume after preemption, append `--skip_existing` to the `python3 CRT.py ...` invocation in `CRT.sh` and resubmit — a (K, sel_thresh, condition) whose real **and** fake `.txt` both exist is not recomputed; its QQ `.png` is regenerated from the cached raw p-values (so plots stay fresh without paying for the CRT recompute). If either `.txt` is missing, that condition is recomputed. Without `--skip_existing`, every condition is recomputed and overwritten.
