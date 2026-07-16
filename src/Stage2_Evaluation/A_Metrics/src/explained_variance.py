@@ -92,6 +92,8 @@ def compute_explained_variance(cnmf_obj, X, k, output_folder, program_name = ran
     W_path = cnmf_obj.paths['consensus_usages__txt'] % (k, thre_name) ## median_spectra_file
     W_df = pd.read_csv(W_path, sep='\t', index_col=0)
     W = W_df.to_numpy()
+    W = (W/W.sum(0))
+
 
     WH = W @ H.T
     diff = X - WH
