@@ -93,74 +93,65 @@ Mines PubMed/PubTator for evidence supporting the program annotations produced b
 
 **Conda**: `NMF_Benchmarking`
 
-Compiles all evaluation and calibration results into a single multi-sheet Excel workbook. Generates a Jupyter notebook tailored to the project, then executes it.
+Compiles Stage 1 (`.h5mu`) and Stage 2 (Evaluation) outputs into a single multi-sheet
+Excel workbook for **one `(K, sel_thresh)` per job**. There is now a standalone CLI
+wrapper — generate the `.sh` with `generate_slurm.py --stage excel-summary` like any
+other stage (no notebook required). Submit one job per K to cover multiple K values.
 
+**Script**: `src/Stage3_Interpretation/B_Summarization/Slurm_Version/cNMF_excel_summary.py`
 **Source library**: `src/Stage3_Interpretation/B_Summarization/src/Compile_excel_sheet.py`
-**Reference notebook**: `src/Stage3_Interpretation/B_Summarization/JupterNote_Version/cNMF_compile_excel_table.ipynb`
+**Reference notebook (interactive equivalent)**: `src/Stage3_Interpretation/B_Summarization/JupterNote_Version/cNMF_compile_excel_table.ipynb`
 
-### How it works
-
-There is no standalone CLI script for this stage. Instead, generate a project-specific Jupyter notebook (adapted from the reference notebook above) and execute it via `jupyter nbconvert --execute`. The notebook calls library functions from `Compile_excel_sheet.py`.
-
-### Required parameters (collected interactively)
+### Required parameters
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
-| `out_dir` | Parent directory containing the run folder | `/path/to/project/Result` |
-| `run_name` | Run name identifier | `030726_20iter_5KHVG_torch_halsvar_batch_e7` |
-| `eval_dir_name` | Name of the evaluation results subdirectory | `Evaluation` or `Eval` (varies by project) |
-| `components` | List of K values to compile | `[50]` |
-| `sel_threshs` | List of density thresholds | `[0.2]` or `[2.0]` |
-| `Sample` | Sample/condition labels for perturbation files | `['WTC']` or `['d0','d1','d2','d3']` |
-| `categorical_key` | obs column for sample/condition grouping | `'batch'` or `'timepoint'` |
-| `perturbation_file_name` | Prefix for perturbation result files | `'perturbation_association_results'` or `'CRT'` |
-| `non_targeting_key` | Guide target labels used as negative controls | `['non-targeting']` |
-| `effect_size` | Column name for effect size in perturbation results | `'log2FC'` |
+| `--out_dir` | Output root directory (contains `{run_name}/`) | `/path/to/project/Result` |
+| `--run_name` | Run name identifier | `030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50` |
+| `--K` | Number of components (single K) | `50` |
 
-### Optional parameters (with defaults)
+### Commonly set parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `num_gene` | `300` | Number of top genes per program in loadings sheet |
-| `prog_key` | `'cNMF'` | Modality key for cNMF programs in MuData |
-| `data_key` | `'rna'` | Modality key for RNA expression in MuData |
-| `guide_targets_key` | `'guide_targets'` | uns key for guide target names |
+| `--sel_thresh` | `0.2` | Density threshold (`0.2` → `0_2`, `2.0` → `2_0`) |
+| `--Sample` | `D0 sample_D1 sample_D2 sample_D3` | Condition/sample labels (e.g. `D0 D1 D2 D3`, `WTC`) |
+| `--categorical_key` | `sample` | obs column for sample/condition grouping (e.g. `batch`, `timepoint`) |
+| `--perturbation_file_name` | `perturbation_association_results` | Perturbation file stem (e.g. `CRT`) |
+| `--effect_size` | `log2FC` | Effect-size column (e.g. `approx_log2FC`) |
+| `--gene_names_key` | `symbol` | var column with gene symbols |
+| `--non_targeting_key` | `non-targeting` | Negative-control target label(s) |
+
+See `references/parameter-catalog.md` (Section 12) for the full flag list, including
+`--save_path`, `--mdata_path`, `--num_gene`, the `--prog_key`/`--data_key`/`--guide_targets_key`
+keys, `--adjusted_pval_key`, and the per-sheet `--*_Term_key` / `--*_Genes_key` overrides.
 
 ### Key path conventions
 
-Evaluation results are expected at:
+Reads the per-K evaluation outputs at (paths derived from `--out_dir`/`--run_name`/`--K`/`--sel_thresh`):
 ```
-{out_dir}/{run_name}/{eval_dir_name}/{K}_{thresh}/
+{out_dir}/{run_name}/Evaluation/{K}_{thresh}/
 ├── {K}_GO_term_enrichment.txt
 ├── {K}_geneset_enrichment.txt
 ├── {K}_trait_enrichment.txt
-├── {K}_{perturbation_file_name}_{sample}.txt   (one per sample)
+├── {K}_{perturbation_file_name}_{Sample}.txt   (one per sample)
 ├── {K}_categorical_association_results.txt
 └── {K}_Explained_Variance.txt
 ```
-
-Where `{thresh}` = `str(sel_thresh).replace('.', '_')` (e.g., `0.2` → `0_2`, `2.0` → `2_0`).
-
-**IMPORTANT**: The `load_simple_sheets()` helper in `Compile_excel_sheet.py` hardcodes `Evaluation/` as the subdirectory name. If the project uses a different name (e.g., `Eval/`), do NOT use `load_simple_sheets()`. Instead, construct paths manually and call individual compile functions (`Compile_GO_sheet`, `Compile_Perturbation_sheet`, etc.) directly with explicit paths.
-
-### Guide data handling
-
-- If guide data (`guide_names`, `guide_targets`, `guide_assignment`) is already embedded in the h5mu: no extra loading needed.
-- If guide data lives in a separate file: load it and assign via a helper function (see reference notebook Step 2).
-
-### Sample vs categorical_key alignment
-
-`Compile_Summary_sheet()` uses `Sample` for the "Automatic Timepoint" column (maps `Mean program score {samp}` columns). These column names come from `get_program_info_Summary_cols()`, which uses `categorical_key` values. So:
-
-- If `Sample` matches `categorical_key` values (e.g., both are timepoints): pass `Sample` directly.
-- If `Sample` differs from `categorical_key` (e.g., `Sample=['WTC']` but `categorical_key='batch'`): pass `batch_values` as `Sample` to `Compile_Summary_sheet` for "Automatic Timepoint" to work. The perturbation-specific columns use `df_Perturbation['Sample'].unique()` internally, so they still reflect the actual perturbation samples.
+and the MuData at `{out_dir}/{run_name}/Inference/adata/cNMF_{K}_{thresh}.h5mu`. Where
+`{thresh}` = `str(sel_thresh).replace('.', '_')`. Override the auto-derived input with
+`--mdata_path` if your h5mu lives elsewhere. (The wrapper calls the individual
+`Compile_*` helpers directly, so it does not depend on `load_simple_sheets()`'s hardcoded
+`Evaluation/`; for a non-default eval dir, point `--mdata_path` and `--save_path`
+explicitly and keep eval files under `Evaluation/` or symlink them.)
 
 ### Output
 
-One Excel file per (K, threshold):
-```
-{out_dir}/{run_name}/Interpretation/Summary_table/{K}_{thresh}/cNMF_{K}_{thresh}.xlsx
-```
+Per job, written to `--save_path` (default `{out_dir}/{run_name}/Interpretation/Summary_table/{K}_{thresh}/`):
+- `cNMF_{K}_{thresh}.xlsx` — main multi-sheet workbook
+- `Summary_{K}_{thresh}.tsv`, `Program_Loadings_{K}_{thresh}.tsv`, `Targets_Summary_{K}_{thresh}.tsv`
+- Sidecars: `specificity_score_{Sample}.txt`, `corr_gene_matrix_{Sample}.txt(.gz)`, `kd_efficiency.txt`, `perturbation_merged_{Sample}(.._significant).txt`
+- `config_{SLURM_JOB_ID}.yml`
 
 ### Output sheets
 
@@ -168,10 +159,10 @@ One Excel file per (K, threshold):
 |-------|-------------|
 | **Summary** | One row per program: top genes, enrichment highlights, perturbation hit counts, mean scores per condition |
 | **Program Loadings** | Long-format gene loading scores with gene descriptions (via MyGene API) |
-| **Targets Summary** | Per-target aggregated perturbation stats: expression, cell counts, significant programs, correlations |
+| **Targets Summary** | Per-target aggregated perturbation stats: expression, cell counts, significant programs, specificity, correlations, KD efficiency |
 | **Sample Association** | Kruskal-Wallis + Dunn posthoc p-values per program |
-| **Perturbation Association** | Full Mann-Whitney U test results (split across sheets if >1M rows) |
-| **Significant Regulators Only** | Perturbation Association filtered to adj_pval < 0.05 |
+| **Perturbation Association {n}** | Full perturbation results merged with specificity scores (chunked across sheets if >1M rows) |
+| **significant regulators only {n}** | Perturbation Association filtered to adj_pval < 0.05, also carrying specificity scores (chunked) |
 | **Trait Enrichment** | GWAS trait enrichment via Fisher exact test (Open Targets L2G) |
 | **GO Term Enrichment** | GO Biological Process 2023 enrichment |
 | **Geneset Enrichment** | Reactome 2022 pathway enrichment |
@@ -179,6 +170,6 @@ One Excel file per (K, threshold):
 ### SLURM resources
 
 - Partition: `engreitz,owners`
-- CPUs: 2
-- Memory: 32G
-- Time: 1h (MyGene API queries for gene annotations are the bottleneck)
+- CPUs: 4
+- Memory: 64G
+- Time: 2h (MyGene API queries for gene annotations are the bottleneck)

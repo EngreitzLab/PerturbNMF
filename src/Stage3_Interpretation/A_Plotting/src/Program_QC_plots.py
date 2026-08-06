@@ -23,6 +23,7 @@ plt.rcParams["axes.spines.right"] = False
 #plt.rcParams["axes.spines.left"] = False
 plt.rcParams['pdf.fonttype'] = 42  # TrueType fonts (editable text)
 plt.rcParams['ps.fonttype'] = 42   # For EPS as well
+plt.rcParams['svg.fonttype'] = 'none'  # SVG: write real <text> (editable in Illustrator)
 
 
 plt.rcParams.update({
@@ -50,10 +51,10 @@ from .Program_expression_weighted_plots import plot_program_heatmap_weighted
 # make UMAP of program score
 def plot_umap_per_program(mdata, Target_Program, ax=None,
  color='purple', save_path=None, save_name=None, figsize=(8,6), show=False,
- subsample_frac=None, random_state=42):
+ subsample_frac=None, random_state=42, prog_key='cNMF'):
 
     # read cell and program data
-    adata_plot = mdata['cNMF'].copy()
+    adata_plot = mdata[prog_key].copy()
 
     # Optionally subsample cells for faster plotting
     if subsample_frac is not None and 0 < subsample_frac < 1.0:
@@ -113,23 +114,23 @@ def plot_top_gene_per_program(mdata, Target_Program,
                               num_gene=5, ax=None,
                               save_path=None, save_name=None,
                               figsize=(5,8), show=False, file_to_dictionary=None,
-                              gene_name_key='symbol'):
+                              gene_name_key='gene_names', data_key='rna', prog_key='cNMF'):
 
     # Read cNMF gene program matrix
-    X = mdata["cNMF"].varm["loadings"]
-    gene_names = mdata["cNMF"].uns['var_names']
+    X = mdata[prog_key].varm["loadings"]
+    gene_names = mdata[prog_key].uns['var_names']
 
     # Map Ensembl IDs to gene symbols using gene_name_key column when available
-    if gene_name_key is not None and gene_name_key in mdata['rna'].var.columns:
-        ensembl_to_symbol = dict(zip(mdata['rna'].var_names, mdata['rna'].var[gene_name_key].astype(str)))
+    if gene_name_key is not None and gene_name_key in mdata[data_key].var.columns:
+        ensembl_to_symbol = dict(zip(mdata[data_key].var_names, mdata[data_key].var[gene_name_key].astype(str)))
         gene_names = np.array([ensembl_to_symbol.get(g, g) for g in gene_names])
 
     # Rename genes
     if file_to_dictionary is None:
-        df_renamed = pd.DataFrame(data=X, columns=gene_names, index=mdata["cNMF"].var_names)
+        df_renamed = pd.DataFrame(data=X, columns=gene_names, index=mdata[prog_key].var_names)
     else:
         renamed_gene_list = rename_list_gene_dictionary(gene_names, file_to_dictionary)
-        df_renamed = pd.DataFrame(data=X, columns=renamed_gene_list, index=mdata["cNMF"].var_names)
+        df_renamed = pd.DataFrame(data=X, columns=renamed_gene_list, index=mdata[prog_key].var_names)
 
     # Validate the program exists, and is unique, in the loading matrix.
     matching_rows = (df_renamed.index == str(Target_Program)).sum()
@@ -306,12 +307,12 @@ def top_GO_per_program(GO_path, Target_Program, num_term = 5, p_value_name = "Ad
 
 
 # helper method to compute corr for analyze_correlations
-def compute_program_correlation_matrix(mdata):
+def compute_program_correlation_matrix(mdata, prog_key='cNMF'):
 
-    X = mdata['cNMF'].X
+    X = mdata[prog_key].X
     if hasattr(X, 'toarray'):
         X = X.toarray()
-    df =  pd.DataFrame(data=X, index=mdata['cNMF'].obs_names, columns=mdata['cNMF'].var_names)
+    df =  pd.DataFrame(data=X, index=mdata[prog_key].obs_names, columns=mdata[prog_key].var_names)
 
     program_correlation = df.corr()
     program_correlation = program_correlation.fillna(0)
@@ -410,18 +411,18 @@ save_path=None, save_name = None, figsize = (5, 4),show=False, ax=None):
 
 
 # plot violin plots for program expression on target program 
-def plot_violin(mdata, Target_Program, save_path=None, save_name=None, groupby = 'sample', figsize=(3, 5), show=False, ax=None):
+def plot_violin(mdata, Target_Program, save_path=None, save_name=None, groupby = 'sample', figsize=(3, 5), show=False, ax=None, data_key='rna', prog_key='cNMF'):
 
     # Build dataframe from cNMF loadings
-    X = mdata['cNMF'].X
+    X = mdata[prog_key].X
     if hasattr(X, 'toarray'):
         X = X.toarray()
-    df = pd.DataFrame(data=X, index=mdata['cNMF'].obs_names, columns=mdata['cNMF'].var_names)
+    df = pd.DataFrame(data=X, index=mdata[prog_key].obs_names, columns=mdata[prog_key].var_names)
 
     # Create dataframe with expression and cell type
     df = pd.DataFrame({
         "expression": df[str(Target_Program)],
-        "cell_type": mdata['rna'].obs[groupby].values
+        "cell_type": mdata[data_key].obs[groupby].values
     })
     
     # Compute summary stats per cell_type
@@ -748,12 +749,12 @@ def plot_program_volcano(perturb_path, Target, tagert_col_name="target_name", pl
 # given mdata, list of programs to plot, plot dotplot for programs, split by days
 def perturbed_program_dotplot(mdata, Target_Program, groupby="sample", gene_list=None,
                      save_path=None, save_name=None, figsize=(5, 4), show=False, ax=None, Day="",
-                     gene_name_key='symbol'):
+                     gene_name_key='gene_names', data_key='rna'):
 
-    if gene_name_key is not None and gene_name_key in mdata['rna'].var.columns:
-        adata_gene_list = mdata['rna'].var[gene_name_key].astype(str).tolist()
+    if gene_name_key is not None and gene_name_key in mdata[data_key].var.columns:
+        adata_gene_list = mdata[data_key].var[gene_name_key].astype(str).tolist()
     else:
-        adata_gene_list = mdata['rna'].var_names.tolist()
+        adata_gene_list = mdata[data_key].var_names.tolist()
     gene_list = [gene for gene in gene_list if gene in adata_gene_list] if gene_list else []
 
     # check when there is gene that perturbed this program
@@ -787,16 +788,16 @@ def perturbed_program_dotplot(mdata, Target_Program, groupby="sample", gene_list
     # Create dotplot
     if ax is None:
         # Standalone mode - let scanpy create its own figure
-        dp = sc.pl.dotplot(mdata['rna'] , gene_list, groupby=groupby, swap_axes=True, figsize=figsize,
-                          dendrogram=False, show=False, return_fig=True, gene_symbols=gene_name_key)
+        dp = sc.pl.dotplot(mdata[data_key] , gene_list, groupby=groupby, swap_axes=True, figsize=figsize,
+                          dendrogram=False, show=False, return_fig=True, gene_symbols=gene_name_key, use_raw=False)
         dp.make_figure()
         fig = dp.fig
         ax = dp.ax_dict['mainplot_ax']
     else:
         # Gridspec mode - use provided ax
         fig = ax.get_figure()
-        dp = sc.pl.dotplot(mdata['rna'] , gene_list, groupby=groupby, swap_axes=True, figsize=figsize,
-                          dendrogram=False, show=False, return_fig=True, ax=ax, gene_symbols=gene_name_key)
+        dp = sc.pl.dotplot(mdata[data_key] , gene_list, groupby=groupby, swap_axes=True, figsize=figsize,
+                          dendrogram=False, show=False, return_fig=True, ax=ax, gene_symbols=gene_name_key, use_raw=False)
         dp.make_figure()
     
     ax.set_title(f"Regulator Expression \n Program {Target_Program}, {Day}", 
@@ -805,7 +806,7 @@ def perturbed_program_dotplot(mdata, Target_Program, groupby="sample", gene_list
     ax.set_xlabel("Conditions", fontsize=10, fontweight='bold', loc='center')
     
     # Get labels and set ticks properly
-    label = list(mdata['rna'].obs[groupby].cat.categories)
+    label = list(mdata[data_key].obs[groupby].cat.categories)
     
     # Set both ticks and labels together
     tick_positions = range(len(label))
@@ -845,10 +846,10 @@ def compute_program_waterfall_cor(perturb_path, precomputed_path=None, save_path
 
 
     # Pre-process: create matrix with genes as rows, programs as columns
-    pivot_df = df.pivot_table(index='program_name', columns='target_name', values=log2fc_col)
+    pivot_df = df.pivot_table(index='program_name', columns='target_name', values=log2fc_col) # shape (K, genes)  
 
     # Compute correlation matrix using numpy - much faster
-    corr_matrix = pivot_df.T.corr()
+    corr_matrix = pivot_df.T.corr()  # column-wise corr on (genes, K)  →  (K, K)  
     np.fill_diagonal(corr_matrix.values, np.nan)
 
     if save_path is not None:
@@ -940,12 +941,12 @@ def create_program_correlation_waterfall(corr_matrix, Target_Program, top_num=5,
 # plot program PDF 
 def create_comprehensive_program_plot(
     mdata,
-    perturb_path_base,
-    GO_path,
-    file_to_dictionary,
-    Target_Program,
-    program_correlation,
-    waterfall_correlation,
+    perturb_path_base=None,
+    GO_path=None,
+    file_to_dictionary=None,
+    Target_Program=None,
+    program_correlation=None,
+    waterfall_correlation=None,
     top_program=5,
     groupby='sample',
     tagert_col_name="program_name",
@@ -966,26 +967,107 @@ def create_comprehensive_program_plot(
     subsample_frac=None,
     go_p_value_name="Adjusted P-value",
     go_term_col="Term",
-    gene_name_key='symbol'
+    gene_name_key='gene_names',
+    data_key='rna',
+    prog_key='cNMF'
 ):
+    """Create a comprehensive multi-panel figure for one cNMF program.
 
-    
+    Layout:
+        Row 0 (5 plots): UMAP program usage | Program expression violin |
+                         Top loading genes | GO enrichment | Program-program correlation
+        Rows 1..n: one row per sample with Log2FC | Volcano | Regulator dotplot | Waterfall
+        Last row: regulator-effect heatmap with expression sidebar
+
+    Rows 1..n and the heatmap row are only produced when ``perturb_path_base``
+    is given. With ``perturb_path_base=None`` the figure is just the header row,
+    which is built entirely from the h5mu (program usage, program loadings) plus
+    the GO enrichment table, and needs no perturbation-association results. This
+    makes the report usable before Stage 2b calibration (CRT / U-test) has been run.
+
+    Parameters
+    ----------
+    mdata : muon.MuData
+        MuData object with 'rna' and 'cNMF' modalities.
+    perturb_path_base : str or None
+        Base path for perturbation result files. Sample suffix is appended as
+        ``f"{perturb_path_base}_{sample}.txt"`` for each sample. If None, the
+        per-condition perturbation rows (Log2FC, Volcano, Regulator Dotplot,
+        Waterfall) and the regulator heatmap row are skipped entirely and no
+        perturbation file is read.
+    GO_path : str
+        Path to the GO enrichment TSV for this run. Required.
+    file_to_dictionary : str or None
+        Path to Ensembl-to-symbol mapping file. Passed to ``plot_top_gene_per_program``.
+    Target_Program : str
+        Program name to analyze. Required.
+    program_correlation : pandas.DataFrame
+        Precomputed program x program correlation matrix from
+        ``compute_program_correlation_matrix``. Required.
+    waterfall_correlation : dict[str, pandas.DataFrame] or None
+        Dict mapping sample names to precomputed program x program correlation
+        matrices from ``compute_program_waterfall_cor``. Required when
+        ``perturb_path_base`` is given; ignored when it is None.
+    sample : list of str or None
+        Sample/day identifiers. Only used when ``perturb_path_base`` is given.
+    gene_list : list of str or None
+        Regulators (perturbed genes) to restrict the per-sample panels to.
+        Only used when ``perturb_path_base`` is given.
+
+    All remaining parameters are forwarded to the individual panel functions;
+    see their docstrings for details.
+    """
+
+    # These carry defaults only so perturb_path_base can be optional (a
+    # non-default parameter cannot follow a defaulted one); they are still required.
+    if Target_Program is None:
+        raise ValueError("Target_Program is required.")
+    if GO_path is None:
+        raise ValueError("GO_path is required.")
+    if program_correlation is None:
+        raise ValueError(
+            "program_correlation is required; build it with compute_program_correlation_matrix()."
+        )
+
+    # Perturbation-derived rows are optional: without the per-sample association
+    # files there is nothing to plot for Log2FC / Volcano / Regulator Dotplot /
+    # Waterfall, and the regulator heatmap has no data to read either.
+    plot_perturbation = perturb_path_base is not None
+    if plot_perturbation and waterfall_correlation is None:
+        raise ValueError(
+            "waterfall_correlation is required when perturb_path_base is given; "
+            "build it with compute_program_waterfall_cor() per sample."
+        )
+
     # Set default samples if not provided
     if sample is None:
         sample = ['D0', 'sample_D1', 'sample_D2', 'sample_D3']
-    
+
     # Calculate figure dimensions
-    num_samples = len(sample)
-    
+    num_samples = len(sample) if plot_perturbation else 0
+
     # Set matplotlib backend to non-interactive to reduce memory usage
     plt.ioff()
-    
+
     # Close any existing figures to prevent memory leaks
     plt.close('all')
-    
+
     # Create figure with custom gridspec
-    # 1 header row + n sample rows + heatmap 
-    num_rows = 1 + num_samples + 1
+    # 1 header row + n sample rows + heatmap
+    # (no sample rows and no heatmap row when there are no perturbation files)
+    num_rows = 1 + num_samples + (1 if plot_perturbation else 0)
+
+    # Auto-scale the figure height to the number of condition rows so panels stay
+    # roughly square no matter how many conditions are plotted. A fixed figsize
+    # squishes the per-sample rows once there are more than a few conditions.
+    # Width is taken from the provided figsize (default 35); height grows per row.
+    PER_ROW_HEIGHT_IN = 8
+    if square_plots:
+        width = figsize[0] if figsize is not None else 35
+        figsize = (width, num_rows * PER_ROW_HEIGHT_IN)
+    elif figsize is None:
+        figsize = (35, num_rows * PER_ROW_HEIGHT_IN)
+
     fig = plt.figure(figsize=figsize)
     
     # Create gridspec with dynamic number of rows using 27 columns for flexibility
@@ -1001,8 +1083,10 @@ def create_comprehensive_program_plot(
     ax3 = fig.add_subplot(gs[0, 12:16])  # Perturbed gene dotplot
     ax4 = fig.add_subplot(gs[0, 18:21])  # Correlation analysis
     ax2 = fig.add_subplot(gs[0, 22:27])  # UMAP Perturbation
-    ax22 = fig.add_subplot(gs[num_rows-1, 2:26]) # heatmap plot
-    
+    # Heatmap occupies the last row and is fed entirely by the perturbation files,
+    # so it is only allocated when those files are available.
+    ax22 = fig.add_subplot(gs[num_rows-1, 2:26]) if plot_perturbation else None
+
     # Initialize list with header axes
     axes = [ax1, ax2, ax3, ax4, ax21]
     
@@ -1025,7 +1109,8 @@ def create_comprehensive_program_plot(
         color='purple',
         figsize=(4, 3),
         ax=ax1,
-        subsample_frac=subsample_frac
+        subsample_frac=subsample_frac,
+        prog_key=prog_key
     )
     ax1.set_title(f"Program {Target_Program} Expression", fontsize=18, fontweight='bold', loc='center')
     ax1.set_xlabel('UMAP 1', fontsize=14, fontweight='bold')
@@ -1034,10 +1119,12 @@ def create_comprehensive_program_plot(
     # Plot 21: violin 
     ax21 = plot_violin(
         mdata = mdata,
-        Target_Program = Target_Program, 
+        Target_Program = Target_Program,
         groupby = groupby,
-        figsize=(5,3),  
-        ax=ax21
+        figsize=(5,3),
+        ax=ax21,
+        data_key=data_key,
+        prog_key=prog_key
         )
     ax21.set_title(f"Program {Target_Program} Expression by Conditions", fontsize=18, fontweight='bold', loc='center')
     ax21.set_ylabel('Program Expression', fontsize=14, fontweight='bold', loc='center')
@@ -1064,7 +1151,9 @@ def create_comprehensive_program_plot(
         figsize=(4, 4),
         file_to_dictionary=file_to_dictionary,
         ax=ax3,
-        gene_name_key=gene_name_key)  
+        gene_name_key=gene_name_key,
+        data_key=data_key,
+        prog_key=prog_key)
     ax3.set_title(f"Top Loading Genes for Program {Target_Program}", fontsize=20, fontweight='bold', loc='center')
     ax3.set_xlabel('Gene Loading Score (z-score)', fontsize=14, fontweight='bold', loc='center')
     ax3.set_ylabel('Gene Name', fontsize=14, fontweight='bold', loc='center')
@@ -1087,9 +1176,9 @@ def create_comprehensive_program_plot(
 
     # Loop through samples and create 4 plots per sample (Log2FC, Volcano, Dotplot, Waterfall)
     ax_index = 5  # Start after header axes (0-5)
-    
-    for idx, samp in enumerate(sample):
-        file_name = f"{perturb_path_base}_{samp}.txt" 
+
+    for idx, samp in enumerate(sample if plot_perturbation else []):
+        file_name = f"{perturb_path_base}_{samp}.txt"
 
         # Plot 1: Log2FC plot
         current_ax = axes[ax_index]
@@ -1145,7 +1234,8 @@ def create_comprehensive_program_plot(
             figsize=(5, 3),
             ax=current_ax,
             Day=samp,
-            gene_name_key=gene_name_key
+            gene_name_key=gene_name_key,
+            data_key=data_key
         )
         current_ax.set_title(f"Regulator Expression \n Program {Target_Program}, {samp} ", fontsize=18, fontweight='bold', loc='center')
         current_ax.set_ylabel('Regulator Name', fontsize=14, fontweight='bold', loc='center')
@@ -1171,25 +1261,37 @@ def create_comprehensive_program_plot(
         adjust_text(text, arrowprops=dict(arrowstyle='-', color='gray', lw=0.5), ax=current_ax, fontsize=14) 
 
 
-    # Plot 5: Heatmap with expression sidebar
-    ax22 = plot_program_heatmap_weighted(
-        perturb_path_base=perturb_path_base,
-        mdata=mdata,
-        Target_Program=Target_Program,
-        tagert_col_name=tagert_col_name,
-        plot_col_name=plot_col_name,
-        sample=sample,
-        groupby=groupby,
-        log2fc_col=log2fc_col,
-        p_value=p_value,
-        figsize=(15, 5),
-        ax=ax22)
+    # Plot 5: Heatmap with expression sidebar (perturbation files only)
+    if plot_perturbation:
+        heatmap_ax = plot_program_heatmap_weighted(
+            perturb_path_base=perturb_path_base,
+            mdata=mdata,
+            Target_Program=Target_Program,
+            tagert_col_name=tagert_col_name,
+            plot_col_name=plot_col_name,
+            sample=sample,
+            groupby=groupby,
+            log2fc_col=log2fc_col,
+            p_value=p_value,
+            data_key=data_key,
+            prog_key=prog_key,
+            figsize=(15, 5),
+            ax=ax22)
 
-    ax22.set_xticklabels(ax22.get_xticklabels(), fontsize=13, rotation=45, ha='right')
-    ax22.set_yticklabels(ax22.get_yticklabels(), fontsize=13, rotation=0)
-    ax22.set_ylabel('',fontsize=14, fontweight='bold', loc='center')
-    ax22.set_xlabel('',fontsize=14, fontweight='bold', loc='center')
-    ax22.set_title(f"Regulator effects on Program {Target_Program}",fontsize=18, fontweight='bold', loc='center')
+        # plot_program_heatmap_weighted returns None when a program has no
+        # significant regulators; keep the pre-allocated gridspec axes (ax22) and
+        # mark it empty instead of crashing on the styling calls below.
+        if heatmap_ax is not None:
+            ax22 = heatmap_ax
+            ax22.set_xticklabels(ax22.get_xticklabels(), fontsize=13, rotation=45, ha='right')
+            ax22.set_yticklabels(ax22.get_yticklabels(), fontsize=13, rotation=0)
+            ax22.set_ylabel('',fontsize=14, fontweight='bold', loc='center')
+            ax22.set_xlabel('',fontsize=14, fontweight='bold', loc='center')
+        else:
+            ax22.axis('off')
+            ax22.text(0.5, 0.5, f"No significant regulators for Program {Target_Program}",
+                      ha='center', va='center', transform=ax22.transAxes, fontsize=14)
+        ax22.set_title(f"Regulator effects on Program {Target_Program}",fontsize=18, fontweight='bold', loc='center')
 
 
 

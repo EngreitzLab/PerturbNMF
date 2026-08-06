@@ -1,6 +1,7 @@
 # helper functions
 from .utilities import convert_with_mygene, convert_adata_with_mygene, rename_adata_gene_dictionary, \
-                        rename_list_gene_dictionary, read_npz, merge_pdfs_in_folder, merge_svgs_to_pdf
+                        rename_list_gene_dictionary, read_npz, merge_pdfs_in_folder, merge_svgs_to_pdf, \
+                        check_normalized, ensure_umap
 
 
 # K selection plots

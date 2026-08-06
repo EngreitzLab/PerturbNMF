@@ -47,14 +47,21 @@ Key parameters (always ask):
 | `--covariates` | None | obs columns to include as-is (e.g. `pct_counts_mt doublet_scores`) |
 | `--log_covariates` | None | obs columns to log1p-transform before inclusion (e.g. `total_counts n_genes`) |
 | `--FDR_method` | `BH` | FDR correction: `BH` or `StoreyQ` |
-| `--save_dir` | auto | Custom output directory (default: `<out_dir>/<run_name>/Evaluation/`) |
+| `--save_dir` | auto | Custom output directory (default: `<out_dir>/<run_name>/Evaluation/<K>_<sel_thresh>/`) |
+| `--skip_existing` | off | Skip the CRT recompute for a (K, sel_thresh, condition) when **both** its real and fake `.txt` exist, and regenerate the QQ `.png` from the cached raw p-values. Resume a preempted job **or** re-plot without recomputing. |
 
-**Output filenames** include the covariate set so different combinations can share a `--save_dir`:
-- `{K}_CRT_{condition}_<covariates>.txt`  (e.g. `30_CRT_1_percent_mito_log_n_counts.txt`)
-- `{K}_CRT_{condition}_<covariates>.png` (QQ plot)
-- No covariates → suffix is `_no_covariates`.
+> **`--number_guide` controls the NTC null.** CRT calibrates its p-values by building non-targeting-control (NTC) pseudo-gene groups of size `--number_guide`, frequency-matched to real genes, and comparing them to real targets on a QQ plot. Set `--number_guide` to your real guides-per-gene (it is no longer hardcoded to 6, so a wrong value skews the null).
 
-The recommended directory convention is `Evaluation/Calibration/CRT_<covariate_names>/` (one folder per covariate combination), but the filename suffix means runs with different covariates can also coexist in the same directory.
+**Output files** (covariate token *before* the condition, so different covariate combinations can share a `--save_dir`; no covariates → token is `no_covariates`):
+- `{K}_CRT_<covariates>_{condition}.txt` — **real** results: `target_name, program_name, log2FC, p-value` (skew), `adj_pval`, `p-value_raw`, `adj_pval_raw`.
+- `{K}_CRT_fake_<covariates>_{condition}.txt` — **fake / NTC null**: `ensemble, target_name` (NTC pseudo-gene id), `program_name, p-value_raw, adj_pval_raw` (raw p-values only).
+- `{K}_CRT_<covariates>_{condition}.png` — real-vs-NTC QQ plot (raw p-values).
+
+Real and null share the **raw** p-value scale so they're directly comparable; `--skip_existing` re-plots the QQ from these cached `.txt`s without recomputing.
+
+Covariate token = `--covariates` values, then each `--log_covariates` value prefixed with `log_`, joined by `_`.
+
+Set `--save_dir` to the `Evaluation/` base directory (`<out_dir>/<run_name>/Evaluation/`) — CRT.py appends `<K>_<sel_thresh>` itself, and the covariate filename token keeps runs with different covariates separate within the same directory. Do **not** nest it under a `Calibration/CRT_<covariate_names>/` subdir.
 
 ### Step D: Select covariates
 
@@ -90,7 +97,6 @@ python3 SKILL_DIR/scripts/generate_slurm.py \
   --run_name <run_name> \
   --cpus 40 --mem 256G --time 04:00:00 \
   --partition owners,engreitz,bigmem \
-  --log_dir <save_dir>/logs \
   --script_output_path <project_root>/Script/<run_name>_crt.sh \
   -- \
   --out_dir <out_dir> \
@@ -104,8 +110,10 @@ python3 SKILL_DIR/scripts/generate_slurm.py \
   --log_covariates <cols...> \
   --covariates <cols...> \
   --FDR_method StoreyQ \
-  --save_dir <save_dir>
+  --save_dir <out_dir>/<run_name>/Evaluation
 ```
+
+> `--save_dir` must be the `Evaluation/` base directory. CRT.py appends `<K>_<sel_thresh>` on its own, so passing e.g. `Evaluation/Calibration/CRT_sample` would produce `Evaluation/Calibration/CRT_sample/<K>_<thresh>/` — wrong. Use `<out_dir>/<run_name>/Evaluation`.
 
 If any requested covariate isn't present in `cNMF.obs`, add a small prep step before CRT that injects it (e.g. compute `guides_per_cell` from `obsm['guide_assignment']`). Mutate each `cNMF_<K>_<thresh>.h5mu` directly — CRT reads guide info from there.
 

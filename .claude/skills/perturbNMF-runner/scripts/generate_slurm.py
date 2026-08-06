@@ -64,7 +64,7 @@ STAGES = {
         "gpu": False,
     },
     "excel-summary": {
-        "script": "src/Stage3_Interpretation/B_Summarization/src/Compile_excel_sheet.py",
+        "script": "src/Stage3_Interpretation/B_Summarization/Slurm_Version/cNMF_excel_summary.py",
         "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
@@ -75,7 +75,7 @@ STAGES = {
     },
     "crt-calibration": {
         "script": "src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/CRT.py",
-        "conda_env": "programDE",
+        "conda_env": "NMF_Benchmarking",
         "gpu": False,
     },
     "matched-cell-de": {

@@ -33,6 +33,7 @@ plt.rcParams["axes.spines.right"] = False
 #plt.rcParams["axes.spines.left"] = False
 plt.rcParams['pdf.fonttype'] = 42  # TrueType fonts (editable text)
 plt.rcParams['ps.fonttype'] = 42   # For EPS as well
+plt.rcParams['svg.fonttype'] = 'none'  # SVG: write real <text> (editable in Illustrator)
 
 
 
@@ -52,6 +53,7 @@ import sys
 sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
 
 from .utilities import convert_adata_with_mygene, convert_with_mygene, rename_list_gene_dictionary, rename_adata_gene_dictionary
+from ._lazy_corr import LazyGeneCorr, LazyPerturbCorr
 
 
 def _blank_ax(ax, gene, message=None):
@@ -73,10 +75,21 @@ def _blank_ax(ax, gene, message=None):
     return ax
 
 
+def _safe_name(name):
+    """Sanitize a string for use as a filename component.
+
+    Gene/target names may contain path-unsafe characters (e.g. "TET1/2/3" for a
+    multi-gene KO target). The slashes would otherwise be interpreted as
+    directory separators and raise FileNotFoundError when saving. Mirrors
+    _safe_sample_key in the html_* plotting modules.
+    """
+    return "".join(c if c.isalnum() or c in "_-" else "_" for c in str(name))
+
+
 
 def plot_umap_per_gene(mdata, Target_Gene, ensembl_to_symbol_file = None, ax=None,
  color='purple', save_path=None, save_name=None, figsize=(8,6), show=False, size = None,
- umap_subsample_frac=None, random_state=42, gene_name_key='symbol'):
+ umap_subsample_frac=None, random_state=42, gene_name_key='gene_names', data_key='rna'):
     """Plot gene expression on UMAP embedding.
 
     Colors cells by expression level of a single gene on a precomputed UMAP.
@@ -116,8 +129,8 @@ def plot_umap_per_gene(mdata, Target_Gene, ensembl_to_symbol_file = None, ax=Non
         The axes with the plot, or None if the gene was not found (standalone mode).
     """
 
-    # Subsample BEFORE the .copy() so we don't materialize the full mdata['rna']
-    src = mdata['rna']
+    # Subsample BEFORE the .copy() so we don't materialize the full mdata[data_key]
+    src = mdata[data_key]
     if umap_subsample_frac is not None and 0 < umap_subsample_frac < 1.0:
         np.random.seed(random_state)
         n_cells = src.n_obs
@@ -132,6 +145,13 @@ def plot_umap_per_gene(mdata, Target_Gene, ensembl_to_symbol_file = None, ax=Non
     else:
         renamed = rename_adata_gene_dictionary(src, ensembl_to_symbol_file)
 
+    # Multiple Ensembl IDs can map to the same symbol, making var_names non-unique.
+    # scanpy's obs_vector() would then match >1 column for a duplicated symbol and
+    # ravel an (n_obs, k) block into a length-k*n_obs color vector, whose argsort
+    # indexes out of bounds of obsm['X_umap'] (IndexError). Deduplicate so the query
+    # symbol resolves to a single column (first copy keeps the original name).
+    renamed.var_names_make_unique()
+
     # Check if query gene exists
     if Target_Gene not in renamed.var_names.values:
         print(f"Gene {Target_Gene} not found in mdata")
@@ -140,7 +160,7 @@ def plot_umap_per_gene(mdata, Target_Gene, ensembl_to_symbol_file = None, ax=Non
             blank_img = np.ones((300, 200, 3), dtype=np.uint8) * 255
             img = Image.fromarray(blank_img)
             if save_path and save_name:
-                full_path = f"{save_path}/{save_name}.png"
+                full_path = f"{save_path}/{_safe_name(save_name)}.png"
                 img.save(full_path)
             return None
         else:
@@ -172,7 +192,11 @@ def plot_umap_per_gene(mdata, Target_Gene, ensembl_to_symbol_file = None, ax=Non
     
     # Plot on the provided/created axis
     plt.sca(ax)  # Set current axis to ensure scanpy uses correct figure -CC change
-    sc.pl.umap(renamed, color=Target_Gene, title=title, cmap=cmap, ax=ax, show=False, size = size)
+    # use_raw=False: var_names were renamed to symbols on .X only, not on .raw
+    # (which keeps Ensembl IDs). scanpy defaults use_raw=True when .raw exists, so
+    # it would look Target_Gene up in .raw and raise KeyError. Force it to read .X,
+    # matching the existence check against renamed.var_names above.
+    sc.pl.umap(renamed, color=Target_Gene, title=title, cmap=cmap, ax=ax, show=False, size = size, use_raw=False)
     
     # Rasterize ONLY the scatter points (collections) in this axis
     for collection in ax.collections:
@@ -187,7 +211,7 @@ def plot_umap_per_gene(mdata, Target_Gene, ensembl_to_symbol_file = None, ax=Non
 
     # Only save if standalone and save_path provided
     if standalone and save_path and save_name:
-        fig.savefig(f"{save_path}/{save_name}.svg", format='svg', bbox_inches='tight', dpi=300)
+        fig.savefig(f"{save_path}/{_safe_name(save_name)}.svg", format='svg', bbox_inches='tight', dpi=300)
     
     # Only show/close if standalone
     if standalone:
@@ -201,7 +225,8 @@ def plot_umap_per_gene(mdata, Target_Gene, ensembl_to_symbol_file = None, ax=Non
 
 def plot_umap_per_gene_guide(mdata, Target_Gene, ax=None, color='red', save_path=None,
 save_name=None, figsize=(8,6), show=False, size = None,
-umap_subsample_frac=None, random_state=42):
+umap_subsample_frac=None, random_state=42, data_key='rna', prog_key='cNMF',
+guide_targets_key='guide_targets', guide_assignment_key='guide_assignment'):
     """Plot guide perturbation signal on UMAP embedding.
 
     Colors cells by the sum of guide-assignment counts targeting a specific gene,
@@ -241,7 +266,7 @@ umap_subsample_frac=None, random_state=42):
     """
 
     # Find which guide columns target this gene and sum only those (avoids densifying full matrix)
-    guide_targets = np.array(mdata['cNMF'].uns["guide_targets"])
+    guide_targets = np.array(mdata[prog_key].uns[guide_targets_key])
     target_mask = guide_targets == Target_Gene
 
     if not target_mask.any():
@@ -250,7 +275,7 @@ umap_subsample_frac=None, random_state=42):
             blank_img = np.ones((300, 200, 3), dtype=np.uint8) * 255
             img = Image.fromarray(blank_img)
             if save_path and save_name:
-                full_path = f"{save_path}/{save_name}.png"
+                full_path = f"{save_path}/{_safe_name(save_name)}.png"
                 img.save(full_path)
             return None
         else:
@@ -258,13 +283,16 @@ umap_subsample_frac=None, random_state=42):
                    ha='center', va='center', transform=ax.transAxes)
             return ax
 
-    guide_mat = mdata['cNMF'].obsm["guide_assignment"]  # (cells x guides), sparse
+    guide_mat = mdata[prog_key].obsm[guide_assignment_key]  # (cells x guides), sparse
     target_counts = np.asarray(guide_mat[:, target_mask].sum(axis=1)).flatten() # collapse guide all guides for target gene only
 
-    adata = ad.AnnData(X=target_counts.reshape(-1, 1), obs=mdata['rna'].obs) # make adata with only one column cell x target_gene_guide
+    adata = ad.AnnData(X=target_counts.reshape(-1, 1), obs=mdata[data_key].obs) # make adata with only one column cell x target_gene_guide
     adata.var_names = pd.Index([Target_Gene])
-    adata.obsm['X_pca'] = mdata['rna'].obsm['X_pca']
-    adata.obsm['X_umap'] = mdata['rna'].obsm['X_umap']
+    # X_pca is not used for the UMAP scatter below; copy only if present so h5mu
+    # files that ship X_umap without a matching X_pca don't crash here.
+    if 'X_pca' in mdata[data_key].obsm:
+        adata.obsm['X_pca'] = mdata[data_key].obsm['X_pca']
+    adata.obsm['X_umap'] = mdata[data_key].obsm['X_umap']
 
     # Optionally subsample cells for faster plotting
     if umap_subsample_frac is not None and 0 < umap_subsample_frac < 1.0:
@@ -307,7 +335,7 @@ umap_subsample_frac=None, random_state=42):
 
     # Only save if standalone and save_path provided
     if standalone and save_path and save_name:
-        fig.savefig(f"{save_path}/{save_name}.svg", format='svg', bbox_inches='tight', dpi=300)
+        fig.savefig(f"{save_path}/{_safe_name(save_name)}.svg", format='svg', bbox_inches='tight', dpi=300)
     
     # Only show/close if standalone
     if standalone:
@@ -321,7 +349,8 @@ umap_subsample_frac=None, random_state=42):
 
 def plot_top_program_per_gene(mdata,  Target_Gene, ensembl_to_symbol_file = None,top_n_programs=10,
                             ax=None, save_path=None, save_name=None,
-                               figsize=(5,8), show=False, gene_name_key='symbol'):
+                               figsize=(5,8), show=False, gene_name_key='gene_names',
+                               data_key='rna', prog_key='cNMF'):
     """Horizontal bar plot of the top cNMF programs by gene-loading score for a gene.
 
     Reads the cNMF loadings matrix from ``mdata['cNMF'].varm['loadings']`` and
@@ -357,17 +386,17 @@ def plot_top_program_per_gene(mdata,  Target_Gene, ensembl_to_symbol_file = None
     """
 
     # read cNMF gene program matrix
-    X =  mdata["cNMF"].varm["loadings"] 
+    X =  mdata[prog_key].varm["loadings"]
 
     # rename gene
     if ensembl_to_symbol_file is None:
-        if gene_name_key is not None and gene_name_key in mdata["rna"].var.columns:
-            col_names = mdata["rna"].var[gene_name_key].astype(str)
+        if gene_name_key is not None and gene_name_key in mdata[data_key].var.columns:
+            col_names = mdata[data_key].var[gene_name_key].astype(str)
         else:
-            col_names = mdata["rna"].var_names
+            col_names = mdata[data_key].var_names
         df_renamed = pd.DataFrame(data=X, columns = col_names)
     else:
-        renamed_gene_list = rename_list_gene_dictionary( mdata["rna"].var_names, ensembl_to_symbol_file)
+        renamed_gene_list = rename_list_gene_dictionary( mdata[data_key].var_names, ensembl_to_symbol_file)
         df_renamed = pd.DataFrame(data=X, columns = renamed_gene_list)
 
     
@@ -379,7 +408,7 @@ def plot_top_program_per_gene(mdata,  Target_Gene, ensembl_to_symbol_file = None
             blank_img = np.ones((300, 200, 3), dtype=np.uint8) * 255
             img = Image.fromarray(blank_img)
             if save_path and save_name:
-                full_path = f"{save_path}/{save_name}.png"
+                full_path = f"{save_path}/{_safe_name(save_name)}.png"
                 img.save(full_path)
             return None
         else:
@@ -448,7 +477,7 @@ def plot_top_program_per_gene(mdata,  Target_Gene, ensembl_to_symbol_file = None
 
     # Only save if standalone and save_path provided
     if standalone and save_path and save_name:
-        fig.savefig(f"{save_path}/{save_name}.svg", format='svg', bbox_inches='tight', dpi=300)
+        fig.savefig(f"{save_path}/{_safe_name(save_name)}.svg", format='svg', bbox_inches='tight', dpi=300)
     
     # Only show/close if standalone
     if standalone:
@@ -462,7 +491,7 @@ def plot_top_program_per_gene(mdata,  Target_Gene, ensembl_to_symbol_file = None
 
 
 def perturbed_gene_dotplot(mdata,  Target_Gene, ensembl_to_symbol_file=None, dotplot_groupby='sample', save_name=None,
-                          save_path=None, figsize=(3, 2), show=False, ax=None, gene_name_key='symbol'):
+                          save_path=None, figsize=(3, 2), show=False, ax=None, gene_name_key='gene_names', data_key='rna'):
     """Scanpy dot plot of a single gene's expression grouped by a categorical variable.
 
     Wraps ``sc.pl.dotplot`` for a single perturbed gene, split by e.g. sample/day.
@@ -496,11 +525,11 @@ def perturbed_gene_dotplot(mdata,  Target_Gene, ensembl_to_symbol_file=None, dot
     """
     # read in adata
     if ensembl_to_symbol_file is None:
-        renamed = mdata['rna'].copy()
+        renamed = mdata[data_key].copy()
         if gene_name_key is not None and gene_name_key in renamed.var.columns:
             renamed.var_names = renamed.var[gene_name_key].astype(str)
     else:
-        renamed = rename_adata_gene_dictionary(mdata['rna'],ensembl_to_symbol_file)
+        renamed = rename_adata_gene_dictionary(mdata[data_key],ensembl_to_symbol_file)
 
     renamed.var_names_make_unique()
 
@@ -513,7 +542,7 @@ def perturbed_gene_dotplot(mdata,  Target_Gene, ensembl_to_symbol_file=None, dot
             blank_img = np.ones((300, 200, 3), dtype=np.uint8) * 255
             img = Image.fromarray(blank_img)
             if save_path and save_name:
-                full_path = f"{save_path}/{save_name}.png"
+                full_path = f"{save_path}/{_safe_name(save_name)}.png"
                 img.save(full_path)
             return None
         else:
@@ -531,7 +560,7 @@ def perturbed_gene_dotplot(mdata,  Target_Gene, ensembl_to_symbol_file=None, dot
         standalone = True
         dp = sc.pl.dotplot(renamed, Target_Gene, groupby=dotplot_groupby,
                           figsize=figsize, swap_axes=True, dendrogram=False,
-                          show=False, return_fig=True)
+                          show=False, return_fig=True, use_raw=False)
         dp.make_figure()
         fig = dp.fig
         ax = dp.ax_dict['mainplot_ax']
@@ -541,7 +570,7 @@ def perturbed_gene_dotplot(mdata,  Target_Gene, ensembl_to_symbol_file=None, dot
         fig = ax.get_figure()
         dp = sc.pl.dotplot(renamed, Target_Gene, groupby=dotplot_groupby,
                           swap_axes=True, dendrogram=False, show=False,
-                          return_fig=True, ax=ax)
+                          return_fig=True, ax=ax, use_raw=False)
         dp.make_figure()
     
     ax.set_title(f"{Target_Gene} Expression", fontsize=14, fontweight='bold', loc='center')
@@ -549,7 +578,7 @@ def perturbed_gene_dotplot(mdata,  Target_Gene, ensembl_to_symbol_file=None, dot
     ax.set_xlabel('Day', fontsize=10, fontweight='bold', loc='center')
     
     # Get labels and set ticks properly
-    label = list(mdata['rna'].obs[dotplot_groupby].cat.categories)  # Use categories instead
+    label = list(mdata[data_key].obs[dotplot_groupby].cat.categories)  # Use categories instead
     
     # Set both ticks and labels together
     tick_positions = range(len(label))
@@ -561,7 +590,7 @@ def perturbed_gene_dotplot(mdata,  Target_Gene, ensembl_to_symbol_file=None, dot
 
     # save fig (only in standalone mode)
     if standalone and save_name and save_path:
-        fig.savefig(f"{save_path}/{save_name}.png", format='png', bbox_inches='tight', dpi=300)  # Changed to png
+        fig.savefig(f"{save_path}/{_safe_name(save_name)}.png", format='png', bbox_inches='tight', dpi=300)  # Changed to png
 
     # Control whether to display the plot (only in standalone mode)
     if standalone:
@@ -690,7 +719,7 @@ def plot_log2FC(perturb_path, Target, perturb_target_col="target_name", perturb_
 
     # Save if path provided (only when standalone)
     if standalone and save_path:
-        fig.savefig(f'{save_path}/{save_name}.svg', format='svg', bbox_inches='tight', dpi=300)
+        fig.savefig(f'{save_path}/{_safe_name(save_name)}.svg', format='svg', bbox_inches='tight', dpi=300)
 
     # Control whether to display the plot (only when standalone)
     if standalone:
@@ -828,7 +857,7 @@ def plot_volcano(perturb_path, Target, perturb_target_col="target_name", perturb
 
     # Save if path provided (only when standalone)
     if standalone and save_path:
-        fig.savefig(f'{save_path}/{save_name}.svg', format='svg', bbox_inches='tight', dpi=300)
+        fig.savefig(f'{save_path}/{_safe_name(save_name)}.svg', format='svg', bbox_inches='tight', dpi=300)
 
     # Control whether to display the plot (only when standalone)
     if standalone:
@@ -843,7 +872,7 @@ def plot_volcano(perturb_path, Target, perturb_target_col="target_name", perturb
 
 
 def programs_dotplot(mdata, Target, dotplot_groupby="sample", program_list=None,
-                     save_path=None, save_name=None, figsize=(5, 4), show=False, ax=None, Day=""):
+                     save_path=None, save_name=None, figsize=(5, 4), show=False, ax=None, Day="", prog_key='cNMF'):
     """Scanpy dot plot of cNMF program loading scores grouped by a categorical variable.
 
     Shows selected programs (e.g. significant ones from ``plot_log2FC``) as a
@@ -880,7 +909,7 @@ def programs_dotplot(mdata, Target, dotplot_groupby="sample", program_list=None,
     """
 
     # make anndata from program loadings
-    adata_new = mdata['cNMF']
+    adata_new = mdata[prog_key]
 
     program_name_list = adata_new.var_names.tolist() # get all programs 
     
@@ -895,7 +924,7 @@ def programs_dotplot(mdata, Target, dotplot_groupby="sample", program_list=None,
             blank_img = np.ones((300, 200, 3), dtype=np.uint8) * 255
             img = Image.fromarray(blank_img)
             if save_path and save_name:
-                full_path = f"{save_path}/{save_name}.png"
+                full_path = f"{save_path}/{_safe_name(save_name)}.png"
                 img.save(full_path)
             return None
         else:
@@ -912,7 +941,7 @@ def programs_dotplot(mdata, Target, dotplot_groupby="sample", program_list=None,
         # Standalone mode - let scanpy create its own figure
         standalone = True
         dp = sc.pl.dotplot(adata_new, program_names, groupby=dotplot_groupby, swap_axes=True, figsize=figsize,
-                          dendrogram=False, show=False, return_fig=True)
+                          dendrogram=False, show=False, return_fig=True, use_raw=False)
         dp.make_figure()
         fig = dp.fig
         ax = dp.ax_dict['mainplot_ax']
@@ -921,7 +950,7 @@ def programs_dotplot(mdata, Target, dotplot_groupby="sample", program_list=None,
         standalone = False
         fig = ax.get_figure()
         dp = sc.pl.dotplot(adata_new, program_names, groupby=dotplot_groupby, swap_axes=True, figsize=figsize,
-                          dendrogram=False, show=False, return_fig=True, ax=ax)
+                          dendrogram=False, show=False, return_fig=True, ax=ax, use_raw=False)
         dp.make_figure()
     
     ax.set_title(f"{Target} Perturbed Program Loading Scores {Day}", 
@@ -946,7 +975,7 @@ def programs_dotplot(mdata, Target, dotplot_groupby="sample", program_list=None,
 
     # Save if path provided (only when standalone)
     if standalone and save_path and save_name:
-        fig.savefig(f'{save_path}/{save_name}.svg', format='svg', bbox_inches='tight', dpi=300)
+        fig.savefig(f'{save_path}/{_safe_name(save_name)}.svg', format='svg', bbox_inches='tight', dpi=300)
 
     # Control whether to display the plot (only in standalone mode)
     if standalone:
@@ -958,47 +987,57 @@ def programs_dotplot(mdata, Target, dotplot_groupby="sample", program_list=None,
     return ax
  
 
-def compute_gene_correlation_matrix(mdata, ensembl_to_symbol_file =  None, gene_name_key='symbol'):
-    """Compute gene-by-gene Pearson correlation matrix from cNMF loadings.
+def compute_gene_correlation_matrix(mdata, ensembl_to_symbol_file=None, gene_name_key='gene_names',
+                                    precomputed_path=None, save_path=None, data_key='rna', prog_key='cNMF'):
+    """Build a rank-K factored stand-in for the gene-by-gene loading correlation.
 
-    Each gene is represented by its loading vector across all programs.
-    The pairwise Pearson correlation of these vectors yields a gene × gene
-    matrix used by ``analyze_correlations``.
+    Equivalent to the Pearson correlation of cNMF gene-loading vectors but
+    returned as a ``LazyGeneCorr`` shim that exposes the same ``.loc[gene]``
+    / ``corr[gene]`` / ``.columns`` API as the legacy DataFrame, without
+    materializing the dense G x G matrix.
 
     Parameters
     ----------
     mdata : muon.MuData
-        MuData object with ``mdata['cNMF'].varm['loadings']`` (programs × genes)
+        MuData with ``mdata['cNMF'].varm['loadings']`` (programs x genes)
         and ``mdata['rna'].var_names``.
     ensembl_to_symbol_file : str or None
         Path to Ensembl-to-symbol TSV. If None, ``mdata['rna'].var_names``
-        are used as column headers. Passed to ``rename_list_gene_dictionary``.
+        are used.
+    gene_name_key : str
+        Column of ``mdata['rna'].var`` to use when no mapping file is given.
+    precomputed_path : str or None
+        If set and the file exists, load the factor from this ``.npz`` and
+        skip recomputation.
+    save_path : str or None
+        If set, write the computed factor to this ``.npz`` for future runs.
 
     Returns
     -------
-    pandas.DataFrame
-        Symmetric gene × gene correlation matrix with NaN replaced by 0.
+    LazyGeneCorr
+        Drop-in shim with ``.loc[gene]`` / ``.columns`` / ``corr[gene]``.
     """
 
-    X =  mdata["cNMF"].varm["loadings"]
+    if precomputed_path is not None and Path(precomputed_path).exists():
+        return LazyGeneCorr.load_npz(precomputed_path)
 
-    # rename gene
+    X = mdata[prog_key].varm["loadings"]
+
     if ensembl_to_symbol_file is None:
-        if gene_name_key is not None and gene_name_key in mdata["rna"].var.columns:
-            col_names = mdata["rna"].var[gene_name_key].astype(str)
+        if gene_name_key is not None and gene_name_key in mdata[data_key].var.columns:
+            col_names = mdata[data_key].var[gene_name_key].astype(str).tolist()
         else:
-            col_names = mdata["rna"].var_names
-        df_rename = pd.DataFrame(data=X, columns = col_names)
+            col_names = list(mdata[data_key].var_names)
     else:
-        renamed_gene_list = rename_list_gene_dictionary( mdata["rna"].var_names, ensembl_to_symbol_file)
-        df_rename = pd.DataFrame(data=X, columns = renamed_gene_list)
+        col_names = list(rename_list_gene_dictionary(mdata[data_key].var_names, ensembl_to_symbol_file))
 
-    # Calculate correlation matrix
-    gene_loading_corr_matrix = df_rename.corr()
-    gene_loading_corr_matrix = gene_loading_corr_matrix.fillna(0)
+    corr = LazyGeneCorr.from_loadings(X, gene_names=col_names)
 
+    if save_path is not None:
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+        corr.save_npz(save_path)
 
-    return gene_loading_corr_matrix
+    return corr
 
  
 
@@ -1044,7 +1083,7 @@ def analyze_correlations(gene_loading_corr_matrix, Target, top_corr_genes=5, sav
             blank_img = np.ones((300, 200, 3), dtype=np.uint8) * 255
             img = Image.fromarray(blank_img)
             if save_path and save_name:
-                full_path = f"{save_path}/{save_name}.png"
+                full_path = f"{save_path}/{_safe_name(save_name)}.png"
                 img.save(full_path)
             return None
         else:
@@ -1108,7 +1147,7 @@ def analyze_correlations(gene_loading_corr_matrix, Target, top_corr_genes=5, sav
 
     # Save if path provided (only in standalone mode)
     if standalone and save_path:
-        fig.savefig(f'{save_path}/{save_name}.svg', format='svg', bbox_inches='tight', dpi=300)
+        fig.savefig(f'{save_path}/{_safe_name(save_name)}.svg', format='svg', bbox_inches='tight', dpi=300)
 
     # Control whether to display the plot (only in standalone mode)
     if standalone:
@@ -1121,56 +1160,51 @@ def analyze_correlations(gene_loading_corr_matrix, Target, top_corr_genes=5, sav
 
 
 
-def compute_gene_waterfall_cor(perturb_path, perturb_log2fc_col = 'log2FC', precomputed_path = None,  save_path=None):
-    """Compute gene-by-gene correlation of perturbation log2FC profiles.
+def compute_gene_waterfall_cor(perturb_path, perturb_log2fc_col='log2FC',
+                               precomputed_path=None, save_path=None):
+    """Build a rank-K factored stand-in for the per-sample target x target correlation.
 
-    For each target gene, its log2FC across all programs forms a vector.
-    This function computes the pairwise Pearson correlation of those vectors,
-    yielding a target-gene × target-gene matrix. Used by
-    ``create_gene_correlation_waterfall`` to find genes with similar
-    perturbation signatures.
+    Equivalent to ``pivot_df.T.corr()`` over a (target x program) pivot of
+    log2FC values, but returned as a ``LazyPerturbCorr`` shim that
+    preserves the pairwise-complete NaN semantics and exposes the
+    ``.loc[gene]`` / ``.index`` / ``.copy()`` API used by callers without
+    materializing the dense T x T matrix.
 
     Parameters
     ----------
     perturb_path : str
-        Path to the perturbation TSV with columns ``target_name``,
-        ``program_name``, and the log2FC column.
+        TSV with columns ``target_name``, ``program_name``, and the log2FC
+        column.
     perturb_log2fc_col : str
-        Column name for log2 fold-change values used to build the pivot table.
+        Column name for log2 fold-change values used to build the pivot.
     precomputed_path : str or None
-        Path to a precomputed TSV correlation matrix. If the file exists it is
-        loaded directly, skipping computation.
+        If set and the file exists, load the factor from this ``.npz`` and
+        skip recomputation.
     save_path : str or None
-        If provided, the computed matrix is saved to this TSV path.
+        If set, write the computed factor to this ``.npz`` for future runs.
 
     Returns
     -------
-    pandas.DataFrame
-        Target-gene × target-gene correlation matrix with self-correlations
-        set to NaN.
+    LazyPerturbCorr
+        Drop-in shim with ``.loc[gene]`` returning a correlation row.
     """
 
-    # Check if a pre-computed correlation matrix exists
     if precomputed_path is not None and Path(precomputed_path).exists():
-        corr_matrix = pd.read_csv(precomputed_path, sep='\t', index_col=0)
-        return corr_matrix
+        return LazyPerturbCorr.load_npz(precomputed_path)
 
     df = pd.read_csv(perturb_path, sep='\t', index_col=0)
+    pivot_df = df.pivot_table(index='target_name', columns='program_name',
+                              values=perturb_log2fc_col)
+    del df
 
-    # Pre-process: create matrix with genes as rows, programs as columns
-    pivot_df = df.pivot_table(index='target_name', columns='program_name', values=perturb_log2fc_col)
-
-    # Compute correlation matrix using pandas .corr() - handles NaN gracefully
-    corr_matrix = pivot_df.T.corr()
-    np.fill_diagonal(corr_matrix.values, np.nan)
-
+    corr = LazyPerturbCorr.from_pivot(pivot_df)
+    del pivot_df
 
     if save_path is not None:
-        corr_matrix.index = corr_matrix.index.astype(str)
-        corr_matrix.columns = corr_matrix.columns.astype(str)
-        corr_matrix.to_csv(save_path, sep='\t')
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+        corr.save_npz(save_path)
 
-    return corr_matrix
+    return corr
 
 
 
@@ -1215,9 +1249,41 @@ def create_gene_correlation_waterfall(corr_matrix, Target_Gene, top_corr_genes=5
         The axes and the list of matplotlib Text objects for the labels.
     """
 
+    # Create figure/axes early so the absent-target branch can draw a placeholder.
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+        standalone = True
+    else:
+        fig = ax.get_figure()
+        standalone = False
+
+    # A target with all-NaN log2FC is dropped from the pivot index in
+    # compute_gene_waterfall_cor (pivot_table drops all-NaN rows), so it is
+    # absent from corr_matrix even though it is in the gene list. Render an
+    # empty panel rather than raising KeyError, so the rest of the
+    # comprehensive plot for this gene is still produced.
+    if Target_Gene not in corr_matrix:
+        ax.text(0.5, 0.5, f"No perturbation\ncorrelation data\nfor {Target_Gene}",
+                ha='center', va='center', transform=ax.transAxes,
+                fontsize=10, style='italic', color='gray')
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_title(f"Gene Perturbation Correlation for {Target_Gene} {Day}",
+                     fontsize=14, fontweight='bold', loc='center')
+        if standalone:
+            plt.tight_layout()
+            if save_path:
+                fig.savefig(f'{save_path}/{_safe_name(save_name)}.svg', format='svg',
+                            bbox_inches='tight', dpi=300)
+            if show:
+                plt.show()
+            else:
+                plt.close(fig)
+        return ax, []
+
     # Convert to DataFrame and sort
     gene_corrs = corr_matrix.loc[Target_Gene].dropna()
-    corr_df = (gene_corrs).sort_values(ascending = False) 
+    corr_df = (gene_corrs).sort_values(ascending = False)
     
     # Get top N positive and bottom N negative correlations for labeling
     top_positive = corr_df.head(top_corr_genes)
@@ -1225,15 +1291,7 @@ def create_gene_correlation_waterfall(corr_matrix, Target_Gene, top_corr_genes=5
     genes_to_label = set(top_positive.index.tolist() + top_negative.index.tolist())
     
     # Use ALL correlations for plotting
-    plot_data = corr_df 
-
-    # Create figure/axes if not provided
-    if ax is None:
-        fig, ax = plt.subplots(figsize=figsize)
-        standalone = True
-    else:
-        fig = ax.get_figure()
-        standalone = False
+    plot_data = corr_df
 
     # Plot only the markers (no line)
     ax.scatter(range(len(plot_data)), plot_data.values, 
@@ -1272,7 +1330,7 @@ def create_gene_correlation_waterfall(corr_matrix, Target_Gene, top_corr_genes=5
 
     # Save if path provided (only in standalone mode)
     if standalone and save_path:
-        fig.savefig(f'{save_path}/{save_name}.svg', format='svg', bbox_inches='tight', dpi=300)
+        fig.savefig(f'{save_path}/{_safe_name(save_name)}.svg', format='svg', bbox_inches='tight', dpi=300)
 
     # Control whether to display the plot (only in standalone mode)
     if standalone:
@@ -1286,8 +1344,11 @@ def create_gene_correlation_waterfall(corr_matrix, Target_Gene, top_corr_genes=5
 
 
 
-def plot_perturbation_vs_control(mdata, target_gene, gene_name_key='symbol', ax=None, figsize=(3.2, 5.0),
-                                 control_target_name='non-targeting'):
+def plot_perturbation_vs_control(mdata, target_gene, gene_name_key='gene_names', ax=None, figsize=(3.2, 5.0),
+                                 control_target_name='non-targeting',
+                                 save_path=None, save_name=None, show=True,
+                                 data_key='rna', prog_key='cNMF',
+                                 guide_targets_key='guide_targets', guide_assignment_key='guide_assignment'):
     """
     Bar plot comparing expression of a targeted gene in perturbed vs non-targeting control cells,
     normalized to control mean (displayed as %).
@@ -1308,21 +1369,27 @@ def plot_perturbation_vs_control(mdata, target_gene, gene_name_key='symbol', ax=
         Figure size (only used in standalone mode when ax is None).
     control_target_name : str
         Name of the non-targeting control in guide_targets (e.g. 'non-targeting', 'CTRL').
+    save_path : str or None
+        Directory to save the SVG (standalone mode only).
+    save_name : str or None
+        File stem for the saved figure.
+    show : bool
+        If True, call ``plt.show()`` in standalone mode; otherwise close the figure.
     """
     from scipy import sparse
 
-    assert mdata['rna'].n_obs == mdata['cNMF'].n_obs, \
+    assert mdata[data_key].n_obs == mdata[prog_key].n_obs, \
         "RNA and cNMF have different number of cells"
 
-    guide_targets = mdata['cNMF'].uns['guide_targets']
-    ga = mdata['cNMF'].obsm['guide_assignment']
-    X = mdata['rna'].X
+    guide_targets = mdata[prog_key].uns[guide_targets_key]
+    ga = mdata[prog_key].obsm[guide_assignment_key]
+    X = mdata[data_key].X
 
     # Gene index in expression matrix
-    if gene_name_key is not None and gene_name_key in mdata['rna'].var.columns:
-        gene_mask = mdata['rna'].var[gene_name_key] == target_gene
+    if gene_name_key is not None and gene_name_key in mdata[data_key].var.columns:
+        gene_mask = mdata[data_key].var[gene_name_key] == target_gene
     else:
-        gene_mask = mdata['rna'].var_names == target_gene
+        gene_mask = mdata[data_key].var_names == target_gene
 
     if gene_mask.sum() == 0:
         print(f"Gene {target_gene} not found in expression matrix")
@@ -1336,7 +1403,7 @@ def plot_perturbation_vs_control(mdata, target_gene, gene_name_key='symbol', ax=
     # Normalize to counts per 10k
     if sparse.issparse(X):
         row_sums = np.array(X.sum(axis=1)).flatten()
-        gene_expr = np.array(X[:, gene_idx].todense()).flatten()
+        gene_expr = X[:, gene_idx].toarray().ravel()
     else:
         row_sums = X.sum(axis=1)
         gene_expr = X[:, gene_idx]
@@ -1344,8 +1411,13 @@ def plot_perturbation_vs_control(mdata, target_gene, gene_name_key='symbol', ax=
     gene_expr_norm = (gene_expr / row_sums) * 1e4
 
     # Non-targeting control cells
-    nt_idx = np.where(guide_targets == control_target_name)[0]
+    nt_idx = np.where(np.isin(guide_targets, control_target_name))[0]
     control_mask = np.array(ga[:, nt_idx].sum(axis=1)).flatten() > 0
+    if control_mask.sum() == 0:
+        raise ValueError(
+            f"0 control cells for control_target_name='{control_target_name}'. "
+            f"Check np.unique(mdata['{prog_key}'].uns['{guide_targets_key}']) for the correct label."
+        )
 
     # Perturbed cells
     target_idx = np.where(guide_targets == target_gene)[0]
@@ -1363,6 +1435,8 @@ def plot_perturbation_vs_control(mdata, target_gene, gene_name_key='symbol', ax=
 
     # Normalize both to control mean → values are now fractions (1.0 = 100%)
     ctrl_mean = np.mean(ctrl_expr)
+    if np.isnan(ctrl_mean):
+        print(f"WARNING: ctrl_mean is NaN (n_ctrl={len(ctrl_expr)}); bar plot will be empty.")
     norm_means = np.array([np.mean(pert_expr), ctrl_mean]) / ctrl_mean
     norm_sems  = np.array([
         np.std(pert_expr) / np.sqrt(len(pert_expr)),
@@ -1371,13 +1445,6 @@ def plot_perturbation_vs_control(mdata, target_gene, gene_name_key='symbol', ax=
 
     n_pert = len(pert_expr)
     n_ctrl = len(ctrl_expr)
-
-    if n_pert == 0 or n_ctrl == 0 or ctrl_mean == 0:
-        if ax is not None:
-            ax.text(0.5, 0.5, f'Insufficient data\n(n_pert={n_pert}, n_ctrl={n_ctrl})',
-                   ha='center', va='center', transform=ax.transAxes, fontsize=10)
-            return ax
-        return None
 
     # ── Style ────────────────────────────────────────────────────────────────
     COLOR_PERT = '#D62728'
@@ -1427,21 +1494,31 @@ def plot_perturbation_vs_control(mdata, target_gene, gene_name_key='symbol', ax=
     ax.spines['bottom'].set_linewidth(0.8)
     ax.spines['left'].set_linewidth(0.8)
 
-    # Only show/close if standalone
+    # Adjust layout (only in standalone mode)
     if standalone:
         plt.tight_layout()
-        if True:  # always show in standalone
+
+    # Save if path provided (only in standalone mode)
+    if standalone and save_path:
+        fig.savefig(f'{save_path}/{_safe_name(save_name)}.svg', format='svg', bbox_inches='tight', dpi=300)
+
+    # Control whether to display the plot (only in standalone mode)
+    if standalone:
+        if show:
             plt.show()
-        return fig, ax
+        else:
+            plt.close(fig)
 
     return ax
 
 
 def plot_perturbation_vs_control_by_condition(mdata, target_gene, condition_key='sample',
-                                               gene_name_key='symbol', figsize=(8, 5),
+                                               gene_name_key='gene_names', figsize=(8, 5),
                                                control_target_name='non-targeting',
                                                ax=None,
-                                               save_path=None, save_name=None, show=True, PDF=True):
+                                               save_path=None, save_name=None, show=True, PDF=True,
+                                               data_key='rna', prog_key='cNMF',
+                                               guide_targets_key='guide_targets', guide_assignment_key='guide_assignment'):
     """
     Grouped bar chart comparing perturbed vs control expression across conditions.
 
@@ -1487,18 +1564,18 @@ def plot_perturbation_vs_control_by_condition(mdata, target_gene, condition_key=
     """
     from scipy import sparse
 
-    assert mdata['rna'].n_obs == mdata['cNMF'].n_obs, \
+    assert mdata[data_key].n_obs == mdata[prog_key].n_obs, \
         "RNA and cNMF have different number of cells"
 
-    guide_targets = mdata['cNMF'].uns['guide_targets']
-    ga = mdata['cNMF'].obsm['guide_assignment']
-    X = mdata['rna'].X
+    guide_targets = mdata[prog_key].uns[guide_targets_key]
+    ga = mdata[prog_key].obsm[guide_assignment_key]
+    X = mdata[data_key].X
 
     # Gene index in expression matrix
-    if gene_name_key is not None and gene_name_key in mdata['rna'].var.columns:
-        gene_mask = mdata['rna'].var[gene_name_key] == target_gene
+    if gene_name_key is not None and gene_name_key in mdata[data_key].var.columns:
+        gene_mask = mdata[data_key].var[gene_name_key] == target_gene
     else:
-        gene_mask = mdata['rna'].var_names == target_gene
+        gene_mask = mdata[data_key].var_names == target_gene
 
     if gene_mask.sum() == 0:
         print(f"Gene {target_gene} not found in expression matrix")
@@ -1513,7 +1590,7 @@ def plot_perturbation_vs_control_by_condition(mdata, target_gene, condition_key=
     # Normalize to counts per 10k
     if sparse.issparse(X):
         row_sums = np.array(X.sum(axis=1)).flatten()
-        gene_expr = np.array(X[:, gene_idx].todense()).flatten()
+        gene_expr = X[:, gene_idx].toarray().ravel()
     else:
         row_sums = X.sum(axis=1)
         gene_expr = X[:, gene_idx]
@@ -1521,8 +1598,11 @@ def plot_perturbation_vs_control_by_condition(mdata, target_gene, condition_key=
     gene_expr_norm = (gene_expr / row_sums) * 1e4
 
     # Non-targeting control cells
-    nt_idx = np.where(guide_targets == control_target_name)[0]
+    nt_idx = np.where(np.isin(guide_targets, control_target_name))[0]
     control_mask = np.array(ga[:, nt_idx].sum(axis=1)).flatten() > 0
+    if control_mask.sum() == 0:
+        print(f"WARNING: 0 control cells for control_target_name='{control_target_name}'. "
+              f"Check np.unique(mdata['{prog_key}'].uns['{guide_targets_key}']) for the correct label.")
 
     # Perturbed cells
     target_idx = np.where(guide_targets == target_gene)[0]
@@ -1536,7 +1616,7 @@ def plot_perturbation_vs_control_by_condition(mdata, target_gene, condition_key=
     perturbed_mask = np.array(ga[:, target_idx].sum(axis=1)).flatten() > 0
 
     # Get conditions
-    conditions_series = mdata['rna'].obs[condition_key]
+    conditions_series = mdata[data_key].obs[condition_key]
     if hasattr(conditions_series, 'cat'):
         conditions = list(conditions_series.cat.categories)
     else:
@@ -1644,7 +1724,7 @@ def plot_perturbation_vs_control_by_condition(mdata, target_gene, condition_key=
 
         if save_path and save_name:
             ext = 'pdf' if PDF else 'svg'
-            full_path = f"{save_path}/{save_name}.{ext}"
+            full_path = f"{save_path}/{_safe_name(save_name)}.{ext}"
             fig.savefig(full_path, format=ext, bbox_inches='tight', dpi=300)
 
         if show:
@@ -1659,11 +1739,11 @@ def plot_perturbation_vs_control_by_condition(mdata, target_gene, condition_key=
 
 def create_comprehensive_plot(
     mdata,
-    perturb_path_base,
-    ensembl_to_symbol_file,
-    Target_Gene,
-    gene_loading_corr_matrix,
-    perturb_corr_by_sample,
+    perturb_path_base=None,
+    ensembl_to_symbol_file=None,
+    Target_Gene=None,
+    gene_loading_corr_matrix=None,
+    perturb_corr_by_sample=None,
     top_n_programs=10,
     dotplot_groupby='sample',
     perturb_target_col="target_name",
@@ -1682,8 +1762,12 @@ def create_comprehensive_plot(
     PDF=True,
     umap_dot_size = None,
     umap_subsample_frac=None,
-    gene_name_key='symbol',
-    control_target_name='non-targeting'
+    gene_name_key='gene_names',
+    control_target_name='non-targeting',
+    data_key='rna',
+    prog_key='cNMF',
+    guide_targets_key='guide_targets',
+    guide_assignment_key='guide_assignment'
 ):
     """Create a comprehensive multi-panel figure for one perturbed gene.
 
@@ -1692,25 +1776,35 @@ def create_comprehensive_plot(
         Row 1 (2 plots): KD Grouped Bar Chart | Gene-loading Correlation
         Rows 2..n: one row per sample with Log2FC | Volcano | Program Dotplot | Waterfall
 
+    Rows 2..n are only produced when ``perturb_path_base`` is given. With
+    ``perturb_path_base=None`` the figure is just rows 0 and 1, which are built
+    entirely from the h5mu (expression, guide assignment, program loadings) and
+    need no perturbation-association results. This makes the report usable
+    before Stage 2b calibration (CRT / U-test) has been run.
+
     Parameters
     ----------
     mdata : muon.MuData
         MuData object with 'rna' and 'cNMF' modalities.
-    perturb_path_base : str
+    perturb_path_base : str or None
         Base path for perturbation result files. Sample suffix is appended as
-        ``f"{perturb_path_base}_{sample}.txt"`` for each sample.
+        ``f"{perturb_path_base}_{sample}.txt"`` for each sample. If None, the
+        per-condition perturbation rows (Log2FC, Volcano, Program Dotplot,
+        Waterfall) are skipped entirely and no perturbation file is read.
     ensembl_to_symbol_file : str or None
         Path to Ensembl-to-symbol TSV for gene name conversion. Propagated to
         ``plot_umap_per_gene``, ``plot_top_program_per_gene``, ``perturbed_gene_dotplot``.
     Target_Gene : str
-        Gene symbol to analyze.
+        Gene symbol to analyze. Required.
     gene_loading_corr_matrix : pandas.DataFrame
         Precomputed gene × gene correlation matrix from
         ``compute_gene_correlation_matrix``. Passed to ``analyze_correlations``.
-    perturb_corr_by_sample : dict[str, pandas.DataFrame]
+        Required.
+    perturb_corr_by_sample : dict[str, pandas.DataFrame] or None
         Dict mapping sample names to precomputed target-gene × target-gene
         correlation matrices from ``compute_gene_waterfall_cor``. Passed to
-        ``create_gene_correlation_waterfall``.
+        ``create_gene_correlation_waterfall``. Required when
+        ``perturb_path_base`` is given; ignored when it is None.
     top_n_programs : int
         Number of top programs to show. Passed to ``plot_top_program_per_gene``.
     dotplot_groupby : str
@@ -1738,11 +1832,16 @@ def create_comprehensive_plot(
     save_name : str or None
         File stem for the saved figure (PDF or SVG).
     figsize : tuple of float or None
-        (width, height) in inches. If None, auto-calculated from layout.
+        (width, height) in inches. When ``square_plots`` is True only the width
+        is used and the height is auto-scaled to the number of condition rows
+        (``num_rows * 8``). When ``square_plots`` is False the tuple is used
+        verbatim; if None, height is auto-scaled with a default width of 35.
     sample : list of str or None
         Sample/day identifiers. Defaults to ``['D0', 'sample_D1', 'sample_D2', 'sample_D3']``.
+        Only used when ``perturb_path_base`` is given.
     square_plots : bool
-        If True and figsize is None, auto-sizes to make plots roughly square.
+        If True, auto-scale the figure height to the number of condition rows so
+        each panel stays roughly square regardless of how many conditions there are.
     show : bool
         If True, display the figure interactively.
     PDF : bool
@@ -1761,12 +1860,30 @@ def create_comprehensive_plot(
         Passed to ``plot_perturbation_vs_control``.
     """
     
+    # These carry defaults only so perturb_path_base can be optional (a
+    # non-default parameter cannot follow a defaulted one); they are still required.
+    if Target_Gene is None:
+        raise ValueError("Target_Gene is required.")
+    if gene_loading_corr_matrix is None:
+        raise ValueError(
+            "gene_loading_corr_matrix is required; build it with compute_gene_correlation_matrix()."
+        )
+
+    # Perturbation-derived rows are optional: without the per-sample association
+    # files there is nothing to plot for Log2FC / Volcano / Program Dotplot / Waterfall.
+    plot_perturbation = perturb_path_base is not None
+    if plot_perturbation and perturb_corr_by_sample is None:
+        raise ValueError(
+            "perturb_corr_by_sample is required when perturb_path_base is given; "
+            "build it with compute_gene_waterfall_cor() per sample."
+        )
+
     # Set default samples if not provided
     if sample is None:
         sample = ['D0', 'sample_D1', 'sample_D2', 'sample_D3']
 
     # Calculate figure dimensions
-    num_samples = len(sample)
+    num_samples = len(sample) if plot_perturbation else 0
 
     # Set matplotlib backend to non-interactive to reduce memory usage
     plt.ioff()
@@ -1775,8 +1892,20 @@ def create_comprehensive_plot(
     plt.close('all')
 
     # Create figure with custom gridspec
-    # 2 header rows + n sample rows
+    # 2 header rows + n sample rows (0 sample rows when no perturbation files)
     num_rows = 2 + num_samples
+
+    # Auto-scale the figure height to the number of condition rows so panels stay
+    # roughly square no matter how many conditions are plotted. A fixed figsize
+    # squishes the per-sample rows once there are more than a few conditions.
+    # Width is taken from the provided figsize (default 35); height grows per row.
+    PER_ROW_HEIGHT_IN = 7
+    if square_plots:
+        width = figsize[0] if figsize is not None else 35
+        figsize = (width, num_rows * PER_ROW_HEIGHT_IN)
+    elif figsize is None:
+        figsize = (35, num_rows * PER_ROW_HEIGHT_IN)
+
     fig = plt.figure(figsize=figsize)
 
     # Create gridspec with dynamic number of rows using 27 columns for flexibility
@@ -1820,7 +1949,8 @@ def create_comprehensive_plot(
         size=umap_dot_size,
         ax=ax_umap_expr,
         umap_subsample_frac=umap_subsample_frac,
-        gene_name_key=gene_name_key
+        gene_name_key=gene_name_key,
+        data_key=data_key
     )
     ax_umap_expr.set_title(f"{Target_Gene} Expression", fontsize=18, fontweight='bold', loc='center')
     ax_umap_expr.set_xlabel('UMAP 1', fontsize=14, fontweight='bold')
@@ -1833,7 +1963,11 @@ def create_comprehensive_plot(
         figsize=(4, 3),
         size=umap_dot_size,
         ax=ax_umap_pert,
-        umap_subsample_frac=umap_subsample_frac
+        umap_subsample_frac=umap_subsample_frac,
+        data_key=data_key,
+        prog_key=prog_key,
+        guide_targets_key=guide_targets_key,
+        guide_assignment_key=guide_assignment_key
     )
     ax_umap_pert.set_title(f"{Target_Gene} Perturbation", fontsize=18, fontweight='bold', loc='center')
     ax_umap_pert.set_xlabel('UMAP 1', fontsize=14, fontweight='bold')
@@ -1847,7 +1981,8 @@ def create_comprehensive_plot(
         dotplot_groupby=dotplot_groupby,
         figsize=(3, 2),
         ax=ax_dotplot,
-        gene_name_key=gene_name_key
+        gene_name_key=gene_name_key,
+        data_key=data_key
     )
     ax_dotplot.set_title(f"{Target_Gene} Expression", fontsize=20, fontweight='bold', loc='center')
     ax_dotplot.set_ylabel('Gene', fontsize=14, fontweight='bold', loc='center')
@@ -1861,7 +1996,9 @@ def create_comprehensive_plot(
         top_n_programs=top_n_programs,
         ax=ax_top_prog,
         figsize=(2, 4),
-        gene_name_key=gene_name_key
+        gene_name_key=gene_name_key,
+        data_key=data_key,
+        prog_key=prog_key
     )
     ax_top_prog.set_title(f"Top Loading Program for {Target_Gene}", fontsize=20, fontweight='bold', loc='center')
     ax_top_prog.set_xlabel('Gene Loading Score (z-score)', fontsize=14, fontweight='bold')
@@ -1875,6 +2012,10 @@ def create_comprehensive_plot(
         gene_name_key=gene_name_key,
         control_target_name=control_target_name,
         ax=ax_kd_grouped,
+        data_key=data_key,
+        prog_key=prog_key,
+        guide_targets_key=guide_targets_key,
+        guide_assignment_key=guide_assignment_key,
     )
 
     # Row 1, Plot 2: Correlation analysis
@@ -1891,8 +2032,8 @@ def create_comprehensive_plot(
 
     # Loop through samples and create 4 plots per sample (Log2FC, Volcano, Dotplot, Waterfall)
     ax_index = 5  # Start after header axes (0: umap_expr, 1: umap_pert, 2: top_prog, 3: dotplot, 4: corr)
-    
-    for idx, samp in enumerate(sample):
+
+    for idx, samp in enumerate(sample if plot_perturbation else []):
         file_name = f"{perturb_path_base}_{samp}.txt"
         perturb_df = pd.read_csv(file_name, sep="\t")  # read once per sample
 
@@ -1941,13 +2082,15 @@ def create_comprehensive_plot(
         # Plot 3: Programs dotplot
         current_ax = axes[ax_index]
         current_ax = programs_dotplot(
-            mdata=mdata, 
-            program_list=df["program_name"].tolist(),
+            mdata=mdata,
+            program_list=(df[perturb_program_col].tolist()
+                          if perturb_program_col in df.columns else []),
             Target=Target_Gene,
             dotplot_groupby=dotplot_groupby,
             figsize=(5, 3),
             ax=current_ax,
-            Day=samp
+            Day=samp,
+            prog_key=prog_key
         )
         ax_index += 1
         current_ax.set_title(f"Perturbed Program Loading Scores, {samp} \n {Target_Gene}", fontsize=18, fontweight='bold', loc='center')
@@ -1981,12 +2124,12 @@ def create_comprehensive_plot(
     
     # Save if path provided
     if save_path and save_name and PDF:
-        full_path = f"{save_path}/{save_name}.pdf"
+        full_path = f"{save_path}/{_safe_name(save_name)}.pdf"
         print(f"Saving figure to {full_path}...")
         fig.savefig(full_path, format='pdf', bbox_inches='tight', dpi=300)
-    
+
     if save_path and save_name and not PDF:
-        full_path = f"{save_path}/{save_name}.svg"
+        full_path = f"{save_path}/{_safe_name(save_name)}.svg"
         print(f"Saving figure to {full_path}...")
         fig.savefig(full_path, format='svg', bbox_inches='tight', dpi=300)
     
@@ -2020,10 +2163,14 @@ def process_single_gene(Target_Gene,
                         square_plots=True,
                         show=True,
                         PDF=True,
-                        gene_name_key='symbol',
+                        gene_name_key='gene_names',
                         umap_dot_size=None,
                         umap_subsample_frac=None,
-                        control_target_name='non-targeting'):
+                        control_target_name='non-targeting',
+                        data_key='rna',
+                        prog_key='cNMF',
+                        guide_targets_key='guide_targets',
+                        guide_assignment_key='guide_assignment'):
     """Wrapper around ``create_comprehensive_plot`` for a single gene with error handling.
 
     Catches exceptions so that one failing gene does not abort a batch run.
@@ -2071,7 +2218,11 @@ def process_single_gene(Target_Gene,
             gene_name_key=gene_name_key,
             umap_dot_size=umap_dot_size,
             umap_subsample_frac=umap_subsample_frac,
-            control_target_name=control_target_name
+            control_target_name=control_target_name,
+            data_key=data_key,
+            prog_key=prog_key,
+            guide_targets_key=guide_targets_key,
+            guide_assignment_key=guide_assignment_key
         )
 
         return f"Success: {Target_Gene}"
@@ -2104,33 +2255,44 @@ def _process_gene_worker(Target_Gene):
         Result string from ``process_single_gene``.
     """
     d = _shared_pool_data
-    return process_single_gene(
-        Target_Gene,
-        mdata=d['mdata'],
-        perturb_path_base=d['perturb_path_base'],
-        ensembl_to_symbol_file=d['ensembl_to_symbol_file'],
-        gene_loading_corr_matrix=d['gene_loading_corr_matrix'],
-        perturb_corr_by_sample=d['perturb_corr_by_sample'],
-        top_n_programs=d['top_n_programs'],
-        dotplot_groupby=d['dotplot_groupby'],
-        perturb_target_col=d['perturb_target_col'],
-        perturb_program_col=d['perturb_program_col'],
-        perturb_log2fc_col=d['perturb_log2fc_col'],
-        top_corr_genes=d['top_corr_genes'],
-        volcano_log2fc_min=d['volcano_log2fc_min'],
-        volcano_log2fc_max=d['volcano_log2fc_max'],
-        significance_threshold=d['significance_threshold'],
-        save_path=d['save_path'],
-        figsize=d['figsize'],
-        sample=d['sample'],
-        square_plots=d['square_plots'],
-        show=d['show'],
-        PDF=d['PDF'],
-        gene_name_key=d['gene_name_key'],
-        umap_dot_size=d['umap_dot_size'],
-        umap_subsample_frac=d['umap_subsample_frac'],
-        control_target_name=d['control_target_name'],
-    )
+    try:
+        return process_single_gene(
+            Target_Gene,
+            mdata=d['mdata'],
+            perturb_path_base=d['perturb_path_base'],
+            ensembl_to_symbol_file=d['ensembl_to_symbol_file'],
+            gene_loading_corr_matrix=d['gene_loading_corr_matrix'],
+            perturb_corr_by_sample=d['perturb_corr_by_sample'],
+            top_n_programs=d['top_n_programs'],
+            dotplot_groupby=d['dotplot_groupby'],
+            perturb_target_col=d['perturb_target_col'],
+            perturb_program_col=d['perturb_program_col'],
+            perturb_log2fc_col=d['perturb_log2fc_col'],
+            top_corr_genes=d['top_corr_genes'],
+            volcano_log2fc_min=d['volcano_log2fc_min'],
+            volcano_log2fc_max=d['volcano_log2fc_max'],
+            significance_threshold=d['significance_threshold'],
+            save_path=d['save_path'],
+            figsize=d['figsize'],
+            sample=d['sample'],
+            square_plots=d['square_plots'],
+            show=d['show'],
+            PDF=d['PDF'],
+            gene_name_key=d['gene_name_key'],
+            umap_dot_size=d['umap_dot_size'],
+            umap_subsample_frac=d['umap_subsample_frac'],
+            control_target_name=d['control_target_name'],
+            data_key=d['data_key'],
+            prog_key=d['prog_key'],
+            guide_targets_key=d['guide_targets_key'],
+            guide_assignment_key=d['guide_assignment_key'],
+        )
+    finally:
+        # Each worker is reused for many genes (pool.map default chunking),
+        # so explicit cleanup prevents matplotlib/pandas state from accumulating per worker.
+        import gc
+        plt.close('all')
+        gc.collect()
 
 
 def parallel_gene_processing(perturbed_gene_list,
@@ -2155,10 +2317,14 @@ def parallel_gene_processing(perturbed_gene_list,
                         show=True,
                         PDF=True,
                         n_processes=-1,
-                        gene_name_key='symbol',
+                        gene_name_key='gene_names',
                         umap_dot_size=None,
                         umap_subsample_frac=None,
-                        control_target_name='non-targeting'):
+                        control_target_name='non-targeting',
+                        data_key='rna',
+                        prog_key='cNMF',
+                        guide_targets_key='guide_targets',
+                        guide_assignment_key='guide_assignment'):
     """Process multiple genes in parallel using fork-based multiprocessing.
 
     Stores all shared data (mdata, correlation matrices, etc.) in the
@@ -2216,6 +2382,10 @@ def parallel_gene_processing(perturbed_gene_list,
         'umap_dot_size': umap_dot_size,
         'umap_subsample_frac': umap_subsample_frac,
         'control_target_name': control_target_name,
+        'data_key': data_key,
+        'prog_key': prog_key,
+        'guide_targets_key': guide_targets_key,
+        'guide_assignment_key': guide_assignment_key,
     }
 
     print(f"Starting parallel processing of {len(perturbed_gene_list)} genes using {n_processes} processes...")

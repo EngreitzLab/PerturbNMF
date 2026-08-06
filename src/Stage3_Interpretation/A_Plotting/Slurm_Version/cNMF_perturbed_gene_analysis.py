@@ -20,15 +20,16 @@ from Stage3_Interpretation.A_Plotting.src import plot_umap_per_gene, plot_top_pr
                          rename_list_gene_dictionary, plot_umap_per_gene_guide, process_single_gene, parallel_gene_processing,_process_gene_worker,\
                          compute_gene_correlation_matrix, compute_gene_waterfall_cor,perturbed_program_dotplot, \
                          plot_perturbation_vs_control, \
-                         export_gene_html, write_gene_share_index
+                         export_gene_html, write_gene_share_index, \
+                         check_normalized, ensure_umap
 
-if __name__ == '__main__':
-    
+def main():
+
     parser = argparse.ArgumentParser()
 
     #io path
     parser.add_argument('--mdata_path', type=str, required=True, help='path to the MuData (.h5mu) file')
-    parser.add_argument('--perturb_path_base', type=str, required=True, help='base path for perturbation result files (sample suffix appended automatically)')
+    parser.add_argument('--perturb_path_base', type=str, default=None, help='base path for perturbation result files (sample suffix appended automatically). Omit to skip every per-condition perturbation panel (log2FC, volcano, program dotplot, waterfall) and plot only the h5mu-derived rows. Required for --output_format HTML.')
     parser.add_argument('--ensembl_to_symbol_file', type=str, default=None, help='path to gene name mapping dictionary file for ID-to-name conversion')
     parser.add_argument('--reference_gtf_path', type=str, default=None, help='path to reference GTF file for checking gene names')
 
@@ -41,13 +42,12 @@ if __name__ == '__main__':
     parser.add_argument('--significance_threshold', type=float, default=0.05, help='p-value threshold for significance')
     parser.add_argument('--volcano_log2fc_min', type=float, default=-0.00, help='lower log2FC threshold for volcano plot')
     parser.add_argument('--volcano_log2fc_max', type=float, default=0.00, help='upper log2FC threshold for volcano plot')
-    parser.add_argument('--save_path', type=str, required=True, help='directory path to save output plots')
+    parser.add_argument('--save_path', type=str, required=True, help='directory path to save output (PDF/SVG files or HTML share tree)')
     parser.add_argument('--square_plots', action="store_true", help='use square aspect ratio for plots')
     parser.add_argument('--figsize', type=float, nargs=2, default=(35, 35), help='figure size as width height')
     parser.add_argument('--show', action="store_true", help='display plots interactively')
     parser.add_argument('--output_format', type=str, default='SVG', choices=['PDF', 'SVG', 'HTML'], help='output format: PDF (matplotlib + PyPDF2 merge), SVG (matplotlib + svglib merge), HTML (interactive Plotly share folder)')
-    parser.add_argument('--html_share_path', type=str, default=None, help='output folder for HTML mode (default: {save_path}/html_share)')
-    parser.add_argument('--n_processes', type=int, default=-1, help='number of parallel processes (-1 for all available cores)')
+    parser.add_argument('--n_processes', type=int, default=4, help='number of parallel processes for --parallel mode. Each worker holds a copy-on-write fork of mdata, so RAM scales with worker count: on large data (e.g. 1M cells x 30K genes), -1 (all cores) on a high-CPU node can hit 30-70 GB RSS. Default 4 keeps it bounded. Set -1 only when you know the per-worker RAM cost.')
     parser.add_argument('--Conditions', nargs='*', type=str, default=['D0', 'sample_D1', 'sample_D2', 'sample_D3'], help='list of condition names')
     parser.add_argument('--umap_dot_size', type=int, default=10, help='dot size for UMAP plots')
     parser.add_argument('--expressed_only', action="store_true", help='only plot perturbed genes found in the gene expression matrix (default: plot all perturbed genes)')
@@ -62,16 +62,21 @@ if __name__ == '__main__':
     parser.add_argument('--prog_key', type=str, default="cNMF", help='key to access cNMF programs in MuData')
     parser.add_argument('--gene_name_key', type=str, default="gene_names", help='key to access gene names in var')
     parser.add_argument('--categorical_key', type=str, default="sample", help='key to access sample/condition labels in obs')
-    parser.add_argument('--control_target_name', type=str, default="non-targeting", help='name of non-targeting control in guide_targets (e.g. non-targeting, CTRL)')
+    parser.add_argument('--guide_targets_key', type=str, default="guide_targets", help='key in .uns to access guide target genes (default: guide_targets)')
+    parser.add_argument('--guide_assignment_key', type=str, default="guide_assignment", help='key in .obsm to access the guide-assignment matrix (default: guide_assignment)')
+    parser.add_argument('--control_target_name', type=str, nargs='+', default=["non-targeting"], help='one or more control labels in guide_targets (e.g. non-targeting, or WT WT111 WT4). A cell is a control if its guide target matches any of these.')
 
     
     args = parser.parse_args()
 
-    if args.html_share_path is None:
-        args.html_share_path = os.path.join(args.save_path, 'html_share')
+    # export_gene_html renders the perturbation sections unconditionally, so the
+    # HTML report cannot be produced without the per-sample association files.
+    if args.output_format == 'HTML' and args.perturb_path_base is None:
+        parser.error("--output_format HTML requires --perturb_path_base "
+                     "(the HTML export always renders the perturbation sections). "
+                     "Use --output_format PDF or SVG to plot without perturbation results.")
 
-
-    # save comfigs used         
+    # save comfigs used
     args_dict = vars(args)
     job_id = os.environ.get('SLURM_JOB_ID')
     os.makedirs(f'{args.save_path}', exist_ok=True)
@@ -82,38 +87,31 @@ if __name__ == '__main__':
     #read mdata
     mdata = mu.read_h5mu(args.mdata_path)
 
-    # check umap exist 
-    if 'X_umap' not in mdata[args.prog_key].obsm:
-        import scanpy as sc
-        adata_tmp = mdata[args.data_key].copy()
-        # Select top 2000 genes by variance (robust to any normalization)
-        variances = np.array(adata_tmp.X.power(2).mean(axis=0) - np.power(adata_tmp.X.mean(axis=0), 2)).flatten() \
-            if hasattr(adata_tmp.X, 'power') else adata_tmp.X.var(axis=0)
-        top_idx = np.argsort(variances)[-2000:]
-        adata_tmp = adata_tmp[:, top_idx]
-        sc.tl.pca(adata_tmp, n_comps=50)
-        sc.pp.neighbors(adata_tmp)
-        sc.tl.umap(adata_tmp)
-        mdata[args.prog_key].obsm['X_pca'] = adata_tmp.obsm['X_pca']
-        mdata[args.prog_key].obsm['X_umap'] = adata_tmp.obsm['X_umap']
-        mdata[args.data_key].obsm['X_pca'] = adata_tmp.obsm['X_pca']
-        mdata[args.data_key].obsm['X_umap'] = adata_tmp.obsm['X_umap']
-        del adata_tmp
 
+
+    # validate that expression matrix is normalized (TPM/CPM/log), not raw counts.
+    # Downstream UMAP/PCA + per-gene expression plots assume normalized values.
+    check_normalized(mdata[args.data_key], args.data_key)
+
+    # compute UMAP/PCA from top-variance genes if missing
+    ensure_umap(mdata, args.data_key, args.prog_key)
 
 
     # found detected perturbed gene (use gene symbols from var column when var_names are Ensembl IDs)
-    perturbed_gene = np.unique(mdata[args.prog_key].uns["guide_targets"])
+    perturbed_gene = np.unique(mdata[args.prog_key].uns[args.guide_targets_key])
     if args.gene_name_key in mdata[args.data_key].var.columns:
         gene_symbols = mdata[args.data_key].var[args.gene_name_key].astype(str).tolist()
     else:
         gene_symbols = mdata[args.data_key].var_names.tolist()
+
+    # print out how many perturbation is not found expressed 
     perturbed_gene_found = sorted(set(gene_symbols) & set(perturbed_gene.tolist()))
     perturbed_gene_not_found = sorted(set(perturbed_gene.tolist()) - set(gene_symbols))
     print(f"there are {len(perturbed_gene_found)} perturbed genes found in expression matrix")
     print(f"there are {len(perturbed_gene_not_found)} perturbed genes NOT found in expression matrix: {perturbed_gene_not_found}")
 
-    if args.gene_list_file is not None:
+    # decide which genes are being ploted 
+    if args.gene_list_file is not None: # a given list of genes 
         with open(args.gene_list_file, 'r') as f:
             genes_requested = sorted([line.strip() for line in f if line.strip()])
         genes_valid = sorted(set(genes_requested) & set(gene_symbols))
@@ -122,20 +120,29 @@ if __name__ == '__main__':
             print(f"WARNING: {len(genes_missing)} genes from {args.gene_list_file} not found in expression matrix: {genes_missing}")
         genes_to_plot = genes_valid
         print(f"Using {len(genes_to_plot)}/{len(genes_requested)} genes from {args.gene_list_file}")
-    elif args.expressed_only:
+    elif args.expressed_only: # only expressed
         genes_to_plot = perturbed_gene_found
-    else:
+    else: # all genes
         genes_to_plot = sorted(perturbed_gene.tolist())
+
+    # The control target is never tested in the perturbation-association results,
+    # so plotting it produces an empty figure and crashes downstream. Drop it.
+    control_set = set(args.control_target_name)
+    present = control_set & set(genes_to_plot)
+    if present:
+        genes_to_plot = [g for g in genes_to_plot if g not in control_set]
+        print(f"Excluding control target(s) {sorted(present)} from perturbed-gene plots")
 
     # Skip-existing support: build the set of genes that actually need processing,
     # but keep `genes_to_plot` as the full ordered list so HTML nav/index stay correct.
     if args.skip_existing:
         if args.output_format == 'HTML':
             done = {p.parent.name[len('gene_'):]
-                    for p in Path(args.html_share_path).glob('gene_*/metadata.json')}
+                    for p in Path(args.save_path).glob('gene_*/metadata.json')}
         else:
             ext = '.pdf' if args.output_format == 'PDF' else '.svg'
             done = {p.stem for p in Path(args.save_path).glob(f'*{ext}')}
+            
         process_set = {g for g in genes_to_plot if g not in done}
         skipped = len(genes_to_plot) - len(process_set)
         if skipped:
@@ -144,16 +151,36 @@ if __name__ == '__main__':
         process_set = set(genes_to_plot)
 
 
-    # compute corr once
-    correlation_matrix = compute_gene_correlation_matrix(mdata, ensembl_to_symbol_file=args.ensembl_to_symbol_file)
+    # compute corr once (cached as .npz factors under corr_dir; reused on subsequent runs)
+    corr_dir = args.corr_matrix_path or os.path.join(args.save_path, "_corr_cache")
+    os.makedirs(corr_dir, exist_ok=True)
 
-    waterfall_correlation = {}
-    for samp in args.Conditions:
-        precomputed = f"{args.corr_matrix_path}/corr_gene_matrix_{samp}.txt" if args.corr_matrix_path else None
-        save = f"{args.corr_matrix_path}/corr_gene_matrix_{samp}.txt" if args.corr_matrix_path else None
-        df = compute_gene_waterfall_cor(f"{args.perturb_path_base}_{samp}.txt", perturb_log2fc_col=args.perturb_log2fc_col, precomputed_path=precomputed, save_path=save)
-        waterfall_correlation[samp] = (df)
+    # The waterfall correlation is built from the perturbation files; without them
+    # the per-condition rows are skipped and nothing needs to be computed.
+    if args.perturb_path_base is None:
+        waterfall_correlation = None
+        print("No --perturb_path_base given: skipping per-condition perturbation panels "
+              "(log2FC, volcano, program dotplot, waterfall).")
+    else:
+        waterfall_correlation = {}
+        for samp in args.Conditions:
+            path = f"{corr_dir}/waterfall_factor_{samp}.npz"
+            waterfall_correlation[samp] = compute_gene_waterfall_cor(
+                f"{args.perturb_path_base}_{samp}.txt",
+                perturb_log2fc_col=args.perturb_log2fc_col,
+                precomputed_path=path,
+                save_path=path,
+            )
 
+    correlation_matrix = compute_gene_correlation_matrix(
+        mdata,
+        ensembl_to_symbol_file=args.ensembl_to_symbol_file,
+        precomputed_path=f"{corr_dir}/gene_loading_factor.npz",
+        save_path=f"{corr_dir}/gene_loading_factor.npz",
+        data_key=args.data_key,
+        prog_key=args.prog_key,
+    )
+    
 
     # Graph all genes
     if args.output_format == 'HTML':
@@ -161,8 +188,12 @@ if __name__ == '__main__':
         for i, gene in enumerate(genes_to_plot):
             if gene not in process_set:
                 continue
-            prev_g = genes_to_plot[i - 1] if i > 0 else None
+
+            # enable pre/after browsing 
+            prev_g = genes_to_plot[i - 1] if i > 0 else None 
             next_g = genes_to_plot[i + 1] if i + 1 < n_genes else None
+
+            # make html per gene 
             export_gene_html(
                 mdata=mdata,
                 perturb_path_base=args.perturb_path_base,
@@ -171,7 +202,7 @@ if __name__ == '__main__':
                 gene_loading_corr_matrix=correlation_matrix,
                 perturb_corr_by_sample=waterfall_correlation,
                 sample=args.Conditions,
-                html_share_path=args.html_share_path,
+                html_share_path=args.save_path,
                 top_n_programs=args.top_n_programs,
                 top_corr_genes=args.top_corr_genes,
                 groupby=args.categorical_key,
@@ -189,10 +220,17 @@ if __name__ == '__main__':
                 next_gene=next_g,
                 position_index=i + 1,
                 position_total=n_genes,
+                data_key=args.data_key,
+                prog_key=args.prog_key,
+                guide_targets_key=args.guide_targets_key,
+                guide_assignment_key=args.guide_assignment_key,
             )
             plt.close('all')
-            gc.collect()
-        write_gene_share_index(args.html_share_path, genes_to_plot, args_dict)
+            if (i + 1) % 20 == 0:
+                gc.collect()
+
+        write_gene_share_index(args.save_path, genes_to_plot, args_dict)
+
     elif args.parallel:
         print("Starting parallel gene processing...")
         try:
@@ -222,15 +260,23 @@ if __name__ == '__main__':
                 gene_name_key=args.gene_name_key,
                 umap_dot_size=args.umap_dot_size,
                 umap_subsample_frac=args.subsample_frac,
-                control_target_name=args.control_target_name
+                control_target_name=args.control_target_name,
+                data_key=args.data_key,
+                prog_key=args.prog_key,
+                guide_targets_key=args.guide_targets_key,
+                guide_assignment_key=args.guide_assignment_key
             )
             print(f"Parallel processing completed. Results: {len(result) if result else 'None'}")
+
         except Exception as e:
             print(f"ERROR in parallel_gene_processing: {e}")
+
     else:
-        for gene in genes_to_plot:
+        for i, gene in enumerate(genes_to_plot):
+
             if gene not in process_set:
                 continue
+
             create_comprehensive_plot(
                 mdata=mdata,
                 perturb_path_base=args.perturb_path_base,
@@ -257,14 +303,26 @@ if __name__ == '__main__':
                 umap_dot_size=args.umap_dot_size,
                 umap_subsample_frac=args.subsample_frac,
                 gene_name_key=args.gene_name_key,
-                control_target_name=args.control_target_name
+                control_target_name=args.control_target_name,
+                data_key=args.data_key,
+                prog_key=args.prog_key,
+                guide_targets_key=args.guide_targets_key,
+                guide_assignment_key=args.guide_assignment_key
             )
+            plt.close('all')
+            if (i + 1) % 20 == 0:
+                gc.collect()
 
     # post-loop assembly
     if args.output_format == 'PDF':
         merge_pdfs_in_folder(args.save_path, output_filename="gene.pdf")
     elif args.output_format == 'SVG':
-        merge_svgs_to_pdf(args.save_path)
-   
-    # HTML: index already written inside the HTML branch above
+        merge_svgs_to_pdf(args.save_path, output_filename="gene.pdf")
+    # no HTML, index already written inside the HTML branch above
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
 

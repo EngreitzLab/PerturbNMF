@@ -47,7 +47,6 @@ Enrichment file patterns use `{k}` placeholder (and `{sample}` for perturbation)
 | Parameter | Description |
 |-----------|-------------|
 | `--mdata_path` | Path to .h5mu file |
-| `--perturb_path_base` | Base path for perturbation results |
 | `--GO_path` | Path to GO enrichment results |
 | `--save_path` | Output directory (PDF/SVG files or HTML share tree) |
 
@@ -55,6 +54,7 @@ Enrichment file patterns use `{k}` placeholder (and `{sample}` for perturbation)
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
+| `--perturb_path_base` | None | Base path for perturbation results. Omit to skip every per-condition perturbation panel (log2FC, volcano, regulator dotplot, waterfall) and the regulator heatmap, emitting only the h5mu/GO-derived header row — useful before Stage 2b calibration has been run. Required with `--output_format HTML` |
 | `--top_program` | `10` | Top programs to display |
 | `--top_enrichned_term` | `10` | Top GO terms per program (**note typo**: use as-is) |
 | `--p_value` | `0.05` | Significance threshold |
@@ -82,13 +82,13 @@ See `references/parameter-catalog.md` Section 5 for all optional params.
 | Parameter | Description |
 |-----------|-------------|
 | `--mdata_path` | Path to .h5mu file |
-| `--perturb_path_base` | Base path for perturbation results |
 | `--save_path` | Output directory for plots |
 
 ### Common optional parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
+| `--perturb_path_base` | None | Base path for perturbation results. Omit to skip every per-condition perturbation panel (log2FC, volcano, program dotplot, waterfall) and emit only the two h5mu-derived rows — useful before Stage 2b calibration has been run. Required with `--output_format HTML` |
 | `--top_n_programs` | `10` | Top programs to display per gene |
 | `--top_corr_genes` | `5` | Top correlated genes per program |
 | `--significance_threshold` | `0.05` | P-value threshold |
@@ -98,7 +98,8 @@ See `references/parameter-catalog.md` Section 5 for all optional params.
 | `--n_processes` | `-1` | Number of parallel processes (`-1` = all available cores) |
 | `--expressed_only` | off | Only plot perturbed genes found in the gene expression matrix |
 | `--guide_targets_key` | `guide_targets` | Key in `.uns` to access guide target genes |
-| `--control_target_name` | `non-targeting` | Name of non-targeting control in `guide_targets` (e.g. `non-targeting`, `CTRL`) |
+| `--guide_assignment_key` | `guide_assignment` | Key in `.obsm` to access the guide-assignment matrix |
+| `--control_target_name` | `non-targeting` | One or more control labels in `guide_targets` (e.g. `non-targeting`, or `WT WT111 WT4`); a cell is a control if it matches any. Use multiple labels for background-specific controls. Excluded from the per-gene perturbation panels (no association results to plot) |
 | `--corr_matrix_path` | None | Directory for precomputed gene waterfall correlation matrices (`corr_gene_matrix_<sample>.txt`); falls back to computing |
 | `--skip_existing` | on (default) | Default skips genes whose output already exists. Pass `--skip_existing` to force re-process all (inverted flag) |
 | `--output_format` | `SVG` | One of `PDF` / `SVG` / `HTML` |

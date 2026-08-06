@@ -69,8 +69,11 @@ Present a summary and ask if user wants to change any. Defaults are fine for mos
 | `--nmf_seeds_path` | None | Custom NMF seeds file (text file with one integer per line) |
 | `--num_gene` | `300` | Top genes for annotation |
 | `--gene_names_key` | None | Column in adata.var with gene names for compiled results (e.g. `symbol`) |
-| `--remove_noncoding` | off | Remove non-coding genes whose symbol starts with `--ensembl_prefix` (requires `--gene_names_key` set to a real var column) |
-| `--ensembl_prefix` | `ENSG` | Ensembl ID prefix used to identify non-coding genes when `--remove_noncoding` is set |
+| `--remove_noncoding` | off | Remove non-coding genes before factorization. With `--gtf_path`, keeps only genes annotated as `protein_coding` in the GTF (matched by Ensembl ID); otherwise falls back to the Ensembl-prefix heuristic on `--gene_names_key` |
+| `--ensembl_prefix` | `ENSG` | Ensembl ID prefix used by the (fallback) prefix-based non-coding filter |
+| `--gtf_path` | None | Path to a GENCODE/Ensembl GTF(.gz). Enables GTF-based `--remove_noncoding` and `--add_gene_names_from_gtf` |
+| `--gene_id_key` | `gene_id` | Column in adata.var holding Ensembl gene IDs (used for GTF-based filtering / gene-name annotation). Falls back to var_names if absent |
+| `--add_gene_names_from_gtf` | off | Populate `adata.var[gene_names_key]` with gene symbols looked up from `--gtf_path` by Ensembl ID (from `--gene_id_key`). Unmatched IDs keep their Ensembl ID. Requires `--gtf_path` |
 | `--parallel_running` | off | Enable parallel processing mode for combining results from multiple K values (used with `*_parallel.sh` array jobs) |
 
 #### torch-cNMF only

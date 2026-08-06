@@ -80,6 +80,15 @@ def get_head_examples(series, n=3):
         return "..."
 
 
+def get_unique_head(series, n=3):
+    """Return a string showing the first n UNIQUE values (in order of appearance) from a Series."""
+    try:
+        uniques = pd.unique(series.dropna())[:n]
+        return ", ".join(_fmt_value(x) for x in uniques)
+    except Exception:
+        return "..."
+
+
 def _safe_nunique(series):
     """Return number of unique values (dropna=True), or None if it can't be computed."""
     try:
@@ -89,28 +98,26 @@ def _safe_nunique(series):
 
 
 def describe_column(series, n=3):
-    """Return a compact description of a pandas Series: dtype + unique-count + n example values.
+    """Return a compact description of a pandas Series: dtype + unique-count + first n unique values.
+
+    Reports, for every column, (1) how many unique items it contains and
+    (2) the first n unique items (in order of appearance).
 
     Example:
-        "categorical[3 unique]: 'A', 'B', 'C' | e.g. 'A', 'B', 'A'"
+        "categorical[3 unique]: e.g. 'A', 'B', 'C'"
         "int64 [842 unique]: e.g. 12, 7, 33"
         "float32 [91866 unique]: e.g. 0.12, 0.45, 0.78"
     """
     try:
         n_unique = _safe_nunique(series)
         unique_tag = f"{n_unique} unique" if n_unique is not None else "? unique"
+        unique_str = get_unique_head(series, n=n)
 
-        # Categorical: show first n categories + first n head values
         if isinstance(series.dtype, pd.CategoricalDtype):
-            n_cat = len(series.cat.categories)
-            cats = list(series.cat.categories[:n])
-            cat_str = ", ".join(_fmt_value(c) for c in cats)
-            head_str = get_head_examples(series, n=n)
-            return f"categorical[{n_cat} unique] cats: {cat_str} | e.g. {head_str}"
+            return f"categorical[{unique_tag}]: e.g. {unique_str}"
 
         dtype_name = str(series.dtype)
-        head_str = get_head_examples(series, n=n)
-        return f"{dtype_name} [{unique_tag}]: e.g. {head_str}"
+        return f"{dtype_name} [{unique_tag}]: e.g. {unique_str}"
     except Exception:
         return "..."
 

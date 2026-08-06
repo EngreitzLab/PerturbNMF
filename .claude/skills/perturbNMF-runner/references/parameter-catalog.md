@@ -53,8 +53,11 @@ Complete parameter reference for all pipeline stages, extracted from argparse de
 | `--nmf_seeds_path` | str | None | Path to .npy file with custom NMF seeds |
 | `--num_gene` | int | `300` | Top genes for annotation |
 | `--gene_names_key` | str | None | Column in adata.var with gene names for compiled results (e.g. `symbol`) |
-| `--remove_noncoding` | flag | False | Remove non-coding genes (whose symbol starts with `--ensembl_prefix`) before factorization. Requires `--gene_names_key` to be set to a real var column (e.g. `symbol`). |
-| `--ensembl_prefix` | str | `ENSG` | Prefix used to identify non-coding genes when `--remove_noncoding` is set |
+| `--remove_noncoding` | flag | False | Remove non-coding genes before factorization. With `--gtf_path`, keeps only genes annotated as `protein_coding` in the GTF (matched by Ensembl ID); otherwise falls back to the Ensembl-prefix heuristic on `--gene_names_key` |
+| `--ensembl_prefix` | str | `ENSG` | Prefix used by the (fallback) prefix-based non-coding filter |
+| `--gtf_path` | str | None | Path to a GENCODE/Ensembl GTF(.gz). Enables GTF-based `--remove_noncoding` and `--add_gene_names_from_gtf` |
+| `--gene_id_key` | str | `gene_id` | Column in adata.var holding Ensembl gene IDs (used for GTF-based filtering / gene-name annotation). Falls back to var_names if absent |
+| `--add_gene_names_from_gtf` | flag | False | Populate `adata.var[gene_names_key]` with gene symbols looked up from `--gtf_path` by Ensembl ID (from `--gene_id_key`). Unmatched IDs keep their Ensembl ID. Requires `--gtf_path` |
 
 ### Keys
 
@@ -65,7 +68,7 @@ Complete parameter reference for all pipeline stages, extracted from argparse de
 | `--categorical_key` | `sample` | Categorical variable key in obs |
 | `--guide_names_key` | `guide_names` | Guide names key in uns |
 | `--guide_targets_key` | `guide_targets` | Guide targets key in uns |
-| `--guide_assignment_key` | `guide_assignment_key` | Guide assignment key in obsm (**NOTE**: default is the literal string `"guide_assignment_key"`, not `"guide_assignment"` -- this differs from torch-cNMF) |
+| `--guide_assignment_key` | `guide_assignment` | Guide assignment key in obsm (fixed 2026-07-31; previously defaulted to the literal string `"guide_assignment_key"`, which silently skipped copying the matrix into the prog modality and broke Stage 2 perturbation association) |
 
 ---
 
@@ -80,7 +83,7 @@ torch-cNMF shares most parameters with sk-cNMF but has these important differenc
 - `--numhvgenes` default is `2000` (not `5451`)
 - `--algo` default is `halsvar` (not `mu`)
 - `--tol` default is `1e-4` (correct, unlike sk-cNMF's `1e4`)
-- `--guide_assignment_key` default is `guide_assignment` (not `guide_assignment_key`)
+- `--guide_assignment_key` default is `guide_assignment` (same as sk-cNMF since 2026-07-31)
 - `--run_compile_annotation` has the correct spelling (no typo)
 - "online" mode is now called "minibatch"; all `--online_*` parameters are renamed to `--minibatch_*`
 - `--batch_max_iter` is renamed to `--batch_max_epoch`
@@ -129,7 +132,7 @@ Same as sk-cNMF: `--counts_fn`, `--output_directory`, `--run_name`, `--species`
 Same as sk-cNMF except:
 | Parameter | Default | Notes |
 |-----------|---------|-------|
-| `--guide_assignment_key` | `guide_assignment` | **Different from sk-cNMF** (which defaults to `guide_assignment_key`) |
+| `--guide_assignment_key` | `guide_assignment` | Matches sk-cNMF (both default to `guide_assignment` since 2026-07-31) |
 
 ### Additional torch-cNMF Parameters
 
@@ -174,8 +177,11 @@ Same as sk-cNMF except:
 | `--fp_precision` | str | `float` | Floating point: `float` (32-bit) or `double` (64-bit) |
 | `--minibatch_shuffle` | flag | False | Shuffle cells in minibatch mode |
 | `--sk_cd_refit` | flag | False | Use sklearn coordinate descent for refitting |
-| `--remove_noncoding` | flag | False | Remove non-coding genes by Ensembl prefix |
-| `--ensembl_prefix` | str | `ENSG` | Prefix for identifying non-coding genes |
+| `--remove_noncoding` | flag | False | Remove non-coding genes. With `--gtf_path`, keeps only `protein_coding` genes from the GTF (matched by Ensembl ID); otherwise falls back to the Ensembl-prefix heuristic |
+| `--ensembl_prefix` | str | `ENSG` | Prefix used by the (fallback) prefix-based non-coding filter |
+| `--gtf_path` | str | None | Path to a GENCODE/Ensembl GTF(.gz). Enables GTF-based `--remove_noncoding` and `--add_gene_names_from_gtf` |
+| `--gene_id_key` | str | `gene_id` | Column in adata.var holding Ensembl gene IDs (used for GTF-based filtering / gene-name annotation). Falls back to var_names if absent |
+| `--add_gene_names_from_gtf` | flag | False | Populate `adata.var[gene_names_key]` with gene symbols looked up from `--gtf_path` by Ensembl ID (from `--gene_id_key`). Unmatched IDs keep their Ensembl ID. Requires `--gtf_path` |
 
 ---
 
@@ -274,7 +280,7 @@ Same as sk-cNMF except:
 | Parameter | Type | Default | Required | Description |
 |-----------|------|---------|----------|-------------|
 | `--mdata_path` | str | -- | Yes | Path to .h5mu file |
-| `--perturb_path_base` | str | -- | Yes | Base path for perturbation results |
+| `--perturb_path_base` | str | None | No | Base path for perturbation results. Omit to skip all per-condition perturbation panels (log2FC, volcano, regulator dotplot, waterfall) and the regulator heatmap, plotting only the h5mu/GO-derived header row. Required with `--output_format HTML` |
 | `--GO_path` | str | -- | Yes | Path to GO enrichment results |
 | `--save_path` | str | -- | Yes | Output directory (PDF/SVG files or HTML share tree) |
 | `--file_to_dictionary` | str | None | No | Gene name mapping file |
@@ -287,11 +293,11 @@ Same as sk-cNMF except:
 | `--p_value` | float | `0.05` | No | Significance threshold |
 | `--down_thred_log` | float | `-0.00` | No | Lower volcano threshold |
 | `--up_thred_log` | float | `0.00` | No | Upper volcano threshold |
-| `--figsize` | float (nargs=2) | `35 35` | No | Figure size |
+| `--figsize` | float (nargs=2) | `35 35` | No | Figure size; with `--square_plots` only width is used (height auto-scales with condition count) |
 | `--show` | flag | | No | Display interactively |
 | `--output_format` | str | `SVG` | No | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-program interactive Plotly pages directly under `save_path` |
 | `--skip_existing` | flag | | No | Turn OFF skipping; re-process every program (default is to skip programs whose output already exists) |
-| `--square_plots` | flag | | No | Square aspect ratio |
+| `--square_plots` | flag | | No | Auto-scale figure height to condition count (`num_rows × 8 in`) so panels stay ~square; recommended for many conditions |
 | `--Conditions` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | No | Condition names (formerly `--sample`) |
 | `--programs` | int (nargs=+) | None | No | Specific program numbers to plot (e.g. `4 5 6`). If omitted, all programs plotted |
 | `--subsample_frac` | float | None | No | Fraction of cells to subsample for UMAP (e.g. `0.1` for 10%) |
@@ -323,8 +329,8 @@ Same as sk-cNMF except:
 | Parameter | Type | Default | Required | Description |
 |-----------|------|---------|----------|-------------|
 | `--mdata_path` | str | -- | Yes | Path to .h5mu file |
-| `--perturb_path_base` | str | -- | Yes | Base path for perturbation results |
 | `--save_path` | str | -- | Yes | Output directory for plots |
+| `--perturb_path_base` | str | None | No | Base path for perturbation results. Omit to skip all per-condition perturbation panels (log2FC, volcano, program dotplot, waterfall) and plot only the h5mu-derived rows. Required with `--output_format HTML` |
 | `--ensembl_to_symbol_file` | str | None | No | Gene name mapping file |
 | `--reference_gtf_path` | str | None | No | Reference GTF |
 | `--perturb_target_col` | str | `target_name` | No | Target gene column in perturbation results |
@@ -335,11 +341,11 @@ Same as sk-cNMF except:
 | `--significance_threshold` | float | `0.05` | No | P-value threshold |
 | `--volcano_log2fc_min` | float | `-0.00` | No | Lower volcano threshold |
 | `--volcano_log2fc_max` | float | `0.00` | No | Upper volcano threshold |
-| `--figsize` | float (nargs=2) | `35 35` | No | Figure size |
+| `--figsize` | float (nargs=2) | `35 35` | No | Figure size; with `--square_plots` only width is used (height auto-scales with condition count) |
 | `--show` | flag | | No | Display interactively |
 | `--output_format` | str | `SVG` | No | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-gene interactive Plotly pages directly under `save_path` |
 | `--skip_existing` | flag | | No | Turn OFF skipping; re-process every gene (default is to skip genes whose output already exists) |
-| `--square_plots` | flag | | No | Square aspect ratio |
+| `--square_plots` | flag | | No | Auto-scale figure height to condition count (`num_rows × 8 in`) so panels stay ~square; recommended for many conditions |
 | `--n_processes` | int | `-1` | No | Parallel processes |
 | `--umap_dot_size` | int | `10` | No | UMAP dot size |
 | `--expressed_only` | flag | | No | Only plot expressed perturbed genes |
@@ -348,12 +354,13 @@ Same as sk-cNMF except:
 | `--subsample_frac` | float | None | No | Fraction of cells to subsample for UMAP |
 | `--parallel` | flag | | No | Use fork-based multiprocessing (Linux only) |
 | `--corr_matrix_path` | str | None | No | Directory for precomputed correlation matrices |
-| `--control_target_name` | str | `non-targeting` | No | Name of non-targeting control in guide_targets |
+| `--control_target_name` | str (nargs='+') | `non-targeting` | No | One or more control labels in guide_targets (e.g. `WT WT111 WT4`); a cell is a control if it matches any. Use multiple for background-specific controls. Excluded from the per-gene perturbation panels (no association results to plot) |
 | `--guide_targets_key` | str | `guide_targets` | No | Key in `.uns` to access guide target genes |
+| `--guide_assignment_key` | str | `guide_assignment` | No | Key in `.obsm` to access the guide-assignment matrix |
 
 ### Keys
 
-`--data_key` (rna), `--prog_key` (cNMF), `--gene_name_key` (gene_names), `--categorical_key` (sample), `--guide_targets_key` (guide_targets)
+`--data_key` (rna), `--prog_key` (cNMF), `--gene_name_key` (gene_names), `--categorical_key` (sample), `--guide_targets_key` (guide_targets), `--guide_assignment_key` (guide_assignment)
 
 ---
 
@@ -411,7 +418,7 @@ U-test reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns[
 ## 8. CRT Calibration
 
 **Script**: `src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/CRT.py`
-**Conda**: `programDE`
+**Conda**: `NMF_Benchmarking` (was `programDE`; switched because that env's Python 3.14 / newer pandas raises `NotImplementedError` when `AnnData.copy()` deepcopies the categorical `cNMF.uns['var_names']`)
 
 CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) directly from the cNMF modality of each `cNMF_<K>_<thresh>.h5mu` — no separate guide path required.
 
@@ -436,6 +443,14 @@ CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['gu
 | `--guide_annotation_key` | str (nargs=\*) | `non-targeting` | Non-targeting label (accepts multiple values) |
 | `--FDR_method` | str | `BH` | `BH` or `StoreyQ` (choices enforced) |
 | `--save_dir` | str | None | Custom save directory (default: `<out_dir>/<run_name>/Evaluation/<K>_<sel_thresh>/`) |
+| `--skip_existing` | flag | off | Skip the CRT recompute for a (K, sel_thresh, condition) when **both** its real and fake `.txt` exist, and regenerate the QQ `.png` from the cached raw p-values (resume a preempted job or re-plot without recomputing) |
+
+**Null calibration:** CRT builds NTC (non-targeting control) pseudo-gene groups of size `--number_guide`, frequency-matched to real genes, and compares them to real targets on a real-vs-NTC QQ plot (one `.png` per K/sel_thresh/condition). `--number_guide` therefore controls the null group size (no longer hardcoded to 6). Ensemble count / bin count / seeds are set inside the vendored `src/CRT/` package, not exposed as flags.
+
+**Output files** (covariate token = `--covariates` then `log_`-prefixed `--log_covariates` joined by `_`, or `no_covariates` when none):
+- `{K}_CRT_<covariate_token>_{condition}.txt` — real results: `target_name, program_name, log2FC, p-value` (skew), `adj_pval`, `p-value_raw`, `adj_pval_raw`.
+- `{K}_CRT_fake_<covariate_token>_{condition}.txt` — fake/NTC null: `ensemble, target_name` (NTC pseudo-gene id), `program_name, p-value_raw, adj_pval_raw` (raw p-values only).
+- `{K}_CRT_<covariate_token>_{condition}.png` — real-vs-NTC QQ plot. Real and null use raw p-values so they're directly comparable.
 
 ---
 
@@ -569,3 +584,48 @@ Runs after Annotation to attach PubMed/PubTator evidence to each program.
 | `--llm-max-tokens` | int | `4096` | Max tokens for LLM output |
 | `--semantic-check` | flag | False | Enable LLM semantic verification (costs tokens) |
 | `--resume` / `--no-resume` | flag | resume on | Enable/disable resume/caching |
+
+---
+
+## 12. Excel Summarization
+
+**Script**: `src/Stage3_Interpretation/B_Summarization/Slurm_Version/cNMF_excel_summary.py`
+**Conda**: `NMF_Benchmarking`
+
+Compiles Stage 1 (.h5mu) + Stage 2 (Evaluation) outputs into one multi-sheet Excel
+workbook for a single `(K, sel_thresh)`. Run one job per K; submit multiple jobs to
+cover multiple K values.
+
+### Required
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `--out_dir` | str | Output root directory (contains `{run_name}/`) |
+| `--run_name` | str | Run name (subdirectory under `out_dir`) |
+| `--K` | int | Number of components (K) to summarize |
+
+### Optional
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--sel_thresh` | float | `0.2` | Density selection threshold (dot→underscore handled internally) |
+| `--save_path` | str | `{out_dir}/{run_name}/Interpretation/Summary_table/{K}_{thresh}` | Output dir for the `.xlsx`, TSVs, and specificity/correlation/KD sidecars |
+| `--mdata_path` | str | `{out_dir}/{run_name}/Inference/adata/cNMF_{K}_{thresh}.h5mu` | Input MuData |
+| `--num_gene` | int | `300` | Top genes per program / per enriched term to keep |
+| `--perturbation_file_name` | str | `perturbation_association_results` | Perturbation result file stem (between `{K}_` and `_{Condition}.txt`); e.g. `CRT` |
+| `--Sample` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | Condition/sample labels |
+| `--effect_size` | str | `log2FC` | Effect-size column in perturbation files (e.g. `approx_log2FC`) |
+| `--control_target_name` | str | `non-targeting` | Control target name for KD efficiency |
+| `--non_targeting_key` | str (nargs=\*) | `['non-targeting']` | Control target label(s) for the program summary sheet |
+| `--adjusted_pval_key` | str | `Adjusted P-value` | Adjusted p-value column in enrichment files |
+| `--GO_Term_key` | str | `Term` | Index column in GO enrichment file |
+| `--GO_Genes_key` | str | `Genes` | Gene-list column in GO enrichment file |
+| `--Geneset_Term_key` | str | `Term` | Index column in geneset enrichment file |
+| `--Geneset_Genes_key` | str | `Genes` | Gene-list column in geneset enrichment file |
+| `--Trait_Term_key` | str | `Term` | Index column in trait enrichment file |
+| `--Trait_Genes_key` | str | `Genes` | Gene-list column in trait enrichment file |
+| `--Perturbation_Sample_key` | str | `Sample` | Sample-label column in perturbation results |
+
+### Keys
+
+`--prog_key` (cNMF), `--data_key` (rna), `--guide_targets_key` (guide_targets), `--gene_names_key` (symbol)

@@ -51,7 +51,7 @@ Ask which stage to run (or infer from context). Then **read the matching referen
 | torch-cNMF inference | `inference-torch` | `torch-nmf-dl` | `references/01-inference.md` |
 | Evaluation | `evaluation` | `NMF_Benchmarking` | `references/02-evaluation.md` |
 | U-test calibration | `u-test-calibration` | `NMF_Benchmarking` | `references/03-calibration.md` |
-| CRT calibration | `crt-calibration` | `programDE` | `references/03-calibration.md` |
+| CRT calibration | `crt-calibration` | `NMF_Benchmarking` | `references/03-calibration.md` |
 | Matched Cell DE | `matched-cell-de` | `programDE` | `references/03-calibration.md` |
 | K-Selection Plot | `k-selection` | `torch-nmf-dl` | `references/04-visualization.md` |
 | Program Analysis Plot | `program-analysis` | `NMF_Benchmarking` | `references/04-visualization.md` |
@@ -94,7 +94,7 @@ python3 SKILL_DIR/scripts/generate_slurm.py \
 - Boolean flags: emit just `--flag_name` (no value) after the sentinel.
 - Value flags: emit `--flag_name <default_or_sensible_example>` so the user only has to uncomment + tweak.
 - Skip flags that have already been provided as active flags — don't duplicate them in the commented section.
-- Use `parameter-catalog.md` (Section 1–9 by stage) as the authoritative list. If an optional flag exists there but isn't being used, it belongs in the commented section.
+- Use `parameter-catalog.md` (Sections 1–12, by stage) as the authoritative list. If an optional flag exists there but isn't being used, it belongs in the commented section.
 - This convention is mandatory — never emit a script that omits available stage flags. The commented block is part of the script's value to the user (toggling features without re-invoking the skill).
 
 Show the generated script to the user for review.

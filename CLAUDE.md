@@ -40,8 +40,8 @@ flowchart TD
 |-------------|---------|
 | `sk-cNMF` | sk-cNMF inference |
 | `torch-nmf-dl` | torch-cNMF inference, K-selection plotting |
-| `NMF_Benchmarking` | Evaluation, program analysis plotting, perturbed gene plotting, U-test calibration |
-| `programDE` | CRT calibration |
+| `NMF_Benchmarking` | Evaluation, program analysis plotting, perturbed gene plotting, U-test calibration, CRT calibration |
+| `programDE` | Matched Cell DE (R) |
 
 ## Conda Activation Pattern
 

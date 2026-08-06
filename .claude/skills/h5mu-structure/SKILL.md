@@ -36,25 +36,31 @@ Replace `SKILL_DIR` with the actual path to this skill's directory (where this S
 
 For each modality in the MuData:
 - **X**: matrix type (sparse/dense), shape, dtype
-- **obs/**: all column names, with example obs_names (cell barcodes); each column annotated with its dtype/cardinality and **3 example values** from the first 3 cells
-- **var/**: all column names, with example var_names (gene IDs); each column annotated with its dtype/cardinality and **3 example values** from the first 3 genes
+- **obs/**: all column names, with example obs_names (cell barcodes); each column annotated with its dtype, **how many unique items it contains**, and the **first 3 unique values**
+- **var/**: all column names, with example var_names (gene IDs); each column annotated with its dtype, **how many unique items it contains**, and the **first 3 unique values**
 - **uns/**: each key with its type, shape, and example values
 - **obsm/**: each key with type and shape (e.g., guide_assignment, X_PCA, X_umap)
 - **layers/**, **obsp/**, **varm/**, **varp/**: listed if non-empty
 
-Plus a MuData-level section showing merged obs/var columns (with 3 example values per column) and top-level obsm/uns/etc.
+Plus a MuData-level section showing merged obs/var columns (with unique count + first 3 unique values per column) and top-level obsm/uns/etc.
 
 ### Column annotation format
 
-Each obs/var column line looks like:
+Each obs/var column line reports the dtype, the number of unique items, and the first 3 unique values:
 ```
-├── <col_name> — <dtype>: e.g. <v1>, <v2>, <v3>
+├── <col_name> — <dtype> [<N> unique]: e.g. <u1>, <u2>, <u3>
 ```
 
-For categorical columns, the cardinality and first 3 categories are also shown:
+Concrete examples:
 ```
-├── batch — categorical[26] cats: 'IGVFDS6990PWDJ', 'IGVFDS7696ONVJ', 'IGVFDS3...' | e.g. 'IGVFDS6990PWDJ', 'IGVFDS7696ONVJ', 'IGVFDS6990PWDJ'
+├── Gene — categorical[842 unique]: e.g. 'ANKEF1', 'MTRR', 'JAG1'
+├── n_counts — int32 [2713 unique]: e.g. 2713, 1773, 5421
+├── std — float32 [17472 unique]: e.g. 0.12, 0.45, 0.78
 ```
+
+`[N unique]` is the number of distinct (non-NaN) values in the column, and the
+values after `e.g.` are the first 3 **unique** values in order of appearance
+(not the first 3 rows).
 
 ## Requirements
 
@@ -78,12 +84,12 @@ Shape: (91866 cells, 9397 variables)
 ├── X (sparse csr_matrix, shape=(91866, 9397), dtype=float32)
 ├── obs/ (91866 observations)
 │   ├── obs_names: e.g. CGTTCTGCAGCGATCC_0, ATAACGCCATGCCTTC_0, GACACGCTCGTCCGTT_0
-│   ├── batch — categorical[26] cats: 'IGVFDS6990PWDJ', 'IGVFDS7696ONVJ', 'IGVFDS3...' | e.g. 'IGVFDS6990PWDJ', 'IGVFDS7696ONVJ', 'IGVFDS6990PWDJ'
-│   ├── n_counts — int32: e.g. 2713, 1773, 5421
+│   ├── batch — categorical[26 unique]: e.g. 'IGVFDS6990PWDJ', 'IGVFDS7696ONVJ', 'IGVFDS3512ABCD'
+│   ├── n_counts — int32 [45213 unique]: e.g. 2713, 1773, 5421
 │   └── ...
 ├── var/ (9397 variables)
 │   ├── var_names: e.g. ENSG00000230021, ENSG00000228794, SAMD11
-│   ├── symbol — object: e.g. 'LINC01128', 'SAMD11', 'NOC2L'
+│   ├── symbol — object [9397 unique]: e.g. 'LINC01128', 'SAMD11', 'NOC2L'
 │   └── ...
 ├── uns/
 │   ├── guide_names (ndarray, shape=(416,), ...)
