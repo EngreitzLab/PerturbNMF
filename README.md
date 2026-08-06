@@ -94,3 +94,7 @@ This repo ships four Claude Code skills under `.claude/skills/` for guided pipel
 | **run-tests** | Runs the end-to-end test suite: clean previous outputs, submit sk-cNMF (CPU) and torch-cNMF (GPU/SLURM) inference tests, then evaluation tests, and summarizes pass/fail. | [`.claude/skills/run-tests/SKILL.md`](.claude/skills/run-tests/SKILL.md) |
 | **h5mu-structure** | Inspects an `.h5mu` file and emits a tree-format `.txt` summary listing modalities, `obs`/`var`/`uns`/`obsm`/`layers` keys. | [`.claude/skills/h5mu-structure/SKILL.md`](.claude/skills/h5mu-structure/SKILL.md) |
 | **pipeline-drift-check** | Detects parameter drift between `add_argument` calls in `src/**/*.py` (and `make_option` in `.R`) and the `--flag` mentions in sibling READMEs, SLURM `.sh` runners, and skill markdown. Run after editing any argparse or doc. | [`.claude/skills/pipeline-drift-check/SKILL.md`](.claude/skills/pipeline-drift-check/SKILL.md) |
+
+## License
+
+MIT — see [LICENSE](LICENSE). Copyright (c) 2026 Alexandra Mo, Engreitz Lab.
