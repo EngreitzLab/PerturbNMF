@@ -71,7 +71,7 @@ def main():
                         help="NMF algorithm: mu | hals | halsvar | bpp")
     parser.add_argument('--mode', type=str, default='batch',
                         help="Learning mode: batch | minibatch | dataloader")
-    parser.add_argument('--tol', type=float, default=1e-4,
+    parser.add_argument('--tol', type=float, default=1e-7,
                         help="Convergence tolerance")
     parser.add_argument('--n_jobs', type=int, default=-1,
                         help="Number of parallel jobs")
@@ -89,7 +89,7 @@ def main():
     parser.add_argument('--l1_ratio_spectra', type=float, default=0.0)
 
     # Batch-mode NMF
-    parser.add_argument('--batch_max_epoch', type=int, default=100)
+    parser.add_argument('--batch_max_epoch', type=int, default=1000)
     parser.add_argument('--batch_hals_tol', type=float, default=0.005)
     parser.add_argument('--batch_hals_max_iter', type=int, default=1000)
 
@@ -278,7 +278,14 @@ def main():
         run_cnmf_consensus(cnmf_obj,
                            components=args.K,
                            density_thresholds=args.sel_threshs)
-        cnmf_obj.density_filtering_plot(close_fig=True)
+        # One PNG per k: density_filtering_plot() refuses to autodetect k when more
+        # than one is cached, so loop explicitly. Purely diagnostic -- never let a
+        # plotting failure abort compilation/annotation downstream.
+        for k in args.K:
+            try:
+                cnmf_obj.density_filtering_plot(k=k, close_fig=True)
+            except Exception as e:
+                print(f"WARNING: density_filtering_plot failed for k={k}: {e}")
 
     # --- Compile results & annotate ---
     if args.run_compile_annotation:

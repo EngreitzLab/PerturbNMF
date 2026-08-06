@@ -55,7 +55,7 @@ echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 # Activate conda base environment
 echo "Activating conda base environment..."
 eval "$(conda shell.bash hook)"
-conda activate torch-cNMF
+conda activate torch-nmf-dl
 export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
