@@ -54,9 +54,9 @@ monitor_resources &
 MONITOR_PID=$!
 
 # Activate conda environment
-echo "Activating conda environment: torch-cNMF"
+echo "Activating conda environment: torch-nmf-dl"
 eval "$(conda shell.bash hook)"
-conda activate torch-cNMF
+conda activate torch-nmf-dl
 
 echo "Active env: $CONDA_DEFAULT_ENV"
 echo "Python: $(python --version)"
