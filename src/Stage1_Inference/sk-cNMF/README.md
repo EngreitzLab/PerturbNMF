@@ -60,5 +60,5 @@
 | categorical_key | str | "sample" | Key to access cell condition information in obs |
 | guide_names_key | str | "guide_names" | Key to access guide names in uns |
 | guide_targets_key | str | "guide_targets" | Key to access guide targets in uns |
-| guide_assignment_key | str | "guide_assignment_key" | Key to access guide assignments in obsm |
+| guide_assignment_key | str | "guide_assignment" | Key to access guide assignments in obsm |
 | gene_names_key | str | None | Column in adata.var with gene names to use in compiled results (e.g. 'symbol'). If None, uses var_names |

@@ -73,7 +73,7 @@ def main():
     parser.add_argument('--categorical_key', help='Key in .obs to access cell condition/sample labels (default: sample)', type=str, default="sample")
     parser.add_argument('--guide_names_key', help='Key in .uns to access guide names (default: guide_names)', type=str, default="guide_names")
     parser.add_argument('--guide_targets_key', help='Key in .uns to access guide target genes (default: guide_targets)', type=str, default="guide_targets")
-    parser.add_argument('--guide_assignment_key', help='Key in .obsm to access guide assignment matrix (default: guide_assignment_key)', type=str, default="guide_assignment_key")
+    parser.add_argument('--guide_assignment_key', help='Key in .obsm to access guide assignment matrix (default: guide_assignment)', type=str, default="guide_assignment")
     parser.add_argument('--gene_names_key', type=str, default=None,
                         help="Column in adata.var with gene names to use in compiled results (e.g. 'symbol'). If None, uses var_names.")
 
@@ -168,6 +168,8 @@ def main():
     if args.run_factorize:
 
         cnmf_obj.factorize(total_workers = 1, skip_completed_runs=args.skip_existing)
+        # the original cNMF parallelism needs additional indexing of worker id and total worker 
+        # here we just use default 
 
     if args.run_refit:
 
@@ -193,7 +195,7 @@ def main():
         # annotation for all K
         for i in args.sel_threshs:
             for k in args.K:
-                df = pd.read_csv('{inference_dir}/Inference.gene_spectra_scores.k_{k}.dt_{sel_thresh}.txt'.format(
+                df = pd.read_csv('{inference_dir}/Inference.gene_spectra_score.k_{k}.dt_{sel_thresh}.txt'.format(
                                                                                         inference_dir=inference_dir,
                                                                                         k=k,
                                                                                         sel_thresh = str(i).replace('.','_')),
