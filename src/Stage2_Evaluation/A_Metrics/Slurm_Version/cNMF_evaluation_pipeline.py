@@ -210,7 +210,7 @@ def main():
 
              # assign information
             if args.reassign_name:
-                _reassign_name(mdata,  gene_names_key=args.gene_names_ke, data_key = args.data_key)
+                _reassign_name(mdata,  gene_names_key=args.gene_names_key, data_key = args.data_key)
 
 
             # Run categorical assocation
