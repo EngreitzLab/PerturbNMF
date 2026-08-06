@@ -306,9 +306,19 @@ def compile_results(output_directory, run_name, sel_threshs = [2.0], components 
             prog_data.varm['loadings'] = loadings.values
             # Use gene_names_key column if provided, otherwise fall back to var_names / loadings columns
             if gene_names_key is not None and gene_names_key in adata_.var.columns:
-                gene_names = adata_.var[gene_names_key].values
+                # Swap var_names to the gene-name column, preserving the original IDs
+                # (e.g. Ensembl) in a 'gene_id' column. Guarded so the original IDs are
+                # only saved on the first loop iteration (var_names is already symbols after).
+                if 'gene_id' not in adata_.var.columns:
+                    adata_.var['gene_id'] = adata_.var_names
+                adata_.var_names = adata_.var[gene_names_key].astype(str).values
+                
+                adata_.var_names_make_unique()
+                adata_.var[gene_names_key] = adata_.var_names.values
+
+                gene_names = adata_.var_names.values
             else:
-                gene_names = loadings.columns.values
+                gene_names = adata_.var_names.values
 
             prog_data.uns['var_names'] = gene_names
 
@@ -335,10 +345,9 @@ def compile_results(output_directory, run_name, sel_threshs = [2.0], components 
             if 'X_umap' in adata_.obsm:
                 mdata['cNMF'].obsm['X_umap'] = adata_.obsm['X_umap']
 
-            if gene_names_key is not None and gene_names_key in adata_.var.columns:
-                mdata['rna'].var['var_names'] = adata_.var[gene_names_key].values
-            else:
-                mdata['rna'].var['var_names'] = adata_.var_names
+            # var_names is now the de-duplicated gene-name column (or the original IDs
+            # when no gene_names_key was given), so both cases collapse to one line
+            mdata['rna'].var['var_names'] = adata_.var_names.values
 
 
             os.makedirs((f'{output_directory}/{run_name}/adata'), exist_ok=True)

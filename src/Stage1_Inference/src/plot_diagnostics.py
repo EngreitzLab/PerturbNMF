@@ -202,7 +202,108 @@ def plot_loading_violins(loadings_df, output_path):
 
 
 # ---------------------------------------------------------------------------
-# 5. Consensus clustering plot check
+# 5. Program-program top-N gene overlap clustermap
+# ---------------------------------------------------------------------------
+
+def plot_top_gene_overlap(spectra_df, output_path, top_n=300, title=None,
+                          csv_path=None):
+    """Clustermap of shared top-N genes between every pair of programs.
+
+    For each program take its top-N genes (largest spectra value), then fill
+    cell (i, j) with the number of genes shared by program i's and program j's
+    top-N sets. The diagonal is top_n by construction; large off-diagonal
+    values flag redundant / co-varying programs.
+
+    Args:
+        spectra_df: Programs (rows) x genes (columns). Intended for the median
+                    consensus spectra (`{run}.spectra.k_K.dt_T.consensus.txt`).
+        output_path: Path to save the figure.
+        top_n: Number of top genes per program.
+        title: Optional figure title.
+        csv_path: Optional path to also write the overlap matrix as CSV.
+
+    Returns:
+        overlap: DataFrame of pairwise shared-gene counts, or None if skipped.
+    """
+    import seaborn as sns
+
+    spectra_df = spectra_df.loc[:, ~spectra_df.columns.duplicated()]
+    progs = [f"p{p}" for p in spectra_df.index]
+    spectra_df = spectra_df.set_axis(progs, axis=0)
+
+    n_progs = len(progs)
+    if n_progs < 2:
+        logger.warning(f"Only {n_progs} program(s), skipping overlap clustermap")
+        return None
+
+    n_top = min(top_n, spectra_df.shape[1])
+    if n_top < top_n:
+        logger.warning(
+            f"Only {n_top} genes available, using top-{n_top} instead of top-{top_n}"
+        )
+
+    top_sets = {
+        prog: set(row.sort_values(ascending=False).head(n_top).index)
+        for prog, row in spectra_df.iterrows()
+    }
+
+    overlap = pd.DataFrame(index=progs, columns=progs, dtype=int)
+    for i in progs:
+        for j in progs:
+            overlap.loc[i, j] = len(top_sets[i] & top_sets[j])
+
+    if csv_path is not None:
+        overlap.to_csv(csv_path)
+        logger.info(f"Saved: {csv_path}")
+
+    # Off-diagonal summary + most-redundant pairs
+    ov = overlap.to_numpy()
+    iu = np.triu_indices(n_progs, k=1)
+    offdiag = ov[iu]
+    logger.info(
+        f"Off-diagonal shared top-{n_top} genes: min {offdiag.min()}, "
+        f"mean {offdiag.mean():.1f}, max {offdiag.max()}"
+    )
+    pairs = pd.DataFrame({
+        "prog_a": [progs[i] for i in iu[0]],
+        "prog_b": [progs[j] for j in iu[1]],
+        "shared": offdiag,
+    }).sort_values("shared", ascending=False)
+    for _, r in pairs.head(10).iterrows():
+        logger.info(f"  {r['prog_a']} <-> {r['prog_b']}: {r['shared']} shared")
+
+    # Both axes clustered: the matrix is symmetric so rows and columns get the
+    # same leaf order, keeping self-overlap (= n_top) on the main diagonal.
+    size = max(6, min(24, 0.35 * n_progs + 4))
+    g = sns.clustermap(
+        overlap,
+        row_cluster=True, col_cluster=True,
+        cmap="RdBu_r", vmin=0, vmax=n_top,
+        figsize=(size + 1, size),
+        linewidths=0.1, linecolor="0.9",
+        cbar_kws={"label": f"shared genes (top {n_top})"},
+        xticklabels=True, yticklabels=True,
+    )
+    g.ax_row_dendrogram.set_visible(False)
+    g.ax_col_dendrogram.set_visible(False)
+    g.ax_heatmap.set_xlabel("Program", fontsize=9)
+    g.ax_heatmap.set_ylabel("Program", fontsize=9)
+    g.ax_heatmap.tick_params(labelsize=max(4, min(8, 300 // max(n_progs, 1))))
+    if title is None:
+        title = f"Program-program top-{n_top} gene overlap"
+    g.figure.suptitle(
+        f"{title}\nhierarchically clustered; off-diagonal = redundant / "
+        "co-varying programs",
+        y=1.02, fontsize=11,
+    )
+    g.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close(g.figure)
+    logger.info(f"Saved: {output_path}")
+    return overlap
+
+
+# ---------------------------------------------------------------------------
+# 6. Consensus clustering plot check
 # ---------------------------------------------------------------------------
 
 def collect_clustering_plots(run_dir, run_name, K_list, sel_thresh_list, output_dir):
@@ -226,7 +327,7 @@ def collect_clustering_plots(run_dir, run_name, K_list, sel_thresh_list, output_
 # ---------------------------------------------------------------------------
 
 def generate_all_plots(run_dir, run_name="Inference", K_list=None, sel_thresh_list=None,
-                       categorical_key="batch"):
+                       categorical_key="batch", top_n_overlap=300):
     """Generate all diagnostic plots for an inference run.
 
     Args:
@@ -235,6 +336,7 @@ def generate_all_plots(run_dir, run_name="Inference", K_list=None, sel_thresh_li
         K_list: List of K values to plot.
         sel_thresh_list: List of density thresholds.
         categorical_key: obs column for batch grouping.
+        top_n_overlap: Number of top genes per program for the overlap clustermap.
 
     Returns:
         plots_dir: Path to directory containing all generated plots.
@@ -276,6 +378,32 @@ def generate_all_plots(run_dir, run_name="Inference", K_list=None, sel_thresh_li
                 )
             else:
                 logger.warning(f"Spectra scores not found: {spectra_path}")
+
+            # Top-N gene overlap clustermap from the median consensus spectra
+            median_path = os.path.join(
+                run_dir, run_name,
+                f"{run_name}.spectra.k_{k}.dt_{thresh_str}.consensus.txt",
+            )
+            if os.path.exists(median_path):
+                median_df = pd.read_csv(median_path, sep="\t", index_col=0)
+                plot_top_gene_overlap(
+                    median_df,
+                    os.path.join(
+                        plots_dir,
+                        f"top{top_n_overlap}_overlap_k{k}_dt{thresh_str}.pdf",
+                    ),
+                    top_n=top_n_overlap,
+                    title=(
+                        f"Program-program top-{top_n_overlap} gene overlap "
+                        f"(k={k}, dt={thresh})"
+                    ),
+                    csv_path=os.path.join(
+                        plots_dir,
+                        f"top{top_n_overlap}_overlap_k{k}_dt{thresh_str}.csv",
+                    ),
+                )
+            else:
+                logger.warning(f"Median consensus spectra not found: {median_path}")
 
             # Load h5mu for usage heatmap
             h5mu_path = os.path.join(
