@@ -36,6 +36,10 @@ from CRT import (
     qq_plot_real_vs_null,
 )
 
+# Covariate independence diagnostic (correlation + VIF), run when --check_covariate is
+# set. Lives in src/ (added to sys.path above), so it imports as a plain module.
+from check_covariate import run_covariate_check
+
 
 
 # reformat adata info for CRT
@@ -88,6 +92,8 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
             print(f"  Cached K={k}, sel_thresh={sel_thresh}, condition={condition}: "
                   f"skipping compute, plotting from cache")
             plot_qq_from_cache(real_txt, fake_txt, png, condition)
+            summarize_ntc_significance_from_cache(
+                real_txt, args, k, output_folder, condition, covar_tag)
             continue
 
         adata_con = adata[adata.obs[args.categorical_key] == condition].copy()
@@ -142,6 +148,10 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
         save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag)
         save_fake_result(ntc_group_pvals_ens, k, output_folder, condition, args, covar_tag)
 
+        # Empirical-FDR calibration check: treat non-targeting controls as genes and
+        # count NTC regulator-program pairs passing FDR < 0.05 (per condition).
+        summarize_ntc_significance(out, args, k, output_folder, condition, covar_tag)
+
         # QQ plot: real raw vs null (NTC) raw p-values
         import matplotlib.pyplot as plt
 
@@ -192,7 +202,7 @@ def _melt_programs(df, value_name):
 def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=None):
 
     pval_long = _melt_programs(out['pvals_skew_df'], 'p-value')
-    beta_long = _melt_programs(out['betas_df'], 'log2FC')
+    beta_long = _melt_programs(out['betas_df'], 'beta_clr')
 
     # Merge on program and target_gene
     result_df = pval_long.merge(
@@ -208,8 +218,13 @@ def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=No
         raw_long = _melt_programs(out['pvals_raw_df'], 'p-value_raw')
         result_df = result_df.merge(raw_long, on=['program_name', 'target_name'], how='left')
 
-    # effect size of CRT is not log2fc, its approx_log2FC = [K / (K - 1)] * beta_hat / ln(2)
-    # result_df['log2FC'] = result_df['log2FC']/np.log(2)
+    # The CRT effect size is beta_hat on the CLR (natural-log) scale, NOT a log2 fold
+    # change. A shift of beta in CLR coordinate k corresponds to a natural-log fold
+    # change of beta * K/(K-1) in program k's usage: the CLR mean absorbs 1/K of the
+    # shift across the K programs, so ln-FC = beta * K/(K-1). Converting to base 2:
+    #     approx_log2FC = [K / (K - 1)] * beta_hat / ln(2)
+    # K = k = number of programs (CLR is centered over all program columns).
+    result_df['log2FC'] = result_df['beta_clr'] * (k / (k - 1)) / np.log(2)
 
     # Multiple-testing correction: FDR for the skew-calibrated AND the raw p-values.
     result_df = _add_adj_pval(result_df, 'p-value', args, out_col='adj_pval')
@@ -254,6 +269,137 @@ def save_fake_result(ntc_group_pvals_ens, k, output_folder, condition, args, cov
     return fake_df
 
 
+# negative-control calibration: empirical FDR from non-targeting "genes"
+def _ntc_significance_core(raw_long, args, k, output_folder, condition,
+                           covar_tag=None, p_thresh=0.05):
+    """
+    Shared core for the NTC empirical-FDR check.
+
+    ``raw_long`` is a long DataFrame with (at least) columns ``target_name`` and
+    ``adj_pval_raw`` covering EVERY regulator-program pair (all genes x programs),
+    where ``adj_pval_raw`` is the raw CRT p-value already FDR-corrected across that
+    full family (same --FDR_method as save_result). Non-targeting / safe-targeting
+    controls are the rows whose ``target_name`` is in ``args.guide_annotation_key``.
+
+    A pair is "significant" when ``adj_pval_raw < p_thresh``. Treating each control
+    label as an ordinary gene, we report the empirical false-discovery rate per
+    condition two ways:
+
+      * fraction_of_ntc_pairs = (NTC pairs with FDR < p_thresh) / (all NTC pairs)
+        -- the per-condition empirical FPR/FDR among the controls; ~< p_thresh when
+        the test is well calibrated.
+      * empirical_fdr = (NTC pairs with FDR < p_thresh) / (all pairs with FDR <
+        p_thresh, across every gene) -- classical FDR = false / total discoveries.
+
+    Writes a per-gene summary (plus an ALL_NTC row) to
+    ``{output_folder}/{k}_CRT_ntc_significance_{covar_tag}_{condition}.txt`` and
+    prints both rates. Returns a dict (or None if no control target was tested).
+    """
+    ntc_labels = args.guide_annotation_key
+    if isinstance(ntc_labels, str):
+        ntc_labels = [ntc_labels]
+    ntc_labels = set(ntc_labels)
+
+    ntc_present = sorted(set(raw_long['target_name']) & ntc_labels)
+    if not ntc_present:
+        print(f"  [NTC significance] none of {sorted(ntc_labels)} found in tested "
+              f"targets (condition={condition}); skipping.")
+        return None
+
+    raw_long = raw_long.copy()
+    raw_long['significant'] = raw_long['adj_pval_raw'] < p_thresh
+
+    # total discoveries across every regulator-program pair (all genes)
+    n_sig_total_all = int(raw_long['significant'].sum())
+
+    ntc_long = raw_long[raw_long['target_name'].isin(ntc_labels)]
+
+    # per-control-gene breakdown
+    per_gene = (
+        ntc_long.groupby('target_name')
+        .agg(n_significant=('significant', 'sum'), n_pairs=('significant', 'size'))
+        .reset_index()
+    )
+    per_gene['n_significant'] = per_gene['n_significant'].astype(int)
+    per_gene['fraction_of_ntc_pairs'] = per_gene['n_significant'] / per_gene['n_pairs']
+
+    n_sig_ntc = int(ntc_long['significant'].sum())
+    n_ntc_pairs = int(len(ntc_long))
+    frac_ntc = n_sig_ntc / n_ntc_pairs if n_ntc_pairs else float('nan')
+    empirical_fdr = n_sig_ntc / n_sig_total_all if n_sig_total_all else float('nan')
+
+    print(f"  [NTC significance] condition={condition}: {n_sig_ntc}/{n_ntc_pairs} "
+          f"NTC regulator-program pairs pass FDR < {p_thresh} "
+          f"(fraction_of_ntc_pairs={frac_ntc:.4f}); "
+          f"empirical_fdr={n_sig_ntc}/{n_sig_total_all}={empirical_fdr:.4f} "
+          f"across {len(ntc_present)} control target(s): {ntc_present}")
+
+    if covar_tag is None:
+        covar_tag = _covariate_tag(args)
+
+    overall = pd.DataFrame([{
+        'target_name': 'ALL_NTC',
+        'n_significant': n_sig_ntc,
+        'n_pairs': n_ntc_pairs,
+        'fraction_of_ntc_pairs': frac_ntc,
+        'n_significant_all_genes': n_sig_total_all,
+        'empirical_fdr': empirical_fdr,
+    }])
+    summary = pd.concat([per_gene, overall], ignore_index=True)
+    summary.to_csv(
+        f'{output_folder}/{k}_CRT_ntc_significance_{covar_tag}_{condition}.txt',
+        sep='\t', index=False,
+    )
+
+    return {'n_significant': n_sig_ntc, 'n_ntc_pairs': n_ntc_pairs,
+            'fraction_of_ntc_pairs': frac_ntc,
+            'n_significant_all_genes': n_sig_total_all,
+            'empirical_fdr': empirical_fdr,
+            'per_gene': per_gene, 'p_thresh': p_thresh}
+
+
+def summarize_ntc_significance(out, args, k, output_folder, condition,
+                               covar_tag=None, p_thresh=0.05):
+    """
+    Empirical-FDR calibration check from the freshly-computed CRT results.
+
+    Takes the RAW CRT p-values in out['pvals_raw_df'] (rows = target gene, cols =
+    program), FDR-corrects them across the full family of all regulator-program
+    pairs (same --FDR_method as save_result), then delegates to
+    ``_ntc_significance_core`` to score the non-targeting controls. See that
+    function for the reported metrics and output file.
+    """
+    pvals_raw = out.get('pvals_raw_df')
+    if pvals_raw is None:
+        raise KeyError(
+            "out['pvals_raw_df'] not found — run_all_genes_union_crt must be called "
+            "with return_raw_pvals=True."
+        )
+
+    raw_long = _melt_programs(pvals_raw, 'p-value_raw')
+    raw_long = _add_adj_pval(raw_long, 'p-value_raw', args, out_col='adj_pval_raw')
+    return _ntc_significance_core(raw_long, args, k, output_folder, condition,
+                                  covar_tag=covar_tag, p_thresh=p_thresh)
+
+
+def summarize_ntc_significance_from_cache(real_txt, args, k, output_folder, condition,
+                                          covar_tag=None, p_thresh=0.05):
+    """
+    Same empirical-FDR check as summarize_ntc_significance, but reusing the cached
+    real result file (which already carries adj_pval_raw FDR-corrected over the full
+    family in save_result). Returns None if the cache predates the raw-p-value
+    columns.
+    """
+    real_df = pd.read_csv(real_txt, sep='\t')
+    if 'adj_pval_raw' not in real_df.columns:
+        print(f"  [NTC significance] cached {os.path.basename(real_txt)} lacks "
+              f"'adj_pval_raw' (condition={condition}); skipping.")
+        return None
+    return _ntc_significance_core(real_df[['target_name', 'adj_pval_raw']],
+                                  args, k, output_folder, condition,
+                                  covar_tag=covar_tag, p_thresh=p_thresh)
+
+
 # regenerate the QQ plot from cached result files (no CRT recompute)
 def plot_qq_from_cache(real_txt, fake_txt, png, condition):
     import matplotlib.pyplot as plt
@@ -286,8 +432,12 @@ def main():
     parser.add_argument('--categorical_key', help='Key in .obs to access cell condition/sample labels (default: sample)', type=str, default="sample")
 
     # Covariates
-    parser.add_argument('--covariates', nargs='*', type=str, help='Covariate keys in .obs to include as-is (e.g., biological_sample)', default=None)
-    parser.add_argument('--log_covariates', nargs='*', type=str, help='Covariate keys in .obs to log1p-transform before inclusion (e.g., guide_umi_counts total_counts)', default=None)
+    parser.add_argument('--covariates', nargs='*', type=str, help='Covariate keys in .obs to include as-is (e.g., any continues value, categorical values)', default=None)
+    parser.add_argument('--log_covariates', nargs='*', type=str, help='Covariate keys in .obs to log1p-transform before inclusion (e.g., any count based values)', default=None)
+
+    # Covariate independence diagnostic (run before CRT)
+    parser.add_argument('--check_covariate', action='store_true', help='Before running CRT, run the covariate independence diagnostic (Pearson correlation heatmap + VIF) on the encoded design matrix and write it to <Evaluation>/covariate_check/. Useful for catching collinear covariates that would make CRT p-values unreliable.')
+    parser.add_argument('--numeric_as_category_threshold', type=int, default=20, help='For the covariate check: numeric covariates with <= this many unique values are one-hot encoded (matches CRT get_covar_matrix default: 20).')
 
     # Calibration parameters
     parser.add_argument('--number_guide', help='Number of non-targeting guides to randomly designate as "targeting" in each calibration iteration (default: 6)', type=int, default=6)
@@ -320,6 +470,28 @@ def main():
     with open(f'{save_config_dir}/config_{job_id}.yml', 'w') as f:
         yaml.dump(config_to_save, f, default_flow_style=False, width=1000)
 
+    # Optional covariate independence diagnostic. Covariates are K-independent, so run
+    # it once on the first (K, sel_thresh) MuData. Per-condition, mirroring CRT, which
+    # builds a separate design matrix per level of --categorical_key.
+    if args.check_covariate:
+        first_k = args.K[0]
+        first_thresh = args.sel_threshs[0]
+        first_tag = str(first_thresh).replace('.', '_')
+        check_save = f'{save_config_dir}/covariate_check'
+        print(f"Running covariate independence check (K={first_k}, "
+              f"sel_thresh={first_thresh}) -> {check_save}")
+        check_mdata = mu.read(
+            f'{args.out_dir}/{args.run_name}/Inference/adata/cNMF_{first_k}_{first_tag}.h5mu'
+        )
+        run_covariate_check(
+            check_mdata["cNMF"],
+            save_path=check_save,
+            covariates=args.covariates,
+            log_covariates=args.log_covariates,
+            categorical_key=args.categorical_key,
+            per_condition=True,
+            numeric_as_category_threshold=args.numeric_as_category_threshold,
+        )
 
     # run CRT for each K and dt
     for sel_thresh in args.sel_threshs:
