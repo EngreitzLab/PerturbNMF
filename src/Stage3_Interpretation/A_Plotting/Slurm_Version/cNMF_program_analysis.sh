@@ -53,7 +53,7 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Inte
         --GO_path "/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/Evaluation/50_0_2/50_GO_term_enrichment.txt" \
         --top_program 5 \
         --p_value 0.05 \
-        --pdf_save_path "$LOG_DIR" \
+        --save_path "$LOG_DIR" \
         --output_format PDF \
         --Conditions D0 D1 D2 D3 \
         --square_plots \
@@ -61,12 +61,19 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Inte
         --categorical_key "batch" \
         --subsample_frac 0.1
 
+        # Note: --perturb_path_base is OPTIONAL. Drop it (delete the line above) to plot
+        # only the h5mu/GO-derived header row -- UMAP program usage / expression violin /
+        # top loading genes / GO enrichment / program-program loading correlation. The
+        # per-condition rows (log2FC, volcano, regulator dotplot, waterfall) and the
+        # regulator-effect heatmap are then skipped, which is useful before Stage 2b
+        # calibration (CRT / U-test) has produced the association files. --GO_path is
+        # still required, and --output_format HTML still requires --perturb_path_base.
+
         # Reference flags (uncomment + add to the python invocation above to enable):
         #--data_key "rna"
         #--prog_key "cNMF"
         #--gene_name_key "gene_names"
         #--output_format "SVG"               # one of PDF | SVG | HTML
-        #--html_share_path "$LOG_DIR/html_share"
         #--skip_existing                      # turn OFF skipping; re-process every program (default is to skip already-done)
         #--show                               # display plots interactively
         #--programs 4 5 6                     # plot specific program numbers only

@@ -18,6 +18,14 @@ import scipy.sparse as sp
 import anndata as ad
 
 
+# Keep text as editable text (not outlined paths) in every saved SVG/PDF/EPS so
+# the figures can be edited in Illustrator. Set at module import so all plotting
+# functions below inherit it regardless of call order.
+plt.rcParams["svg.fonttype"] = "none"   # SVG: write real <text> elements
+plt.rcParams["pdf.fonttype"] = 42        # PDF: embed TrueType (editable text)
+plt.rcParams["ps.fonttype"] = 42         # EPS/PS: same
+
+
 # Publication-quality color palette — one distinct color per plot
 _COLORS = {
     'primary': '#2c3e50',        # dark slate for line strokes
@@ -556,10 +564,6 @@ def plot_explained_variance(stats, folder_name=None, file_name=None, selected_k=
 def plot_k_selection_panel(stability_stats, count_df, test_stats_df, explained_var_stats,
                            pval=0.05, folder_name=None, file_name=None, selected_k=None):
 
-    # Keep text as editable text in SVG (for Adobe Illustrator)
-    plt.rcParams['svg.fonttype'] = 'none'
-    plt.rcParams['pdf.fonttype'] = 42
-
     fig, axes = plt.subplots(3, 3, figsize=(13, 10.5))
     fig.subplots_adjust(hspace=0.45, wspace=0.35)
 
@@ -670,10 +674,6 @@ def plot_k_selection_panel(stability_stats, count_df, test_stats_df, explained_v
 # Row 3: Regulators (all conditions), Regulators (per condition)
 def plot_k_selection_panel_no_traits(stability_stats, count_df, test_stats_df, explained_var_stats,
                                      pval=0.05, folder_name=None, file_name=None, selected_k=None):
-
-    # Keep text as editable text in SVG (for Adobe Illustrator)
-    plt.rcParams['svg.fonttype'] = 'none'
-    plt.rcParams['pdf.fonttype'] = 42
 
     fig, axes = plt.subplots(3, 3, figsize=(13, 10.5))
     fig.subplots_adjust(hspace=0.45, wspace=0.35)

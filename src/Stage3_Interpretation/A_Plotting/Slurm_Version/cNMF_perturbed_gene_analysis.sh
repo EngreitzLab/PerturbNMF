@@ -62,19 +62,32 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Inte
         --figsize 35 35 \
         --Conditions D0 D1 D2 D3 \
         --output_format PDF \
-        --n_processes -1 \
+        --n_processes 4 \
         --umap_dot_size 10 \
         --data_key 'rna' \
         --prog_key 'cNMF' \
         --categorical_key 'batch' \
         --gene_name_key 'gene_names' \
+        --guide_targets_key 'guide_targets' \
+        --guide_assignment_key 'guide_assignment' \
         --control_target_name 'non-targeting' \
         --subsample_frac 0.1 \
         --parallel
 
+        # Note: --control_target_name (set above) marks the control in plots and is
+        # excluded from the per-gene perturbation panels (it is not tested in the
+        # perturbation-association results, so it has no data to plot).
+
+        # Note: --perturb_path_base is OPTIONAL. Drop it (delete the line above) to plot
+        # only the two h5mu-derived rows -- UMAP expression / UMAP perturbation / gene
+        # dotplot / top loading programs, and the knockdown bar chart + gene-loading
+        # correlation. The per-condition rows (log2FC, volcano, program dotplot,
+        # waterfall) are then skipped, which is useful before Stage 2b calibration
+        # (CRT / U-test) has produced the association files. --output_format HTML
+        # still requires --perturb_path_base.
+
         # Reference flags (uncomment + add to the python invocation above to enable):
         #--output_format "SVG"                # one of PDF | SVG | HTML
-        #--html_share_path "$LOG_DIR/html_share"
         #--skip_existing                      # turn OFF skipping; re-process every gene (default is to skip already-done)
         #--expressed_only
         #--show

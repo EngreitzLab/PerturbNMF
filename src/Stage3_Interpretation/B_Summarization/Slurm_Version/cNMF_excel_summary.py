@@ -79,8 +79,7 @@ def main():
         help='Effect-size column in perturbation files. Default: log2FC')
     parser.add_argument('--control_target_name', type=str, default='non-targeting',
         help='Control target name for KD efficiency. Default: non-targeting')
-    parser.add_argument('--non_targeting_key', nargs='*', type=str, default=['non-targeting'],
-        help='Control target name(s) for the program summary sheet. Default: non-targeting')
+
 
     # keys
     parser.add_argument('--categorical_key', type=str, default='sample',
@@ -95,6 +94,8 @@ def main():
         help='var column with gene symbols (for loadings / KD efficiency). Default: symbol')
     parser.add_argument('--adjusted_pval_key', type=str, default='Adjusted P-value',
         help='Adjusted p-value column in enrichment files. Default: "Adjusted P-value"')
+    parser.add_argument('--non_targeting_key', nargs='*', type=str, default=['non-targeting'],
+        help='Control target name(s) for the program summary sheet. Default: non-targeting')
 
     # enrichment / perturbation column-name keys
     parser.add_argument('--GO_Term_key', type=str, default='Term', help='Index column in GO enrichment file. Default: Term')

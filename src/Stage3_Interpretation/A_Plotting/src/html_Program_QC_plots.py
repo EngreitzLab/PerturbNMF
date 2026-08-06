@@ -103,16 +103,17 @@ def _safe_sample_key(samp: str) -> str:
 # _make_*_fig functions below.
 # ---------------------------------------------------------------------------
 
-def _build_top_genes(mdata, target_program, num_gene, file_to_dictionary, gene_name_key):
+def _build_top_genes(mdata, target_program, num_gene, file_to_dictionary, gene_name_key,
+                     data_key="rna", prog_key="cNMF"):
     # Mirror of plot_top_gene_per_program data prep.
-    X = mdata["cNMF"].varm["loadings"]
-    gene_names = mdata["cNMF"].uns["var_names"]
-    if gene_name_key is not None and gene_name_key in mdata["rna"].var.columns:
-        ens_to_sym = dict(zip(mdata["rna"].var_names, mdata["rna"].var[gene_name_key].astype(str)))
+    X = mdata[prog_key].varm["loadings"]
+    gene_names = mdata[prog_key].uns["var_names"]
+    if gene_name_key is not None and gene_name_key in mdata[data_key].var.columns:
+        ens_to_sym = dict(zip(mdata[data_key].var_names, mdata[data_key].var[gene_name_key].astype(str)))
         gene_names = np.array([ens_to_sym.get(g, g) for g in gene_names])
     if file_to_dictionary is not None:
         gene_names = rename_list_gene_dictionary(list(gene_names), file_to_dictionary)
-    df = pd.DataFrame(data=X, columns=gene_names, index=mdata["cNMF"].var_names)
+    df = pd.DataFrame(data=X, columns=gene_names, index=mdata[prog_key].var_names)
     matching_rows = (df.index == str(target_program)).sum()
     if matching_rows == 0:
         raise ValueError(
@@ -164,16 +165,16 @@ def _build_correlations(program_correlation, target_program, num_program):
     }
 
 
-def _build_violin(mdata, target_program, groupby):
-    X = mdata["cNMF"].X
+def _build_violin(mdata, target_program, groupby, data_key="rna", prog_key="cNMF"):
+    X = mdata[prog_key].X
     if hasattr(X, "toarray"):
         X = X.toarray()
-    prog_idx = list(mdata["cNMF"].var_names).index(str(target_program))
+    prog_idx = list(mdata[prog_key].var_names).index(str(target_program))
     scores = np.asarray(X[:, prog_idx]).ravel()
-    if groupby in mdata["cNMF"].obs.columns:
-        groups = mdata["cNMF"].obs[groupby].values
+    if groupby in mdata[prog_key].obs.columns:
+        groups = mdata[prog_key].obs[groupby].values
     else:
-        groups = mdata["rna"].obs[groupby].values
+        groups = mdata[data_key].obs[groupby].values
     df = pd.DataFrame({"expression": scores, "group": list(groups)})
     order = list(df["group"].astype("category").cat.categories) if hasattr(df["group"], "cat") else sorted(df["group"].unique())
     summary = df.groupby("group")["expression"].agg(["mean", lambda x: float((x > x.mean()).mean())])
@@ -236,34 +237,34 @@ def _build_volcano(perturb_path, target_program, tagert_col_name, plot_col_name,
     }
 
 
-def _build_dotplot(mdata, gene_list, groupby, gene_name_key):
+def _build_dotplot(mdata, gene_list, groupby, gene_name_key, data_key="rna"):
     if not gene_list:
         return {"genes": [], "conditions": [], "mean": [], "frac": []}
-    if gene_name_key is not None and gene_name_key in mdata["rna"].var.columns:
+    if gene_name_key is not None and gene_name_key in mdata[data_key].var.columns:
         sym_to_ens = {}
-        for ens, sym in zip(mdata["rna"].var_names, mdata["rna"].var[gene_name_key].astype(str)):
+        for ens, sym in zip(mdata[data_key].var_names, mdata[data_key].var[gene_name_key].astype(str)):
             sym_to_ens.setdefault(sym, ens)
         gene_indices = []
         kept_genes = []
         for g in gene_list:
             if g in sym_to_ens:
-                gene_indices.append(list(mdata["rna"].var_names).index(sym_to_ens[g]))
+                gene_indices.append(list(mdata[data_key].var_names).index(sym_to_ens[g]))
                 kept_genes.append(g)
         gene_list = kept_genes
     else:
         gene_indices = []
         kept_genes = []
         for g in gene_list:
-            if g in mdata["rna"].var_names:
-                gene_indices.append(list(mdata["rna"].var_names).index(g))
+            if g in mdata[data_key].var_names:
+                gene_indices.append(list(mdata[data_key].var_names).index(g))
                 kept_genes.append(g)
         gene_list = kept_genes
     if not gene_list:
         return {"genes": [], "conditions": [], "mean": [], "frac": []}
 
-    X = mdata["rna"].X
-    groups = mdata["rna"].obs[groupby].values
-    conds_cat = mdata["rna"].obs[groupby].astype("category").cat.categories if hasattr(mdata["rna"].obs[groupby], "cat") else sorted(np.unique(groups))
+    X = mdata[data_key].X
+    groups = mdata[data_key].obs[groupby].values
+    conds_cat = mdata[data_key].obs[groupby].astype("category").cat.categories if hasattr(mdata[data_key].obs[groupby], "cat") else sorted(np.unique(groups))
     conditions = [str(c) for c in conds_cat]
     mean_mat = []
     frac_mat = []
@@ -297,7 +298,8 @@ def _build_waterfall(corr_matrix, target_program, top_num):
 
 
 def _build_heatmap(perturb_path_base, mdata, target_program, sample,
-                   tagert_col_name, plot_col_name, log2fc_col, p_value, groupby):
+                   tagert_col_name, plot_col_name, log2fc_col, p_value, groupby,
+                   data_key="rna", prog_key="cNMF"):
     dfs = [pd.read_csv(f"{perturb_path_base}_{samp}.txt", sep="\t").assign(sample=samp) for samp in sample]
     combined = pd.concat(dfs, ignore_index=True)
     combined["program_name"] = combined["program_name"].astype(str)
@@ -310,7 +312,7 @@ def _build_heatmap(perturb_path_base, mdata, target_program, sample,
     pp = sub.pivot(columns=plot_col_name, index="sample", values="adj_pval")
     pv = pv.reindex(sample)
     pp = pp.reindex(sample)
-    expr = compute_program_expression_by_condition(mdata, target_program, groupby=groupby)
+    expr = compute_program_expression_by_condition(mdata, target_program, groupby=groupby, data_key=data_key, prog_key=prog_key)
     expr_vals = [float(expr.get(c, 0.0)) for c in pv.index]
     return {
         "conditions": list(map(str, pv.index)),
@@ -417,7 +419,10 @@ def _make_log2fc_fig(data):
         hovertemplate="%{y}<br>log2FC: %{x:.3f}<br>adj_p: %{customdata:.2e}<extra></extra>",
     ))
     fig.add_vline(x=0, line_width=0.5, line_color="#555")
-    fig.update_layout(xaxis_title="log2FC", yaxis_title="Regulator")
+    # Program/regulator labels are numeric-looking strings ("3", "28", ...); without
+    # type="category" Plotly renders a linear y-axis and scatters the bars by value.
+    fig.update_layout(xaxis_title="log2FC", yaxis_title="Regulator",
+                      yaxis=dict(type="category"))
     return _fmt_layout(fig)
 
 
@@ -531,11 +536,11 @@ def _make_heatmap_fig(data):
 # UMAP PNG rendering — reuses the existing matplotlib function
 # ---------------------------------------------------------------------------
 
-def _render_umap_png(mdata, target_program, out_path, subsample_frac):
+def _render_umap_png(mdata, target_program, out_path, subsample_frac, prog_key="cNMF"):
     fig, ax = plt.subplots(figsize=(5, 4))
     plot_umap_per_program(
         mdata=mdata, Target_Program=target_program, ax=ax,
-        subsample_frac=subsample_frac,
+        subsample_frac=subsample_frac, prog_key=prog_key,
     )
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -556,7 +561,7 @@ _PAGE_TEMPLATE = """<!DOCTYPE html>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="{fonts}" rel="stylesheet">
 <link rel="stylesheet" href="../shared/style.css">
-<script src="{cdn}"></script>
+<script src="../shared/plotly.min.js"></script>
 </head>
 <body>
 <header class="sticky">
@@ -829,6 +834,29 @@ def _fig_to_div(fig: go.Figure, div_id: str) -> str:
                        config={"displaylogo": False, "responsive": True})
 
 
+# Pages load Plotly from this local, relative path (every page lives one level
+# below the share root, so "../shared/..." resolves from both program_* and
+# gene_* subdirectories). Bundling the JS locally — instead of the CDN — makes
+# the reports work offline / in preview panes, and guarantees the renderer
+# version matches the plotly.py that serialized the figure JSON. A CDN/plotly.py
+# version mismatch makes charts render once then blank while hover still works.
+PLOTLY_LOCAL_SRC = "../shared/plotly.min.js"
+
+
+def _write_plotly_js(share_root):
+    """Write Plotly's bundled JS to <share_root>/shared/plotly.min.js once.
+
+    Uses the JS shipped with the installed plotly package (via get_plotlyjs),
+    so the renderer always matches the version that produced the figure divs.
+    """
+    from plotly.offline import get_plotlyjs
+    shared = Path(share_root) / "shared"
+    shared.mkdir(parents=True, exist_ok=True)
+    js_path = shared / "plotly.min.js"
+    if not js_path.exists():
+        js_path.write_text(get_plotlyjs())
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -856,12 +884,14 @@ def export_program_html(
     p_value=0.05,
     go_p_value_name="Adjusted P-value",
     go_term_col="Term",
-    gene_name_key="symbol",
+    gene_name_key="gene_names",
     subsample_frac=None,
     prev_program_id=None,
     next_program_id=None,
     position_index=None,
     position_total=None,
+    data_key="rna",
+    prog_key="cNMF",
 ):
     """Write program_{N}/ subtree under html_share_path."""
     share_root = Path(html_share_path)
@@ -871,13 +901,14 @@ def export_program_html(
     (prog_dir / "images").mkdir(parents=True, exist_ok=True)
 
     # UMAP PNG
-    _render_umap_png(mdata, Target_Program, prog_dir / "images" / "umap.png", subsample_frac)
+    _render_umap_png(mdata, Target_Program, prog_dir / "images" / "umap.png", subsample_frac, prog_key=prog_key)
 
     # ---- header panels ----
-    top_genes_d = _build_top_genes(mdata, Target_Program, top_enrichned_term, file_to_dictionary, gene_name_key)
+    top_genes_d = _build_top_genes(mdata, Target_Program, top_enrichned_term, file_to_dictionary, gene_name_key,
+                                   data_key=data_key, prog_key=prog_key)
     go_d = _build_go_terms(GO_path, Target_Program, top_enrichned_term, go_p_value_name, go_term_col)
     corr_d = _build_correlations(program_correlation, Target_Program, top_program)
-    violin_d = _build_violin(mdata, Target_Program, groupby)
+    violin_d = _build_violin(mdata, Target_Program, groupby, data_key=data_key, prog_key=prog_key)
 
     _write_json(prog_dir / "data" / "top_genes.json", top_genes_d)
     _write_json(prog_dir / "data" / "go_terms.json", go_d)
@@ -899,7 +930,7 @@ def export_program_html(
                                   log2fc_col, top_enrichned_term, p_value, perturbed_gene_found)
         volcano_d = _build_volcano(perturb_path, Target_Program, tagert_col_name, plot_col_name,
                                     log2fc_col, down_thred_log, up_thred_log, p_value, perturbed_gene_found)
-        dotplot_d = _build_dotplot(mdata, log2fc_d["regulators"], groupby, gene_name_key)
+        dotplot_d = _build_dotplot(mdata, log2fc_d["regulators"], groupby, gene_name_key, data_key=data_key)
         waterfall_d = _build_waterfall(waterfall_correlation[samp], Target_Program, top_enrichned_term)
 
         _write_json(prog_dir / "data" / f"log2fc_{skey}.json", log2fc_d)
@@ -917,7 +948,8 @@ def export_program_html(
 
     # ---- heatmap ----
     heatmap_d = _build_heatmap(perturb_path_base, mdata, Target_Program, sample,
-                                tagert_col_name, plot_col_name, log2fc_col, p_value, groupby)
+                                tagert_col_name, plot_col_name, log2fc_col, p_value, groupby,
+                                data_key=data_key, prog_key=prog_key)
     _write_json(prog_dir / "data" / "heatmap.json", heatmap_d)
     heatmap_fig = _make_heatmap_fig(heatmap_d)
 
@@ -986,6 +1018,7 @@ def write_share_index(html_share_path, program_ids, config_snapshot):
 
     with open(share_root / "shared" / "style.css", "w") as f:
         f.write(_STYLE_CSS)
+    _write_plotly_js(share_root)
 
     manifest = {
         "generated_at": datetime.datetime.utcnow().isoformat() + "Z",

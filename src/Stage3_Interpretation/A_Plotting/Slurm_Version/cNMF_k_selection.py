@@ -14,7 +14,7 @@ from Stage3_Interpretation.A_Plotting.src import (load_stablity_error_data, plot
                           )
 
 
-if __name__ == '__main__':
+def main():
 
     parser = argparse.ArgumentParser()
 
@@ -133,3 +133,9 @@ if __name__ == '__main__':
             for k in args.K:
                 fig = programs_dotplots(k, args.output_directory, args.run_name, sel_thresh = sel_thresh, groupby=args.groupby, figsize=(4, 30),
                 show = False, save_name=f"Program_dotplot_{k}_{sel_thresh}", save_path = args.save_folder_name, ax = None)
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -9,6 +9,7 @@ plt.rcParams["axes.spines.top"] = False
 plt.rcParams["axes.spines.right"] = False
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
+plt.rcParams['svg.fonttype'] = 'none'  # SVG: write real <text> (editable in Illustrator)
 
 plt.rcParams.update({
     'font.family': 'sans-serif',
@@ -25,7 +26,7 @@ plt.rcParams.update({
 })
 
 
-def compute_program_expression_by_condition(mdata, Target_Program, groupby='sample'):
+def compute_program_expression_by_condition(mdata, Target_Program, groupby='sample', data_key='rna', prog_key='cNMF'):
     """Compute mean program expression per condition.
 
     Parameters
@@ -42,18 +43,18 @@ def compute_program_expression_by_condition(mdata, Target_Program, groupby='samp
     pd.Series
         Mean program expression indexed by condition name.
     """
-    X = mdata['cNMF'].X
+    X = mdata[prog_key].X
     if hasattr(X, 'toarray'):
         X = X.toarray()
 
-    prog_col = list(mdata['cNMF'].var_names).index(str(Target_Program))
+    prog_col = list(mdata[prog_key].var_names).index(str(Target_Program))
     scores = X[:, prog_col]
 
     # Use rna obs for the groupby column since it may only live there
-    if groupby in mdata['cNMF'].obs.columns:
-        groups = mdata['cNMF'].obs[groupby].values
+    if groupby in mdata[prog_key].obs.columns:
+        groups = mdata[prog_key].obs[groupby].values
     else:
-        groups = mdata['rna'].obs[groupby].values
+        groups = mdata[data_key].obs[groupby].values
 
     df = pd.DataFrame({'score': scores, 'group': groups})
     return df.groupby('group')['score'].mean()
@@ -67,6 +68,7 @@ def plot_program_heatmap_weighted(
     save_path=None, save_name=None,
     figsize=(12, 5), show=False, ax=None,
     vmin=-1, vmax=1,
+    data_key='rna', prog_key='cNMF',
 ):
     """Heatmap of regulator effects with a side bar for program expression.
 
@@ -147,7 +149,7 @@ def plot_program_heatmap_weighted(
     df_pivot_pval = df_filtered.pivot(columns=plot_col_name, index='sample', values='adj_pval')
 
     # --- compute mean program expression per condition ---
-    expr_series = compute_program_expression_by_condition(mdata, Target_Program, groupby=groupby)
+    expr_series = compute_program_expression_by_condition(mdata, Target_Program, groupby=groupby, data_key=data_key, prog_key=prog_key)
 
     # --- plot ---
     if ax is None:
@@ -250,6 +252,7 @@ def plot_program_heatmap_expression_scaled(
     log2fc_col='log2FC', p_value=0.05,
     save_path=None, save_name=None,
     figsize=(12, 5), show=False, ax=None,
+    data_key='rna', prog_key='cNMF',
 ):
     """Heatmap of log2FC scaled by relative program expression per condition.
 
@@ -284,7 +287,7 @@ def plot_program_heatmap_expression_scaled(
     df_pivot_pval = df_filtered.pivot(columns=plot_col_name, index='sample', values='adj_pval')
 
     # --- compute expression weights ---
-    expr_series = compute_program_expression_by_condition(mdata, Target_Program, groupby=groupby)
+    expr_series = compute_program_expression_by_condition(mdata, Target_Program, groupby=groupby, data_key=data_key, prog_key=prog_key)
     max_expr = expr_series.max()
     if max_expr > 0:
         weights = expr_series / max_expr

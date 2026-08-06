@@ -87,7 +87,7 @@ Produces one comprehensive panel per cNMF program. Loops over all programs in th
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `--mdata_path` | str | **required** | Path to `cNMF_{K}_{thresh}.h5mu` (Stage 1 output) |
-| `--perturb_path_base` | str | **required** | Base path for per-sample perturbation result files (sample suffix appended) |
+| `--perturb_path_base` | str | `None` | Base path for per-sample perturbation result files (sample suffix appended). Omit to skip every per-condition perturbation panel and the regulator heatmap — see "Running without perturbation results" below. Required with `--output_format HTML` |
 | `--file_to_dictionary` | str | `None` | Path to gene name mapping dictionary file for Ensembl-ID-to-symbol conversion |
 | `--reference_gtf_path` | str | `None` | Path to reference GTF file for checking gene names |
 | `--GO_path` | str | **required** | Path to GO enrichment results directory |
@@ -100,8 +100,8 @@ Produces one comprehensive panel per cNMF program. Loops over all programs in th
 | `--down_thred_log` | float | `-0.00` | Lower log2FC threshold for volcano plot |
 | `--up_thred_log` | float | `0.00` | Upper log2FC threshold for volcano plot |
 | `--save_path` | str | **required** | Directory path to save output (PDF/SVG files or HTML share tree) |
-| `--square_plots` | flag | off | Use square aspect ratio for plots |
-| `--figsize` | float list (2) | `35 35` | Figure size as `width height` |
+| `--square_plots` | flag | off | Auto-scale figure height to the number of conditions (`num_rows × 8 in`) so panels stay roughly square; only the width from `--figsize` is used |
+| `--figsize` | float list (2) | `35 35` | Figure size as `width height`. With `--square_plots`, only width is used (height auto-scales with condition count) |
 | `--show` | flag | off | Display plots interactively |
 | `--output_format` | str (choice) | `SVG` | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-program interactive Plotly pages directly under `save_path` |
 | `--Conditions` | str list | `D0 sample_D1 sample_D2 sample_D3` | List of condition names |
@@ -125,6 +125,14 @@ Produces one comprehensive panel per cNMF program. Loops over all programs in th
 
 Set `--output_format HTML` to emit a shareable HTML report under `save_path` (per-program subdirectories).
 
+### Running without perturbation results
+
+`--perturb_path_base` is optional. When it is omitted, the report drops everything derived from the per-condition association files and emits a single-row panel per program built from the `.h5mu` plus the GO enrichment table:
+
+- **Row 0** — UMAP program usage | program expression violin | top loading genes | GO enrichment | program–program loading correlation
+
+The per-condition rows (log2FC, volcano, regulator dotplot, waterfall) and the regulator-effect heatmap row are skipped, as is the waterfall correlation precompute. `--GO_path` is still required. This lets you QC program structure and enrichment before Stage 2b calibration (CRT / U-test) has been run. `--output_format HTML` still requires `--perturb_path_base`; use `PDF` or `SVG` in this mode.
+
 Sample output: [Example/Program_PDF_Report_Example.pdf](Example/Program_PDF_Report_Example.pdf).
 
 ## 3. Perturbed Gene Analysis Report (PDF + HTML)
@@ -139,7 +147,7 @@ Produces one comprehensive panel per **perturbed gene** — counterpart to the p
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `--mdata_path` | str | **required** | Path to `cNMF_{K}_{thresh}.h5mu` (Stage 1 output) |
-| `--perturb_path_base` | str | **required** | Base path for per-sample perturbation result files (sample suffix appended) |
+| `--perturb_path_base` | str | `None` | Base path for per-sample perturbation result files (sample suffix appended). Omit to skip every per-condition perturbation panel — see "Running without perturbation results" below. Required with `--output_format HTML` |
 | `--ensembl_to_symbol_file` | str | `None` | Path to gene name mapping dictionary file for Ensembl-ID-to-symbol conversion |
 | `--reference_gtf_path` | str | `None` | Path to reference GTF file for checking gene names |
 | `--perturb_target_col` | str | `target_name` | Column name for target genes in perturbation results |
@@ -151,8 +159,8 @@ Produces one comprehensive panel per **perturbed gene** — counterpart to the p
 | `--volcano_log2fc_min` | float | `-0.00` | Lower log2FC threshold for volcano plot |
 | `--volcano_log2fc_max` | float | `0.00` | Upper log2FC threshold for volcano plot |
 | `--save_path` | str | **required** | Directory path to save output (PDF/SVG files or HTML share tree) |
-| `--square_plots` | flag | off | Use square aspect ratio for plots |
-| `--figsize` | float list (2) | `35 35` | Figure size as `width height` |
+| `--square_plots` | flag | off | Auto-scale figure height to the number of conditions (`num_rows × 8 in`) so panels stay roughly square; only the width from `--figsize` is used |
+| `--figsize` | float list (2) | `35 35` | Figure size as `width height`. With `--square_plots`, only width is used (height auto-scales with condition count) |
 | `--show` | flag | off | Display plots interactively |
 | `--output_format` | str (choice) | `SVG` | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-gene interactive Plotly pages directly under `save_path` |
 | `--n_processes` | int | `-1` | Number of parallel processes (`-1` = all available cores) |
@@ -169,7 +177,7 @@ Produces one comprehensive panel per **perturbed gene** — counterpart to the p
 | `--gene_name_key` | str | `gene_names` | Key to access gene names in var |
 | `--categorical_key` | str | `sample` | Key to access sample/condition labels in obs |
 | `--guide_targets_key` | str | `guide_targets` | Key in `.uns` to access guide target genes |
-| `--control_target_name` | str | `non-targeting` | Name of non-targeting control in `guide_targets` (e.g. `non-targeting`, `CTRL`) |
+| `--control_target_name` | str (nargs='+') | `non-targeting` | One or more control labels in `guide_targets` (e.g. `non-targeting`, or `WT WT111 WT4`). A cell is a control if its guide target matches **any** of these. Use multiple labels when controls are background-specific. These targets are excluded from the per-gene perturbation panels (no association results to plot) |
 
 ### Outputs per gene
 
@@ -182,13 +190,22 @@ Produces one comprehensive panel per **perturbed gene** — counterpart to the p
 
 Supports parallel processing via `--n_processes` and `--parallel` (Linux fork-based multiprocessing). Use `--gene_list_file` to restrict to a subset of genes, or `--expressed_only` to skip perturbed-but-unexpressed genes.
 
+### Running without perturbation results
+
+`--perturb_path_base` is optional. When it is omitted, the report drops everything derived from the per-condition association files and emits a two-row panel per gene built entirely from the `.h5mu`:
+
+- **Row 0** — UMAP expression | UMAP perturbation | gene expression dotplot | top loading programs
+- **Row 1** — CRISPRi knockdown grouped bar (All + per condition) | gene-loading correlation
+
+The per-condition rows (log2FC, volcano, program dotplot, perturbation waterfall) and the waterfall correlation precompute are skipped. This lets you QC guide assignment and knockdown efficiency before Stage 2b calibration (CRT / U-test) has been run. `--output_format HTML` still requires `--perturb_path_base`; use `PDF` or `SVG` in this mode.
+
 Sample output: [Example/Gene_PDF_Report_Example.pdf.pdf](Example/Gene_PDF_Report_Example.pdf.pdf).
 
 ## Common conventions
 
 - **Output format**: each script supports `--output_format {PDF, SVG, HTML}`. PDF is default for sharing; HTML mode emits a self-contained report viewable in any browser, written directly under `--save_path`.
-- **Figure size**: `--figsize WIDTH HEIGHT` (default `35 35`).
-- **Square aspect**: `--square_plots` for camera-ready figures.
+- **Figure size**: `--figsize WIDTH HEIGHT` (default `35 35`). Used verbatim unless `--square_plots` is set.
+- **Square aspect**: `--square_plots` auto-scales the figure height to the number of conditions (`num_rows × 8 in`) so panels stay roughly square (only the width from `--figsize` is used). Applies to both the **Program Analysis** (section 2) and **Perturbed Gene Analysis** (section 3) reports — recommended for runs with many conditions, which otherwise get squished into a fixed square.
 - **Subsampling**: `--subsample_frac 0.1` to render UMAP from 10% of cells (useful for >500k-cell runs).
 - **Custom column names**: each script accepts overrides for the `target_col`, `program_col`, `log2fc_col`, `adjpval_col` so it works on non-default perturbation result schemas (e.g. Morphic data).
 
