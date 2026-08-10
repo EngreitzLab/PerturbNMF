@@ -2,7 +2,7 @@
 
 ## Overview
 
-This pipeline runs consensus Non-negative Matrix Factorization (cNMF) on single-cell perturbation data (CRISPR screens), then evaluates, calibrates, and visualizes the resulting gene programs. It is designed for HPC (SLURM) execution on Stanford's Sherlock cluster.
+This pipeline runs consensus Non-negative Matrix Factorization (cNMF) on single-cell perturbation data (CRISPR screens), then evaluates, calibrates, and visualizes the resulting gene programs. It runs on a single machine; the SLURM runner scripts in this repo are optional and are set up for Stanford's Sherlock cluster.
 
 ## Pipeline Structure
 

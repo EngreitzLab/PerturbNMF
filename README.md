@@ -98,6 +98,16 @@ This repo ships four Claude Code skills under `.claude/skills/` for guided pipel
 | **h5mu-structure** | Inspects an `.h5mu` file and emits a tree-format `.txt` summary listing modalities, `obs`/`var`/`uns`/`obsm`/`layers` keys. | [`.claude/skills/h5mu-structure/SKILL.md`](.claude/skills/h5mu-structure/SKILL.md) |
 | **pipeline-drift-check** | Detects parameter drift between `add_argument` calls in `src/**/*.py` (and `make_option` in `.R`) and the `--flag` mentions in sibling READMEs, SLURM `.sh` runners, and skill markdown. Run after editing any argparse or doc. | [`.claude/skills/pipeline-drift-check/SKILL.md`](.claude/skills/pipeline-drift-check/SKILL.md) |
 
+## Related software
+
+PerturbNMF builds on these companion repos (also recorded as related identifiers
+in [`.zenodo.json`](.zenodo.json) and [`CITATION.cff`](CITATION.cff)):
+
+| Repo | Role |
+|---|---|
+| [**torch-cNMF**](https://github.com/ymo6/torch_based_cNMF) | GPU-accelerated consensus NMF used by Stage 1 (`torch-cNMF` mode). Fork of [Kotliar et al.'s cNMF](https://elifesciences.org/articles/43803) with the scikit-learn NMF core replaced by nmf-torch. |
+| [**nmf-torch** (fork)](https://github.com/ymo6/nmf-torch) | The NMF solver behind torch-cNMF. Fork of [lilab-bcb/nmf-torch](https://github.com/lilab-bcb/nmf-torch) adding a DataLoader-based minibatch mode for memory-efficient GPU training plus shuffle control. |
+
 ## Citation
 
 Every tagged GitHub release is archived on Zenodo and assigned a DOI.

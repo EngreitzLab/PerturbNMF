@@ -3,8 +3,10 @@ message: "If you use PerturbNMF, please cite it using the metadata below."
 title: "PerturbNMF: an end-to-end pipeline for consensus NMF on single-cell perturbation data"
 abstract: >-
   PerturbNMF runs and evaluates consensus Non-negative Matrix Factorization
-  (cNMF) on single-cell perturbation data such as CRISPR screens, and is
-  designed for SLURM-based HPC execution. Stage 1 infers gene programs with
+  (cNMF) on single-cell perturbation data such as CRISPR screens. It runs on a
+  single workstation or laptop; optional SLURM runner scripts are included for
+  users who want to distribute the work on a cluster.
+  Stage 1 infers gene programs with
   sk-cNMF (CPU) or torch-cNMF (GPU). Stage 2 scores program quality with nine
   metrics and calibrates perturbation p-values via U-test, conditional
   randomization test, or matched-cell differential expression. Stage 3
@@ -29,6 +31,59 @@ repository-code: "https://github.com/EngreitzLab/PerturbNMF"
 url: "https://github.com/EngreitzLab/PerturbNMF"
 version: 0.1.1
 date-released: "2026-08-10"
+references:
+  - type: software
+    title: "torch-cNMF: GPU-accelerated consensus NMF"
+    abstract: >-
+      GPU-accelerated cNMF used by PerturbNMF Stage 1; a fork of Kotliar et al.'s
+      cNMF with the scikit-learn NMF core replaced by nmf-torch.
+    authors:
+      - given-names: Alexandra
+        family-names: Mo
+        email: ymo@stanford.edu
+        affiliation: "Department of Genetics, Stanford University"
+    version: 1.7.0
+    license: MIT
+    repository-code: "https://github.com/ymo6/torch_based_cNMF"
+    url: "https://github.com/ymo6/torch_based_cNMF"
+  - type: software
+    title: "nmf-torch (fork): PyTorch NMF with DataLoader-based minibatch mode"
+    abstract: >-
+      NMF solver backing torch-cNMF. Fork of the Li Lab nmf-torch package adding a
+      DataLoader-based minibatch mode for memory-efficient GPU training and shuffle
+      control.
+    authors:
+      - given-names: Alexandra
+        family-names: Mo
+        email: ymo@stanford.edu
+        affiliation: "Department of Genetics, Stanford University"
+    license: BSD-3-Clause
+    repository-code: "https://github.com/ymo6/nmf-torch"
+    url: "https://github.com/ymo6/nmf-torch"
+    notes: "Upstream: https://github.com/lilab-bcb/nmf-torch"
+  - type: article
+    title: >-
+      Identifying gene expression programs of cell-type identity and cellular
+      activity with single-cell RNA-Seq
+    authors:
+      - given-names: Dylan
+        family-names: Kotliar
+      - given-names: Adrian
+        family-names: Veres
+      - given-names: M. Aurel
+        family-names: Nagy
+      - given-names: Shervin
+        family-names: Tabrizi
+      - given-names: Eran
+        family-names: Hodis
+      - given-names: Douglas A.
+        family-names: Melton
+      - given-names: Pardis C.
+        family-names: Sabeti
+    journal: eLife
+    year: 2019
+    volume: 8
+    doi: 10.7554/eLife.43803
 keywords:
   - single-cell
   - CRISPR screen
