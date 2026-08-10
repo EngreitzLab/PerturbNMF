@@ -100,11 +100,14 @@ This repo ships four Claude Code skills under `.claude/skills/` for guided pipel
 
 ## Citation
 
-Every tagged GitHub release is archived on Zenodo and assigned a DOI. Click the
-DOI badge at the top of this README for the latest release; that badge resolves
-to the *concept DOI*, which always points at the most recent version. To cite
-the exact version you ran, use the version-specific DOI shown on that Zenodo
-record instead.
+Every tagged GitHub release is archived on Zenodo and assigned a DOI.
+
+Cite the **concept DOI** — [`10.5281/zenodo.21878267`](https://doi.org/10.5281/zenodo.21878267) —
+to refer to PerturbNMF in general; it always resolves to the most recent
+version. To cite the exact version you ran, use that release's
+version-specific DOI instead (v0.1.1 is
+[`10.5281/zenodo.21878268`](https://doi.org/10.5281/zenodo.21878268)); every
+version DOI is listed on the Zenodo record.
 
 Machine-readable metadata lives in [`CITATION.cff`](CITATION.cff) (GitHub renders
 it under "Cite this repository") and [`.zenodo.json`](.zenodo.json) (used by
