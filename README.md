@@ -1,5 +1,8 @@
 # PerturbNMF Pipeline
 
+[![DOI](https://zenodo.org/badge/1219489031.svg)](https://zenodo.org/badge/latestdoi/1219489031)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ```mermaid
 flowchart TD
     A["Input: counts.h5ad\n(cells x genes)"] --> B["Stage 1: Inference\n(sk-cNMF CPU or torch-cNMF GPU)"]
@@ -94,6 +97,19 @@ This repo ships four Claude Code skills under `.claude/skills/` for guided pipel
 | **run-tests** | Runs the end-to-end test suite: clean previous outputs, submit sk-cNMF (CPU) and torch-cNMF (GPU/SLURM) inference tests, then evaluation tests, and summarizes pass/fail. | [`.claude/skills/run-tests/SKILL.md`](.claude/skills/run-tests/SKILL.md) |
 | **h5mu-structure** | Inspects an `.h5mu` file and emits a tree-format `.txt` summary listing modalities, `obs`/`var`/`uns`/`obsm`/`layers` keys. | [`.claude/skills/h5mu-structure/SKILL.md`](.claude/skills/h5mu-structure/SKILL.md) |
 | **pipeline-drift-check** | Detects parameter drift between `add_argument` calls in `src/**/*.py` (and `make_option` in `.R`) and the `--flag` mentions in sibling READMEs, SLURM `.sh` runners, and skill markdown. Run after editing any argparse or doc. | [`.claude/skills/pipeline-drift-check/SKILL.md`](.claude/skills/pipeline-drift-check/SKILL.md) |
+
+## Citation
+
+Every tagged GitHub release is archived on Zenodo and assigned a DOI. Click the
+DOI badge at the top of this README for the latest release; that badge resolves
+to the *concept DOI*, which always points at the most recent version. To cite
+the exact version you ran, use the version-specific DOI shown on that Zenodo
+record instead.
+
+Machine-readable metadata lives in [`CITATION.cff`](CITATION.cff) (GitHub renders
+it under "Cite this repository") and [`.zenodo.json`](.zenodo.json) (used by
+Zenodo when it archives a release). Keep the `version` and `date-released`
+fields in `CITATION.cff` in sync when cutting a new release.
 
 ## License
 

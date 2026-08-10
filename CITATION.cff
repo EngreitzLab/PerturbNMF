@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use PerturbNMF, please cite it using the metadata below."
+title: "PerturbNMF: an end-to-end pipeline for consensus NMF on single-cell perturbation data"
+abstract: >-
+  PerturbNMF runs and evaluates consensus Non-negative Matrix Factorization
+  (cNMF) on single-cell perturbation data such as CRISPR screens, and is
+  designed for SLURM-based HPC execution. Stage 1 infers gene programs with
+  sk-cNMF (CPU) or torch-cNMF (GPU). Stage 2 scores program quality with nine
+  metrics and calibrates perturbation p-values via U-test, conditional
+  randomization test, or matched-cell differential expression. Stage 3
+  produces K-selection and QC plots, Excel summaries, and LLM-driven program
+  annotation with PubTator3 literature mining.
+type: software
+authors:
+  - given-names: Alexandra
+    family-names: Mo
+    email: ymo@stanford.edu
+    affiliation: "Department of Genetics, Stanford University"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+license: MIT
+repository-code: "https://github.com/EngreitzLab/PerturbNMF"
+url: "https://github.com/EngreitzLab/PerturbNMF"
+version: 0.1.1
+date-released: "2026-08-10"
+keywords:
+  - single-cell
+  - CRISPR screen
+  - Perturb-seq
+  - non-negative matrix factorization
+  - cNMF
+  - gene programs
+  - functional genomics
+  - bioinformatics pipeline

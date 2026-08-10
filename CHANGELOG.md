@@ -9,6 +9,13 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-10
+
+### Added
+- Zenodo archiving of GitHub releases. `.zenodo.json` and `CITATION.cff` supply
+  the deposition metadata; the README carries a concept-DOI badge and a Citation
+  section. Bump `version` and `date-released` in `CITATION.cff` with each release.
+
 ## [0.1.0] - 2026-08-06
 
 First release.
@@ -32,5 +39,6 @@ First release.
   execution, `.h5mu` inspection, test-suite runs, and parameter-drift checks.
 - MIT license.
 
-[Unreleased]: https://github.com/EngreitzLab/PerturbNMF/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/EngreitzLab/PerturbNMF/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/EngreitzLab/PerturbNMF/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/EngreitzLab/PerturbNMF/releases/tag/v0.1.0
