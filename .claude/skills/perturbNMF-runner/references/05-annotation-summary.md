@@ -222,7 +222,7 @@ right, and a `discovery` pick is the likeliest original on offer, not a guarante
 not checked mechanically.
 
 ```bash
-export OPENALEX_MAILTO=you@example.org           # OpenAlex polite pool
+export OPENALEX_API_KEY=<free key>              # required: no-key requests share a tiny daily IP budget (HTTP 429)
 python build_citation_candidates.py --dispatch <dir> --arm v3 --enrichment <string_filtered.csv> \
     [--enrichr <enrichr.tsv> ...] --ncbi-context <ncbi_context.json> --excluded-pmids <excluded.json> \
     --cache-dir <cache> --output-dir <candidates>    # cached; rerun to fill transient gaps

@@ -113,7 +113,7 @@ class CachedHttp:
         self.dirty = 0
 
     def get_json(self, url: str, body: Optional[dict] = None, headers: Optional[dict] = None):
-        key = url + ("|" + json.dumps(body, sort_keys=True) if body else "")
+        key = re.sub(r"&api_key=[^&]*", "", url) + ("|" + json.dumps(body, sort_keys=True) if body else "")
         if key in self.cache:
             return self.cache[key]
         data = json.dumps(body).encode() if body else None
@@ -128,8 +128,11 @@ class CachedHttp:
                     result = json.loads(response.read().decode() or "null")
                 break
             except Exception as exc:
+                if "429" in str(exc) and "openalex" in url:
+                    print(f"  OpenAlex budget exhausted (HTTP 429) — set OPENALEX_API_KEY; skipping {url[:80]}")
+                    break
                 if attempt == 5:
-                    print(f"  giving up on {url[:100]} ({exc})")
+                    print(f"  giving up on {re.sub(r'&api_key=[^&]*', '', url)[:100]} ({exc})")
                 time.sleep(2 * attempt)
         time.sleep(self.pause)
         if result is None:
@@ -271,6 +274,12 @@ class SupportFinder:
             self.generifs[symbol] = [generif] if isinstance(generif, dict) else generif
         return self.aliases[symbol]
 
+    def openalex_url(self, query: str) -> str:
+        """OpenAlex needs a (free) API key: without one, requests share a small daily budget per
+        IP address and fail with HTTP 429 once it is spent. Set OPENALEX_API_KEY."""
+        key = os.environ.get("OPENALEX_API_KEY")
+        return f"{OPENALEX}?{query}" + (f"&api_key={urllib.parse.quote(key)}" if key else "")
+
     def openalex_search(self, names: List[str], words: List[str], sort: str, n: int) -> List[dict]:
         quoted = [f'"{x}"' if ("-" in x or " " in x) else x for x in names]
         search = f"({' OR '.join(quoted)}) AND ({' OR '.join(words)})"
@@ -278,7 +287,7 @@ class SupportFinder:
             "filter": f"title_and_abstract.search:{search},type:article",
             "sort": sort, "per-page": n, "select": OPENALEX_SELECT,
         })
-        data = self.http.get_json(f"{OPENALEX}?{query}", headers=POLITE_HEADERS) or {}
+        data = self.http.get_json(self.openalex_url(query), headers=POLITE_HEADERS) or {}
         return data.get("results") or []
 
     def openalex_by(self, key: str, values: List[str]) -> List[dict]:
@@ -286,7 +295,7 @@ class SupportFinder:
         for start in range(0, len(values), 10):  # small pages: big responses get cut off in transit
             chunk = "|".join(v.rstrip("/").split("/")[-1] for v in values[start:start + 10])
             query = urllib.parse.urlencode({"filter": f"{key}:{chunk}", "per-page": 10, "select": OPENALEX_SELECT})
-            works += (self.http.get_json(f"{OPENALEX}?{query}", headers=POLITE_HEADERS) or {}).get("results") or []
+            works += (self.http.get_json(self.openalex_url(query), headers=POLITE_HEADERS) or {}).get("results") or []
         return works
 
     def curated_pmids(self, symbol: str, words: List[str]) -> List[str]:
