@@ -19,6 +19,10 @@ for that downstream (define_regulator_groups.py), each regulator gets
   reliability     rel = 1 - SE^2 / var(profile), clipped to [0, 1] — the share of the profile's
                   variance that is signal rather than noise (classical test-theory reliability)
 
+Programs whose usage tracks batch (e.g. PerturbNMF's categorical association, or the share of
+usage variance explained by sample) can be left out with --exclude-programs: every knockdown
+"moves" them with the batch it was sequenced in, which makes unrelated regulators correlate.
+
 Usage:
     python build_regulator_effect_matrix.py --regulators regulators_by_condition.csv \
         --conditions D0 D1 D2 D3 --output-dir regulator_groups
@@ -95,11 +99,16 @@ def main() -> int:
                         help="keep regulators significant in at least this many program x condition features")
     parser.add_argument("--exclude-pattern", default=r"(?i)^(?:non[-_]?targeting|NTC|safe[-_]?targeting)",
                         help="regex for control targets to drop")
+    parser.add_argument("--exclude-programs", default="",
+                        help="comma list of program ids left out of the profiles, e.g. batch-associated programs "
+                             "(sample explains much of their usage) — they add shared, non-biological structure")
     parser.add_argument("--output-dir", required=True, type=Path)
     args = parser.parse_args()
 
     table, conditions = load_regulators(args.regulators, args.conditions)
     table = table[~table["target_gene"].astype(str).str.contains(args.exclude_pattern, regex=True)]
+    excluded_programs = {int(p) for p in args.exclude_programs.split(",") if p.strip()}
+    table = table[~table["program_id"].astype(int).isin(excluded_programs)]
     effects, adjusted, raw_p = build_matrices(table, conditions)
     summary = noise_model(effects, raw_p)
     summary["n_significant"] = (adjusted < args.significance).sum(axis=1)
