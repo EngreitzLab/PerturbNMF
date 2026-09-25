@@ -25,8 +25,14 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 from typing import List, Tuple
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
+from gate_rules import (  # noqa: E402
+    VALID_STATUSES, bare_pmid, label_problems, pmids_offered_in_prompt, summary_problems,
+)
 
 REQUIRED_KEYS = [
     "program_id", "label", "brief_summary", "confounder_assessment", "interpretation",
@@ -37,14 +43,6 @@ REQUIRED_CONFOUNDERS = {
     "rna_processing_or_decay", "cis_target_effects", "ribosome_translation_housekeeping",
 }
 BANNED_LABEL_WORDS = {"program", "process", "regulation"}
-# Words that describe the program's quality rather than its biology. Coherence has its own field.
-BANNED_LABEL_PHRASES = [
-    "grab bag", "grab-bag", "incoherent", "coherence", "heterogeneous", "mixed", "unclear",
-    "miscellaneous",
-]
-BANNED_SUMMARY_PHRASES = ["coheren", "incoherent", "heterogene", "grab bag", "grab-bag"]
-PARENTHESISED_GENE = re.compile(r"\([A-Z][A-Z0-9-]{1,9}\)")
-VALID_STATUSES = {"primary_explanation", "contributing", "ruled_out", "cannot_assess"}
 
 
 def genes_offered_in_prompt(prompt: str) -> set:
@@ -60,10 +58,6 @@ def genes_offered_in_prompt(prompt: str) -> set:
     return set(re.findall(r"\b[A-Z][A-Z0-9]{1,9}(?:-[A-Z0-9]{1,6})?\b", prompt)) | set(
         re.findall(r"\b[A-Z][A-Za-z0-9.-]{2,20}\b", prompt)
     )
-
-
-def pmids_offered_in_prompt(prompt: str) -> set:
-    return set(re.findall(r"PMID:(\d+)", prompt))
 
 
 PEAK_DAY = re.compile(r"^Peak day: (\S+)", re.MULTILINE)
@@ -154,14 +148,11 @@ def validate(program_id: int, directory: Path) -> Tuple[List[str], List[str]]:
             f"lists: {', '.join(invented_genes[:12])}"
         )
 
-    # Models write the identifier both ways ("42440233" and "PMID:42440233"); normalise before
-    # comparing, or a correctly-pooled citation is reported as a fabrication.
-    def bare(value) -> str:
-        return re.sub(r"^\s*PMID[:\s]*", "", str(value), flags=re.IGNORECASE).strip()
-
-    cited_pmids = {bare(c.get("pmid")) for c in payload.get("citations", []) if c.get("pmid")}
+    # Normalise "PMID:123" to "123" before comparing, or a correctly-pooled citation is reported
+    # as a fabrication.
+    cited_pmids = {bare_pmid(c.get("pmid")) for c in payload.get("citations", []) if c.get("pmid")}
     for module in payload.get("modules", []):
-        cited_pmids.update(bare(p) for p in (module.get("support") or {}).get("pmids", []))
+        cited_pmids.update(bare_pmid(p) for p in (module.get("support") or {}).get("pmids", []))
     invented_pmids = sorted(p for p in cited_pmids if p and p not in offered_pmids)
     if invented_pmids:
         problems.append(
@@ -169,25 +160,8 @@ def validate(program_id: int, directory: Path) -> Tuple[List[str], List[str]]:
             f"{', '.join(invented_pmids)}"
         )
 
-    label = str(payload.get("label", ""))
-    # " / " and " - " are label separators, not words.
-    words = [w for w in label.split() if w not in {"/", "-"}]
-    if len(words) > 6:
-        problems.append(f"P{program_id}: label is {len(words)} words (max 6): {label!r}")
-    lowered = {w.strip(",.").lower() for w in words}
-    hit = lowered & BANNED_LABEL_WORDS
-    if hit:
-        problems.append(f"P{program_id}: label uses banned word(s) {sorted(hit)}: {label!r}")
-
-    for phrase in BANNED_LABEL_PHRASES:
-        if phrase in label.lower():
-            problems.append(f"P{program_id}: label uses quality word {phrase!r}: {label!r}")
-    if PARENTHESISED_GENE.search(label):
-        problems.append(f"P{program_id}: label carries a parenthesised gene tag: {label!r}")
-    summary = str(payload.get("brief_summary", "")).lower()
-    for phrase in BANNED_SUMMARY_PHRASES:
-        if phrase in summary:
-            problems.append(f"P{program_id}: brief_summary comments on coherence ({phrase!r})")
+    problems += label_problems(f"P{program_id}", str(payload.get("label", "")), BANNED_LABEL_WORDS)
+    problems += summary_problems(f"P{program_id}", str(payload.get("brief_summary", "")))
 
     readings = payload.get("competing_readings", [])
     if len(readings) < 2:
