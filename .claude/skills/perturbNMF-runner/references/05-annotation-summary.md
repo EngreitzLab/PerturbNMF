@@ -266,6 +266,60 @@ python build_annotation_viewer.py --config <config.json> --dispatch <dir> --arm 
 
 ---
 
+## Regulator-group annotation (Stage 3d, companion to v3)
+
+`src/Stage3_Interpretation/C_Annotation/RegulatorGroupAnnotator/` — see its `README.md` for
+input formats and the full command sequence. It annotates GROUPS OF PERTURBED GENES: regulators
+whose knockdowns shift the programs the same way. It uses the same recipe as v3 and the same
+`annotator_core/` dispatch, gates and citation pass. It runs locally with the Claude Code CLI and
+is not a SLURM stage. Run it after v3 on the same screen, so each group's effect signature
+carries the programs' v3 labels (`--program-annotations <v3 dispatch>`).
+
+How groups are formed (`define_regulator_groups.py`) — not one global correlation cut, which drops
+weak but coherent groups:
+- noise-corrected (disattenuated) effect-profile correlation, with reliability estimated from each
+  regulator's p-values;
+- a program-permutation significance gate;
+- shared-nearest-neighbour clustering (k=5, cut 0.7);
+- bootstrap member stability over programs: core ≥ 0.3, the rest peripheral.
+
+Curated complexes (CORUM / ComplexPortal / SIGNOR via OmniPath) are used for:
+- an optional calibration grid (`--calibrate`, `grouping_calibration.tsv`). It is partly circular,
+  so its use is recorded;
+- rescuing complex partners that correlate significantly with the group centroid (role
+  `rescued`).
+
+Promoter confounds (`measure_neighbour_knockdown.py` + `build_promoter_confound_screen.py`):
+- CRISPRi guides silence neighbouring promoters (22 of 26 measurable neighbours on the CC screen).
+- A member is **excluded** from annotation when:
+  - the neighbour explains the group (another member, a complex subunit or a STRING partner) and is
+    knocked down or unmeasured within 1 kb; or
+  - the neighbour is knocked down and the target is not.
+- Shared loci (two members sharing a promoter) keep the better-supported member.
+- Guide positions from hCRISPRi-v2 names are used only when they sit at the target's TSS in the
+  coordinate file. The CC names are hg19 and the coordinates hg38, so the screen fell back to TSSs.
+
+Annotation:
+- The prompt asks the model to:
+  1. rule out generic fitness / stress, differentiation delay, promoter neighbours and weak-effect
+     noise;
+  2. name the shared function;
+  3. say why the group forms here, read through the programs it moves;
+  4. give a role for every member (`core_explained`, `consistent`, `unexplained` with a testable
+     hypothesis);
+  5. give a label.
+- The answer reuses v3 keys, so the citation pass runs with `--subject regulator_group`.
+- Gate: `validate_group_answers.py`. Label and PMID rules are shared with v3 in
+  `annotator_core/gate_rules.py`.
+
+Operational landmines:
+- Run the network steps (evidence, citation candidates) outside any sandbox. Behind the Claude
+  Code sandbox proxy, Python's reads of STRING responses are truncated, and most retries fail too.
+- `claude -p` sometimes writes shell-quote residue (`'\''`) into the JSON. The completeness check
+  rejects it and the next dispatch pass retries.
+
+---
+
 ## Literature Search (optional companion to Annotation)
 
 **Conda**: `progexplorer`

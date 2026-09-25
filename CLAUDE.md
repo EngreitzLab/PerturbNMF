@@ -20,6 +20,9 @@ flowchart TD
     S --> L
     F --> Q["Stage 3c: Annotation\n(LLM-driven gene program annotation)"]
     Q --> L
+    F --> R["Stage 3c: Regulator-group annotation\n(co-regulating perturbations, promoter-confound screen)"]
+    Q -. program labels .-> R
+    R --> L
     M["Guide Annotation TSV"] --> E
     N["GWAS Data (OpenTargets)"] --> E
     O["Normalized Counts .h5ad"] --> E
