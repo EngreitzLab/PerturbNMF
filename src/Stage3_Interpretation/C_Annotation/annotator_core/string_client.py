@@ -10,6 +10,9 @@ Three calls, each for one gene set:
                    from the background
 STRING wants its own identifiers for a background, so symbols are mapped first
 (`string_ids`). All requests are form POSTs, so large backgrounds fit.
+
+STRING answers with ITS preferred names (MESDC1 comes back as TLNRD1), so every gene name in a
+network or enrichment result is mapped back to the symbol it was queried with.
 """
 from __future__ import annotations
 
@@ -34,13 +37,23 @@ class StringClient:
 
     def string_ids(self, symbols: List[str]) -> Dict[str, str]:
         """symbol -> STRING id, best match only; unmapped symbols are absent."""
-        mapping: Dict[str, str] = {}
+        return {q: row["stringId"] for q, row in self.id_records(symbols).items()}
+
+    def id_records(self, symbols: List[str]) -> Dict[str, dict]:
+        records: Dict[str, dict] = {}
         for start in range(0, len(symbols), 500):
             chunk = symbols[start:start + 500]
             rows = self.call("get_string_ids", {"identifiers": "\r".join(chunk), "limit": 1, "echo_query": 1}) or []
             for row in rows:
-                mapping.setdefault(row.get("queryItem", ""), row["stringId"])
-        return mapping
+                records.setdefault(row.get("queryItem", ""), row)
+        return records
+
+    def to_query_symbol(self, symbols: List[str]) -> Dict[str, str]:
+        """STRING preferred name -> the symbol it was queried as."""
+        back = {s: s for s in symbols}
+        for query, row in self.id_records(symbols).items():
+            back[row.get("preferredName", query)] = query
+        return back
 
     def network(self, symbols: List[str], required_score: int = 400) -> List[dict]:
         """Edges among the symbols: {a, b, score, physical_score (0 when none)}."""
@@ -49,10 +62,12 @@ class StringClient:
         rows = self.call("network", {"identifiers": "\r".join(symbols), "required_score": required_score}) or []
         physical = self.call("network", {"identifiers": "\r".join(symbols), "required_score": required_score,
                                          "network_type": "physical"}) or []
-        physical_score = {tuple(sorted((r["preferredName_A"], r["preferredName_B"]))): r["score"] for r in physical}
+        back = self.to_query_symbol(symbols)
+        name = lambda value: back.get(value, value)  # noqa: E731
+        physical_score = {tuple(sorted((name(r["preferredName_A"]), name(r["preferredName_B"])))): r["score"] for r in physical}
         edges = {}
         for row in rows:
-            pair = tuple(sorted((row["preferredName_A"], row["preferredName_B"])))
+            pair = tuple(sorted((name(row["preferredName_A"]), name(row["preferredName_B"]))))
             edges[pair] = {"a": pair[0], "b": pair[1], "score": round(float(row["score"]), 3),
                            "physical_score": round(float(physical_score.get(pair, 0.0)), 3)}
         return sorted(edges.values(), key=lambda e: -e["score"])
@@ -62,10 +77,11 @@ class StringClient:
         if background_ids:
             fields["background_string_identifiers"] = "\r".join(background_ids)
         rows = self.call("enrichment", fields) or []
+        back = self.to_query_symbol(symbols)
         return [{
             "category": r.get("category", ""), "term": r.get("term", ""), "description": r.get("description", ""),
             "fdr": float(r.get("fdr", 1.0)), "p_value": float(r.get("p_value", 1.0)),
-            "genes": r.get("inputGenes", []), "number_of_genes": int(r.get("number_of_genes", 0)),
+            "genes": [back.get(g, g) for g in r.get("inputGenes", [])], "number_of_genes": int(r.get("number_of_genes", 0)),
             "number_of_genes_in_background": int(r.get("number_of_genes_in_background", 0)),
         } for r in rows if isinstance(r, dict)]
 
