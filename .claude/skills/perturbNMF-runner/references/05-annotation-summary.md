@@ -51,6 +51,213 @@ The config YAML specifies: input spectra file, output directory, LLM model, STRI
 
 ---
 
+## Blinded v3 annotation (Stage 3d — recommended path)
+
+`src/Stage3_Interpretation/C_Annotation/ProgramAnnotatorV3/` — see its `README.md` for input
+formats and the full command sequence. Use it instead of the ProgramExplorer LLM step when you
+want annotations that can be defended program by program. It runs locally (or on an
+interactive node) with the Claude Code CLI; it is not a SLURM stage.
+
+What is different from the ProgramExplorer prompt:
+- **Confounders first.** Deterministic screens (positional clusters, cell cycle, heat shock /
+  ISR / UPR / interferon sets, ribosomal and other symbol families, CRISPRi cis-targets,
+  regulator counts; plus `stage_composition` for a time course) are computed before any LLM
+  sees the program, and the model must clear each one citing a number.
+- **Layered reading:** upstream trigger / co-regulation mechanism / cellular output (plus
+  `temporal_window` for multi-condition screens), not one forced category.
+- **Evidence:** top 30 genes in detail plus all program genes ranked, 30 distinctive genes, every
+  significant regulator split by sign (per condition, in experimental order, with a
+  cross-condition log2FC profile), STRING enrichment, gene summaries, a PMID reference pool.
+- **Label rules:** no quality words; a distinguisher is a process, pathway, compartment or state
+  term, never a bare gene; several processes as a comma-separated list.
+- **Structural blinding:** one tool-less `claude -p` per prompt, prompt on stdin. Never use
+  subagents as annotators, and never put reference labels in the evidence.
+
+Gates (deterministic; a failing answer is kept as `answer.rejected.<n>.json` and re-dispatched):
+- the answer must PARSE as JSON — `claude -p` can return a truncated answer and exit 0;
+- every gene and PMID named must appear in the prompt; label <= 6 words, no banned words; no
+  coherence talk in the brief summary; every confounder assessed; the temporal window's peak
+  matches the data;
+- every cited PMID exists and is not retracted (retraction NOTICES are caught too).
+
+Operational landmines:
+- `claude -p` needs keychain and network access: run it outside any sandbox.
+- When usage-limited, `claude -p` exits nonzero with an EMPTY stderr. `dispatch_until_complete.sh`
+  rides through it; judge the run by `<dispatch>/DISPATCH_STATUS`, never by the exit code.
+- cNMF spectra files can index programs 1..K while regulator tables index 0..K-1 — verify the
+  mapping on one program before building any prompt.
+- `02_fetch_ncbi_data.py --keyword` defaults to an endothelial keyword; set it for your system.
+
+## Cross-program label disambiguation (Stage 3d, second pass)
+
+**Run this after annotation, always.** Every program is annotated by its own independent call
+(deliberately — it keeps annotations comparable and blind), so no annotator can know another
+program already took its label. Distinguishability is a property of the whole set and can only be
+fixed once the set exists. Left unfixed, a run with dozens of programs reliably produces pairs like:
+
+```
+Program A   Vascular endothelial adhesion identity
+Program B   Mature vascular endothelial identity
+```
+
+Both are defensible; neither tells you which program it is.
+
+### What the annotation prompt must ask for
+
+| Field | What it holds |
+|---|---|
+| `label_family` | the broad theme a sibling could plausibly share (`Angiogenesis`, `Cell cycle`, `UPR`) — the plainest standard name, so two siblings produce the SAME string |
+| `label_distinguisher` | what separates THIS program from a sibling — a cell-process, pathway, compartment, phase or state term. Never a bare or parenthesised gene symbol, unless the gene IS the accepted name of the process ("KLF2 flow response") |
+| `label_distinguisher_evidence` | the genes the distinguisher rests on, preferably distinctive genes |
+
+### Detect, then resolve
+
+1. **Detect — deterministic, free.** Group programs by normalised `label_family` and by
+   near-duplicate labels (word-token Jaccard >= 0.6). One prompt per colliding group.
+2. **Resolve — one blinded call per group.** The prompt sees only the colliding programs' labels,
+   families, distinguishers, slot claims, top and distinctive genes.
+3. **Apply**, keeping the original as `label_before_disambiguation`.
+
+### House rules for the rewrite
+
+```
+Angiogenesis - Tip cell        Angiogenesis - Stalk cell     <- best: a named sub-state or process
+Angiogenesis 1                 Angiogenesis 2                <- last resort only
+Angiogenesis - APLN            Angiogenesis - ESM1           <- NOT allowed: one gene looks arbitrary
+```
+
+- **Do no harm.** A label already specific and distinct from every other in the group is kept
+  verbatim; only labels that actually collide are rewritten.
+- **Standardise the shared part first**, then distinguish within it.
+- **Distinguish by process, not by gene.** No gene tag on a named sub-state ("Cell cycle - G2M",
+  not "Cell cycle - G2M (CDC20)"). Prefer the established name of a process.
+- **A bare trailing number is allowed** when nothing in the evidence separates two programs;
+  record it (`used_bare_number: true`) — a high rate means k is too large for the data.
+- **Conservatism beats specificity.** A duller label that is true beats a sharper one that is not.
+- <= 6 words; never "program", "process", "regulation of", or a quality word ("grab bag",
+  "incoherent", "heterogeneous", "mixed", "unclear", "miscellaneous"). Several processes are a
+  comma-separated list, never slashes.
+- A program that does not belong to the family is labelled from its own genes and flagged
+  `belongs_to_family: false`.
+
+```bash
+python resolve_label_collisions.py detect --dispatch <dir> --arm v3 \
+    --gene-loading <loading.csv> --out-root <groups_dir> --cell-system "<cell system>"
+bash run_blinded_annotations.sh <groups_dir> 4 "v3_group*"
+python resolve_label_collisions.py apply --dispatch <dir> --arm v3 --out-root <groups_dir>
+```
+
+---
+
+## Citation pass (Stage 3d, third pass — required)
+
+**Every gene the label rests on, and every key regulator hypothesis, gets a citable source — or
+an explicit "none found".** Run it after disambiguation, always.
+
+Why a separate pass: the annotation prompt's literature pool is one PubTator search per program
+(30 genes OR'd, capped at 25 papers), so only a small minority of label genes arrive with a
+citable sentence, while most sit in a significant enrichment term of their own program that
+nobody links to them. And support for "gene X belongs to process Y" can only be searched for
+once Y — the label — exists.
+
+**Claims:** every gene in `label_evidence.genes`, every regulator in `label_evidence.regulators`,
+and every `regulators[]` hypothesis with `high` or `medium` confidence.
+
+### Candidates, per claim — DISCOVERY FIRST (deterministic retrieval, cached)
+
+The citation a reader expects is the study that **discovered** the gene's role in the labelled
+process (first identification, the defining loss/gain-of-function, the first mechanism) — not a
+recent paper that restates it. Relevance-ranked search (PubTator, PubMed "best match") returns
+restatements almost exclusively. So candidates come from channels that surface originals, the
+way citation-graph and research tools do (Semantic Scholar / Connected Papers "prior works",
+PaperQA2 citation traversal, scite citation contexts, OpenAlex citation counts):
+
+| Channel | How | Why it finds originals |
+|---|---|---|
+| `most_cited` | OpenAlex `title_and_abstract.search:(SYMBOL OR aliases) AND (label words)`, `type:article`, by citations; over-fetch 25, keep the 8 matching the most distinct label words | foundational papers are the most cited on their topic |
+| `earliest` | same search, oldest first | first reports that never became highly cited |
+| `co_cited` | references shared by >= 2 of the topic papers (reviews included — their reference lists concentrate the originals) that name the gene | the backbone every later paper cites |
+| `curated` | UniProt FUNCTION evidence (ECO:0000269) and NCBI GeneRIFs matching the label words | curators attach the finding to the paper that reported it |
+| `topic` | PubTator `GENE AND (label words)` | current context and the cell-system match |
+| database | significant enrichment terms of THIS program containing the gene, with the PMID the gene's experimental GO annotation (QuickGO) or its gene summary ("[PubMed N]") cites | the database's own citation |
+
+**Aliases are essential** — originals use old names (KDR = Flk-1, ETV2 = ER71/Etsrp, CDH5 =
+VE-cadherin). Take MyGene aliases plus UniProt protein short/alternative names.
+
+Each paper is shown with year, journal, total citations, co-citation count, channels and a
+`[REVIEW]` flag (PubMed pubtype), oldest first, with its title/abstract sentences that name the
+gene. Per-channel quotas (curated 4, co_cited 4, most_cited 4, earliest 2, topic 3) stop one
+channel crowding out the rest. Retracted papers and retraction notices are dropped — screen the
+candidate pools, not just the annotation pool (targeted retrieval pulls in ~20x more papers, and
+retracted ones are among them).
+
+### Selection — one tool-less call per program
+
+Per claim, up to 2 supports, each with a `role`:
+- `discovery` — the original primary study that established THIS relationship (gene <->
+  labelled process); never a review, never the gene's first paper in an unrelated function;
+- `context` — primary evidence in the matching cell system, or a database term with its PMID;
+- `restatement` — the best available support when no original is on offer; never passed off as
+  a discovery.
+**"None" is valid and better than a stretched citation.** Literature picks carry a verbatim quote.
+
+### Gate (deterministic — reject and re-dispatch on any failure)
+
+1. every claim answered exactly once; a claim with no support has a `none_reason`
+2. every chosen id exists under THAT claim; a literature PMID matches its id
+3. the quote is verbatim from the offered sentence or title; an elision mark ("...") between
+   verbatim pieces is fine, paraphrase is not
+4. a database PMID is one the entry itself cites (its GO annotation, or "[PubMed N]" in its text)
+5. every chosen PMID exists and is not retracted (esummary)
+6. a `discovery` support is a literature candidate and not a review; a discovery >= 10 years
+   newer than an offered primary paper with >= 3x its citations is a WARN (possible restatement)
+
+An **id slip** (the model's `L3` actually quotes `L4`: PMID and quote match exactly one other
+paper under the same claim) is resolved to that candidate and reported as a WARN. Expect roughly
+1 program in 5 to need one retry.
+
+**Caveat to state wherever citations are shown:** retrieval uses the label's own words, so a
+citation shows "a paper links this gene to this process" — it cannot test whether the label is
+right, and a `discovery` pick is the likeliest original on offer, not a guarantee. Entailment is
+not checked mechanically.
+
+```bash
+export OPENALEX_MAILTO=you@example.org           # OpenAlex polite pool
+python build_citation_candidates.py --dispatch <dir> --arm v3 --enrichment <string_filtered.csv> \
+    [--enrichr <enrichr.tsv> ...] --ncbi-context <ncbi_context.json> --excluded-pmids <excluded.json> \
+    --cache-dir <cache> --output-dir <candidates>    # cached; rerun to fill transient gaps
+python flag_retracted_pmids.py --candidates-dir <candidates> --output <excluded_candidates.json>
+python build_citation_prompts.py --candidates <candidates> --dispatch-root <cite_dir> --arm cite \
+    --cell-system "<cell system>" --excluded-pmids <excluded_candidates.json>
+bash dispatch_until_complete.sh <cite_dir> "cite_p*" 4
+python validate_citation_answers.py --dispatch <cite_dir> --arm cite
+python verify_cited_pmids.py --dispatch <cite_dir> --arm cite --answer-key claims
+```
+
+---
+
+## Annotation viewer (HTML)
+
+`ProgramAnnotatorV3/scripts/build_annotation_viewer.py` — one self-contained HTML file (no CDN),
+from the same config the prompt builder used:
+
+```bash
+python build_annotation_viewer.py --config <config.json> --dispatch <dir> --arm v3 \
+    [--citations <cite_dir>/cite] --output annotation_viewer.html
+```
+
+- Left rail: every program, grouped by peak condition (multi-condition) or label family (single
+  condition); positional / technical programs tagged. Full-text search, `#program-N` deep links,
+  arrow keys, dark mode.
+- Per program: label / family / distinguisher and brief summary; activity by condition and the
+  temporal window; genes; the genes the label rests on with the support the citation pass chose
+  (★ discovery, ◆ context, ◐ restatement, or none); regulator volcano plots (one per condition,
+  shared axes, regulators named in the annotation labelled) with a table view; regulator
+  hypotheses with their support; confounders; layered interpretation; modules; competing
+  readings; QC (re-dispatches, validator warnings, collision-pass renames).
+
+---
+
 ## Literature Search (optional companion to Annotation)
 
 **Conda**: `progexplorer`

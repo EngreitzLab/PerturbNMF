@@ -57,6 +57,7 @@ Ask which stage to run (or infer from context). Then **read the matching referen
 | Program Analysis Plot | `program-analysis` | `NMF_Benchmarking` | `references/04-visualization.md` |
 | Perturbed Gene Plot | `perturbed-gene` | `NMF_Benchmarking` | `references/04-visualization.md` |
 | Annotation | `annotation` | `progexplorer` | `references/05-annotation-summary.md` |
+| Annotation, blinded v3 + citation pass + HTML viewer (local, Claude Code CLI) | — | any Python env with pandas + scipy | `references/05-annotation-summary.md` (ProgramAnnotatorV3) |
 | Excel Summary | `excel-summary` | `NMF_Benchmarking` | `references/05-annotation-summary.md` |
 
 **Pipeline flow:** Input (.h5ad) -> Stage 1 (Inference) -> Stage 2a (Evaluation) -> Stage 2b (Calibration) -> Stage 3 (Plots + Annotation + Summary)
