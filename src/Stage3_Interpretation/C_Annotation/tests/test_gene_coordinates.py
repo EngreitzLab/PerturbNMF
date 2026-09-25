@@ -42,3 +42,17 @@ def test_guide_names_and_assembly_check(tmp_path):
     assert parse_guide_position("non-targeting_00012") is None
     kept, dropped = guide_positions_on_this_assembly({"TARGET": [10_050, 10_120], "DISTAL": [900_000]}, tss)
     assert kept == {"TARGET": [10_050, 10_120]} and dropped == ["DISTAL"]
+
+
+def test_igvf_guide_table(tmp_path):
+    from gene_coordinates import load_guide_table_positions
+    tss = write_coordinates(tmp_path)
+    table = tmp_path / "guides.tsv"
+    table.write_text(
+        "guide_id\tspacer\ttargeting\tguide_chr\tguide_start\tguide_end\n"
+        "TARGET__AAA\tAAA\tTRUE\tchr1\t10000\t10020\n"
+        "TARGET_TSS2__CCC\tCCC\tTRUE\tchr1\t50000\t50020\n"      # alternative TSS: folded into TARGET
+        "TARGET__GGG\tGGG\tTRUE\tchr7\t10000\t10020\n"           # wrong chromosome: dropped
+        "non-targeting__TTT\tTTT\tFALSE\t\t\t\n"
+    )
+    assert load_guide_table_positions(table, tss) == {"TARGET": [10010, 50010]}

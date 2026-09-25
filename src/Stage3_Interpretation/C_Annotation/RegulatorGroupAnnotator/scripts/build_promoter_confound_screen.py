@@ -50,7 +50,8 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
 from complexes import complexes_by_gene, load_curated_complexes  # noqa: E402
 from gene_coordinates import (  # noqa: E402
-    guide_positions_on_this_assembly, load_gene_tss, parse_guide_position, promoter_neighbours,
+    guide_positions_on_this_assembly, load_gene_tss, load_guide_table_positions, parse_guide_position,
+    promoter_neighbours,
 )
 
 
@@ -92,6 +93,8 @@ def main() -> int:
     parser.add_argument("--gene-coordinates", required=True, type=Path)
     parser.add_argument("--guide-names", type=Path,
                         help="optional TSV with guide_name, target columns (hCRISPRi-v2 names carry positions)")
+    parser.add_argument("--guide-table", type=Path,
+                        help="IGVF 'guide RNA sequences' table with guide coordinates (preferred over --guide-names)")
     parser.add_argument("--knockdown", type=Path, help="measure_neighbour_knockdown.py output")
     parser.add_argument("--complexes", type=Path, help="OmniPath complexes TSV")
     parser.add_argument("--string-cache", type=Path, help="enable the STRING-partner test (network: string-db.org)")
@@ -111,6 +114,8 @@ def main() -> int:
             if parsed:
                 guide_positions.setdefault(row.target, []).append(parsed[1])
         guide_positions, _ = guide_positions_on_this_assembly(guide_positions, tss)
+    if args.guide_table:
+        guide_positions = load_guide_table_positions(args.guide_table, tss)
     knockdown = load_knockdown(args.knockdown)
     complexes = load_curated_complexes(args.complexes) if args.complexes else []
     complex_index = complexes_by_gene(complexes)

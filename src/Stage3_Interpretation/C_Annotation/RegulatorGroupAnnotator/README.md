@@ -34,8 +34,11 @@ cut. `define_regulator_groups.py` uses four steps instead:
    correction across pairs. This is a significance gate, not a magnitude cut.
 3. **Local consistency.** Regulators are clustered on shared nearest neighbours of r*, so a weak
    regulator is judged against its own neighbours.
-4. **Stability.** Bootstrapping over programs gives each member a stability. Core members are at
-   ≥ 0.3; the rest are peripheral.
+4. **Consensus.** The programs are bootstrapped 100 times and steps 1 and 3 re-run each time. The
+   final groups are clusters of how often two regulators land together, not one clustering of
+   the full data. A single clustering put CCM2 with the proteasome on teloHAEC, although it sits
+   with KRIT1 in 41% of bootstraps and with the proteasome in 26%. A member's stability is its
+   mean co-assignment with its group. Core members are at ≥ 0.3; the rest are peripheral.
 
 Curated complexes (CORUM / ComplexPortal / SIGNOR via OmniPath) are used in two ways:
 - **Calibration** (`--calibrate`). Tune `--neighbors` / `--snn-cut` on co-complex pair recovery.
@@ -53,6 +56,23 @@ precision (≈0.64), recall of co-complex pairs was:
 
 The noise correction alone raised precision at matched recall (0.64 vs 0.49).
 
+Recall / precision on co-complex pairs, with consensus grouping (the default):
+
+| Screen | Consensus SNN | Single-run SNN | GPE global cut 0.5 |
+|---|---|---|---|
+| CC k50 (192 pairs) | 0.20 / 0.68 | 0.20 / 0.64 | 0.10 / 0.63 |
+| teloHAEC k60 (50 pairs) | 0.16 / 0.67 | 0.12 / 0.46 | 0.18 / 0.56 |
+
+On teloHAEC the U-test p-values give reliability ≈ 0.8 for every target, so the noise correction
+does little there. The benchmark is also small.
+
+**Recruiting regulators without a significant effect** (`--recruit-correlated`, with the matrix
+built using `--min-significant-features 0`) is experimental. On the teloHAEC U-test table the
+program-permutation null called 10% of all pairs significant, even after centring each program.
+Sampling noise moves related programs (e.g. the cell-cycle ones) together, which a permutation
+of programs destroys, so nearly every target got recruited. It needs an NTC fake-perturbation
+null before it can be used.
+
 ## Promoter confounds
 
 CRISPRi represses a window around the guide, so a guide for gene A can silence gene B next to it.
@@ -68,9 +88,13 @@ promoter neighbours of grouped regulators were knocked down by the target's guid
   - **Shared locus:** two members that share a promoter are one locus. The better-supported one is
     kept.
 
-Guide positions are used only when they sit at the target's TSS in the coordinate file. The CC
-library names carry hg19 positions and the coordinate file is hg38, so the screen fell back to
-TSSs.
+Where the promoter search starts, in order of preference:
+1. An IGVF "guide RNA sequences" table (`--guide-table`). These are GRCh38 guide coordinates,
+   checked by chromosome. For teloHAEC that is IGVFFI9754AGFB (construct library
+   IGVFDS1298TUYG).
+2. Positions parsed from hCRISPRi-v2 guide names, used only when they sit at the target's TSS.
+   The CC names are hg19 while its coordinate file is hg38.
+3. The target's TSSs.
 
 ## Requirements
 
@@ -111,9 +135,10 @@ $PYTHON build_regulator_effect_matrix.py --regulators $D/regulators_by_condition
 $PYTHON define_regulator_groups.py --matrix-dir $G --complexes $D/omnipath_complexes.tsv --output-dir $G
 # 3. promoter confounds
 $PYTHON measure_neighbour_knockdown.py --groups $G/regulator_groups.json \
-    --gene-coordinates $D/gene_coordinates.tsv --h5mu cNMF.h5mu --condition-key day --output $G/knockdown.tsv
+    --gene-coordinates $D/gene_coordinates.tsv --h5mu cNMF.h5mu --condition-key day \
+    [--guide-table IGVF_guide_RNA_sequences.tsv.gz] --output $G/knockdown.tsv   # run where the h5mu lives (SLURM)
 $PYTHON build_promoter_confound_screen.py --groups $G/regulator_groups.json \
-    --gene-coordinates $D/gene_coordinates.tsv --knockdown $G/knockdown.tsv \
+    --gene-coordinates $D/gene_coordinates.tsv --knockdown $G/knockdown.tsv [--guide-table ...] \
     --complexes $D/omnipath_complexes.tsv --string-cache $G/cache --output $G/promoter_confounds.json
 # 4. evidence (network; cached)
 $PYTHON build_group_evidence.py --groups-dir $G --targets $D/targets.tsv \

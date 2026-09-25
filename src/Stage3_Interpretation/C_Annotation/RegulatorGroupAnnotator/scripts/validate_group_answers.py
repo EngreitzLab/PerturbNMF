@@ -9,7 +9,7 @@ Per group (`<arm>_p<group id>/answer.json` next to its `prompt.md`):
   4. every PMID cited anywhere is in the reference pool (section H)
   5. every program in `why_here.programs` is one of the section-D signature programs
   6. label rules shared with ProgramAnnotatorV3 (annotator_core/gate_rules.py) plus group words;
-     no coherence talk in the brief summary; >= 2 competing readings; every confounder assessed
+     the brief summary has the two-sentence form and no coherence talk; >= 2 competing readings; every confounder assessed
      with a valid status
 
 Usage:
@@ -122,7 +122,11 @@ def validate(group_id: int, directory: Path) -> Tuple[List[str], List[str]]:
             warnings.append(f"{tag}: why_here names program {pid}, not in the section-D signature")
 
     problems += label_problems(tag, str(payload.get("label", "")), BANNED_LABEL_WORDS)
-    problems += summary_problems(tag, str(payload.get("brief_summary", "")))
+    summary = str(payload.get("brief_summary", ""))
+    problems += summary_problems(tag, summary)
+    if not re.match(r"\s*This group of \d+ regulators", summary) or not re.search(r"\bP\d+", summary):
+        problems.append(f"{tag}: brief_summary is not 'This group of <N> regulators ... They most strongly "
+                        f"regulate P<id>—<label> ...'")
     if len(payload.get("competing_readings", [])) < 2:
         problems.append(f"{tag}: only {len(payload.get('competing_readings', []))} competing reading(s), need >= 2")
     assessed = {c.get("confounder") for c in payload.get("confounder_assessment", [])}

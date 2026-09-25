@@ -171,8 +171,13 @@ Step 6 — `label_evidence.regulators`: the members the label rests on, and why 
 Step 7 — COMPETING READINGS: at least two other readings the evidence does not exclude, each
 with what would distinguish it. Then open questions.
 
-BRIEF SUMMARY (`brief_summary`, 1-3 sentences): what the members share and what their
-knockdown does here; name the members and programs. No comment on coherence or confidence.
+BRIEF SUMMARY (`brief_summary`): exactly two sentences, in this form —
+  "This group of <N> regulators includes genes that <what they share: e.g. co-occur in the
+  Mediator complex / act in Hippo signalling / have no shared annotated function>. They most
+  strongly regulate P<id>—<program label> and P<id>—<program label>."
+<N> counts the members in section B. The programs are the top of section D, with the direction
+if it helps ("raise P36—KLF2 flow response and lower P23—Weibel-Palade body secretion"). No
+comment on coherence or confidence.
 
 # OUTPUT — JSON only, exactly this shape
 

@@ -1,8 +1,8 @@
 """Measure whether a target's CRISPRi guides also knock down the genes next to its promoter.
 
 For every grouped regulator (regulator_groups.json) and every gene with a TSS within --window bp
-of where its guides act (guide positions parsed from hCRISPRi-v2-style guide names when present,
-else the target's TSSs), compare expression in cells carrying only that target's guides with
+of where its guides act (guide coordinates from an IGVF guide table (--guide-table), else positions
+parsed from hCRISPRi-v2-style guide names, else the target's TSSs), compare expression in cells carrying only that target's guides with
 non-targeting-control cells, within each condition, then combine across conditions:
   log2fc   cell-weighted mean of per-condition log2(mean_target / mean_NTC)
   p_value  Stouffer-combined Welch t-test
@@ -41,7 +41,8 @@ from scipy.stats import norm, ttest_ind
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
 from gene_coordinates import (  # noqa: E402
-    guide_positions_on_this_assembly, load_gene_tss, parse_guide_position, promoter_neighbours,
+    guide_positions_on_this_assembly, load_gene_tss, load_guide_table_positions, parse_guide_position,
+    promoter_neighbours,
 )
 
 ROW_BLOCK = 8000
@@ -123,6 +124,8 @@ def main() -> int:
     parser.add_argument("--gene-name-key", default=None, help="var column with gene symbols (default: the var index)")
     parser.add_argument("--condition-key", default=None, help="obs column to stratify by (e.g. day)")
     parser.add_argument("--ntc-pattern", default=r"(?i)^(?:non[-_]?targeting|NTC|safe[-_]?targeting)")
+    parser.add_argument("--guide-table", type=Path,
+                        help="IGVF 'guide RNA sequences' table with guide coordinates (overrides positions in guide names)")
     parser.add_argument("--window", type=int, default=3000, help="bp between a guide site / TSS and a neighbour TSS")
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--seed", type=int, default=0)
@@ -140,6 +143,9 @@ def main() -> int:
             if parsed:
                 guide_positions.setdefault(target, []).append(parsed[1])
         guide_positions, off_assembly = guide_positions_on_this_assembly(guide_positions, tss)
+        if args.guide_table:  # GRCh38 coordinates with chromosomes: checked by chromosome instead
+            guide_positions, off_assembly = load_guide_table_positions(args.guide_table, tss), []
+        print(f"guide positions used for {len(guide_positions)} targets", flush=True)
         if off_assembly:
             print(f"guide positions of {len(off_assembly)} targets are not at their TSS in "
                   f"{args.gene_coordinates.name} (another assembly?); using their TSSs instead")

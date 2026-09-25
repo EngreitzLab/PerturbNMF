@@ -133,3 +133,31 @@ def guide_positions_on_this_assembly(guide_positions: Dict[str, List[int]], tss:
         else:
             dropped.append(target)
     return kept, sorted(dropped)
+
+
+def load_guide_table_positions(path: Path, tss: Dict[str, List[dict]]) -> Dict[str, List[int]]:
+    """target -> guide positions from an IGVF "guide RNA sequences" table (tsv or tsv.gz).
+
+    Columns used: guide_id (`<target>__<spacer>`), targeting, guide_chr, guide_start, guide_end.
+    The position is the guide midpoint. Portal files are GRCh38 with explicit chromosomes, so a
+    guide is kept when its chromosome matches the target's in the coordinate file — not by
+    distance to the gene-level TSS, because guides against an alternative TSS (`ABCG1_TSS2`) sit
+    far from it by design. Alternative-TSS suffixes are folded into the gene.
+    """
+    import csv
+    import gzip
+
+    opener = gzip.open if str(path).endswith(".gz") else open
+    positions: Dict[str, List[int]] = {}
+    with opener(path, "rt") as handle:
+        for row in csv.DictReader(handle, delimiter="\t"):
+            if str(row.get("targeting", "")).upper() != "TRUE" or not row.get("guide_start"):
+                continue
+            target = ALTERNATIVE_TSS.sub("", row["guide_id"].split("__")[0])
+            chroms = {r["chrom"] for r in tss.get(target, [])}
+            if row.get("guide_chr") in chroms:
+                positions.setdefault(target, []).append((int(row["guide_start"]) + int(row["guide_end"])) // 2)
+    return positions
+
+
+ALTERNATIVE_TSS = re.compile(r"_(?:alt_)?TSS\d*$")

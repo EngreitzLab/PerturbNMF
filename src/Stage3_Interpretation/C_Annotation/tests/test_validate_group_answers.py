@@ -26,7 +26,7 @@ SETTINGS = {"cell_system": "hiPSCs", "dataset_name": "test", "k": 50}
 
 GOOD = {
     "group_id": 7, "label": "Microprocessor", "label_family": "miRNA biogenesis", "label_distinguisher": "",
-    "brief_summary": "DGCR8 and DROSHA lower pluripotency program 29.",
+    "brief_summary": "This group of 3 regulators includes genes that form the Microprocessor. They most strongly regulate P29—Pluripotency.",
     "confounder_assessment": [{"confounder": c, "status": "ruled_out", "evidence": "x"} for c in
                               ("generic_fitness_or_stress", "differentiation_delay", "promoter_neighbour", "weak_effect_noise")],
     "shared_function": {"claim": "Microprocessor", "support_members": ["DGCR8", "DROSHA"], "pmids": ["34319763"]},

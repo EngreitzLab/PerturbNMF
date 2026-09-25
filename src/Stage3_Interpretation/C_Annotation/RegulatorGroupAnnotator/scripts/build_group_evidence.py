@@ -100,6 +100,15 @@ def effect_signature(members: list[str], effects: pd.DataFrame, adjusted: pd.Dat
     return rows
 
 
+def member_correlation(genes: list[str], effects: pd.DataFrame, reliability: pd.Series) -> dict:
+    """Member x member correlation of effect profiles, raw and noise-corrected (r / sqrt(rel_i rel_j))."""
+    genes = [g for g in genes if g in effects.index]
+    raw = np.corrcoef(effects.loc[genes].to_numpy()) if len(genes) > 1 else np.ones((len(genes), len(genes)))
+    rel = np.maximum(reliability.reindex(genes).fillna(1.0).to_numpy(), 0.2)
+    corrected = np.clip(raw / np.sqrt(np.outer(rel, rel)), -1, 1)
+    return {"genes": genes, "raw": np.round(raw, 3).tolist(), "corrected": np.round(corrected, 3).tolist()}
+
+
 def gene_summary(http: CachedHttp, symbol: str) -> str:
     data = http.get_json(f"{MYGENE}?" + urllib.parse.urlencode(
         {"q": f"symbol:{symbol}", "species": "human", "fields": "summary,name"})) or {}
@@ -140,6 +149,7 @@ def main() -> int:
     groups = json.loads((args.groups_dir / "regulator_groups.json").read_text())
     confounds = json.loads((args.groups_dir / "promoter_confounds.json").read_text())["groups"]
     effects = pd.read_csv(args.groups_dir / "effect_matrix.tsv", sep="\t", index_col=0)
+    reliability = pd.read_csv(args.groups_dir / "regulator_summary.tsv", sep="\t", index_col=0)["reliability"]
     adjusted = pd.read_csv(args.groups_dir / "significance.tsv", sep="\t", index_col=0)
     targets = pd.read_csv(args.targets, sep="\t")["target_name"].astype(str).tolist()
     complexes = load_curated_complexes(args.complexes)
@@ -240,6 +250,7 @@ def main() -> int:
             "string_edges": edges, "ppi_enrichment": ppi, "enrichment": terms[:ENRICHMENT_TERMS_SHOWN],
             "complexes": touched[:8], "reference_pool": kept,
             "rescue_tests": [t for t in group.get("rescue_tests", []) if t["accepted"]],
+            "member_correlation": member_correlation(names + excluded, effects, reliability),
         }
         context[str(gid)] = {
             "gene_summaries": summaries,
