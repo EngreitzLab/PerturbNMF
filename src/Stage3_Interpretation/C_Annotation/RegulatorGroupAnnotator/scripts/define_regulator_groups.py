@@ -20,14 +20,29 @@ though both pairs are equally related. This script replaces the single cut with 
                                   weak regulator is judged against its own neighbours, not
                                   against the strongest pairs in the screen. Average linkage on
                                   1 - SNN, cut at --snn-cut.
-  4. stability                    bootstrap over programs (all conditions of a program together):
-                                  co-assignment frequency per pair. A member's stability is its
-                                  mean co-assignment with the rest of its group; members at or
-                                  above --min-member-stability are core, the rest peripheral. A
-                                  group is kept when it has >= --min-group-size core members.
-                                  (Member-level, not the group mean: a large group with real
-                                  sub-structure, e.g. BMP receptors + SMADs + a few loose members,
-                                  would otherwise be dropped whole.)
+  4. consensus                    bootstrap over programs (all conditions of a program together),
+                                  re-running steps 1 and 3 each time, gives each pair's
+                                  co-assignment frequency. The FINAL groups are average-linkage
+                                  clusters of 1 - co-assignment, cut at --consensus-cut (default
+                                  0.7: members co-assigned in >= 30% of bootstraps on average).
+                                  A single clustering of the full data puts a gene that bridges two
+                                  modules into whichever it happens to meet first (teloHAEC: CCM2
+                                  landed with the proteasome although it co-clusters with KRIT1 in
+                                  41% of bootstraps and with the proteasome in 26%). A member's
+                                  stability is its mean co-assignment with the rest of its group;
+                                  members at or above --min-member-stability are core, the rest
+                                  peripheral. A group is kept when it has >= --min-group-size core
+                                  members.
+
+Recruitment (--recruit-correlated; build the effect matrix with --min-significant-features 0).
+A regulator with no significant effect on any single program can still move many programs a
+little, the same way as a module does. Such a regulator is recruited when it has significant
+(step 2) correlation edges to >= --recruit-min-partners regulators that do have significant
+effects; it is then grouped like any other and marked `recruited` downstream.
+EXPERIMENTAL — not trustworthy until the pair null models correlated sampling noise: on the
+teloHAEC U-test table the program-permutation null called 10% of all pairs significant and
+recruited nearly every target (sampling noise moves e.g. the cell-cycle programs together, which
+shuffling programs destroys). Needs an NTC fake-perturbation null.
 
 Curated complexes (CORUM / ComplexPortal / SIGNOR via OmniPath, annotator_core/complexes.py)
 are used twice, and both uses are reported, not hidden:
@@ -71,6 +86,8 @@ from complexes import load_curated_complexes  # noqa: E402
 CALIBRATION_NEIGHBORS = (5, 10, 15)
 CALIBRATION_SNN_CUTS = (0.6, 0.7, 0.8, 0.9)
 BASELINE_DISTANCE_CUTS = (0.3, 0.4, 0.5, 0.6, 0.7)
+CALIBRATION_CONSENSUS_CUTS = (0.6, 0.7, 0.8)
+CALIBRATION_BOOTSTRAPS = 50
 CALIBRATION_MAX_COMPLEX_SIZE = 40  # bulk "complexes" of 100+ proteins say little about a pair
 
 
@@ -202,6 +219,10 @@ def snn_clusters(x, reliability, edges, k, cut, floor, max_size) -> np.ndarray:
     return cluster(1.0 - snn_similarity(similarity, edges, k), cut, max_size)
 
 
+def consensus_clusters(consensus: np.ndarray, cut: float, max_size: int) -> np.ndarray:
+    return cluster(1.0 - consensus, cut, max_size)
+
+
 def co_assignment(labels: np.ndarray) -> np.ndarray:
     return (labels[:, None] == labels[None, :]) & (labels[:, None] >= 0)
 
@@ -244,7 +265,7 @@ def recovery(labels: np.ndarray, genes: list[str], pairs: set, tier: dict, in_an
     return row
 
 
-def calibrate(x, genes, reliability, edges, floor, max_size, complexes, tier) -> pd.DataFrame:
+def calibrate(x, genes, reliability, reliability_of, edges, blocks, floor, max_size, complexes, tier) -> pd.DataFrame:
     pairs = co_complex_pairs(genes, complexes)
     in_any = {g for p in pairs for g in p}
     rows = []
@@ -252,6 +273,12 @@ def calibrate(x, genes, reliability, edges, floor, max_size, complexes, tier) ->
         for cut in CALIBRATION_SNN_CUTS:
             labels = snn_clusters(x, reliability, edges, k, cut, floor, max_size)
             rows.append({"method": "snn", "neighbors": k, "cut": cut, **recovery(labels, genes, pairs, tier, in_any)})
+            consensus = bootstrap_consensus(x, reliability_of, edges, blocks, k, cut, floor, max_size,
+                                            CALIBRATION_BOOTSTRAPS, 0)
+            for consensus_cut in CALIBRATION_CONSENSUS_CUTS:
+                labels = consensus_clusters(consensus, consensus_cut, max_size)
+                rows.append({"method": f"snn_consensus_{consensus_cut}", "neighbors": k, "cut": cut,
+                             **recovery(labels, genes, pairs, tier, in_any)})
     r = correlation(x)
     for cut in BASELINE_DISTANCE_CUTS:
         # GeneProgramExplorer's rule: 1 - r (positive r only), average linkage, one global cut.
@@ -316,6 +343,12 @@ def main() -> int:
     parser.add_argument("--reliability-floor", type=float, default=0.2, help="regulators below this are not grouped")
     parser.add_argument("--permutations", type=int, default=20, help="program permutations for the pair null")
     parser.add_argument("--bootstraps", type=int, default=100, help="program bootstraps for stability")
+    parser.add_argument("--consensus-cut", type=float, default=0.7,
+                        help="average-linkage cut on 1 - bootstrap co-assignment (the final groups)")
+    parser.add_argument("--recruit-correlated", action="store_true",
+                        help="let regulators with no significant program effect join through correlation edges")
+    parser.add_argument("--recruit-min-partners", type=int, default=2,
+                        help="significant edges to significant regulators a recruit needs")
     parser.add_argument("--min-group-size", type=int, default=2, help="core members a group needs")
     parser.add_argument("--max-group-size", type=int, default=20)
     parser.add_argument("--min-member-stability", type=float, default=0.3,
@@ -329,10 +362,23 @@ def main() -> int:
     summary = pd.read_csv(args.matrix_dir / "regulator_summary.tsv", sep="\t", index_col=0).loc[effects.index]
     reliable = summary["reliability"] >= args.reliability_floor
     low_reliability = summary.index[~reliable].tolist()
-    genes = summary.index[reliable].tolist()
-    x = effects.loc[genes].to_numpy()
     features = effects.columns.tolist()
     blocks = program_blocks(features)
+    all_genes = summary.index.tolist()
+    x_all = effects.to_numpy()
+    null_all = permutation_null(x_all, blocks, args.permutations, args.seed)
+    anchored = (summary["n_significant"] >= 1).to_numpy()
+    candidates = np.flatnonzero(reliable.to_numpy() & (anchored | args.recruit_correlated))
+    recruited = []
+    if args.recruit_correlated:
+        candidate_edges = significant_edges(correlation(x_all[candidates]), null_all[candidates], args.edge_fdr)
+        partners = candidate_edges[:, anchored[candidates]].sum(axis=1)
+        keep = anchored[candidates] | (partners >= args.recruit_min_partners)
+        recruited = [all_genes[i] for i in candidates[keep & ~anchored[candidates]]]
+        candidates = candidates[keep]
+    eligible = candidates
+    genes = [all_genes[i] for i in eligible]
+    x = x_all[eligible]
     standard_error = summary.loc[genes, "standard_error"].to_numpy()
     reliability = summary.loc[genes, "reliability"].to_numpy()
     tier = summary.loc[genes, "strength_tier"].astype(str).to_dict()
@@ -340,23 +386,20 @@ def main() -> int:
     def reliability_of(sample: np.ndarray) -> np.ndarray:
         return np.clip(1.0 - standard_error ** 2 / np.maximum(sample.var(axis=1), 1e-12), 0.0, 1.0)
 
-    all_genes = summary.index.tolist()
-    x_all = effects.to_numpy()
-    eligible = np.flatnonzero(reliable.to_numpy())
-    null_all = permutation_null(x_all, blocks, args.permutations, args.seed)
     r = correlation(x)
     edges = significant_edges(r, null_all[eligible], args.edge_fdr)
     similarity = corrected_similarity(r, reliability, args.reliability_floor)
-    labels = snn_clusters(x, reliability, edges, args.neighbors, args.snn_cut, args.reliability_floor, args.max_group_size)
     consensus = bootstrap_consensus(x, reliability_of, edges, blocks, args.neighbors, args.snn_cut,
                                     args.reliability_floor, args.max_group_size, args.bootstraps, args.seed)
+    labels = consensus_clusters(consensus, args.consensus_cut, args.max_group_size)
     complexes = load_curated_complexes(args.complexes) if args.complexes else []
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     if args.calibrate:
         if not complexes:
             raise SystemExit("--calibrate needs --complexes")
-        table = calibrate(x, genes, reliability, edges, args.reliability_floor, args.max_group_size, complexes, tier)
+        table = calibrate(x, genes, reliability, reliability_of, edges, blocks, args.reliability_floor,
+                          args.max_group_size, complexes, tier)
         table.to_csv(args.output_dir / "grouping_calibration.tsv", sep="\t", index=False)
         print(table.to_string(index=False))
 
@@ -392,6 +435,7 @@ def main() -> int:
                 "gene": genes[i], "role": "core" if stable >= args.min_member_stability else "peripheral",
                 "stability": stable, "r_to_centroid": round(float(correlation(x[[i]], centroid)[0, 0]), 3),
                 "reliability": round(float(reliability[i]), 3), "strength_tier": tier[genes[i]],
+                "recruited": genes[i] in recruited,
                 "n_significant": int(summary.loc[genes[i], "n_significant"]),
                 "signal_rms": round(float(summary.loc[genes[i], "signal_rms"]), 3),
             })
@@ -433,6 +477,7 @@ def main() -> int:
     payload = {
         "parameters": {k: (str(v) if isinstance(v, Path) else v) for k, v in vars(args).items()},
         "n_regulators": len(summary), "n_eligible": len(genes), "n_edges": int(np.triu(edges, 1).sum()),
+        "n_recruited": len(recruited), "recruited": recruited,
         "calibration_used_for_parameters": bool(args.calibrate),
         "groups": out_groups,
         "ungrouped": sorted(set(genes) - grouped),
