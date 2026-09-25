@@ -18,10 +18,9 @@ import json
 from pathlib import Path
 
 PROMPT = """You are checking the literature and database support for an annotation that has \
-already been written. A gene program from a single-cell CRISPRi Perturb-seq screen in \
-{cell_system} was labelled, and the annotator named the genes and regulators the label rests \
-on. Your only job is to choose, for each of those claims, the best support from the candidates \
-listed under that claim. You do not re-annotate the program and you do not judge the label.
+already been written. {subject_intro} Your only job is to choose, for each of those claims, \
+the best support from the candidates listed under that claim. You do not re-annotate the \
+{subject_noun} and you do not judge the label.
 
 RULES
 1. SELECT, NEVER RECALL. Use only the candidate ids listed under the same claim (L1, D2, ...). \
@@ -56,7 +55,7 @@ and a one-line `none_reason`. A stretched citation is worse than none.
 title states it; otherwise "not stated".
 9. Respond with ONLY the JSON object specified. No preamble, no markdown fences.
 
-# PROGRAM {program_id}
+# {subject_heading} {program_id}
 - label: {label}
 - family: {family}
 - distinguisher: {distinguisher}
@@ -78,8 +77,27 @@ title states it; otherwise "not stated".
   ]}}
 """
 
+# The citation pass is the same for every annotator; only how the prompt names the annotated unit
+# differs. The claims come from the answer's `label_evidence` either way.
+SUBJECTS = {
+    "program": {
+        "subject_intro": "A gene program from a single-cell CRISPRi Perturb-seq screen in {cell_system} was "
+                         "labelled, and the annotator named the genes and regulators the label rests on.",
+        "subject_noun": "program",
+        "subject_heading": "PROGRAM",
+    },
+    "regulator_group": {
+        "subject_intro": "A group of perturbed genes from a single-cell CRISPRi Perturb-seq screen in "
+                         "{cell_system} — genes whose knockdowns shift the cell's gene programs in a similar way — was "
+                         "labelled, and the annotator named the member genes the label rests on (each member is a "
+                         "`regulator` claim).",
+        "subject_noun": "group",
+        "subject_heading": "REGULATOR GROUP",
+    },
+}
 
-def claim_block(claim: dict) -> str:
+
+def claim_block(claim: dict, subject_noun: str = "program") -> str:
     kind = claim["kind"]
     head = f"## {claim['claim_id']} — {kind} {claim['symbol']}"
     if kind == "gene" and claim.get("loading_rank"):
@@ -97,7 +115,7 @@ def claim_block(claim: dict) -> str:
             pmids = ", ".join(f"{p['pmid']} ({p['evidence_code']})" for p in entry["pmids"])
             go = f"; GO annotation of {claim['symbol']} cites PMID {pmids}" if pmids else ""
             lines.append(
-                f"- D{i} {entry['source']}: {entry['term']}{term_id} (enriched in this program, "
+                f"- D{i} {entry['source']}: {entry['term']}{term_id} (enriched in this {subject_noun}, "
                 f"FDR {entry['fdr']:.1e}; {claim['symbol']} is in the overlap){go}"
             )
     else:
@@ -127,6 +145,9 @@ def main() -> int:
     parser.add_argument("--dispatch-root", required=True, type=Path)
     parser.add_argument("--arm", required=True)
     parser.add_argument("--cell-system", required=True)
+    parser.add_argument("--subject", choices=sorted(SUBJECTS), default="program",
+                        help="what was annotated: a gene program (ProgramAnnotatorV3) or a regulator group "
+                             "(RegulatorGroupAnnotator); only the wording of the prompt changes")
     parser.add_argument("--excluded-pmids", type=Path,
                         help="flag_retracted_pool_pmids.py output; retracted/unresolved candidates are dropped")
     args = parser.parse_args()
@@ -146,10 +167,11 @@ def main() -> int:
             for entry in claim["database"]:
                 entry["pmids"] = [p for p in entry["pmids"] if p["pmid"] not in excluded]
         prompt = PROMPT.format(
+            **{k: v.format(cell_system=args.cell_system) for k, v in SUBJECTS[args.subject].items()},
             cell_system=args.cell_system, program_id=pid, label=candidates["label"],
             family=candidates["label_family"] or "(none)",
             distinguisher=candidates["label_distinguisher"] or "(none)",
-            claim_blocks="\n\n".join(claim_block(c) for c in candidates["claims"]),
+            claim_blocks="\n\n".join(claim_block(c, SUBJECTS[args.subject]["subject_noun"]) for c in candidates["claims"]),
         )
         directory = args.dispatch_root / f"{args.arm}_p{pid}"
         directory.mkdir(parents=True, exist_ok=True)

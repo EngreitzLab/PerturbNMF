@@ -58,6 +58,13 @@ formats and the full command sequence. Use it instead of the ProgramExplorer LLM
 want annotations that can be defended program by program. It runs locally (or on an
 interactive node) with the Claude Code CLI; it is not a SLURM stage.
 
+Script locations: the program-specific scripts (screens, prompt builder, annotation gate, label
+collisions, viewer) are in `ProgramAnnotatorV3/scripts/`. The dispatch scripts, PMID gates and the
+whole citation pass (`split_prompts_for_blinded_dispatch.py`, `run_blinded_annotations.sh`,
+`dispatch_until_complete.sh`, `check_answer_complete.py`, `verify_cited_pmids.py`,
+`flag_retracted_pmids.py`, `build_citation_*.py`, `validate_citation_answers.py`) are in
+`C_Annotation/annotator_core/`, shared with the regulator-group annotator.
+
 What is different from the ProgramExplorer prompt:
 - **Confounders first.** Deterministic screens (positional clusters, cell cycle, heat shock /
   ISR / UPR / interferon sets, ribosomal and other symbol families, CRISPRi cis-targets,

@@ -43,6 +43,7 @@ tables number them 0..K-1. Confirm on one program (its top genes in both) before
 
 ```bash
 cd src/Stage3_Interpretation/C_Annotation/ProgramAnnotatorV3/scripts
+CORE=../../annotator_core   # dispatch, PMID gates and citation pass, shared with RegulatorGroupAnnotator
 export PYTHON=python
 D=path/to/annotation_inputs; C=my_config.json
 
@@ -51,32 +52,32 @@ $PYTHON build_confounder_screens.py --gene-loading $D/gene_loading_top300_with_u
     --gene-coordinates $D/gene_coordinates.tsv --targets $D/targets.tsv \
     --regulators $D/regulators.csv --output $D/confounder_screens.json
 # 2. drop retracted / unresolvable papers from the reference pool
-$PYTHON flag_retracted_pmids.py --ncbi-context $D/ncbi_context.json --output $D/excluded_pool_pmids.json
+$PYTHON $CORE/flag_retracted_pmids.py --ncbi-context $D/ncbi_context.json --output $D/excluded_pool_pmids.json
 # 3. prompts, one directory per program
 $PYTHON build_annotation_prompts.py --config $C --output batch_request.json
-$PYTHON split_prompts_for_blinded_dispatch.py --batch batch_request.json --arm v3 --dispatch-root dispatch
+$PYTHON $CORE/split_prompts_for_blinded_dispatch.py --batch batch_request.json --arm v3 --dispatch-root dispatch
 # 4. answer them (detached; read dispatch/DISPATCH_STATUS, not the exit code)
-nohup bash dispatch_until_complete.sh dispatch "v3_p*" 4 > dispatch.log 2>&1 &
+nohup bash $CORE/dispatch_until_complete.sh dispatch "v3_p*" 4 > dispatch.log 2>&1 &
 # 5. gates — move failing answers to answer.rejected.<n>.json and re-run step 4 for them
 $PYTHON validate_annotation_answers.py --dispatch dispatch --arm v3 --programs 0-49
-$PYTHON verify_cited_pmids.py --dispatch dispatch --arm v3
+$PYTHON $CORE/verify_cited_pmids.py --dispatch dispatch --arm v3
 # 6. cross-program label collisions
 $PYTHON resolve_label_collisions.py detect --dispatch dispatch --arm v3 \
     --gene-loading $D/gene_loading_top300_with_uniqueness.csv --out-root dispatch_collisions \
     --cell-system "<cell_system from the config>"
-bash run_blinded_annotations.sh dispatch_collisions 4 "v3_group*"
+bash $CORE/run_blinded_annotations.sh dispatch_collisions 4 "v3_group*"
 $PYTHON resolve_label_collisions.py apply --dispatch dispatch --arm v3 --out-root dispatch_collisions
 # 7. citation pass: discovery-first candidates, screened, selected, gated
-$PYTHON build_citation_candidates.py --dispatch dispatch --arm v3 \
+$PYTHON $CORE/build_citation_candidates.py --dispatch dispatch --arm v3 \
     --enrichment $D/string_enrichment_filtered.csv --ncbi-context $D/ncbi_context.json \
     --excluded-pmids $D/excluded_pool_pmids.json --cache-dir $D/citation_cache \
     --output-dir $D/citation_candidates           # rerun once or twice: failures are not cached
-$PYTHON flag_retracted_pmids.py --candidates-dir $D/citation_candidates --output $D/excluded_candidate_pmids.json
-$PYTHON build_citation_prompts.py --candidates $D/citation_candidates --dispatch-root dispatch_citations \
+$PYTHON $CORE/flag_retracted_pmids.py --candidates-dir $D/citation_candidates --output $D/excluded_candidate_pmids.json
+$PYTHON $CORE/build_citation_prompts.py --candidates $D/citation_candidates --dispatch-root dispatch_citations \
     --arm cite --cell-system "<cell_system>" --excluded-pmids $D/excluded_candidate_pmids.json
-nohup bash dispatch_until_complete.sh dispatch_citations "cite_p*" 4 > citations.log 2>&1 &
-$PYTHON validate_citation_answers.py --dispatch dispatch_citations --arm cite
-$PYTHON verify_cited_pmids.py --dispatch dispatch_citations --arm cite --answer-key claims
+nohup bash $CORE/dispatch_until_complete.sh dispatch_citations "cite_p*" 4 > citations.log 2>&1 &
+$PYTHON $CORE/validate_citation_answers.py --dispatch dispatch_citations --arm cite
+$PYTHON $CORE/verify_cited_pmids.py --dispatch dispatch_citations --arm cite --answer-key claims
 # 8. viewer
 $PYTHON build_annotation_viewer.py --config $C --dispatch dispatch --arm v3 \
     --citations dispatch_citations/cite --output annotation_viewer.html
@@ -94,14 +95,22 @@ $PYTHON build_annotation_viewer.py --config $C --dispatch dispatch --arm v3 \
 
 ## Scripts
 
+In `scripts/` (program-specific):
+
 | Script | Does |
 |---|---|
 | `build_confounder_screens.py` | positional, cell-cycle, stress-set, symbol-family, cis-target and stage-composition screens |
 | `build_annotation_prompts.py` | the v3 prompt per program (single- or multi-condition) |
+| `validate_annotation_answers.py` | annotation gate |
+| `resolve_label_collisions.py` | cross-program label disambiguation |
+| `build_annotation_viewer.py` | the HTML viewer |
+
+In `../annotator_core/` (shared with `RegulatorGroupAnnotator`, so a fix lands in both):
+
+| Script / module | Does |
+|---|---|
 | `split_prompts_for_blinded_dispatch.py` | one isolated directory per program |
 | `run_blinded_annotations.sh`, `dispatch_until_complete.sh`, `check_answer_complete.py` | blinded `claude -p` dispatch with completeness check and usage-limit retry |
-| `validate_annotation_answers.py` | annotation gate |
 | `verify_cited_pmids.py`, `flag_retracted_pmids.py` | PMID existence / retraction checks |
-| `resolve_label_collisions.py` | cross-program label disambiguation |
-| `build_citation_candidates.py`, `build_citation_prompts.py`, `validate_citation_answers.py` | citation pass |
-| `build_annotation_viewer.py` | the HTML viewer |
+| `build_citation_candidates.py`, `build_citation_prompts.py`, `validate_citation_answers.py` | citation pass (`--subject program`, the default) |
+| `answer_io.py`, `gene_coordinates.py`, `viewer_common.py` | answer loading, coordinate loading, viewer helpers + stylesheet |

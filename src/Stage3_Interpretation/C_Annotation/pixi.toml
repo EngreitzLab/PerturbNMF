@@ -1,0 +1,16 @@
+[workspace]
+name = "perturbnmf-annotation"
+description = "Local environment for the C_Annotation annotators (ProgramAnnotatorV3, RegulatorGroupAnnotator) and their tests. On Sherlock the NMF_Benchmarking conda env covers the same packages."
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "linux-64"]
+
+[dependencies]
+python = "3.12.*"
+pandas = "*"
+numpy = "*"
+scipy = "*"
+h5py = "*"
+pytest = "*"
+
+[tasks]
+test = "pytest tests -q"

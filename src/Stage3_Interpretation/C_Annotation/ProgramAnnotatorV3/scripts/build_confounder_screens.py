@@ -29,12 +29,16 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Dict, List
 
 import pandas as pd
 from scipy.stats import binomtest, hypergeom
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
+from gene_coordinates import load_gene_coordinates  # noqa: E402
 
 TOP_N_GENES = 50
 POSITIONAL_WINDOW_BP = 10_000_000
@@ -83,28 +87,6 @@ NAMED_SETS = {
     "unfolded_protein_response": set(UNFOLDED_PROTEIN_GENES),
     "interferon_response": set(INTERFERON_GENES),
 }
-
-
-def load_gene_coordinates(path: Path) -> Dict[str, dict]:
-    """Map gene symbol -> {chrom, start, end, gene_type}, keeping the first record per symbol.
-
-    A handful of symbols (rRNA repeats, PAR genes) appear on several contigs. Taking the first
-    sorted record is arbitrary but harmless here: the positional screen asks whether the top
-    genes concentrate somewhere, and a repeat family is not what drives that signal.
-    """
-    coordinates: Dict[str, dict] = {}
-    with path.open() as handle:
-        for line in handle:
-            name, chrom, start, end, _strand, gene_type = line.rstrip("\n").split("\t")
-            if name in coordinates:
-                continue
-            coordinates[name] = {
-                "chrom": chrom,
-                "start": int(start),
-                "end": int(end),
-                "gene_type": gene_type,
-            }
-    return coordinates
 
 
 def score_positional_concentration(

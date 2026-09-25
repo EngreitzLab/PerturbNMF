@@ -55,6 +55,8 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
+from answer_io import load_answer
+from http_cache import CachedHttp
 from verify_cited_pmids import fetch_pubmed_summaries, is_retracted
 
 NON_PRIMARY_TYPES = {"Review", "Systematic Review", "Meta-Analysis", "Editorial", "Comment", "Letter"}
@@ -93,56 +95,6 @@ GENERIC_WORDS = {
     "none", "defensible", "distinguisher", "generic", "sibling",
 }
 SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9(\[])")
-
-
-class CachedHttp:
-    """GET/POST JSON with retries, cached to disk by URL+body so reruns are free."""
-
-    def __init__(self, cache_dir: Path, pause: float = 0.35):
-        self.cache_dir = cache_dir
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        self.pause = pause
-        self.cache_file = cache_dir / "http_cache.json"
-        cache = json.loads(self.cache_file.read_text()) if self.cache_file.exists() else {}
-        # A failed request is never a result: drop it so the next run retries it.
-        self.cache = {k: v for k, v in cache.items() if v is not None}
-        self.dirty = 0
-
-    def get_json(self, url: str, body: Optional[dict] = None, headers: Optional[dict] = None):
-        key = url + ("|" + json.dumps(body, sort_keys=True) if body else "")
-        if key in self.cache:
-            return self.cache[key]
-        data = json.dumps(body).encode() if body else None
-        request = urllib.request.Request(
-            url, data=data,
-            headers={"Accept": "application/json", **({"Content-Type": "application/json"} if body else {}), **(headers or {})},
-        )
-        result = None
-        for attempt in range(1, 6):
-            try:
-                with urllib.request.urlopen(request, timeout=60) as response:
-                    result = json.loads(response.read().decode() or "null")
-                break
-            except Exception as exc:
-                if attempt == 5:
-                    print(f"  giving up on {url[:100]} ({exc})")
-                time.sleep(2 * attempt)
-        time.sleep(self.pause)
-        if result is None:
-            return None
-        self.cache[key] = result
-        self.dirty += 1
-        if self.dirty % 25 == 0:
-            self.save()
-        return result
-
-    def save(self):
-        self.cache_file.write_text(json.dumps(self.cache))
-
-
-def load_answer(path: Path) -> dict:
-    raw = re.sub(r"^```(?:json)?|```$", "", path.read_text().strip(), flags=re.MULTILINE)
-    return json.loads(raw)
 
 
 def bare_symbol(value: str) -> str:
