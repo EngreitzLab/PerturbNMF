@@ -15,11 +15,9 @@ Design and rules: `.claude/skills/perturbNMF-runner/references/05-annotation-sum
   no tools, prompt on stdin, answer on stdout. Run the dispatch scripts outside any sandbox
   (keychain + network). `PYTHON` and `ANNOTATOR_MODEL` (default `sonnet`) are read from the
   environment.
-- Network for the retrieval steps: `www.ncbi.nlm.nih.gov` (PubTator3), `eutils.ncbi.nlm.nih.gov`,
-  `api.openalex.org`, `mygene.info`, `rest.uniprot.org`, `www.ebi.ac.uk` (QuickGO), `string-db.org`.
-  **OpenAlex needs a free API key** (https://openalex.org → account → API key): without one,
-  requests share a small daily budget per IP address and fail with HTTP 429 once it is spent —
-  the discovery-first citation channels then come back empty. `export OPENALEX_API_KEY=...`.
+- Network for the retrieval steps, no API keys: `www.ncbi.nlm.nih.gov` (PubTator3),
+  `eutils.ncbi.nlm.nih.gov`, `www.ebi.ac.uk` (Europe PMC, QuickGO), `mygene.info`,
+  `rest.uniprot.org`, `string-db.org`.
 
 ## Inputs (one directory, named in the config as `data_dir`)
 
@@ -45,7 +43,7 @@ tables number them 0..K-1. Confirm on one program (its top genes in both) before
 
 ```bash
 cd src/Stage3_Interpretation/C_Annotation/ProgramAnnotatorV3/scripts
-export PYTHON=python OPENALEX_API_KEY=<your free key>
+export PYTHON=python
 D=path/to/annotation_inputs; C=my_config.json
 
 # 1. deterministic screens (add --activity-by-condition + --stage-markers for a time course)
@@ -86,8 +84,8 @@ $PYTHON build_annotation_viewer.py --config $C --dispatch dispatch --arm v3 \
 
 ## What to expect
 
-- About 3 minutes per program per LLM call on Sonnet; the citation retrieval about 3 minutes per
-  program (cached, so reruns are fast).
+- About 3 minutes per program per LLM call on Sonnet; citation retrieval about 8 minutes per
+  program cold (Europe PMC reference lists dominate), under a minute when cached.
 - Roughly 1 program in 5 fails a gate once (paraphrased quote, a gene named that the prompt
   never showed, coherence talk in the summary). Keep the rejected answer, re-dispatch, re-check.
 - `claude -p` exits nonzero with an empty stderr when usage-limited; the dispatcher sleeps and

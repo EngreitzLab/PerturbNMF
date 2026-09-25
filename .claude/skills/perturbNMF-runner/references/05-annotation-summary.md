@@ -170,13 +170,15 @@ process (first identification, the defining loss/gain-of-function, the first mec
 recent paper that restates it. Relevance-ranked search (PubTator, PubMed "best match") returns
 restatements almost exclusively. So candidates come from channels that surface originals, the
 way citation-graph and research tools do (Semantic Scholar / Connected Papers "prior works",
-PaperQA2 citation traversal, scite citation contexts, OpenAlex citation counts):
+PaperQA2 citation traversal, scite citation contexts, citation counts). The backend is Europe
+PMC (EMBL-EBI) — search sorted by citations or date, abstracts, publication types and
+per-paper reference lists, with no API key:
 
 | Channel | How | Why it finds originals |
 |---|---|---|
-| `most_cited` | OpenAlex `title_and_abstract.search:(SYMBOL OR aliases) AND (label words)`, `type:article`, by citations; over-fetch 25, keep the 8 matching the most distinct label words | foundational papers are the most cited on their topic |
-| `earliest` | same search, oldest first | first reports that never became highly cited |
-| `co_cited` | references shared by >= 2 of the topic papers (reviews included — their reference lists concentrate the originals) that name the gene | the backbone every later paper cites |
+| `most_cited` | Europe PMC `(TITLE_ABS:"SYMBOL" OR aliases) AND (TITLE_ABS:label words)`, non-review, `sort=CITED desc`; over-fetch 25, keep the 8 matching the most distinct label words | foundational papers are the most cited on their topic |
+| `earliest` | same search, `sort=PUB_YEAR asc` | first reports that never became highly cited |
+| `co_cited` | references (Europe PMC `/MED/{pmid}/references`) shared by >= 2 of the topic papers — the most-cited hits, the 3 most-cited reviews (their reference lists concentrate the originals) and the PubTator hits — that name the gene | the backbone every later paper cites |
 | `curated` | UniProt FUNCTION evidence (ECO:0000269) and NCBI GeneRIFs matching the label words | curators attach the finding to the paper that reported it |
 | `topic` | PubTator `GENE AND (label words)` | current context and the cell-system match |
 | database | significant enrichment terms of THIS program containing the gene, with the PMID the gene's experimental GO annotation (QuickGO) or its gene summary ("[PubMed N]") cites | the database's own citation |
@@ -222,10 +224,9 @@ right, and a `discovery` pick is the likeliest original on offer, not a guarante
 not checked mechanically.
 
 ```bash
-export OPENALEX_API_KEY=<free key>              # required: no-key requests share a tiny daily IP budget (HTTP 429)
 python build_citation_candidates.py --dispatch <dir> --arm v3 --enrichment <string_filtered.csv> \
     [--enrichr <enrichr.tsv> ...] --ncbi-context <ncbi_context.json> --excluded-pmids <excluded.json> \
-    --cache-dir <cache> --output-dir <candidates>    # cached; rerun to fill transient gaps
+    --cache-dir <cache> --output-dir <candidates>    # no API keys; cached — rerun to fill transient gaps
 python flag_retracted_pmids.py --candidates-dir <candidates> --output <excluded_candidates.json>
 python build_citation_prompts.py --candidates <candidates> --dispatch-root <cite_dir> --arm cite \
     --cell-system "<cell system>" --excluded-pmids <excluded_candidates.json>

@@ -14,9 +14,9 @@ This is the retrieval half of a separate CITATION PASS, run after the label is f
             gene's role, not a recent paper that restates it. Recent topic hits (PubTator) mostly
             restate; so the pool is built from channels that surface the original work, the way
             citation-graph tools do (Semantic Scholar/Connected Papers "prior works", PaperQA2's
-            citation traversal, OpenAlex citation counts):
-              most_cited  OpenAlex, (symbol OR aliases) AND (label words), primary articles,
-                          sorted by citations — foundational papers are the most cited on a topic
+            citation traversal, citation counts). Backend: Europe PMC (EMBL-EBI; no key needed):
+              most_cited  (symbol OR aliases) AND (label words) in title/abstract, primary
+                          articles, sorted by citations — foundational papers are the most cited
               earliest    the same search, oldest first — first reports that are not heavily cited
               co_cited    references shared by >= 2 of the topic papers (reviews included: their
                           reference lists concentrate the originals) that name the gene
@@ -32,9 +32,8 @@ means "a paper links this gene to this process", not "the label is right".
 
 All network results are cached under --cache-dir, so a rerun costs nothing.
 
-Network: www.ncbi.nlm.nih.gov (PubTator3), api.openalex.org, mygene.info, rest.uniprot.org,
-www.ebi.ac.uk (QuickGO), eutils.ncbi.nlm.nih.gov. Set OPENALEX_MAILTO to your email to use
-OpenAlex's polite pool.
+Network: www.ncbi.nlm.nih.gov (PubTator3), mygene.info, rest.uniprot.org,
+www.ebi.ac.uk (QuickGO, Europe PMC), eutils.ncbi.nlm.nih.gov. No API keys are needed.
 
 Usage:
     python build_citation_candidates.py --dispatch <annotation_dispatch> --arm v3 \
@@ -47,7 +46,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import time
 import urllib.parse
@@ -64,13 +62,11 @@ NON_PRIMARY_TYPES = {"Review", "Systematic Review", "Meta-Analysis", "Editorial"
 PUBTATOR = "https://www.ncbi.nlm.nih.gov/research/pubtator3-api"
 UNIPROT = "https://rest.uniprot.org/uniprotkb/search"
 QUICKGO = "https://www.ebi.ac.uk/QuickGO/services/annotation/search"
-OPENALEX = "https://api.openalex.org/works"
+EUROPEPMC = "https://www.ebi.ac.uk/europepmc/webservices/rest"
 MYGENE = "https://mygene.info/v3/query"
-# OpenAlex "polite pool": identify the caller.
-POLITE_HEADERS = {"User-Agent": "perturbnmf-program-annotator"
-                  + (f" (mailto:{os.environ['OPENALEX_MAILTO']})" if os.environ.get("OPENALEX_MAILTO") else "")}
-OPENALEX_SELECT = "id,ids,title,publication_year,cited_by_count,type,primary_location,abstract_inverted_index,referenced_works"
 MOST_CITED_PER_CLAIM = 8
+REVIEWS_AS_REFERENCE_SOURCES = 3   # reviews are never cited, but their reference lists concentrate the originals
+REFERENCE_SOURCES_MAX = 14         # papers whose reference lists feed the co-citation backbone
 EARLIEST_PER_CLAIM = 4
 CO_CITED_PER_CLAIM = 5
 CURATED_PER_CLAIM = 6
@@ -113,7 +109,7 @@ class CachedHttp:
         self.dirty = 0
 
     def get_json(self, url: str, body: Optional[dict] = None, headers: Optional[dict] = None):
-        key = re.sub(r"&api_key=[^&]*", "", url) + ("|" + json.dumps(body, sort_keys=True) if body else "")
+        key = url + ("|" + json.dumps(body, sort_keys=True) if body else "")
         if key in self.cache:
             return self.cache[key]
         data = json.dumps(body).encode() if body else None
@@ -128,11 +124,8 @@ class CachedHttp:
                     result = json.loads(response.read().decode() or "null")
                 break
             except Exception as exc:
-                if "429" in str(exc) and "openalex" in url:
-                    print(f"  OpenAlex budget exhausted (HTTP 429) — set OPENALEX_API_KEY; skipping {url[:80]}")
-                    break
                 if attempt == 5:
-                    print(f"  giving up on {re.sub(r'&api_key=[^&]*', '', url)[:100]} ({exc})")
+                    print(f"  giving up on {url[:100]} ({exc})")
                 time.sleep(2 * attempt)
         time.sleep(self.pause)
         if result is None:
@@ -226,14 +219,19 @@ def load_enrichment(string_paths: List[Path], enrichr_paths: List[Path]) -> pd.D
     return enrichment[enrichment["fdr"] < ENRICHMENT_FDR] if len(enrichment) else enrichment
 
 
-def openalex_abstract(work: dict) -> str:
-    inverted = work.get("abstract_inverted_index") or {}
-    positions = sorted((pos, token) for token, spots in inverted.items() for pos in spots)
-    return " ".join(token for _, token in positions)
-
-
-def openalex_pmid(work: dict) -> str:
-    return str((work.get("ids") or {}).get("pmid") or "").rstrip("/").split("/")[-1]
+def europepmc_work(record: dict) -> dict:
+    """A Europe PMC `core` record reduced to what the candidate list needs."""
+    abstract = re.sub(r"<[^>]+>", " ", record.get("abstractText") or "")
+    journal = ((record.get("journalInfo") or {}).get("journal") or {}).get("title") or ""
+    return {
+        "pmid": str(record.get("pmid") or ""),
+        "title": re.sub(r"<[^>]+>", "", record.get("title") or "").strip(),
+        "abstract": re.sub(r"\s+", " ", abstract).strip(),
+        "year": str(record.get("pubYear") or ""),
+        "cited_by": record.get("citedByCount"),
+        "journal": journal,
+        "pubtypes": (record.get("pubTypeList") or {}).get("pubType") or [],
+    }
 
 
 class SupportFinder:
@@ -274,29 +272,29 @@ class SupportFinder:
             self.generifs[symbol] = [generif] if isinstance(generif, dict) else generif
         return self.aliases[symbol]
 
-    def openalex_url(self, query: str) -> str:
-        """OpenAlex needs a (free) API key: without one, requests share a small daily budget per
-        IP address and fail with HTTP 429 once it is spent. Set OPENALEX_API_KEY."""
-        key = os.environ.get("OPENALEX_API_KEY")
-        return f"{OPENALEX}?{query}" + (f"&api_key={urllib.parse.quote(key)}" if key else "")
+    def europepmc_search(self, names: List[str], words: List[str], sort: str, n: int,
+                         reviews: bool = False) -> List[dict]:
+        gene = " OR ".join(f'TITLE_ABS:"{x}"' for x in names)
+        process = " OR ".join(f"TITLE_ABS:{w}" for w in words)
+        kind = 'PUB_TYPE:"Review"' if reviews else 'NOT PUB_TYPE:"Review" NOT PUB_TYPE:"Book"'
+        query = f"({gene}) AND ({process}) AND SRC:MED {'AND ' if reviews else ''}{kind}"
+        data = self.http.get_json(f"{EUROPEPMC}/search?" + urllib.parse.urlencode(
+            {"query": query, "format": "json", "resultType": "core", "pageSize": n, "sort": sort})) or {}
+        return [europepmc_work(r) for r in (data.get("resultList") or {}).get("result") or [] if r.get("pmid")]
 
-    def openalex_search(self, names: List[str], words: List[str], sort: str, n: int) -> List[dict]:
-        quoted = [f'"{x}"' if ("-" in x or " " in x) else x for x in names]
-        search = f"({' OR '.join(quoted)}) AND ({' OR '.join(words)})"
-        query = urllib.parse.urlencode({
-            "filter": f"title_and_abstract.search:{search},type:article",
-            "sort": sort, "per-page": n, "select": OPENALEX_SELECT,
-        })
-        data = self.http.get_json(self.openalex_url(query), headers=POLITE_HEADERS) or {}
-        return data.get("results") or []
-
-    def openalex_by(self, key: str, values: List[str]) -> List[dict]:
+    def europepmc_by_pmids(self, pmids: List[str]) -> List[dict]:
         works = []
-        for start in range(0, len(values), 10):  # small pages: big responses get cut off in transit
-            chunk = "|".join(v.rstrip("/").split("/")[-1] for v in values[start:start + 10])
-            query = urllib.parse.urlencode({"filter": f"{key}:{chunk}", "per-page": 10, "select": OPENALEX_SELECT})
-            works += (self.http.get_json(self.openalex_url(query), headers=POLITE_HEADERS) or {}).get("results") or []
+        for start in range(0, len(pmids), 20):
+            query = " OR ".join(f"EXT_ID:{p}" for p in pmids[start:start + 20]) + " AND SRC:MED"
+            data = self.http.get_json(f"{EUROPEPMC}/search?" + urllib.parse.urlencode(
+                {"query": query, "format": "json", "resultType": "core", "pageSize": 25})) or {}
+            works += [europepmc_work(r) for r in (data.get("resultList") or {}).get("result") or [] if r.get("pmid")]
         return works
+
+    def europepmc_references(self, pmid: str) -> List[str]:
+        data = self.http.get_json(f"{EUROPEPMC}/MED/{pmid}/references?format=json&pageSize=1000") or {}
+        return [str(r["id"]) for r in (data.get("referenceList") or {}).get("reference") or []
+                if r.get("source") == "MED" and r.get("id")]
 
     def curated_pmids(self, symbol: str, words: List[str]) -> List[str]:
         query = urllib.parse.urlencode({
@@ -322,7 +320,7 @@ class SupportFinder:
         papers: Dict[str, dict] = {}
 
         def add(work: dict, channel: str, cocited: int = 0):
-            pmid = openalex_pmid(work)
+            pmid = work.get("pmid")
             if not pmid or pmid in self.excluded:
                 return
             entry = papers.setdefault(pmid, {"work": work, "channels": [], "cocited": 0})
@@ -333,28 +331,31 @@ class SupportFinder:
         # An OR over the label words is loose (SMAD4 AND "endothelial OR specification" returns
         # cancer papers), so over-fetch and keep the hits that match the most distinct label words.
         def label_overlap(work):
-            text = ((work.get("title") or "") + " " + openalex_abstract(work)).lower()
+            text = (work["title"] + " " + work["abstract"]).lower()
             return sum(w in text for w in words)
-        pool = self.openalex_search(names, words, "cited_by_count:desc", 25)
-        most_cited = sorted(pool, key=lambda w: (-label_overlap(w), -(w.get("cited_by_count") or 0)))[:MOST_CITED_PER_CLAIM]
+        pool = self.europepmc_search(names, words, "CITED desc", 25)
+        most_cited = sorted(pool, key=lambda w: (-label_overlap(w), -(w.get("cited_by") or 0)))[:MOST_CITED_PER_CLAIM]
         for work in most_cited:
             add(work, "most_cited")
-        for work in self.openalex_search(names, words, "publication_date", EARLIEST_PER_CLAIM):
+        for work in self.europepmc_search(names, words, "PUB_YEAR asc", EARLIEST_PER_CLAIM):
             add(work, "earliest")
-        # Co-citation backbone over the topic papers (most-cited hits plus the PubTator topic hits).
-        topic_works = most_cited + self.openalex_by("pmid", sorted({t["pmid"] for t in topic}))
+        # Co-citation backbone: references shared by the most-cited hits, the most-cited reviews
+        # and the PubTator topic hits.
+        reviews = self.europepmc_search(names, words, "CITED desc", REVIEWS_AS_REFERENCE_SOURCES, reviews=True)
+        sources = list(dict.fromkeys([w["pmid"] for w in most_cited + reviews] + [t["pmid"] for t in topic]))
         counts: Dict[str, int] = {}
-        for work in topic_works:
-            for ref in work.get("referenced_works") or []:
+        for source in sources[:REFERENCE_SOURCES_MAX]:
+            for ref in set(self.europepmc_references(source)):
                 counts[ref] = counts.get(ref, 0) + 1
         shared = [ref for ref, n in sorted(counts.items(), key=lambda kv: -kv[1]) if n >= 2][:40]
         name_pattern = re.compile(r"(?<![A-Za-z0-9-])(" + "|".join(re.escape(n) for n in names) + r")(?![A-Za-z0-9-])", re.I)
-        backbone = [w for w in self.openalex_by("openalex", shared)
-                    if name_pattern.search((w.get("title") or "") + " " + openalex_abstract(w))]
-        backbone.sort(key=lambda w: -counts.get(w["id"], 0))
+        backbone = [w for w in self.europepmc_by_pmids(shared)
+                    if name_pattern.search(w["title"] + " " + w["abstract"])
+                    and "Review" not in w["pubtypes"]]
+        backbone.sort(key=lambda w: -counts.get(w["pmid"], 0))
         for work in backbone[:CO_CITED_PER_CLAIM]:
-            add(work, "co_cited", counts.get(work["id"], 0))
-        for work in self.openalex_by("pmid", self.curated_pmids(symbol, words)):
+            add(work, "co_cited", counts.get(work["pmid"], 0))
+        for work in self.europepmc_by_pmids(self.curated_pmids(symbol, words)):
             add(work, "curated")
         for t in topic:
             papers.setdefault(t["pmid"], {"work": None, "channels": [], "cocited": 0})
@@ -370,15 +371,13 @@ class SupportFinder:
                     s.update(channels=entry["channels"], cited_by=None, cocited=0, journal="")
                 literature += sentences[:2]
                 continue
-            title = work.get("title") or ""
-            text = f"{title}. {openalex_abstract(work)}"
+            text = f"{work['title']} {work['abstract']}"
             hits = [x.strip() for x in SENTENCE_SPLIT.split(text) if name_pattern.search(x) and len(x) < 600]
             hits.sort(key=lambda x: -sum(w in x.lower() for w in words))
-            source = ((work.get("primary_location") or {}).get("source") or {}).get("display_name") or ""
             for sentence in hits[:2]:
                 literature.append({
-                    "pmid": pmid, "sentence": sentence, "title": title, "year": str(work.get("publication_year") or ""),
-                    "journal": source, "cited_by": work.get("cited_by_count"), "cocited": entry["cocited"],
+                    "pmid": pmid, "sentence": sentence, "title": work["title"], "year": work["year"],
+                    "journal": work["journal"], "cited_by": work.get("cited_by"), "cocited": entry["cocited"],
                     "channels": entry["channels"],
                 })
         # Fill each channel's quota (a paper found by several channels counts once, for the first
