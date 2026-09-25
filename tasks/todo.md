@@ -29,10 +29,10 @@ Constraints / decisions
 - [x] measure_neighbour_knockdown.py + build_promoter_confound_screen.py (assembly check, shared-locus tie-break)
 - [x] build_group_evidence.py (signature w/ V3 labels, STRING vs screened background, complexes, pool)
 - [x] build_group_prompts.py + validate_group_answers.py
-- [ ] build_group_viewer.py (subagent)
+- [x] build_group_viewer.py (subagent; 0 gate failures on 5 groups)
 - [x] tests: 15 pass (synthetic grouping, promoter geometry, gate)
 - [x] real run CC k50: calibration table; 5 groups dispatched, all pass gate
-- [ ] citation pass on groups (running)
+- [x] citation pass on groups 5, 15: gate 0 problems, 7 PMIDs verified, 0 defects; viewer rebuilt with support
 - [x] docs: README, 05-annotation-summary.md, SKILL.md, CLAUDE.md mermaid; drift check clean
 
 ## Evidence
@@ -42,4 +42,7 @@ Constraints / decisions
   22/26 measurable neighbours knocked down. CC guide names are hg19 vs hg38 coordinates → TSS fallback.
 
 ## Review
-(fill in at the end)
+- Built and verified end to end on CC k50 (5 groups annotated, 2 with citation pass). V3 unchanged.
+- Open: first-pass pool is thin (co-mention only) → members like TAOK1 under-called until the
+  citation pass; gate cannot catch coherence talk without keywords; drift-check script is
+  hard-coded to the Oak path (no-op locally).
