@@ -135,7 +135,8 @@ Step 1 — RULE OUT THE CONFOUNDERS. For each item give a status and the evidenc
     moves every stage program at once)
   promoter_neighbour (section B/C caveats; excluded members are already gone)
   weak_effect_noise (members with low reliability or weak effects held together loosely)
-  other (anything else you can argue — name it)
+  other (another NON-biological or non-specific reason they co-cluster — name it; a shared
+    function is not a confounder, it goes in Step 2)
 Status is one of: primary_explanation, contributing, ruled_out, cannot_assess. If one is the
 primary explanation, say so and label the group by it — do not build a shared-function story on it.
 
