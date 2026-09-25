@@ -45,7 +45,8 @@ def load_gene_tss(path: Path) -> Dict[str, List[dict]]:
             name, chrom, start, end, strand, gene_type = line.rstrip("\n").split("\t")
             tss = int(start) if strand == "+" else int(end)
             records.setdefault(name, []).append(
-                {"chrom": chrom, "tss": tss, "strand": strand, "gene_type": gene_type}
+                {"chrom": chrom, "tss": tss, "strand": strand, "gene_type": gene_type,
+                 "start": int(start), "end": int(end)}
             )
     return records
 
@@ -90,6 +91,19 @@ def is_readthrough_of(neighbour: str, target: str) -> bool:
     return neighbour != target and target in neighbour.split("-")
 
 
+SAME_UNIT_TSS_BP = 1000
+
+
+def shares_target_promoter(record: dict, target_records: List[dict]) -> bool:
+    """Another annotation of the target's own transcriptional unit, not a separate gene a guide
+    could silence by accident: same strand, overlapping gene body, TSS within SAME_UNIT_TSS_BP of
+    the target's (gene-level TSSs are only approximate). E.g. the unnamed protein-coding ENSG that
+    starts at an internal KRIT1 TSS, 223 bp from KRIT1's annotated one."""
+    return any(record["chrom"] == t["chrom"] and record["strand"] == t["strand"]
+               and record["start"] <= t["end"] and t["start"] <= record["end"]
+               and abs(record["tss"] - t["tss"]) <= SAME_UNIT_TSS_BP for t in target_records)
+
+
 def promoter_neighbours(target: str, tss: Dict[str, List[dict]], guide_positions: Dict[str, List[int]],
                         window: int, gene_types=DEFAULT_NEIGHBOUR_TYPES) -> List[dict]:
     """Genes with a TSS within `window` bp of any site where the target's guides act."""
@@ -101,11 +115,14 @@ def promoter_neighbours(target: str, tss: Dict[str, List[dict]], guide_positions
         by_chrom.setdefault(site["chrom"], []).append(site)
     target_record = min(tss.get(target, []), key=lambda r: min(abs(r["tss"] - s["position"]) for s in sites), default=None)
     found: Dict[str, dict] = {}
+    own = tss.get(target, [])
     for gene, records in tss.items():
         if gene == target or is_readthrough_of(gene, target):
             continue
         for record in records:
             if record["gene_type"] not in gene_types or record["chrom"] not in by_chrom:
+                continue
+            if shares_target_promoter(record, own):
                 continue
             distance = min(abs(record["tss"] - s["position"]) for s in by_chrom[record["chrom"]])
             if distance <= window and (gene not in found or distance < found[gene]["distance"]):

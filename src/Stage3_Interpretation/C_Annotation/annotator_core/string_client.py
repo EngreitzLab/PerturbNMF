@@ -52,7 +52,9 @@ class StringClient:
         """STRING preferred name -> the symbol it was queried as."""
         back = {s: s for s in symbols}
         for query, row in self.id_records(symbols).items():
-            back[row.get("preferredName", query)] = query
+            preferred = row.get("preferredName", query)
+            if preferred not in symbols:  # a symbol that was itself queried keeps its own name
+                back[preferred] = query
         return back
 
     def network(self, symbols: List[str], required_score: int = 400) -> List[dict]:

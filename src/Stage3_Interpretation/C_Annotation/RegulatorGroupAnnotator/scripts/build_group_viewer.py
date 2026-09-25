@@ -5,14 +5,15 @@ Same layout as the ProgramAnnotatorV3 viewer (build_annotation_viewer.py) and th
 by label family, and one group at a time in the main pane, with full-text search, #group-N deep
 links, arrow-key navigation and dark mode. No CDN and no external files.
 
-Per group: label, family and distinguisher, coherence, brief summary; members by the role the
-annotator gave them (core_explained / consistent / unexplained — the unexplained ones are the
-hypotheses) with their clustering role and promoter caveats, and the members the promoter screen
-excluded, struck through with the reason; a heatmap of every member's log2FC on the group's
-effect signature (program x condition); the shared function and why the group forms here; the
-curated complexes, STRING network and enrichment behind it; citations (the answer's, plus the
-citation pass per member when given); confounder assessment, competing readings, open questions
-and the gate's QC.
+Per group, in reading order: label, family and distinguisher, and the two-sentence brief summary;
+the effect signature as the main figure — every member's log2FC on the programs the group moves,
+each row annotated with its clustering role (core / peripheral / rescued / recruited), the
+annotator's role (core_explained / consistent / unexplained), stability, reliability and promoter
+caveat, and the members the promoter screen excluded greyed at the bottom — with the member x
+member correlation of effect profiles (raw or noise-corrected) in the same row order; the shared
+function; the unexplained members' hypotheses; then why the group forms here, the curated
+complexes, STRING network and enrichment, citations (plus the citation pass per member when
+given), confounder assessment, competing readings, open questions and the gate's QC.
 
 Inputs are the config build_group_prompts.py used, the dispatch directory and, optionally, the
 citation-pass dispatch prefix and the ProgramAnnotatorV3 viewer to link program ids to.
@@ -32,7 +33,10 @@ import re
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+from scipy.cluster.hierarchy import leaves_list, linkage
+from scipy.spatial.distance import squareform
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
@@ -67,6 +71,42 @@ def effect_rows(genes: list, features: list, effects: pd.DataFrame, adjusted: pd
     return rows
 
 
+def member_correlation(genes: list, effects: pd.DataFrame, reliability: dict) -> dict:
+    """Fallback for evidence built before `member_correlation` existed: the same raw and
+    noise-corrected (r / sqrt(rel_i rel_j)) correlations build_group_evidence.py writes."""
+    genes = [g for g in genes if g in effects.index]
+    raw = np.corrcoef(effects.loc[genes].to_numpy()) if len(genes) > 1 else np.ones((len(genes), len(genes)))
+    rel = np.maximum(np.array([reliability.get(g, 1.0) for g in genes], dtype=float), 0.2)
+    corrected = np.clip(raw / np.sqrt(np.outer(rel, rel)), -1, 1)
+    return {"genes": genes, "raw": np.round(raw, 3).tolist(), "corrected": np.round(corrected, 3).tolist()}
+
+
+def cluster_order(genes: list, correlation: dict) -> list:
+    """Members in average-linkage order of 1 - raw r, so similar profiles sit together."""
+    index = {g: i for i, g in enumerate(correlation["genes"])}
+    known = [g for g in genes if g in index]
+    if len(known) < 3:
+        return known + [g for g in genes if g not in index]
+    raw = np.array(correlation["raw"])[np.ix_([index[g] for g in known], [index[g] for g in known])]
+    distance = np.clip(1 - raw, 0, 2)
+    np.fill_diagonal(distance, 0)
+    tree = linkage(squareform((distance + distance.T) / 2, checks=False), method="average")
+    return [known[i] for i in leaves_list(tree)] + [g for g in genes if g not in index]
+
+
+def member_rows(evidence: dict, grouped: dict, correlation: dict) -> list:
+    """One row per member (clustered order), then the excluded members: everything the effect
+    and correlation heatmaps annotate a row with."""
+    rows = {m["gene"]: {**m, "excluded": False} for m in evidence.get("members", [])}
+    for entry in evidence.get("excluded", []):
+        stats = grouped.get(entry["gene"], {})
+        rows[entry["gene"]] = {**stats, "gene": entry["gene"], "excluded": True, "reasons": entry.get("reasons", []),
+                               "promoter": {"decision": "exclude", "reasons": entry.get("reasons", [])}}
+    order = cluster_order([m["gene"] for m in evidence.get("members", [])], correlation)
+    order += [e["gene"] for e in evidence.get("excluded", [])]
+    return [{**rows[g], "summary": str(rows[g].get("summary", ""))[:300]} for g in order]
+
+
 def group_fields(gid: int, evidence: dict, sources: dict) -> dict:
     directory = sources["dispatch"] / f"{sources['arm']}_p{gid}"
     answer = load_answer(directory / "answer.json")
@@ -75,6 +115,11 @@ def group_fields(gid: int, evidence: dict, sources: dict) -> dict:
     signature = evidence.get("signature", [])
     features = [s["feature"] for s in signature]
     genes = [m["gene"] for m in members] + [e["gene"] for e in excluded]
+    grouped = sources["grouped"].get(gid, {})
+    correlation = evidence.get("member_correlation") or member_correlation(
+        genes, sources["effects"], {**sources["reliability"], **{m["gene"]: m["reliability"] for m in members
+                                                                  if m.get("reliability") is not None}})
+    rows = member_rows(evidence, grouped, correlation)
     try:
         problems, warnings = validate(gid, directory)
     except OSError as exc:  # no prompt.md next to the answer: the gate cannot run
@@ -103,9 +148,11 @@ def group_fields(gid: int, evidence: dict, sources: dict) -> dict:
         "open_questions": answer.get("open_questions", []),
         "members": members,
         "excluded": excluded,
+        "rows": rows,
+        "correlation": correlation,
         "stats": {k: evidence.get(k) for k in ("stability", "mean_raw_r", "mean_corrected_r", "strength_tiers")},
         "signature": signature,
-        "effects": effect_rows(genes, features, sources["effects"], sources["adjusted"]),
+        "effects": effect_rows([r["gene"] for r in rows], features, sources["effects"], sources["adjusted"]),
         "complexes": evidence.get("complexes", []),
         "edges": evidence.get("string_edges", []),
         "ppi": evidence.get("ppi_enrichment"),
@@ -132,7 +179,13 @@ def load_from_config(args) -> tuple:
     payload = json.loads((groups_dir / "group_evidence.json").read_text())
     groups_file = groups_dir / "regulator_groups.json"
     grouping = json.loads(groups_file.read_text()) if groups_file.exists() else {}
+    summary_file = groups_dir / "regulator_summary.tsv"
+    reliability = (pd.read_csv(summary_file, sep="\t", index_col=0)["reliability"].to_dict()
+                   if summary_file.exists() else {})
     sources = {
+        # group id -> gene -> the clustering statistics, for members the promoter screen excluded
+        "grouped": {g["group_id"]: {m["gene"]: m for m in g["members"]} for g in grouping.get("groups", [])},
+        "reliability": reliability,
         "dispatch": args.dispatch, "arm": args.arm, "citations": args.citations,
         "effects": pd.read_csv(groups_dir / "effect_matrix.tsv", sep="\t", index_col=0),
         "adjusted": pd.read_csv(groups_dir / "significance.tsv", sep="\t", index_col=0),
@@ -163,10 +216,15 @@ PAGE = """<!doctype html>
 """ + VIEWER_CSS + """
 .chip.unexplained { border: 1.5px dashed var(--warning); font-weight: 650; }
 .chip.excluded { text-decoration: line-through; color: var(--muted); }
-.members .role { font-size: 11px; color: var(--muted); margin-left: 2px; }
-.members li { margin: 3px 0; list-style: none; }
-.members ul { margin: 0; padding: 0; }
+.heat th.ann, .heat td.ann { font-size: 11.5px; padding: 0 8px 0 0; white-space: nowrap; text-align: left; vertical-align: middle; }
+.heat td.ann.num { font-variant-numeric: tabular-nums; color: var(--text-soft); }
+.heat td.g, .heat td.ann { border-bottom: 1px solid var(--border); }
+.heat .chip.unexplained { margin: 0; padding: 0 5px; }
+.corr td.c { width: 44px; }
+.corr th.rot { height: 70px; vertical-align: bottom; }
+.corr th.rot span { writing-mode: vertical-rl; transform: rotate(180deg); font-family: var(--mono); font-size: 11px; }
 .hyp { border-left: 3px solid var(--warning); }
+.tip { white-space: pre-line; }
 .heat tr.excl td.g { color: var(--muted); text-decoration: line-through; }
 .heat tr.excl td.c { opacity: .45; }
 .heat th a { text-decoration: none; }
@@ -257,80 +315,96 @@ function inkFor(v, scale) { return Math.abs(v) / scale > 0.55 ? "#ffffff" : "var
 function memberInfo(g) { return Object.fromEntries(g.members.map(m => [m.gene, m])); }
 function roleOf(g) { return Object.fromEntries(g.roles.map(r => [r.symbol, r])); }
 
-// ---- members ------------------------------------------------------------------------------
-const ROLES = [
-  ["core_explained", "Core — known function is the shared function"],
-  ["consistent", "Consistent — compatible, not established"],
-  ["unexplained", "Unexplained — hypothesis"],
-];
+// ---- members: row annotations shared by both heatmaps -------------------------------------
+const ANNOTATED = {
+  core_explained: ["core", "var(--accent-text)", "known function is the shared function"],
+  consistent: ["consistent", "var(--bar)", "compatible with the shared function, not established"],
+  unexplained: ["unexplained", "var(--serious)", "no evidence links it to the others — see the hypotheses"],
+};
 function clusterRole(m) {
   if (!m) return "";
   if (m.role === "rescued") return `rescued via ${m.rescued_via || "a complex"}`;
-  return m.role + (m.stability != null ? ` · stability ${m.stability.toFixed(2)}` : "");
+  return m.role || "";
 }
 function promoterFlag(m) {
   if (!m || !m.promoter || m.promoter.decision !== "flag") return "";
   const why = (m.promoter.reasons || []).join("; ");
-  return ` <span class="flag" style="color:var(--serious)" data-tip="${esc("Promoter caveat: " + why)}">⚠ promoter</span>`;
+  return `<span class="flag" style="color:var(--serious)" data-tip="${esc("Promoter caveat: " + why)}">⚠</span>`;
 }
-function membersCard(g) {
-  const info = memberInfo(g), byRole = {};
-  g.roles.forEach(r => (byRole[r.role] = byRole[r.role] || []).push(r));
-  const noRole = g.members.filter(m => !g.roles.some(r => r.symbol === m.gene));
-  const cols = ROLES.map(([role, title]) => {
-    const list = (byRole[role] || []).map(r => `<li><span class="chip${role === "unexplained" ? " unexplained" : role === "core_explained" ? " hit" : ""}">${esc(r.symbol)}</span>
-        <span class="role">${esc(clusterRole(info[r.symbol]))}${r.confidence ? ` · ${esc(r.confidence)} conf.` : ""}</span>${promoterFlag(info[r.symbol])}</li>`).join("");
-    return `<div><h4 class="small muted" style="margin:0 0 4px;text-transform:uppercase;letter-spacing:.05em">${title} (${(byRole[role] || []).length})</h4><ul>${list || '<li class="small muted">none</li>'}</ul></div>`;
-  }).join("");
-  const missing = noRole.length ? `<p class="small" style="color:var(--critical)">Members with no role in the answer: ${chips(noRole.map(m => m.gene))}</p>` : "";
-  const excluded = g.excluded.length ? `<p class="small muted" style="margin:12px 0 4px">Excluded by the promoter screen — not interpreted</p><ul>${
-    g.excluded.map(e => `<li><span class="chip excluded">${esc(e.gene)}</span> <span class="small muted">${esc((e.reasons || []).join("; "))}</span></li>`).join("")}</ul>` : "";
-  const notes = g.roles.filter(r => r.role !== "unexplained" && r.hypothesis).map(r =>
-    `<li><b style="font-family:var(--mono)">${esc(r.symbol)}</b>: ${esc(r.hypothesis)}${r.what_would_test_it ? ` <span class="muted">— test: ${esc(r.what_would_test_it)}</span>` : ""}</li>`).join("");
-  return `<div class="card members"><h3>Members (${g.members.length})</h3><div class="grid3">${cols}</div>${missing}${excluded}
-    ${notes ? `<p class="small muted" style="margin:12px 0 4px">Notes on explained members</p><ul class="small" style="padding-left:18px">${notes.replace(/<li>/g, '<li style="list-style:disc">')}</ul>` : ""}</div>`;
+function annotatedCell(m, r) {
+  if (m.excluded) return `<span class="small muted">excluded</span>`;
+  if (!r) return `<span class="small" style="color:var(--critical)" data-tip="The answer gives this member no role">no role</span>`;
+  const [text, colour, meaning] = ANNOTATED[r.role] || [r.role, "var(--muted)", ""];
+  return `<span class="small${r.role === "unexplained" ? " chip unexplained" : ""}" style="color:${colour};font-weight:650" data-tip="${esc(`${pretty(r.role)}: ${meaning}${r.confidence ? " · " + r.confidence + " confidence" : ""}`)}">${text}</span>`;
+}
+function memberTip(m, r) {
+  const f = x => x == null ? "—" : Number(x).toFixed(2);
+  return [m.gene + (m.excluded ? " — EXCLUDED by the promoter screen: " + (m.reasons || []).join("; ") : ""),
+    `clustering: ${clusterRole(m) || "—"}${m.recruited ? " (recruited: no significant program effect of its own)" : ""}`,
+    `stability ${f(m.stability)} · r to group mean ${f(m.r_to_centroid)} · reliability ${f(m.reliability)}`,
+    m.strength_tier ? `effect strength: ${m.strength_tier} (${m.n_significant} significant program effects)` : "",
+    r ? `annotated: ${pretty(r.role)}${r.confidence ? ", " + r.confidence + " confidence" : ""}` : "",
+    r && r.hypothesis ? `note: ${r.hypothesis}` : "",
+    m.promoter && m.promoter.decision === "flag" ? `promoter caveat: ${(m.promoter.reasons || []).join("; ")}` : "",
+    m.connected_to ? `connected to: ${m.connected_to.join(", ") || "none"}` : "",
+    m.summary ? m.summary : ""].filter(Boolean).join("\\n");
+}
+function rowHead(g, m, roles) {
+  const r = roles[m.gene], f = x => x == null ? "—" : Number(x).toFixed(2);
+  const via = m.role === "rescued" ? `rescued<span class="muted"> via ${esc(String(m.rescued_via || "").slice(0, 18))}</span>` : esc(m.role || "");
+  return `<td class="g" data-tip="${esc(memberTip(m, r))}">${esc(m.gene)} ${promoterFlag(m)}</td>
+    <td class="ann">${via}${m.recruited ? ` <span class="flag" style="color:var(--muted)" data-tip="Recruited: no significant program effect of its own; grouped by its profile">recruited</span>` : ""}</td>
+    <td class="ann">${annotatedCell(m, r)}</td><td class="ann num">${f(m.stability)}</td><td class="ann num">${f(m.reliability)}</td>`;
 }
 function hypothesesCard(g) {
   const list = g.roles.filter(r => r.role === "unexplained");
   if (!list.length) return "";
   const info = memberInfo(g);
   return `<div class="card hyp"><h3>Unexplained members — the hypotheses (${list.length})</h3>${list.map(r => `
-    <div style="margin:0 0 10px"><span class="chip unexplained">${esc(r.symbol)}</span> <span class="small muted">${esc(clusterRole(info[r.symbol]))} · ${esc(r.confidence)} confidence</span>${promoterFlag(info[r.symbol])}
+    <div style="margin:0 0 10px"><span class="chip unexplained">${esc(r.symbol)}</span> <span class="small muted">${esc(clusterRole(info[r.symbol]))} · ${esc(r.confidence)} confidence</span> ${promoterFlag(info[r.symbol])}
       <p style="margin:4px 0 2px">${esc(r.hypothesis)}</p>
       <p class="small" style="margin:0"><b>What would test it:</b> ${esc(r.what_would_test_it)}</p>
       ${(r.pmids || []).length ? `<p class="small" style="margin:2px 0 0">${r.pmids.map(p => pmidLink(String(p).replace(/^PMID[:\\s]*/i, ""))).join(", ")}</p>` : ""}</div>`).join("")}</div>`;
 }
-function memberTable(g) {
-  const roles = roleOf(g);
-  const rows = g.members.map(m => `<tr><td style="font-family:var(--mono)">${esc(m.gene)}</td><td>${esc(pretty((roles[m.gene] || {}).role || "—"))}</td>
-      <td>${esc(clusterRole(m))}</td><td>${m.r_to_centroid != null ? m.r_to_centroid.toFixed(2) : ""}</td><td>${m.reliability != null ? m.reliability.toFixed(2) : ""}</td>
-      <td>${esc(m.strength_tier)} (${esc(m.n_significant)})</td><td>${m.connected_to && m.connected_to.length ? chips(m.connected_to) : '<span class="muted">none</span>'}</td>
-      <td class="small">${esc(m.summary)}</td></tr>`).join("");
-  return `<details class="card"><summary>Member details — clustering statistics, connections, gene summaries</summary>
-    <table><tr><th>Member</th><th>Annotated role</th><th>Clustering</th><th>r</th><th>Reliability</th><th>Strength (sig. effects)</th><th>Connected to</th><th>Summary</th></tr>${rows}</table>
-    <p class="small muted">r = correlation of the member's effect profile with the group mean; reliability = share of its profile that is signal, not noise; connected to = members it shares a STRING edge, curated complex or enriched term with.</p></details>`;
-}
 
-// ---- effect heatmap -----------------------------------------------------------------------
+// ---- effect signature + member correlation (the main figure) -------------------------------
 function effectHeatmap(g) {
   if (!g.signature.length) return `<p class="muted">No effect signature.</p>`;
-  const genes = [...g.members.map(m => [m.gene, false]), ...g.excluded.map(e => [e.gene, true])];
-  const all = genes.flatMap(([gene]) => (g.effects[gene] || []).filter(c => c).map(c => Math.abs(c[0])));
+  const roles = roleOf(g);
+  const all = g.rows.flatMap(m => (g.effects[m.gene] || []).filter(c => c).map(c => Math.abs(c[0])));
   const scale = Math.min(3, Math.max(1, ...all));
-  const head = `<tr><th></th>${g.signature.map(s => `<th data-tip="${esc(`P${s.program_id}${s.program_label ? " — " + s.program_label : ""}${MULTI ? " · " + s.condition + " · " + (STAGES[s.condition] || "") : ""}: mean log2FC ${s.mean_log2fc > 0 ? "+" : ""}${s.mean_log2fc.toFixed(2)}, ${s.members_significant_same_direction} of ${s.members} members significant in this direction`)}">
+  const head = `<tr><th>Member</th><th class="ann">Clustering</th><th class="ann">Annotated</th><th class="ann" data-tip="Bootstrap co-assignment with the rest of the group">Stab.</th><th class="ann" data-tip="Share of the member's effect profile that is signal, not noise">Rel.</th>${g.signature.map(s => `<th data-tip="${esc(`P${s.program_id}${s.program_label ? " — " + s.program_label : ""}${MULTI ? " · " + s.condition + " · " + (STAGES[s.condition] || "") : ""}: mean log2FC ${s.mean_log2fc > 0 ? "+" : ""}${s.mean_log2fc.toFixed(2)}, ${s.members_significant_same_direction} of ${s.members} members significant in this direction`)}">
       ${programRef(s.program_id)}${MULTI ? `<br><span class="muted">${esc(s.condition)}</span>` : ""}<br><span class="muted">${s.members_significant_same_direction}/${s.members}</span></th>`).join("")}</tr>`;
-  const body = genes.map(([gene, excl]) => `<tr${excl ? ' class="excl"' : ""}><td class="g">${esc(gene)}</td>` + (g.effects[gene] || g.signature.map(() => null)).map((c, i) => {
+  const body = g.rows.map(m => `<tr${m.excluded ? ' class="excl"' : ""}>${rowHead(g, m, roles)}` + (g.effects[m.gene] || g.signature.map(() => null)).map((c, i) => {
       const s = g.signature[i];
       if (!c) return `<td class="c na">n/a</td>`;
       const [v, q] = c, sig = q != null && q < META.alpha;
-      const tip = `${gene} · P${s.program_id}${MULTI ? " " + s.condition : ""}: log2FC ${v > 0 ? "+" : ""}${v.toFixed(2)}${q != null ? ", adj p " + q.toExponential(1) : ""}${sig ? " — significant" : " — not significant"}${excl ? " (excluded member)" : ""}`;
+      const tip = `${m.gene} · P${s.program_id}${MULTI ? " " + s.condition : ""}: log2FC ${v > 0 ? "+" : ""}${v.toFixed(2)}${q != null ? ", adj p " + q.toExponential(1) : ""}${sig ? " — significant" : " — not significant"}${m.excluded ? " (excluded member)" : ""}`;
       return `<td class="c${sig ? " sig" : ""}" style="background:${divColor(v, scale)};color:${inkFor(v, scale)}" data-tip="${esc(tip)}">${v > 0 ? "+" : ""}${v.toFixed(2)}${sig ? "*" : ""}</td>`;
     }).join("") + `</tr>`).join("");
   return `<div class="legend"><span><span class="sw" style="background:var(--div-neg)"></span>negative = knockdown lowers the program (member needed for it)</span>
       <span><span class="sw" style="background:var(--div-pos)"></span>positive = knockdown raises it (member restrains it)</span>
-      <span><b>bold, outlined, *</b> = significant (${esc(META.significance)})</span></div>
+      <span><b>bold, outlined, *</b> = significant (${esc(META.significance)})</span><span class="flag" style="color:var(--serious)">⚠</span> promoter caveat</div>
     <div style="overflow-x:auto"><table class="heat">${head}${body}</table></div>
-    <p class="small muted">Columns: the group's effect signature, ranked by |mean log2FC| x the share of members moving it the same way significantly (count under each header). ${g.excluded.length ? "Excluded members are shown greyed at the bottom for comparison. " : ""}Colour saturates at |log2FC| = ${scale.toFixed(1)}. Hover a header for the program label${META.program_viewer ? "; click it to open the program" : ""}.</p>`;
+    <p class="small muted">Columns: the group's effect signature, ranked by |mean log2FC| x the share of members moving it the same way significantly (count under each header). Rows: members in clustered order of their effect-profile correlation${g.excluded.length ? "; members the promoter screen excluded are greyed at the bottom and were not interpreted" : ""}. Colour saturates at |log2FC| = ${scale.toFixed(1)}. Hover a member for its statistics, gene summary and notes; a header for the program label${META.program_viewer ? " (click to open the program)" : ""}.</p>`;
+}
+let corrMode = "raw";
+function correlationHeatmap(g) {
+  const c = g.correlation;
+  if (!c || !c.genes || c.genes.length < 2) return "";
+  const index = Object.fromEntries(c.genes.map((x, i) => [x, i]));
+  const rows = g.rows.filter(m => m.gene in index), matrix = c[corrMode];
+  const head = `<tr><th></th>${rows.map(m => `<th class="rot"><span>${esc(m.gene)}</span></th>`).join("")}</tr>`;
+  const body = rows.map(a => `<tr${a.excluded ? ' class="excl"' : ""}><td class="g">${esc(a.gene)}</td>` + rows.map(b => {
+      if (a.gene === b.gene) return `<td class="c na"></td>`;
+      const v = matrix[index[a.gene]][index[b.gene]];
+      return `<td class="c" style="background:${divColor(v, 1)};color:${inkFor(v, 1)}" data-tip="${esc(`${a.gene} × ${b.gene}: ${corrMode === "raw" ? "raw" : "noise-corrected"} r = ${v.toFixed(2)}`)}">${v.toFixed(2)}</td>`;
+    }).join("") + `</tr>`).join("");
+  const button = (mode, text) => `<button class="link" style="${corrMode === mode ? "font-weight:700;text-decoration:none;color:var(--text)" : ""}" onclick="corrMode='${mode}';render(currentId,true)">${text}</button>`;
+  return `<h3 style="margin-top:18px">Member × member correlation of effect profiles</h3>
+    <p class="small" style="margin:0 0 6px">${button("raw", "raw r")} · ${button("corrected", "noise-corrected r")}</p>
+    <div style="overflow-x:auto"><table class="heat corr">${head}${body}</table></div>
+    <p class="small muted">Pearson r between members' log2FC profiles across every program${MULTI ? " x day" : ""}; same row order as above. Noise-corrected r = r / √(reliability₁ × reliability₂), capped at ±1 — what the grouping used, so a group of weak regulators can be as coherent as a group of strong ones.</p>`;
 }
 
 // ---- STRING network -----------------------------------------------------------------------
@@ -453,20 +527,20 @@ function render(id, keepScroll) {
   const readings = g.readings.map(r => `<tr><td>${esc(r.reading)}</td><td>${esc(r.why_not_excluded)}</td><td>${esc(r.what_would_distinguish_it)}</td></tr>`).join("");
   const openQs = g.open_questions.map(q => `<li>${esc(q.claim)} <span class="muted">— test: ${esc(q.what_would_test_it)}</span></li>`).join("");
   const labelRegs = (g.label_evidence.regulators || []).map(r => `<tr><td style="font-family:var(--mono)">${esc(r.symbol)}</td><td>${esc(r.why)}</td></tr>`).join("");
-  const st = g.stats, tiers = st.strength_tiers || {};
+  const st = g.stats, soft = "background:var(--surface-soft);color:var(--text-soft)";
   const coherenceColour = {strong: "var(--good)", partial: "var(--warning)", weak: "var(--serious)", none: "var(--critical)"}[g.coherence] || "var(--muted)";
+  const stabilityTip = `Stability: mean bootstrap co-assignment of the core members. Mean effect-profile r ${st.mean_raw_r != null ? st.mean_raw_r.toFixed(2) : "—"} (${st.mean_corrected_r != null ? st.mean_corrected_r.toFixed(2) : "—"} noise-corrected).`;
 
   document.getElementById("main").innerHTML = `
-    <span class="pill">Group ${id}</span> <span class="pill" style="background:var(--surface-soft);color:var(--text-soft)">${g.members.length} members${g.excluded.length ? ` · ${g.excluded.length} excluded` : ""}</span>
-    <span class="pill" style="background:var(--surface-soft);color:var(--text-soft)"><span class="status"><span class="dot" style="background:${coherenceColour}"></span>coherence: ${esc(g.coherence || "—")}</span></span>
+    <span class="pill">Group ${id}</span>
+    <span class="pill" style="${soft}"><span class="status"><span class="dot" style="background:${coherenceColour}"></span>coherence: ${esc(g.coherence || "—")}</span></span>
+    <span class="pill" style="${soft}" data-tip="${esc(stabilityTip)}">stability ${st.stability != null ? st.stability.toFixed(2) : "—"}</span>
     <h1>${esc(g.label)}</h1>
     <p class="sub">${g.family ? `Family: <b>${esc(g.family)}</b>` : "No single family (several unrelated sets)"}${g.distinguisher ? ` · Distinguisher: <b>${esc(g.distinguisher)}</b>` : ""}</p>
     <p class="lead">${esc(g.summary)}</p>
-    <p class="small muted" style="margin-top:-8px">Stability ${st.stability != null ? st.stability.toFixed(2) : "—"} · mean effect-profile r ${st.mean_raw_r != null ? st.mean_raw_r.toFixed(2) : "—"} (${st.mean_corrected_r != null ? st.mean_corrected_r.toFixed(2) : "—"} noise-corrected) · effect strength: ${tiers.strong || 0} strong, ${tiers.medium || 0} medium, ${tiers.weak || 0} weak</p>
-    ${hypothesesCard(g)}
-    ${membersCard(g)}
-    <div class="card"><h3>Effect signature — each member's knockdown effect on the programs the group moves</h3>${effectHeatmap(g)}</div>
+    <div class="card"><h3>Effect signature — each member's knockdown effect on the programs the group moves</h3>${effectHeatmap(g)}${correlationHeatmap(g)}</div>
     <div class="card">${sharedCard(g)}</div>
+    ${hypothesesCard(g)}
     <div class="card">${whyCard(g)}</div>
     ${labelRegs ? `<details class="card"><summary>Members the label rests on (${(g.label_evidence.regulators || []).length})</summary><table><tr><th>Member</th><th>Why</th></tr>${labelRegs}</table></details>` : ""}
     ${evidenceCard(g)}
@@ -474,7 +548,6 @@ function render(id, keepScroll) {
     <div class="card"><h3>Confounder assessment</h3><table><tr><th>Confounder</th><th>Status</th><th>Deciding evidence</th></tr>${confRows}</table></div>
     <details class="card"><summary>Competing readings (${g.readings.length})</summary><table><tr><th>Reading</th><th>Why not excluded</th><th>What would distinguish it</th></tr>${readings}</table></details>
     ${openQs ? `<details class="card"><summary>Open questions (${g.open_questions.length})</summary><ul>${openQs}</ul></details>` : ""}
-    ${memberTable(g)}
     ${qcCard(g)}
     <p class="small muted">Built ${esc(META.built)} from ${esc(META.source)}. Grouping: shared nearest neighbours of the noise-corrected correlation between regulators' effect profiles (log2FC on every program${MULTI ? " x day" : ""}), kept when stable under bootstrap resampling of the programs${META.n_eligible ? `; ${META.n_eligible} of ${META.n_regulators} regulators were reliable enough to group` : ""}. Members sharing a curated complex with the core and correlating significantly with the group were rescued in. ${META.calibration_used ? "<b>CORUM complexes were partly used to calibrate the grouping parameters</b>, so complex recovery here is not an independent check." : "Curated complexes were not used to set the grouping parameters."} Guides whose effect a neighbouring promoter could explain were excluded before annotation.</p>`;
 }

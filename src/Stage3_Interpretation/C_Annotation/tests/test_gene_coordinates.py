@@ -56,3 +56,11 @@ def test_igvf_guide_table(tmp_path):
         "non-targeting__TTT\tTTT\tFALSE\t\t\t\n"
     )
     assert load_guide_table_positions(table, tss) == {"TARGET": [10010, 50010]}
+
+
+def test_same_strand_locus_at_the_target_tss_is_not_a_neighbour(tmp_path):
+    rows = ROWS + [("ENSG00000285953", "chr1", 10_223, 90_000, "+", "protein_coding")]
+    path = tmp_path / "coords.tsv"
+    path.write_text("".join("\t".join(map(str, r)) + "\n" for r in rows))
+    found = {n["gene"] for n in promoter_neighbours("TARGET", load_gene_tss(path), {}, window=3000)}
+    assert "ENSG00000285953" not in found and "DIVERGENT" in found

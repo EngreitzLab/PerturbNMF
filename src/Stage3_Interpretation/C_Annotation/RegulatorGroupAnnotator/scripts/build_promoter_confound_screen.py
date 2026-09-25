@@ -50,8 +50,8 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
 from complexes import complexes_by_gene, load_curated_complexes  # noqa: E402
 from gene_coordinates import (  # noqa: E402
-    guide_positions_on_this_assembly, load_gene_tss, load_guide_table_positions, parse_guide_position,
-    promoter_neighbours,
+    guide_positions_on_this_assembly, is_readthrough_of, load_gene_tss, load_guide_table_positions,
+    parse_guide_position, promoter_neighbours, shares_target_promoter,
 )
 
 
@@ -77,7 +77,13 @@ def string_partners(members: list[str], neighbours: list[str], cache: Path | Non
     from http_cache import CachedHttp
     from string_client import StringClient
     http = CachedHttp(cache)
-    edges = StringClient(http).network(sorted(set(members) | set(neighbours)), required_score=int(min_score * 1000))
+    client = StringClient(http)
+    # A neighbour that resolves to the same STRING protein as a member (an overlapping or
+    # readthrough locus such as an unnamed ENSG next to KRIT1) would inherit that member's edges.
+    ids = client.string_ids(sorted(set(members) | set(neighbours)))
+    member_ids = {ids[m] for m in members if m in ids}
+    neighbours = [n for n in neighbours if ids.get(n) not in member_ids]
+    edges = client.network(sorted(set(members) | set(neighbours)), required_score=int(min_score * 1000))
     http.save()
     partners: dict = {}
     for e in edges:
@@ -131,9 +137,13 @@ def main() -> int:
             # reach further than the TSS) is added from the table.
             names = {n["gene"] for n in found}
             for (target, other), record in knockdown.items():
-                if target == gene and record["relation"] == "neighbour" and other not in names:
-                    found.append({"gene": other, "distance": int(record["distance"]), "gene_type": "",
-                                  "orientation": "unknown", "site_source": "guide"})
+                if target != gene or record["relation"] != "neighbour" or other in names:
+                    continue
+                if is_readthrough_of(other, gene) or any(shares_target_promoter(r, tss.get(gene, []))
+                                                         for r in tss.get(other, [])):
+                    continue  # the same filters as the search: another annotation of the target itself
+                found.append({"gene": other, "distance": int(record["distance"]), "gene_type": "",
+                              "orientation": "unknown", "site_source": "guide"})
             neighbours_of[gene] = found
         all_neighbours = sorted({n["gene"] for ns in neighbours_of.values() for n in ns})
         string_of = string_partners(members, all_neighbours, args.string_cache, args.string_score)
