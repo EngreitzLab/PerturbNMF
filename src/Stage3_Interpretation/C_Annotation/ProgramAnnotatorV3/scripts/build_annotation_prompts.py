@@ -17,6 +17,10 @@ program activity with the peak, a `temporal_window` interpretation slot and a
 `stage_composition` confounder (needs the stage-composition screen). Without `conditions` the
 single-condition prompt is produced.
 
+Cohort designs (settings.condition_design = "groups", e.g. young/aged x female/male animals): the
+same per-condition evidence, worded by group instead of by day, with a `group_dependence` slot in
+place of `temporal_window` and no stage_composition confounder (the groups are not a trajectory).
+
 Config: see ../configs/example_config.json and ../README.md.
 
 Usage:
@@ -365,6 +369,40 @@ TIME_COURSE_SCHEMA_SLOT = """                        "support_terms": [], "confi
   },"""
 
 
+GROUPS_SYSTEM_CONTEXT = """This screen was read out by Perturb-seq SEPARATELY IN EACH GROUP of \
+animals:
+{group_lines}
+Every regulator effect and every activity value in the evidence was measured within one group. \
+The groups are cohorts, not stages of a trajectory. A program may be shared by all groups or \
+enriched in some; a regulator may act in every group, in some only, or with opposite signs.
+
+"""
+
+GROUPS_RULE = """8. GROUP IS PART OF THE EVIDENCE. Never pool groups. A regulator that moves the \
+program in one group but not another is a different claim from one that moves it in every group, \
+so always name the group(s). Groups differ in power (cell numbers, mouse-to-mouse spread), so \
+missing significance in a group is not proof of no effect there: use the cross-group log2FC \
+profile to tell "no effect" from "same direction, below threshold".
+
+9. Respond with ONLY"""
+
+GROUPS_SLOT = """  - cellular_output: what the cells are doing as a result
+  - group_dependence: WHERE. The group(s) in which the program is most active (section C2);
+    the group(s) in which its regulators act on it (section C); and, for each key regulator,
+    whether its effect is group_specific (one group or one factor level, e.g. aged only or
+    female only), constitutive (same sign in most groups), or sign_switch. Then say whether that
+    pattern fits the mechanism you propose. Always fill this slot: every program has per-group data.
+A program can legitimately fill all four. That is one program described at four levels, not
+four competing hypotheses."""
+
+GROUPS_SCHEMA_SLOT = """                        "support_terms": [], "confidence": "high|medium|low", "pmids": []},
+    "group_dependence": {"claim": "", "peak_condition": "<group label only, e.g. aged_F>",
+                         "regulator_pattern": [{"symbol": "", "conditions": [],
+                                                "pattern": "group_specific|constitutive|sign_switch"}],
+                         "consistent_with_mechanism": <bool>, "confidence": "high|medium|low"}
+  },"""
+
+
 def replace_once(text: str, old: str, new: str) -> str:
     if text.count(old) != 1:
         raise ValueError(f"template anchor not found exactly once: {old[:70]!r}")
@@ -420,14 +458,52 @@ def adapt_templates_for_time_course(conditions: List[dict]) -> Tuple[str, str, s
     return system, user, schema
 
 
+def adapt_templates_for_groups(conditions: List[dict]) -> Tuple[str, str, str]:
+    """The v3 system prompt, user template and schema, adapted for a condition-keyed cohort design."""
+    group_lines = "\n".join(f"- {c['label']}: {c['stage']}" for c in conditions)
+    system = replace_once(
+        SYSTEM_PROMPT, "RULES — each of these",
+        GROUPS_SYSTEM_CONTEXT.format(group_lines=group_lines).replace("{", "{{").replace("}", "}}")
+        + "RULES — each of these",
+    )
+    system = replace_once(system, "8. Respond with ONLY", GROUPS_RULE)
+    order = ", ".join(f"{c['label']} ({c['stage']})" for c in conditions)
+    user = replace_once(
+        USER_TEMPLATE, "- Regulator significance: {significance_label}\n",
+        "- Regulator significance: {significance_label}\n"
+        f"- Groups: {order}; Perturb-seq read out separately in each group\n",
+    )
+    user = replace_once(
+        user, "## C. Significant regulators (knockdown effect on program activity)\n{regulator_block}",
+        "## C. Significant regulators by group (knockdown effect on program activity, measured "
+        "separately in each group)\n{regulator_block}\n\n## C2. Program activity by group\n{activity_block}",
+    )
+    user = replace_once(user, "Fill whichever of these three\nslots", "Fill whichever of these four\nslots")
+    user = replace_once(
+        user,
+        "  - cellular_output: what the cells are doing as a result\n"
+        "A program can legitimately fill all three. That is one program described at three levels, not\n"
+        "three competing hypotheses.",
+        GROUPS_SLOT,
+    )
+    schema = replace_once(
+        OUTPUT_SCHEMA,
+        """                        "support_terms": [], "confidence": "high|medium|low", "pmids": []}
+  },""",
+        GROUPS_SCHEMA_SLOT,
+    )
+    return system, user, schema
+
+
 def format_regulators_by_condition(
-    regulators: pd.DataFrame, conditions: List[dict], string_partners: Dict[str, List[str]]
+    regulators: pd.DataFrame, conditions: List[dict], string_partners: Dict[str, List[str]], word: str = "day"
 ) -> str:
-    """One labelled block per day in experimental order, then each regulator's cross-day profile."""
+    """One labelled block per condition in experimental order, then each regulator's cross-condition
+    profile. `word` names the condition ("day" for a time course, "group" for cohorts)."""
     significant = regulators[regulators["significant"]]
     if significant.empty:
         return (
-            "No regulator reached significance for this program on any day. Do NOT read this as "
+            f"No regulator reached significance for this program {IN_ANY[word]}. Do NOT read this as "
             "evidence that the program has no upstream regulators — it means none of the tested "
             "knockdowns moved it measurably. Any regulator you propose must be labeled as "
             "inference with log2FC=N/A."
@@ -440,13 +516,13 @@ def format_regulators_by_condition(
         ] or ["- none"]
 
     lines = [
-        f"({len(significant)} significant (regulator, day) results; "
+        f"({len(significant)} significant (regulator, {word}) results; "
         f"{significant['target_gene'].nunique()} distinct regulators. ALL significant results "
-        "are listed, day by day in experimental order, ranked by effect size within each sign, "
+        f"are listed, {word} by {word} in experimental order, ranked by effect size within each sign, "
         "adjusted p shown.)",
     ]
     for condition in conditions:
-        day = regulators[regulators["condition"] == condition["label"]]
+        day = regulators[regulators["condition"] == condition["label"]]  # one condition
         day_significant = day[day["significant"]]
         lines += [
             "",
@@ -467,8 +543,8 @@ def format_regulators_by_condition(
     order = sorted(n_days.index, key=lambda g: (-n_days[g], best_p[g]))
     lines += [
         "",
-        "### Cross-day profile — every regulator significant on at least one day",
-        "log2FC on each day, * = significant that day. Non-significant values are shown so that "
+        f"### Cross-{word} profile — every regulator significant {IN_AT_LEAST_ONE[word]}",
+        f"log2FC {IN_EACH[word]}, * = significant {THAT[word]}. Non-significant values are shown so that "
         '"no effect" can be told apart from "same direction, below threshold".',
     ]
     for gene in order:
@@ -486,22 +562,31 @@ def format_regulators_by_condition(
     return "\n".join(lines)
 
 
-def format_activity_by_condition(activity: pd.DataFrame, conditions: List[dict]) -> str:
+IN_ANY = {"day": "on any day", "group": "in any group"}
+IN_AT_LEAST_ONE = {"day": "on at least one day", "group": "in at least one group"}
+IN_EACH = {"day": "on each day", "group": "in each group"}
+THAT = {"day": "that day", "group": "in that group"}
+DESCRIPTION_HEADER = {"day": "stage", "group": "description"}
+
+
+def format_activity_by_condition(activity: pd.DataFrame, conditions: List[dict], word: str = "day") -> str:
     by_condition = activity.set_index("condition")["mean_score"]
     total = float(sum(by_condition.get(c["label"], 0.0) for c in conditions))
     width = max(len(c["stage"]) for c in conditions)
-    lines = [f"{'day':<4} {'stage':<{width}}  {'mean score':>10}  {'share':>5}  log2(day / mean of other days)"]
+    column = max(len(word) + 1, *(len(c["label"]) for c in conditions))
+    lines = [f"{word:<{column}} {DESCRIPTION_HEADER[word]:<{width}}  {'mean score':>10}  {'share':>5}  "
+             f"log2({word} / mean of other {word}s)"]
     for condition in conditions:
         value = float(by_condition[condition["label"]])
         others = [float(by_condition[c["label"]]) for c in conditions if c is not condition]
         other_mean = sum(others) / len(others)
         ratio = np.log2(value / other_mean) if value > 0 and other_mean > 0 else float("nan")
         lines.append(
-            f"{condition['label']:<4} {condition['stage']:<{width}}  {value:>10.5f}  "
+            f"{condition['label']:<{column}} {condition['stage']:<{width}}  {value:>10.5f}  "
             f"{value / total if total else 0:>5.2f}  {ratio:+.2f}"
         )
     peak = max(conditions, key=lambda c: float(by_condition[c["label"]]))
-    lines.append(f"Peak day: {peak['label']} ({peak['stage']})")
+    lines.append(f"Peak {word}: {peak['label']} ({peak['stage']})")
     return "\n".join(lines)
 
 
@@ -692,7 +777,16 @@ def build_prompt(program_id: int, resources: dict, settings: dict) -> dict:
 
     conditions = resources.get("conditions")
     time_course = {}
-    if conditions:
+    if conditions and settings.get("condition_design", "time_course") == "groups":
+        system_template, user_template, output_schema = adapt_templates_for_groups(conditions)
+        activity = resources["activity"]
+        time_course["activity_block"] = format_activity_by_condition(
+            activity[activity["program_id"] == program_id], conditions, word="group"
+        )
+        regulator_block = format_regulators_by_condition(program_regulators, conditions, string_partners, word="group")
+        screen_block = format_screens(resources["screens"][str(program_id)]).replace(
+            " tested", " tested (significant in at least one group)")
+    elif conditions:
         system_template, user_template, output_schema = adapt_templates_for_time_course(conditions)
         activity = resources["activity"]
         time_course["activity_block"] = format_activity_by_condition(

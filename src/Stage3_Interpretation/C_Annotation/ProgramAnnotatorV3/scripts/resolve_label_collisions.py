@@ -215,6 +215,11 @@ def cmd_detect(args: argparse.Namespace) -> int:
                     if (entry.get("interpretation") or {}).get("temporal_window")
                     else ""
                 )
+                + (
+                    f"- group dependence: {slot_claim(entry, 'group_dependence')}\n"
+                    if (entry.get("interpretation") or {}).get("group_dependence")
+                    else ""
+                )
                 + f"- top-loading genes: {', '.join(top)}\n"
                 f"- distinctive genes (high here, low elsewhere): {', '.join(distinctive) or '(none)'}\n"
             )

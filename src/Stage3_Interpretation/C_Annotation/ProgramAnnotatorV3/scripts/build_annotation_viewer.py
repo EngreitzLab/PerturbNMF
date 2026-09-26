@@ -121,7 +121,7 @@ def common_fields(pid: int, sources: dict) -> dict:
         "confounders": answer.get("confounder_assessment", []),
         "primary_confounders": primary,
         "slots": {k: interpretation.get(k) for k in ("upstream_trigger", "coregulation_mechanism", "cellular_output")},
-        "temporal": interpretation.get("temporal_window") or {},
+        "temporal": interpretation.get("temporal_window") or interpretation.get("group_dependence") or {},
         "label_genes": (answer.get("label_evidence") or {}).get("genes", []),
         "label_regulators": (answer.get("label_evidence") or {}).get("regulators", []),
         "modules": answer.get("modules", []),
@@ -199,7 +199,7 @@ def load_from_config(args) -> tuple:
         "subtitle": "v3 program annotations",
         "conditions": conditions,
         "groups": [f"Peak {c['label']} · {c['stage']}" for c in conditions] if (multi and activity is not None) else None,
-        "condition_word": "condition",
+        "condition_word": "group" if settings.get("condition_design") == "groups" else "day",
         "significance": settings.get("significance_label", "adjusted p < 0.05"),
         "k": int(loading["program_id"].nunique()),
     }
@@ -235,6 +235,8 @@ const PROGRAMS = __PROGRAMS__;
 const TITLES = __TITLES__;
 const META = __META__;
 const DAYS = META.conditions.map(c => c.label);
+const WORD = META.condition_word;  // "day" (time course) or "group" (cohorts)
+const ON = WORD === "day" ? "on" : "in";
 const STAGES = Object.fromEntries(META.conditions.map(c => [c.label, c.stage]));
 document.getElementById("brand").innerHTML = `${META.title}<small>${META.subtitle}</small>`;
 const IDS = Object.keys(PROGRAMS).map(Number).sort((a,b)=>a-b);
@@ -286,7 +288,7 @@ function activityChart(p) {
     return `<div class="col" data-tip="${esc(tip)}"><div class="v">${Math.round(100*p.share[i])}%</div><div class="b" style="height:${h}%"></div></div>`;
   }).join("");
   const axis = DAYS.map(d => `<div class="${d===p.peak?"pk":""}">${d}<br><span class="muted">${STAGES[d]}</span></div>`).join("");
-  return `<div class="act" aria-label="Mean program score by day">${cols}</div><div class="axis">${axis}</div>
+  return `<div class="act" aria-label="Mean program score by ${WORD}">${cols}</div><div class="axis">${axis}</div>
     <p class="small muted" style="margin:8px 0 0">Mean program score per ${META.condition_word} (share of the total above each bar). Peak: <b>${p.peak}</b>.</p>`;
 }
 
@@ -321,7 +323,7 @@ function regulatorGrid(p) {
       <span><span class="sw" style="background:var(--div-pos)"></span>positive = knockdown raises program (repressor)</span>
       <span><b>bold, outlined, *</b> = significant (${esc(META.significance)})</span></div>
     <div style="overflow-x:auto"><table class="heat">${head}${body}</table></div>${more}
-    <p class="small muted">${DAYS.length > 1 ? 'Every regulator significant on ≥1 day, ordered by number of significant days then best adjusted p. Non-significant values are shown so "no effect" can be told from "same direction, below threshold".' : "Every significant regulator, ordered by adjusted p."} Colour saturates at |log2FC| = ${capped.toFixed(1)}.</p>`;
+    <p class="small muted">${DAYS.length > 1 ? `Every regulator significant ${ON} ≥1 ${WORD}, ordered by number of significant ${WORD}s then best adjusted p. Non-significant values are shown so "no effect" can be told from "same direction, below threshold".` : "Every significant regulator, ordered by adjusted p."} Colour saturates at |log2FC| = ${capped.toFixed(1)}.</p>`;
 }
 
 // ---- volcano ------------------------------------------------------------------------------
@@ -389,7 +391,7 @@ function volcanoes(p) {
       <span><span class="sw" style="background:var(--muted);opacity:.5"></span>not significant</span>
       <span><b>bold label</b> = regulator named in the annotation</span></div>
     <div style="display:flex;flex-wrap:wrap;gap:10px">${panels}</div>
-    <p class="small muted">All ${p.volcano[0].x.length} tested knockdowns${multi ? " per day, same axes on every day" : ""}; significance: ${esc(META.significance)}. Up to ${MAX_LABELS_PER_PANEL} significant regulators labelled per panel, those named in the annotation first. Hover a point for its values.</p>`;
+    <p class="small muted">All ${p.volcano[0].x.length} tested knockdowns${multi ? ` per ${WORD}, same axes ${ON} every ${WORD}` : ""}; significance: ${esc(META.significance)}. Up to ${MAX_LABELS_PER_PANEL} significant regulators labelled per panel, those named in the annotation first. Hover a point for its values.</p>`;
 }
 
 // ---- sections -----------------------------------------------------------------------------
@@ -420,12 +422,12 @@ function slotCard(title, s) {
 
 function temporalCard(p) {
   const t = p.temporal || {};
-  const rows = (t.regulator_timing || []).map(r => `<tr><td class="g" style="font-family:var(--mono)">${esc(r.symbol)}</td>
+  const rows = (t.regulator_timing || t.regulator_pattern || []).map(r => `<tr><td class="g" style="font-family:var(--mono)">${esc(r.symbol)}</td>
       <td>${esc((r.conditions||[]).join(", "))}</td><td>${esc(pretty(r.pattern))}</td></tr>`).join("");
   const consistent = t.consistent_with_mechanism === true ? "yes" : t.consistent_with_mechanism === false ? "no" : "—";
   return `<p>${esc(t.claim || "")}</p>
     <p class="small muted">Model-reported peak: ${esc(t.peak_condition || "—")} · consistent with proposed mechanism: ${consistent}${t.confidence ? ` · ${esc(t.confidence)} confidence` : ""}</p>
-    ${rows ? `<table><tr><th>Regulator</th><th>Day(s)</th><th>Pattern</th></tr>${rows}</table>` : ""}`;
+    ${rows ? `<table><tr><th>Regulator</th><th>${WORD === "day" ? "Day(s)" : "Group(s)"}</th><th>Pattern</th></tr>${rows}</table>` : ""}`;
 }
 
 // ---- citation-pass support ----------------------------------------------------------------
@@ -487,16 +489,16 @@ function render(id, keepScroll) {
     <p class="sub">coherence: ${esc(p.coherence)}</p>
     <p class="lead">${esc(p.summary)}</p>
     ${p.activity ? `<div class="grid2">
-      <div class="card"><h3>Program activity by day</h3>${activityChart(p)}</div>
-      <div class="card"><h3>Temporal window</h3>${temporalCard(p)}</div>
+      <div class="card"><h3>Program activity by ${WORD}</h3>${activityChart(p)}</div>
+      <div class="card"><h3>${WORD === "day" ? "Temporal window" : "Group dependence"}</h3>${temporalCard(p)}</div>
     </div>` : ""}
     <div class="card"><h3>Genes</h3>
       <p class="small muted" style="margin:0 0 4px">Top ${p.top_genes.length} by loading (outlined = named as label evidence)</p><div>${chips(p.top_genes.map(g=>g[0]), labelGenes)}</div>
       <p class="small muted" style="margin:10px 0 4px">Most distinctive genes outside the top ${p.top_genes.length}</p><div>${distinctiveChips(p, labelGenes)}</div>
       <p class="small muted" style="margin:6px 0 0">From loading ranks ${p.top_genes.length + 1}–${p.n_program_genes}, the ${p.distinctive.length} genes with the highest uniqueness score = loading × ln((K+1)/(n+1)), where K = ${META.k} programs and n = the number of programs whose top ${p.n_program_genes} genes include the gene: genes that load well here and in few other programs. The annotator saw these same genes. Hover a gene for its rank and n.</p></div>
     <details class="card" open><summary>Genes that drove the label (${(p.label_genes||[]).length}) — with support</summary><table><tr><th>Gene</th><th>Rank</th><th>Why</th><th>Support (citation pass)</th></tr>${geneRows}</table></details>
-    <div class="card"><h3>${DAYS.length > 1 ? "Regulators by day" : "Significant regulators"}</h3>${volcanoes(p)}
-      <details style="margin-top:8px"><summary class="small" style="cursor:pointer">Table view — ${DAYS.length > 1 ? "log2FC of every significant regulator on every day" : "significant regulators"}</summary>${regulatorGrid(p)}</details></div>
+    <div class="card"><h3>${DAYS.length > 1 ? `Regulators by ${WORD}` : "Significant regulators"}</h3>${volcanoes(p)}
+      <details style="margin-top:8px"><summary class="small" style="cursor:pointer">Table view — ${DAYS.length > 1 ? `log2FC of every significant regulator ${ON} every ${WORD}` : "significant regulators"}</summary>${regulatorGrid(p)}</details></div>
     <details class="card" open><summary>Regulator hypotheses (${(p.model_regulators||[]).length}) — with support</summary><table><tr><th>Regulator</th><th>Role</th><th>log2FC</th><th>Conf.</th><th>Hypothesis</th><th>Support (citation pass)</th></tr>${regRows}</table>
       <p class="small muted">Support was sought for label-evidence regulators and high/medium-confidence hypotheses; low-confidence hypotheses were not checked.</p></details>
     <div class="card"><h3>Non-specific explanations checked</h3>

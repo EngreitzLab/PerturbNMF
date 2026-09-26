@@ -14,6 +14,7 @@ Checks, per program:
   6. time courses only (the prompt carries a stage_composition screen): stage_composition is
      assessed, temporal_window is filled, and its peak day matches the prompt's. A regulator
      timed to a day on which it was not significant is reported as a WARN, not a failure.
+     Cohort designs (the prompt says "Peak group:") get the same checks on group_dependence.
 
 Usage:
     python validate_annotation_answers.py --dispatch <annotation_dispatch> --arm v3 --programs 0-49
@@ -61,13 +62,14 @@ def genes_offered_in_prompt(prompt: str) -> set:
     )
 
 
-PEAK_DAY = re.compile(r"^Peak day: (\S+)", re.MULTILINE)
+PEAK = {"day": re.compile(r"^Peak day: (\S+)", re.MULTILINE), "group": re.compile(r"^Peak group: (\S+)", re.MULTILINE)}
+CONDITION_SLOT = {"day": ("temporal_window", "regulator_timing"), "group": ("group_dependence", "regulator_pattern")}
 CROSS_DAY_ROW = re.compile(r"^- ([A-Za-z0-9.-]+): ((?:\S+ (?:[+-]\d+\.\d+\*?|n/a)\s*)+)", re.MULTILINE)
 
 
-def significant_days_by_regulator(prompt: str) -> dict:
-    """{regulator: {days it was significant}} from the prompt's cross-day profile."""
-    section = prompt.split("### Cross-day profile", 1)
+def significant_days_by_regulator(prompt: str, word: str = "day") -> dict:
+    """{regulator: {conditions it was significant in}} from the prompt's cross-condition profile."""
+    section = prompt.split(f"### Cross-{word} profile", 1)
     if len(section) < 2:
         return {}
     body = section[1].split("\n## ", 1)[0]
@@ -77,23 +79,24 @@ def significant_days_by_regulator(prompt: str) -> dict:
     return days
 
 
-def validate_time_course(program_id: int, payload: dict, prompt: str) -> Tuple[List[str], List[str]]:
+def validate_time_course(program_id: int, payload: dict, prompt: str, word: str = "day") -> Tuple[List[str], List[str]]:
     problems, warnings = [], []
-    window = (payload.get("interpretation") or {}).get("temporal_window")
+    slot, timing_key = CONDITION_SLOT[word]
+    window = (payload.get("interpretation") or {}).get(slot)
     if not isinstance(window, dict) or not str(window.get("claim", "")).strip():
-        return [f"P{program_id}: temporal_window not filled"], warnings
-    expected_peak = PEAK_DAY.search(prompt)
-    claimed_peak = re.match(r"\s*([A-Za-z0-9]+)", str(window.get("peak_condition", "")))
+        return [f"P{program_id}: {slot} not filled"], warnings
+    expected_peak = PEAK[word].search(prompt)
+    claimed_peak = re.match(r"\s*([A-Za-z0-9_]+)", str(window.get("peak_condition", "")))
     if expected_peak and (not claimed_peak or claimed_peak.group(1) != expected_peak.group(1)):
         problems.append(
-            f"P{program_id}: temporal_window.peak_condition={window.get('peak_condition')!r}, "
+            f"P{program_id}: {slot}.peak_condition={window.get('peak_condition')!r}, "
             f"prompt says {expected_peak.group(1)}"
         )
-    significant_days = significant_days_by_regulator(prompt)
-    for entry in window.get("regulator_timing") or []:
+    significant_days = significant_days_by_regulator(prompt, word)
+    for entry in window.get(timing_key) or []:
         symbol = str(entry.get("symbol", "")).strip()
         if symbol not in significant_days:
-            warnings.append(f"P{program_id}: timed regulator {symbol!r} is not significant on any day")
+            warnings.append(f"P{program_id}: timed regulator {symbol!r} is not significant in any {word}")
             continue
         unsupported = sorted(set(entry.get("conditions") or []) - significant_days[symbol])
         if unsupported:
@@ -185,6 +188,9 @@ def validate(program_id: int, directory: Path) -> Tuple[List[str], List[str]]:
     warnings: List[str] = []
     if time_course:
         timing_problems, warnings = validate_time_course(program_id, payload, prompt)
+        problems += timing_problems
+    elif PEAK["group"].search(prompt):
+        timing_problems, warnings = validate_time_course(program_id, payload, prompt, word="group")
         problems += timing_problems
 
     return problems, warnings
