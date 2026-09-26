@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
+from record_item_problems import record_item_problems  # noqa: E402
 from gate_rules import (  # noqa: E402
     VALID_STATUSES, bare_pmid, label_problems, pmids_offered_in_prompt, summary_problems,
 )
@@ -189,11 +190,20 @@ def validate(program_id: int, directory: Path) -> Tuple[List[str], List[str]]:
     return problems, warnings
 
 
+def write_problems_file(directory: Path, problems: List[str]) -> None:
+    """Record this gate's problems in <directory>/problems.json for the repair pass
+    (annotator_core/repair_rejected_answers.sh); a passing directory clears this gate's entry.
+    The "P<id>: " prefix is dropped: the repair call sees one item only."""
+    record_item_problems(directory, "validate_annotation_answers", [re.sub(r"^P\d+: ", "", p) for p in problems])
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dispatch", required=True, type=Path)
     parser.add_argument("--programs", required=True, help="comma list, or a range like 0-49")
     parser.add_argument("--arm", default="v3")
+    parser.add_argument("--write-problems", action="store_true",
+                        help="record each failing item's problems in problems.json for repair_rejected_answers.sh")
     args = parser.parse_args()
 
     if re.fullmatch(r"\d+-\d+", args.programs):
@@ -206,6 +216,8 @@ def main() -> int:
     all_warnings: List[str] = []
     for program_id in program_ids:
         problems, warnings = validate(program_id, args.dispatch / f"{args.arm}_p{program_id}")
+        if args.write_problems:
+            write_problems_file(args.dispatch / f"{args.arm}_p{program_id}", problems)
         all_warnings += warnings
         if problems:
             all_problems += problems

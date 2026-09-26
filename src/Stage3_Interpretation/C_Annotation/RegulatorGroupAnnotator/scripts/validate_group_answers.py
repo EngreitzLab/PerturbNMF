@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
+from record_item_problems import record_item_problems  # noqa: E402
 from answer_io import load_answer  # noqa: E402
 from gate_rules import (  # noqa: E402
     VALID_STATUSES, bare_pmid, label_problems, pmids_offered_in_prompt, summary_problems,
@@ -138,10 +139,19 @@ def validate(group_id: int, directory: Path) -> Tuple[List[str], List[str]]:
     return problems, warnings
 
 
+def write_problems_file(directory: Path, problems: List[str]) -> None:
+    """Record this gate's problems in <directory>/problems.json for the repair pass
+    (annotator_core/repair_rejected_answers.sh); a passing directory clears this gate's entry.
+    The "G<id>: " prefix is dropped: the repair call sees one item only."""
+    record_item_problems(directory, "validate_group_answers", [re.sub(r"^G\d+: ", "", p) for p in problems])
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dispatch", required=True, type=Path)
     parser.add_argument("--arm", default="rg")
+    parser.add_argument("--write-problems", action="store_true",
+                        help="record each failing item's problems in problems.json for repair_rejected_answers.sh")
     args = parser.parse_args()
 
     directories = sorted(args.dispatch.glob(f"{args.arm}_p*"), key=lambda d: int(d.name.split("_p")[-1]))
@@ -149,6 +159,8 @@ def main() -> int:
     for directory in directories:
         group_id = int(directory.name.split("_p")[-1])
         problems, warnings = validate(group_id, directory)
+        if args.write_problems:
+            write_problems_file(directory, problems)
         all_warnings += warnings
         all_problems += problems
         if not problems:

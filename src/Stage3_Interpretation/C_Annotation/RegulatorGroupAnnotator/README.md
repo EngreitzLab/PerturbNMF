@@ -148,7 +148,8 @@ $PYTHON build_group_evidence.py --groups-dir $G --targets $D/targets.tsv \
 $PYTHON build_group_prompts.py --config $C --output group_batch.json
 $PYTHON $CORE/split_prompts_for_blinded_dispatch.py --batch group_batch.json --arm rg --dispatch-root dispatch_groups
 nohup bash $CORE/dispatch_until_complete.sh dispatch_groups "rg_p*" 4 > dispatch_groups.log 2>&1 &
-$PYTHON validate_group_answers.py --dispatch dispatch_groups --arm rg
+$PYTHON validate_group_answers.py --dispatch dispatch_groups --arm rg --write-problems
+bash $CORE/repair_rejected_answers.sh dispatch_groups 4 "rg_p*"   # then re-run the gate
 $PYTHON $CORE/verify_cited_pmids.py --dispatch dispatch_groups --arm rg
 # 6. citation pass (shared; --subject regulator_group changes only the wording)
 $PYTHON $CORE/build_citation_candidates.py --dispatch dispatch_groups --arm rg \

@@ -11,10 +11,12 @@ Design and rules: `.claude/skills/perturbNMF-runner/references/05-annotation-sum
 ## Requirements
 
 - Python 3.10+ with `pandas`, `numpy`, `scipy` (no other packages; HTTP uses the stdlib).
-- The Claude Code CLI (`claude`), logged in. Every LLM call is `claude -p --allowed-tools ""`:
-  no tools, prompt on stdin, answer on stdout. Run the dispatch scripts outside any sandbox
-  (keychain + network). `PYTHON` and `ANNOTATOR_MODEL` (default `sonnet`) are read from the
-  environment.
+- The Claude Code CLI (`claude`), logged in. Every LLM call is a minimal `claude -p`: no tools
+  (`--tools ""`), no Claude Code context (`--safe-mode --strict-mcp-config
+  --disable-slash-commands`, neutral working directory), prompt on stdin, answer and cost back as
+  JSON (logged to `usage.jsonl`); see `annotator_core/answer_one_prompt.py`. Run the dispatch
+  scripts outside any sandbox (keychain + network). `PYTHON` and `ANNOTATOR_MODEL` (default
+  `sonnet`) are read from the environment.
 - Network for the retrieval steps, no API keys: `www.ncbi.nlm.nih.gov` (PubTator3),
   `eutils.ncbi.nlm.nih.gov`, `www.ebi.ac.uk` (Europe PMC, QuickGO), `mygene.info`,
   `rest.uniprot.org`, `string-db.org`.
@@ -59,7 +61,8 @@ $PYTHON $CORE/split_prompts_for_blinded_dispatch.py --batch batch_request.json -
 # 4. answer them (detached; read dispatch/DISPATCH_STATUS, not the exit code)
 nohup bash $CORE/dispatch_until_complete.sh dispatch "v3_p*" 4 > dispatch.log 2>&1 &
 # 5. gates — move failing answers to answer.rejected.<n>.json and re-run step 4 for them
-$PYTHON validate_annotation_answers.py --dispatch dispatch --arm v3 --programs 0-49
+$PYTHON validate_annotation_answers.py --dispatch dispatch --arm v3 --programs 0-49 --write-problems
+bash $CORE/repair_rejected_answers.sh dispatch 4 "v3_p*"   # short fix call per failure; then re-run the gate
 $PYTHON $CORE/verify_cited_pmids.py --dispatch dispatch --arm v3
 # 6. cross-program label collisions
 $PYTHON resolve_label_collisions.py detect --dispatch dispatch --arm v3 \
@@ -88,7 +91,8 @@ $PYTHON build_annotation_viewer.py --config $C --dispatch dispatch --arm v3 \
 - About 3 minutes per program per LLM call on Sonnet; citation retrieval about 8 minutes per
   program cold (Europe PMC reference lists dominate), under a minute when cached.
 - Roughly 1 program in 5 fails a gate once (paraphrased quote, a gene named that the prompt
-  never showed, coherence talk in the summary). Keep the rejected answer, re-dispatch, re-check.
+  never showed, coherence talk in the summary). The repair pass fixes it (rejected answer kept as
+  `answer.rejected.<n>.json`; after 2 repairs delete `answer.json` for a full re-dispatch).
 - `claude -p` exits nonzero with an empty stderr when usage-limited; the dispatcher sleeps and
   retries. It can also return a truncated or prose-prefixed answer — the completeness check
   rejects those and the next pass retries them.
