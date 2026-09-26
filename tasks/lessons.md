@@ -10,3 +10,13 @@
   it** (`git branch --no-merged main`, `git worktree list`). 2026-09-25: regenerated the benchmark
   viewers from main while the earlier section-order/volcano feedback sat on
   `claude/jolly-lehmann-ef4477`, unmerged. Jesse had to ask where it went.
+
+## Annotator cost: cut the harness, not the prompt (2026-09-26)
+- The expensive part of each `claude -p` call was Claude Code's own context (~45k tokens), not the
+  prompt. The minimal call (5fa73bc) halved program cost with no quality change.
+- Trimming the program prompt (TASK/OUTPUT into the cached system block, terse confounder
+  evidence, high/medium regulators only, compacted evidence) lost a 50-program blind Opus A/B
+  39-6-5 (biology 27-1) for ~$2 saved per 50 programs. Abandoned; record, data and scripts on
+  branch `annotator-cost-cut` and in ~/Claude/projects/annotator-cost-cut-ab50/.
+- Rule: validate any prompt-content change with a blinded pairwise judge on the full set before
+  adopting it; 5-item spot checks passed the gate and still hid the regression.
