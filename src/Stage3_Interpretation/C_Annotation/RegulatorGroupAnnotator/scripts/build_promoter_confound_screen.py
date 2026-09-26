@@ -17,7 +17,8 @@ else the target's TSSs), with knockdown evidence from measure_neighbour_knockdow
 
   EXCLUDE  the neighbour explains the group AND (it is knocked down, or it was not measured and its
            TSS is within --high-risk-window bp — the confound cannot be ruled out); or the
-           neighbour is knocked down and the target itself is not
+           neighbour is knocked down and the target itself is not (its log2FC point estimate is above
+           --knockdown-log2fc; a non-significant but negative estimate does not count as "not")
   FLAG     a protein-coding neighbour within the window that is knocked down, or not measured, but
            does not explain the group — kept for annotation, shown to the annotator as a caveat
   CLEAR    no neighbour, or every neighbour was measured and not knocked down
@@ -191,7 +192,9 @@ def main() -> int:
                 if kd.get("measured") and kd["knocked_down"]:
                     if explains:
                         exclude_reasons.append(f"guides also knock down {where}, {why} (log2FC {kd['log2fc']})")
-                    elif target_kd.get("measured") and not target_kd["knocked_down"]:
+                    elif target_kd.get("measured") and target_kd["log2fc"] > args.knockdown_log2fc:
+                        # Point estimate, not significance: a target at log2FC -1.2 that misses q < 0.05
+                        # on few cells is not evidence its guides failed.
                         exclude_reasons.append(f"guides knock down {where} (log2FC {kd['log2fc']}) but not "
                                                f"{gene} itself (log2FC {target_kd['log2fc']})")
                     elif n.get("gene_type", "protein_coding") in ("protein_coding", ""):
