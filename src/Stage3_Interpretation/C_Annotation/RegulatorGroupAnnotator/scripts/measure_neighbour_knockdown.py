@@ -3,11 +3,17 @@
 For every grouped regulator (regulator_groups.json) and every gene with a TSS within --window bp
 of where its guides act (guide coordinates from an IGVF guide table (--guide-table), else positions
 parsed from hCRISPRi-v2-style guide names, else the target's TSSs), compare expression in cells carrying only that target's guides with
-non-targeting-control cells, within each condition, then combine across conditions:
+non-targeting-control cells (--control ntc, the default), within each condition, then combine
+across conditions:
   log2fc   cell-weighted mean of per-condition log2(mean_target / mean_NTC)
   p_value  Stouffer-combined Welch t-test
 The target itself is measured too (its own knockdown), so the confound screen can tell "the
 neighbour went down and the target did not" from "both went down".
+
+High-MOI screens (several guides per cell) have almost no cells carrying one target only. With
+--control complement, a target's cells are all cells carrying any of its guides and the controls are
+a random sample of the condition's cells that carry none of them (SCEPTRE's complement control);
+the other guides in those cells are spread evenly over both arms.
 
 Per-condition comparison matters: a regulator that changes differentiation changes many genes
 in trans, and pooled cells would read that as knockdown. A strong cis knockdown (the gene falls
@@ -36,7 +42,7 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix
+from scipy.sparse import csc_matrix, csr_matrix
 from scipy.stats import norm, ttest_ind
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
@@ -47,6 +53,7 @@ from gene_coordinates import (  # noqa: E402
 
 ROW_BLOCK = 8000
 MAX_NTC_CELLS_PER_CONDITION = 4000
+MAX_TARGET_CELLS_PER_CONDITION = 4000  # --control complement only: bounds the rows read per target
 PSEUDO_FRACTION = 0.01  # of the NTC mean: caps log2FC near -6.6 for a gene silenced to zero
 
 
@@ -64,17 +71,23 @@ def read_strings(group: h5py.Group, key: str) -> list[str]:
 
 
 def read_csr(node: h5py.Group) -> csr_matrix:
+    """A sparse AnnData matrix as CSR with explicit zeros dropped; CSC-encoded matrices are converted."""
     shape = tuple(node.attrs["shape"])
-    return csr_matrix((node["data"][:], node["indices"][:], node["indptr"][:]), shape=shape)
+    parts = (node["data"][:], node["indices"][:], node["indptr"][:])
+    encoding = node.attrs.get("encoding-type", "csr_matrix")
+    encoding = encoding.decode() if isinstance(encoding, bytes) else str(encoding)
+    matrix = csc_matrix(parts, shape=shape).tocsr() if encoding == "csc_matrix" else csr_matrix(parts, shape=shape)
+    matrix.eliminate_zeros()
+    return matrix
 
 
 def index_column(frame: h5py.Group) -> list[str]:
     return read_strings(frame, frame.attrs["_index"])
 
 
-def load_guides(handle: h5py.File, guide_prefix: str):
+def load_guides(handle: h5py.File, guide_prefix: str, target_key: str = "guide_targets"):
     names = decode(handle[f"{guide_prefix}/uns/guide_names"][:])
-    targets = decode(handle[f"{guide_prefix}/uns/guide_targets"][:])
+    targets = decode(handle[f"{guide_prefix}/uns/{target_key}"][:])
     assignment = read_csr(handle[f"{guide_prefix}/obsm/guide_assignment"])
     return names, targets, assignment
 
@@ -91,26 +104,32 @@ def cell_targets(assignment: csr_matrix, targets: list[str]) -> np.ndarray:
     return out
 
 
+def cells_carrying(assignment: csr_matrix, targets: list[str], wanted: list[str]) -> dict[str, np.ndarray]:
+    """Cells with a positive assignment to any guide of each wanted target (high-MOI arm)."""
+    by_column = (assignment > 0).tocsc()
+    target_array = np.array(targets, dtype=object)
+    out = {}
+    for target in wanted:
+        columns = np.flatnonzero(target_array == target)
+        cells = [by_column.indices[by_column.indptr[c]:by_column.indptr[c + 1]] for c in columns]
+        out[target] = np.unique(np.concatenate(cells)) if cells else np.array([], dtype=int)
+    return out
+
+
 def stream_columns(node: h5py.Group, rows: np.ndarray, columns: np.ndarray) -> np.ndarray:
     """Dense rows x columns block of a CSR matrix stored in HDF5, read in row blocks."""
     indptr = node["indptr"][:]
-    column_position = {c: i for i, c in enumerate(columns)}
-    wanted = np.zeros(int(node.attrs["shape"][1]), dtype=bool)
-    wanted[columns] = True
+    n_columns = int(node.attrs["shape"][1])
     row_position = {r: i for i, r in enumerate(rows)}
     out = np.zeros((len(rows), len(columns)), dtype=np.float32)
     rows_sorted = np.sort(rows)
     for block_start in range(0, len(rows_sorted), ROW_BLOCK):
         block = rows_sorted[block_start:block_start + ROW_BLOCK]
         lo, hi = indptr[block[0]], indptr[block[-1] + 1]
-        data = node["data"][lo:hi]
-        indices = node["indices"][lo:hi]
-        for r in block:
-            a, b = indptr[r] - lo, indptr[r + 1] - lo
-            idx, val = indices[a:b], data[a:b]
-            keep = wanted[idx]
-            for c, v in zip(idx[keep], val[keep]):
-                out[row_position[r], column_position[c]] = v
+        span = csr_matrix((node["data"][lo:hi], node["indices"][lo:hi], indptr[block[0]:block[-1] + 2] - lo),
+                          shape=(block[-1] - block[0] + 1, n_columns))
+        dense = span[block - block[0]][:, columns].toarray()
+        out[[row_position[r] for r in block]] = dense
     return out
 
 
@@ -123,6 +142,10 @@ def main() -> int:
     parser.add_argument("--guide-prefix", default="mod/cNMF", help="HDF5 path of the AnnData holding guide_assignment")
     parser.add_argument("--gene-name-key", default=None, help="var column with gene symbols (default: the var index)")
     parser.add_argument("--condition-key", default=None, help="obs column to stratify by (e.g. day)")
+    parser.add_argument("--guide-target-key", default="guide_targets",
+                        help="uns key naming each guide's target (e.g. guide_gene to pool a gene's promoters)")
+    parser.add_argument("--control", choices=("ntc", "complement"), default="ntc",
+                        help="ntc: single-target cells vs non-targeting cells; complement: high-MOI, see above")
     parser.add_argument("--ntc-pattern", default=r"(?i)^(?:non[-_]?targeting|NTC|safe[-_]?targeting)")
     parser.add_argument("--guide-table", type=Path,
                         help="IGVF 'guide RNA sequences' table with guide coordinates (overrides positions in guide names)")
@@ -136,7 +159,7 @@ def main() -> int:
     tss = load_gene_tss(args.gene_coordinates)
 
     with h5py.File(args.h5mu, "r") as handle:
-        guide_names, guide_targets, assignment = load_guides(handle, args.guide_prefix)
+        guide_names, guide_targets, assignment = load_guides(handle, args.guide_prefix, args.guide_target_key)
         guide_positions: dict[str, list[int]] = {}
         for name, target in zip(guide_names, guide_targets):
             parsed = parse_guide_position(name)
@@ -162,18 +185,32 @@ def main() -> int:
         genes = sorted({g for _, g, _ in pairs if g in column_of})
         columns = np.array([column_of[g] for g in genes], dtype=int)
 
-        per_cell_target = cell_targets(assignment, guide_targets)
-        is_ntc = np.array([bool(re.search(args.ntc_pattern, t)) if t else False for t in per_cell_target])
         obs = expression["obs"]
-        conditions = np.array(read_strings(obs, args.condition_key)) if args.condition_key else np.full(len(per_cell_target), "all")
+        n_cells = assignment.shape[0]
+        conditions = np.array(read_strings(obs, args.condition_key)) if args.condition_key else np.full(n_cells, "all")
         rng = np.random.default_rng(args.seed)
         ntc_cells = {}
+        if args.control == "ntc":
+            per_cell_target = cell_targets(assignment, guide_targets)
+            is_control = np.array([bool(re.search(args.ntc_pattern, t)) if t else False for t in per_cell_target])
+            target_cells = {r: np.flatnonzero(per_cell_target == r) for r in regulators}
+            full_target_cells = None
+        else:
+            full_target_cells = cells_carrying(assignment, guide_targets, regulators)
+            is_control = np.ones(n_cells, dtype=bool)  # per-target exclusion happens below
+            target_cells = {}
+            for r, cells in full_target_cells.items():
+                capped = [rng.choice(c, MAX_TARGET_CELLS_PER_CONDITION, replace=False)
+                          if len(c) > MAX_TARGET_CELLS_PER_CONDITION else c
+                          for c in (cells[conditions[cells] == condition] for condition in np.unique(conditions))]
+                target_cells[r] = np.sort(np.concatenate(capped)) if capped else cells
+            print(f"complement control: median {int(np.median([len(c) for c in target_cells.values()]))} "
+                  f"target cells per regulator (capped at {MAX_TARGET_CELLS_PER_CONDITION} per condition)", flush=True)
         for condition in np.unique(conditions):
-            cells = np.flatnonzero(is_ntc & (conditions == condition))
+            cells = np.flatnonzero(is_control & (conditions == condition))
             if len(cells) > MAX_NTC_CELLS_PER_CONDITION:
                 cells = rng.choice(cells, MAX_NTC_CELLS_PER_CONDITION, replace=False)
             ntc_cells[condition] = cells
-        target_cells = {r: np.flatnonzero(per_cell_target == r) for r in regulators}
         rows = np.unique(np.concatenate([*ntc_cells.values(), *target_cells.values()]))
         print(f"{len(regulators)} regulators, {len(pairs) - len(regulators)} neighbour pairs, "
               f"{len(genes)} measured genes; reading {len(rows)} cells", flush=True)
@@ -192,6 +229,8 @@ def main() -> int:
                 cells = target_cells[target][conditions[target_cells[target]] == condition]
                 if len(cells) < 5 or len(ntc) < 20:
                     continue
+                if full_target_cells is not None:  # complement: controls must not carry this target's guides
+                    ntc = np.setdiff1d(ntc, full_target_cells[target], assume_unique=True)
                 a = dense[[row_of[c] for c in cells], gene_col[gene]]
                 b = dense[[row_of[c] for c in ntc], gene_col[gene]]
                 pseudo = max(PSEUDO_FRACTION * b.mean(), 1e-6)
