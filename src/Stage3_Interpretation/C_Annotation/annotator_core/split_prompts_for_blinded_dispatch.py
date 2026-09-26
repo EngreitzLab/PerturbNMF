@@ -1,6 +1,6 @@
 """Explode a batch_request.json into one isolated directory per (arm, program).
 
-Blinding is the point. Each annotator subagent is pointed at exactly one directory that
+Blinding is the point. Each annotator call is pointed at exactly one directory that
 contains its own prompt and nothing else — no gold labels, no other arm's prompt, no other
 arm's answers. The comparison is worthless if an annotator can see what it is being compared
 against.
@@ -34,19 +34,16 @@ def main() -> int:
         program_id = match.group(1)
 
         params = request["params"]
-        blocks = []
-        if params.get("system"):
-            blocks.append(
-                "=== SYSTEM INSTRUCTIONS (your operating rules for this task) ===\n"
-                + params["system"]
-            )
-        blocks.append(
-            "=== TASK (answer exactly this) ===\n" + params["messages"][0]["content"]
-        )
-
         directory = args.dispatch_root / f"{args.arm}_p{program_id}"
         directory.mkdir(parents=True, exist_ok=True)
-        (directory / "prompt.md").write_text("\n\n".join(blocks), encoding="utf-8")
+        # The static instructions go to system.md, sent as the system prompt and cached across
+        # the batch; the per-item data goes to prompt.md. See answer_one_prompt.py.
+        system_path = directory / "system.md"
+        if params.get("system"):
+            system_path.write_text(params["system"], encoding="utf-8")
+        elif system_path.exists():
+            system_path.unlink()
+        (directory / "prompt.md").write_text(params["messages"][0]["content"], encoding="utf-8")
         written.append(directory)
 
     print(f"{args.arm}: wrote {len(written)} isolated prompt directories under {args.dispatch_root}")

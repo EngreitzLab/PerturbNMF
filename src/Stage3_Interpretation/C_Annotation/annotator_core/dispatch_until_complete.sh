@@ -1,5 +1,5 @@
 #!/bin/bash
-# Keep running the blinded dispatch until every prompt has a COMPLETE answer.
+# Keep running the blinded dispatch until every prompt has a COMPLETE answer to its CURRENT prompt.
 #
 # `claude -p` fails nonzero with an EMPTY stderr when the account is usage-limited, which is
 # indistinguishable from a real error. So this just retries: each pass skips completed prompts,
@@ -24,7 +24,7 @@ remaining() {
     local n=0 d
     for d in "$DISPATCH"/$DIR_GLOB; do
         [ -d "$d" ] || continue
-        "$PYTHON" "$HERE/check_answer_complete.py" "$d/answer.json" || n=$((n+1))
+        "$PYTHON" "$HERE/answer_one_prompt.py" needs-work "$d" && n=$((n+1))
     done
     echo "$n"
 }
