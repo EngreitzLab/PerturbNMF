@@ -131,8 +131,7 @@ The programs the members move most, by the members' mean log2FC{label_note}.
 Step 1 — RULE OUT THE CONFOUNDERS. For each item give a status and the evidence that decided it:
   generic_fitness_or_stress (the members share a growth, viability or stress-response defect
     rather than a function: many unrelated essential genes moving proliferation / stress programs)
-  differentiation_delay (the members all slow or block the {condition_word} progression, which
-    moves every stage program at once)
+  differentiation_delay ({differentiation_delay_description})
   promoter_neighbour (section B/C caveats; excluded members are already gone)
   weak_effect_noise (members with low reliability or weak effects held together loosely)
   other (another NON-biological or non-specific reason they co-cluster — name it; a shared
@@ -284,6 +283,7 @@ def build_prompt(evidence: dict, settings: dict, conditions: list[dict], n_targe
                    f"can be as coherent as a group of strong ones.")
     excluded_block = "\n".join(f"- {e['gene']}: {'; '.join(e['reasons'])}" for e in evidence["excluded"]) or "- none"
     summaries = "\n".join(f"- {m['gene']}: {m['summary'] or '(no summary)'}" for m in evidence["members"])
+    condition_word = settings.get("condition_word", "differentiation" if multi else "condition")
     user = USER_TEMPLATE.format(
         group_id=evidence["group_id"], dataset_name=settings.get("dataset_name", ""),
         cell_system=settings["cell_system"], assay=settings.get("assay", ""), conditions_block=conditions_block,
@@ -298,7 +298,11 @@ def build_prompt(evidence: dict, settings: dict, conditions: list[dict], n_targe
         string_block=format_string(evidence["string_edges"], evidence["ppi_enrichment"]),
         n_targets=n_targets, enrichment_block=format_enrichment(evidence["enrichment"]),
         reference_block=format_pool(evidence["reference_pool"]), summary_block=summaries,
-        condition_word=settings.get("condition_word", "differentiation" if multi else "condition"),
+        differentiation_delay_description=settings.get(
+            "differentiation_delay_description",
+            f"the members all slow or block the {condition_word} progression, which\n"
+            "    moves every stage program at once"),
+        condition_word=condition_word,
         output_schema=OUTPUT_SCHEMA,
     )
     system = SYSTEM_PROMPT.format(annotation_role=settings.get("annotation_role", "cell biologist"),

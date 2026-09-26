@@ -404,7 +404,7 @@ function correlationHeatmap(g) {
   return `<h3 style="margin-top:18px">Member × member correlation of effect profiles</h3>
     <p class="small" style="margin:0 0 6px">${button("raw", "raw r")} · ${button("corrected", "noise-corrected r")}</p>
     <div style="overflow-x:auto"><table class="heat corr">${head}${body}</table></div>
-    <p class="small muted">Pearson r between members' log2FC profiles across every program${MULTI ? " x day" : ""}; same row order as above. Noise-corrected r = r / √(reliability₁ × reliability₂), capped at ±1 — what the grouping used, so a group of weak regulators can be as coherent as a group of strong ones.</p>`;
+    <p class="small muted">Pearson r between members' log2FC profiles across every program${MULTI ? " x condition" : ""}; same row order as above. Noise-corrected r = r / √(reliability₁ × reliability₂), capped at ±1 — what the grouping used, so a group of weak regulators can be as coherent as a group of strong ones.</p>`;
 }
 
 // ---- STRING network -----------------------------------------------------------------------
@@ -451,7 +451,7 @@ function whyCard(g) {
   const rows = (w.programs || []).map(p => `<tr><td>${programRef(p.program_id)} <span class="small muted">${esc(META.program_labels[p.program_id] || "")}</span></td>
       ${MULTI ? `<td>${esc(p.condition)}</td>` : ""}<td>${p.direction === "up" ? "↑ up" : p.direction === "down" ? "↓ down" : esc(p.direction)}</td><td>${esc(p.reading)}</td></tr>`).join("");
   return `<div class="slot"><h4>Why here${w.confidence ? ` · <span class="muted">${esc(w.confidence)} confidence</span>` : ""}</h4><p>${esc(w.claim)}</p>
-    ${rows ? `<table><tr><th>Program</th>${MULTI ? "<th>Day</th>" : ""}<th>Direction</th><th>Reading</th></tr>${rows}</table>` : ""}
+    ${rows ? `<table><tr><th>Program</th>${MULTI ? "<th>Condition</th>" : ""}<th>Direction</th><th>Reading</th></tr>${rows}</table>` : ""}
     ${(w.pmids || []).length ? `<p class="small">${w.pmids.map(x => pmidLink(String(x).replace(/^PMID[:\\s]*/i, ""))).join(", ")}</p>` : ""}</div>`;
 }
 function evidenceCard(g) {
@@ -549,7 +549,7 @@ function render(id, keepScroll) {
     <details class="card"><summary>Alternative annotations (${g.readings.length})</summary><p class="small muted">Other annotations of the same group that the evidence does not rule out.</p><table><tr><th>Alternative annotation</th><th>Why it is not ruled out</th><th>What would distinguish it</th></tr>${readings}</table></details>
     ${openQs ? `<details class="card"><summary>Open questions (${g.open_questions.length})</summary><ul>${openQs}</ul></details>` : ""}
     ${qcCard(g)}
-    <p class="small muted">Built ${esc(META.built)} from ${esc(META.source)}. Grouping: shared nearest neighbours of the noise-corrected correlation between regulators' effect profiles (log2FC on every program${MULTI ? " x day" : ""}), kept when stable under bootstrap resampling of the programs${META.n_eligible ? `; ${META.n_eligible} of ${META.n_regulators} regulators were reliable enough to group` : ""}. Members sharing a curated complex with the core and correlating significantly with the group were rescued in. ${META.calibration_used ? "<b>CORUM complexes were partly used to calibrate the grouping parameters</b>, so complex recovery here is not an independent check." : "Curated complexes were not used to set the grouping parameters."} Guides whose effect a neighbouring promoter could explain were excluded before annotation.</p>`;
+    <p class="small muted">Built ${esc(META.built)} from ${esc(META.source)}. Grouping: shared nearest neighbours of the noise-corrected correlation between regulators' effect profiles (log2FC on every program${MULTI ? " x condition" : ""}), kept when stable under bootstrap resampling of the programs${META.n_eligible ? `; ${META.n_eligible} of ${META.n_regulators} regulators were reliable enough to group` : ""}. Members sharing a curated complex with the core and correlating significantly with the group were rescued in. ${META.calibration_used ? "<b>CORUM complexes were partly used to calibrate the grouping parameters</b>, so complex recovery here is not an independent check." : "Curated complexes were not used to set the grouping parameters."} Guides whose effect a neighbouring promoter could explain were excluded before annotation.</p>`;
 }
 
 function prev() { const i = IDS.indexOf(currentId); if (i > 0) render(IDS[i-1]); }
