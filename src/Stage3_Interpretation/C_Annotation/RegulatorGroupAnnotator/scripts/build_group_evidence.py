@@ -52,6 +52,7 @@ from answer_io import load_answer  # noqa: E402
 from build_citation_candidates import MYGENE, SupportFinder  # noqa: E402
 from complexes import load_curated_complexes  # noqa: E402
 from http_cache import CachedHttp  # noqa: E402
+from species import MYGENE_SPECIES, TAXON  # noqa: E402
 from string_client import StringClient  # noqa: E402
 from verify_cited_pmids import fetch_pubmed_summaries, is_retracted  # noqa: E402
 
@@ -111,7 +112,7 @@ def member_correlation(genes: list[str], effects: pd.DataFrame, reliability: pd.
 
 def gene_summary(http: CachedHttp, symbol: str) -> str:
     data = http.get_json(f"{MYGENE}?" + urllib.parse.urlencode(
-        {"q": f"symbol:{symbol}", "species": "human", "fields": "summary,name"})) or {}
+        {"q": f"symbol:{symbol}", "species": MYGENE_SPECIES, "fields": "summary,name"})) or {}
     hit = (data.get("hits") or [{}])[0]
     return str(hit.get("summary") or hit.get("name") or "")
 
@@ -184,7 +185,7 @@ def main() -> int:
                                     "description": t["description"], "fdr": t["fdr"], "p_value": t["p_value"],
                                     "number_of_genes": t["number_of_genes"],
                                     "number_of_genes_in_background": t["number_of_genes_in_background"],
-                                    "ncbiTaxonId": 9606, "inputGenes": "|".join(t["genes"])})
+                                    "ncbiTaxonId": TAXON, "inputGenes": "|".join(t["genes"])})
         touched = []
         for entry in complexes:
             inside = sorted(set(entry.members) & set(names))

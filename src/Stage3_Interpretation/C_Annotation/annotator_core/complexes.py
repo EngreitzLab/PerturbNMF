@@ -17,6 +17,8 @@ from typing import Dict, List
 
 import pandas as pd
 
+from species import from_human_symbol
+
 OMNIPATH_COMPLEXES_URL = "https://omnipathdb.org/complexes?format=tsv"
 CURATED_SOURCES = ("CORUM", "ComplexPortal", "SIGNOR")
 
@@ -55,7 +57,7 @@ def load_curated_complexes(path: Path, curated_sources=CURATED_SOURCES) -> List[
         sources = [s for s in row.sources.split(";") if s]
         if not any(s.lower() in curated for s in sources):
             continue
-        members = sorted({m for m in row.components_genesymbols.split("_") if m})
+        members = sorted({from_human_symbol(m) for m in row.components_genesymbols.split("_") if m})
         key = tuple(members)
         if len(members) < 2 or key in seen:  # OmniPath repeats a complex once per source record
             continue

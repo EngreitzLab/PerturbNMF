@@ -145,7 +145,10 @@ def score_gene_set_overlap(genes: List[str], gene_set: set, background: set) -> 
     are enriched among the top 50 relative to all human genes would call almost every program
     ribosomal, because the background is not what was measured.
     """
-    set_in_background = gene_set & background
+    # The marker sets and prefix patterns are human symbols; compare upper-cased so a mouse
+    # screen (Mki67, Rpl13, mt-Co1) is screened too instead of silently scoring zero.
+    upper_background = {g.upper(): g for g in background}
+    set_in_background = {upper_background[g] for g in gene_set if g in upper_background}
     overlap = sorted(set(genes) & set_in_background)
     if not set_in_background:
         return {"n_overlap": 0, "genes": [], "expected": 0.0, "p_value": None}
@@ -218,8 +221,8 @@ def build_screens(
 
         family_hits = {}
         for family, pattern in PREFIX_FAMILIES.items():
-            matched = [g for g in top_genes if pattern.search(g)]
-            in_background = [g for g in background_genes if pattern.search(g)]
+            matched = [g for g in top_genes if pattern.search(g.upper())]
+            in_background = [g for g in background_genes if pattern.search(g.upper())]
             expected = len(top_genes) * len(in_background) / len(background_genes)
             family_hits[family] = {
                 "n_overlap": len(matched),

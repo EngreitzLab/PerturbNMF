@@ -57,6 +57,7 @@ import pandas as pd
 
 from answer_io import load_answer
 from http_cache import CachedHttp
+from species import MYGENE_SPECIES, TAXON
 from verify_cited_pmids import fetch_pubmed_summaries, is_retracted
 
 NON_PRIMARY_TYPES = {"Review", "Systematic Review", "Meta-Analysis", "Editorial", "Comment", "Letter"}
@@ -198,7 +199,7 @@ class SupportFinder:
         """Older names matter: the foundational KDR paper says Flk-1, ETV2's says ER71/Etsrp."""
         if symbol not in self.aliases:
             data = self.http.get_json(f"{MYGENE}?" + urllib.parse.urlencode(
-                {"q": f"symbol:{symbol}", "species": "human", "fields": "alias,generif"})) or {}
+                {"q": f"symbol:{symbol}", "species": MYGENE_SPECIES, "fields": "alias,generif"})) or {}
             hit = (data.get("hits") or [{}])[0]
             aliases = hit.get("alias") or []
             aliases = [aliases] if isinstance(aliases, str) else aliases
@@ -206,7 +207,7 @@ class SupportFinder:
                     and not re.fullmatch(r"(C\d+orf\d+|FLJ\d+|KIAA\d+|DKFZ\w+|MGC\d+)", a)]
             # UniProt protein names carry the names papers actually use ("VE-cadherin", "PECAM-1").
             query = urllib.parse.urlencode({
-                "query": f"gene_exact:{symbol} AND organism_id:9606 AND reviewed:true",
+                "query": f"gene_exact:{symbol} AND organism_id:{TAXON} AND reviewed:true",
                 "fields": "protein_name", "format": "json", "size": 1,
             })
             entry = ((self.http.get_json(f"{UNIPROT}?{query}") or {}).get("results") or [{}])[0]
@@ -250,7 +251,7 @@ class SupportFinder:
 
     def curated_pmids(self, symbol: str, words: List[str]) -> List[str]:
         query = urllib.parse.urlencode({
-            "query": f"gene_exact:{symbol} AND organism_id:9606 AND reviewed:true",
+            "query": f"gene_exact:{symbol} AND organism_id:{TAXON} AND reviewed:true",
             "fields": "cc_function", "format": "json", "size": 1,
         })
         data = self.http.get_json(f"{UNIPROT}?{query}") or {}
@@ -350,7 +351,7 @@ class SupportFinder:
     def uniprot_accession(self, symbol: str) -> Optional[str]:
         if symbol not in self.uniprot:
             query = urllib.parse.urlencode({
-                "query": f"gene_exact:{symbol} AND organism_id:9606 AND reviewed:true",
+                "query": f"gene_exact:{symbol} AND organism_id:{TAXON} AND reviewed:true",
                 "fields": "accession", "format": "json", "size": 1,
             })
             data = self.http.get_json(f"{UNIPROT}?{query}") or {}
@@ -368,7 +369,7 @@ class SupportFinder:
         for usage in ("descendants", "exact"):
             query = urllib.parse.urlencode({
                 "geneProductId": f"UniProtKB:{accession}", "goId": go_id, "goUsage": usage,
-                "taxonId": 9606, "limit": 100,
+                "taxonId": TAXON, "limit": 100,
             })
             data = self.http.get_json(f"{QUICKGO}?{query}")
             if data is not None:

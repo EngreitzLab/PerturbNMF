@@ -19,14 +19,14 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 from http_cache import CachedHttp
+from species import TAXON
 
 STRING_API = "https://version-12-0.string-db.org/api/json"
 CALLER = "PerturbNMF-annotator"
-HUMAN = 9606
 
 
 class StringClient:
-    def __init__(self, http: CachedHttp, species: int = HUMAN):
+    def __init__(self, http: CachedHttp, species: int = TAXON):
         self.http = http
         self.species = species
 
