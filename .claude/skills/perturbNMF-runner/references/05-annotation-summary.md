@@ -257,12 +257,16 @@ python build_annotation_viewer.py --config <config.json> --dispatch <dir> --arm 
 - Left rail: every program, grouped by peak condition (multi-condition) or label family (single
   condition); positional / technical programs tagged. Full-text search, `#program-N` deep links,
   arrow keys, dark mode.
-- Per program: label / family / distinguisher and brief summary; activity by condition and the
-  temporal window; genes; the genes the label rests on with the support the citation pass chose
-  (★ discovery, ◆ context, ◐ restatement, or none); regulator volcano plots (one per condition,
-  shared axes, regulators named in the annotation labelled) with a table view; regulator
-  hypotheses with their support; confounders; layered interpretation; modules; competing
-  readings; QC (re-dispatches, validator warnings, collision-pass renames).
+- Per program: label and brief summary (family and distinguisher are used for the rail and the
+  collision pass, not shown); activity by condition and the temporal window; top and distinctive
+  genes — the same genes the prompt showed, with the uniqueness score defined on the page and
+  each distinctive gene's loading rank and program count on hover; the genes the label rests on
+  with the support the citation pass chose, PMIDs inline next to each gene (★ discovery,
+  ◆ context, ◐ restatement, or none); regulator volcano plots (one per condition, shared axes,
+  regulators named in the annotation labelled) with a table view; regulator hypotheses with their
+  support; confounders; layered interpretation; modules (defined on the page); alternative
+  program annotations (the answer's `competing_readings`); QC (re-dispatches, validator warnings,
+  collision-pass renames). No separate citation list and no comparator annotations.
 
 ---
 

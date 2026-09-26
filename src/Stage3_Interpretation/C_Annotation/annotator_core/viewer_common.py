@@ -154,13 +154,6 @@ details.card[open] > summary::before { content: "▾ "; }
 details.card[open] > summary { margin-bottom: 10px; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
 .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-.cmp { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface-soft); }
-.cmp .src { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-.cmp .lab { font-weight: 650; margin: 2px 0 4px; }
-.cmp .txt { font-size: 12.5px; color: var(--text-soft); }
-.cmp .txt.clamp { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
-.cmp .more { font-size: 11.5px; color: var(--accent-text); cursor: pointer; }
-.cmp.v3 { background: var(--accent-soft); border-color: transparent; }
 .chip { display: inline-block; font-family: var(--mono); font-size: 12px; padding: 1px 7px; margin: 2px 3px 2px 0;
   border-radius: 6px; background: var(--surface-soft); border: 1px solid var(--border); }
 .chip.hit { border-color: var(--accent); color: var(--accent-text); font-weight: 650; }

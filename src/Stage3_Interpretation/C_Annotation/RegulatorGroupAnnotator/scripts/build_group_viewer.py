@@ -13,7 +13,7 @@ caveat, and the members the promoter screen excluded greyed at the bottom — wi
 member correlation of effect profiles (raw or noise-corrected) in the same row order; the shared
 function; the unexplained members' hypotheses; then why the group forms here, the curated
 complexes, STRING network and enrichment, citations (plus the citation pass per member when
-given), confounder assessment, competing readings, open questions and the gate's QC.
+given), confounder assessment, alternative annotations, open questions and the gate's QC.
 
 Inputs are the config build_group_prompts.py used, the dispatch directory and, optionally, the
 citation-pass dispatch prefix and the ProgramAnnotatorV3 viewer to link program ids to.
@@ -546,7 +546,7 @@ function render(id, keepScroll) {
     ${evidenceCard(g)}
     ${citationsCard(g)}
     <div class="card"><h3>Confounder assessment</h3><table><tr><th>Confounder</th><th>Status</th><th>Deciding evidence</th></tr>${confRows}</table></div>
-    <details class="card"><summary>Competing readings (${g.readings.length})</summary><table><tr><th>Reading</th><th>Why not excluded</th><th>What would distinguish it</th></tr>${readings}</table></details>
+    <details class="card"><summary>Alternative annotations (${g.readings.length})</summary><p class="small muted">Other annotations of the same group that the evidence does not rule out.</p><table><tr><th>Alternative annotation</th><th>Why it is not ruled out</th><th>What would distinguish it</th></tr>${readings}</table></details>
     ${openQs ? `<details class="card"><summary>Open questions (${g.open_questions.length})</summary><ul>${openQs}</ul></details>` : ""}
     ${qcCard(g)}
     <p class="small muted">Built ${esc(META.built)} from ${esc(META.source)}. Grouping: shared nearest neighbours of the noise-corrected correlation between regulators' effect profiles (log2FC on every program${MULTI ? " x day" : ""}), kept when stable under bootstrap resampling of the programs${META.n_eligible ? `; ${META.n_eligible} of ${META.n_regulators} regulators were reliable enough to group` : ""}. Members sharing a curated complex with the core and correlating significantly with the group were rescued in. ${META.calibration_used ? "<b>CORUM complexes were partly used to calibrate the grouping parameters</b>, so complex recovery here is not an independent check." : "Curated complexes were not used to set the grouping parameters."} Guides whose effect a neighbouring promoter could explain were excluded before annotation.</p>`;

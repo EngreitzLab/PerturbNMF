@@ -46,3 +46,20 @@ Constraints / decisions
 - Open: first-pass pool is thin (co-mention only) → members like TAOK1 under-called until the
   citation pass; gate cannot catch coherence talk without keywords; drift-check script is
   hard-coded to the Oak path (no-op locally).
+
+---
+
+# Annotation viewer — Olga's feedback (#perturbnmf-paper, 2026-09-25)
+
+Decisions (Jesse): comparators stay in the benchmark viewers only, not in the package; drop
+family/distinguisher from the page; no separate citation list — citation-pass PMIDs stay next to
+their genes; regenerate the two posted viewers.
+
+- [x] family/distinguisher header + distinguisher-evidence line removed (both viewers)
+- [x] distinctive genes: same 30 the prompt showed, uniqueness score defined, rank + n on hover
+- [x] modules defined on the page; "competing readings" -> "Alternative program annotations"
+      (group viewer: "Alternative annotations"); JSON key unchanged
+- [x] package viewer: dead comparator + citation-list code removed; unused .cmp CSS dropped
+- [x] benchmark viewer: comparator boxes name + link + describe their source; citations card removed
+- [x] regenerated annotation_viewer_{cc_k50,telohaec_k60}_v3.html; checked in browser, no console errors
+- [x] 17 tests pass; package viewer builds on teloHAEC and CC

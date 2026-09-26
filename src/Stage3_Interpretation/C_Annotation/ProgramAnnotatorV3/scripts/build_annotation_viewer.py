@@ -6,11 +6,12 @@ program at a time in the main pane, with full-text search, #program-N deep links
 navigation and dark mode. No CDN and no external files: everything is inline, so the HTML can be
 emailed or dropped on any static host.
 
-Per program: label, family and distinguisher (and the label before the collision pass), brief
-summary; activity by condition and the temporal window (multi-condition); genes; the genes the
-label rests on WITH the support the citation pass chose for each; regulator volcano plot(s) with
-the regulators named in the annotation labelled, plus a table view; regulator hypotheses with
-their support; confounder rule-outs; layered interpretation; modules; competing readings; QC.
+Per program: label (and the label before the collision pass), brief summary; activity by
+condition and the temporal window (multi-condition); top and distinctive genes (the same genes the
+prompt showed); the genes the label rests on WITH the support the citation pass chose for each;
+regulator volcano plot(s) with the regulators named in the annotation labelled, plus a table view;
+regulator hypotheses with their support; confounder rule-outs; layered interpretation; modules;
+alternative program annotations; QC.
 
 Inputs are the same config the prompt builder used (build_annotation_prompts.py), plus the
 annotation dispatch directory and, optionally, the citation-pass dispatch directory.
@@ -34,11 +35,13 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
+from build_annotation_prompts import TOP_LOADING, TOP_UNIQUE  # noqa: E402
 from validate_annotation_answers import validate  # noqa: E402
-from viewer_common import VIEWER_CSS, bare_pmid, fetch_titles, load_answer, load_support, to_js  # noqa: E402
+from viewer_common import VIEWER_CSS, fetch_titles, load_answer, load_support, to_js  # noqa: E402
 
-TOP_GENES_SHOWN = 30
-DISTINCTIVE_SHOWN = 20
+# The same genes the annotation prompt showed (its sections A and B).
+TOP_GENES_SHOWN = TOP_LOADING
+DISTINCTIVE_SHOWN = TOP_UNIQUE
 
 
 def regulator_grid(program_regs: pd.DataFrame, conditions: list) -> tuple:
@@ -93,6 +96,7 @@ def common_fields(pid: int, sources: dict) -> dict:
     answer = load_answer(directory / "answer.json")
     loading = sources["loading"]
     frame = loading[loading["program_id"] == pid].sort_values("Score", ascending=False)
+    frame = frame.assign(loading_rank=range(1, len(frame) + 1))
     top = frame.head(TOP_GENES_SHOWN)
     distinctive = (
         frame[~frame["Name"].isin(set(top["Name"]))]
@@ -110,8 +114,6 @@ def common_fields(pid: int, sources: dict) -> dict:
         "id": pid,
         "label": answer.get("label", ""),
         "family": answer.get("label_family", ""),
-        "distinguisher": answer.get("label_distinguisher", ""),
-        "distinguisher_evidence": answer.get("label_distinguisher_evidence", ""),
         "label_before": answer.get("label_before_disambiguation", ""),
         "used_bare_number": bool(answer.get("disambiguation_used_bare_number")),
         "summary": answer.get("brief_summary", ""),
@@ -126,10 +128,12 @@ def common_fields(pid: int, sources: dict) -> dict:
         "modules": answer.get("modules", []),
         "readings": answer.get("competing_readings", []),
         "model_regulators": answer.get("regulators", []),
-        "citations": [{**c, "pmid": bare_pmid(c["pmid"])} for c in answer.get("citations", []) if c.get("pmid")],
         "open_questions": answer.get("open_questions", []),
         "top_genes": [[g, round(float(v), 5)] for g, v in zip(top["Name"], top["Score"])],
-        "distinctive": distinctive["Name"].tolist(),
+        # [gene, loading rank in this program, number of programs whose gene list includes it]
+        "distinctive": [[g, int(r), int(sources["programs_per_gene"][g])]
+                        for g, r in zip(distinctive["Name"], distinctive["loading_rank"])],
+        "n_program_genes": len(frame),
         "grid": grid,
         "n_sig_by_condition": n_sig,
         "volcano": volcano_points(program_regs, sources["conditions"]),
@@ -171,13 +175,13 @@ def load_from_config(args) -> tuple:
     if "program_id" not in loading.columns:
         loading = loading.rename(columns={"RowID": "program_id"})
     sources = {"dispatch": args.dispatch, "arm": args.arm, "conditions": conditions,
-               "citations": args.citations, "loading": loading, "regulators": regulators}
+               "citations": args.citations, "loading": loading, "regulators": regulators,
+               "programs_per_gene": loading.groupby("Name")["program_id"].nunique()}
 
     def build(pid: int) -> dict:
         program = common_fields(pid, sources)
         group = technical_group(program)
         program["tag"] = (group or "").split(" ")[0].lower()
-        program["comparators"] = []
         if activity is not None:
             by_condition = activity[activity["program_id"] == pid].set_index("condition")["mean_score"]
             scores = [round(float(by_condition.get(c["label"], 0.0)), 5) for c in conditions]
@@ -198,6 +202,7 @@ def load_from_config(args) -> tuple:
         "groups": [f"Peak {c['label']} · {c['stage']}" for c in conditions] if (multi and activity is not None) else None,
         "condition_word": "condition",
         "significance": settings.get("significance_label", "adjusted p < 0.05"),
+        "k": int(loading["program_id"].nunique()),
     }
     return build, meta, data
 
@@ -214,7 +219,7 @@ PAGE = """<!doctype html>
 <body>
 <div class="top">
   <div class="brand" id="brand"></div>
-  <input id="search" type="search" placeholder="Search labels, summaries, genes, regulators, comparators…" oninput="filterRail()">
+  <input id="search" type="search" placeholder="Search labels, summaries, genes, regulators…" oninput="filterRail()">
   <div class="spacer"></div>
   <div class="meta" id="meta"></div>
   <button onclick="prev()" title="Previous (←)">←</button>
@@ -240,9 +245,8 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const SEARCH_INDEX = {};
 for (const id of IDS) {
   const p = PROGRAMS[id];
-  SEARCH_INDEX[id] = [p.label, p.family, p.distinguisher, p.label_before, p.summary, p.overview,
-    ...p.comparators.map(c => c.label + " " + c.text), p.group,
-    p.top_genes.map(g=>g[0]).join(" "), p.distinctive.join(" "), p.grid.map(g=>g.gene).join(" "),
+  SEARCH_INDEX[id] = [p.label, p.family, p.label_before, p.summary, p.overview, p.group,
+    p.top_genes.map(g=>g[0]).join(" "), p.distinctive.map(g=>g[0]).join(" "), p.grid.map(g=>g.gene).join(" "),
     (p.temporal||{}).claim, "P"+id, "program "+id].join(" ").toLowerCase();
 }
 
@@ -402,6 +406,10 @@ const pretty = s => String(s || "").replace(/_/g, " ");
 const pmidLink = id => `<a href="https://pubmed.ncbi.nlm.nih.gov/${esc(id)}/" target="_blank" rel="noopener">PMID ${esc(id)}</a>`;
 const chips = (arr, hits) => (arr || []).map(g => `<span class="chip${hits && hits.has(g) ? " hit" : ""}">${esc(g)}</span>`).join("");
 
+function distinctiveChips(p, hits) {
+  return p.distinctive.map(([g, rank, n]) => `<span class="chip${hits.has(g) ? " hit" : ""}" data-tip="${esc(`${g}: loading rank ${rank} of ${p.n_program_genes} · in the top ${p.n_program_genes} of ${n} of ${META.k} programs`)}">${esc(g)}</span>`).join("");
+}
+
 function slotCard(title, s) {
   if (!s || !s.claim) return `<div class="slot"><h4>${title}</h4><p class="muted">Not filled.</p></div>`;
   const support = [...(s.support_genes||[]), ...(s.support_regulators||[])];
@@ -419,17 +427,6 @@ function temporalCard(p) {
   return `<p>${esc(t.claim || "")}</p>
     <p class="small muted">Model-reported peak: ${esc(t.peak_condition || "—")} · consistent with proposed mechanism: ${consistent}${t.confidence ? ` · ${esc(t.confidence)} confidence` : ""}</p>
     ${rows ? `<table><tr><th>Regulator</th><th>Day(s)</th><th>Pattern</th></tr>${rows}</table>` : ""}`;
-}
-
-function comparators(p) {
-  const clamp = t => `<div class="txt clamp" onclick="this.classList.toggle('clamp')" title="Click to expand">${esc(t)}</div>`;
-  const cards = p.comparators.map(c => c.label
-    ? `<div class="cmp"><div class="src">${esc(c.source)}</div><div class="lab">${esc(c.label)}</div>${clamp(c.text || "")}</div>`
-    : `<div class="cmp"><div class="src">${esc(c.source)}</div><div class="lab muted">—</div><div class="txt">${esc(c.missing || "")}</div></div>`).join("");
-  return `<div class="grid3">
-    <div class="cmp v3"><div class="src">v3 (this run)</div><div class="lab">${esc(p.label)}</div>
-      <div class="txt">family: ${esc(p.family || "—")}<br>distinguisher: ${esc(p.distinguisher || "—")}</div></div>${cards}
-  </div>`;
 }
 
 // ---- citation-pass support ----------------------------------------------------------------
@@ -483,26 +480,22 @@ function render(id, keepScroll) {
       <b>${i+1}. ${esc(m.name)}</b> <span class="muted small">· ${esc(m.strength)}</span>
       <div style="margin:4px 0">${chips(m.genes)}</div><div class="small">${esc(m.mechanism)}</div></div>`).join("");
   const readings = (p.readings||[]).map(r => `<tr><td>${esc(r.reading)}</td><td>${esc(r.why_not_excluded)}</td><td>${esc(r.what_would_distinguish_it)}</td></tr>`).join("");
-  const cites = (p.citations||[]).map(c => { const t = TITLES[c.pmid] || {};
-      return `<li>${pmidLink(c.pmid)}${t.title ? ` — ${esc(t.title)} <span class="muted">(${esc(t.journal)} ${esc(t.year)})</span>` : ""}
-        <div class="small">${esc(c.supports)}${c.evidence_system ? ` <span class="muted">· system: ${esc(c.evidence_system)}</span>` : ""}</div></li>`; }).join("");
   const openQs = (p.open_questions||[]).map(q => `<li>${esc(q.claim)} <span class="muted">— test: ${esc(q.what_would_test_it)}</span></li>`).join("");
 
   document.getElementById("main").innerHTML = `
     <span class="pill">Program ${id}</span> ${p.peak ? `<span class="pill" style="background:var(--surface-soft);color:var(--text-soft)">peak ${p.peak} · ${STAGES[p.peak]}</span>` : ""} ${supportPill(p)}
     <h1>${esc(p.label)}</h1>
-    <p class="sub">${p.family ? `Family: <b>${esc(p.family)}</b>` : "No single family (several processes)"}${p.distinguisher ? ` · Distinguisher: <b>${esc(p.distinguisher)}</b>` : ""} · coherence: ${esc(p.coherence)}</p>
+    <p class="sub">coherence: ${esc(p.coherence)}</p>
     <p class="lead">${esc(p.summary)}</p>
-    ${p.comparators && p.comparators.length ? comparators(p) : ""}
     ${p.activity ? `<div class="grid2">
       <div class="card"><h3>Program activity by day</h3>${activityChart(p)}</div>
       <div class="card"><h3>Temporal window</h3>${temporalCard(p)}</div>
     </div>` : ""}
     <div class="card"><h3>Genes</h3>
       <p class="small muted" style="margin:0 0 4px">Top ${p.top_genes.length} by loading (outlined = named as label evidence)</p><div>${chips(p.top_genes.map(g=>g[0]), labelGenes)}</div>
-      <p class="small muted" style="margin:10px 0 4px">Most distinctive genes outside the top 30</p><div>${chips(p.distinctive, labelGenes)}</div></div>
-    <details class="card" open><summary>Genes that drove the label (${(p.label_genes||[]).length}) — with support</summary><table><tr><th>Gene</th><th>Rank</th><th>Why</th><th>Support (citation pass)</th></tr>${geneRows}</table>
-      ${p.distinguisher_evidence ? `<p class="small"><b>Distinguisher evidence:</b> ${esc(p.distinguisher_evidence)}</p>` : ""}</details>
+      <p class="small muted" style="margin:10px 0 4px">Most distinctive genes outside the top ${p.top_genes.length}</p><div>${distinctiveChips(p, labelGenes)}</div>
+      <p class="small muted" style="margin:6px 0 0">From loading ranks ${p.top_genes.length + 1}–${p.n_program_genes}, the ${p.distinctive.length} genes with the highest uniqueness score = loading × ln((K+1)/(n+1)), where K = ${META.k} programs and n = the number of programs whose top ${p.n_program_genes} genes include the gene: genes that load well here and in few other programs. The annotator saw these same genes. Hover a gene for its rank and n.</p></div>
+    <details class="card" open><summary>Genes that drove the label (${(p.label_genes||[]).length}) — with support</summary><table><tr><th>Gene</th><th>Rank</th><th>Why</th><th>Support (citation pass)</th></tr>${geneRows}</table></details>
     <div class="card"><h3>${DAYS.length > 1 ? "Regulators by day" : "Significant regulators"}</h3>${volcanoes(p)}
       <details style="margin-top:8px"><summary class="small" style="cursor:pointer">Table view — ${DAYS.length > 1 ? "log2FC of every significant regulator on every day" : "significant regulators"}</summary>${regulatorGrid(p)}</details></div>
     <details class="card" open><summary>Regulator hypotheses (${(p.model_regulators||[]).length}) — with support</summary><table><tr><th>Regulator</th><th>Role</th><th>log2FC</th><th>Conf.</th><th>Hypothesis</th><th>Support (citation pass)</th></tr>${regRows}</table>
@@ -510,8 +503,10 @@ function render(id, keepScroll) {
     <div class="card"><h3>Confounder rule-outs</h3><table><tr><th>Confounder</th><th>Status</th><th>Deciding evidence</th></tr>${confRows}</table></div>
     <div class="card"><h3>Layered interpretation</h3><div class="grid3">
       ${slotCard("Upstream trigger", p.slots.upstream_trigger)}${slotCard("Co-regulation mechanism", p.slots.coregulation_mechanism)}${slotCard("Cellular output", p.slots.cellular_output)}</div></div>
-    <details class="card"><summary>Modules (${(p.modules||[]).length})</summary>${modules || '<p class="muted">None.</p>'}</details>
-    <details class="card"><summary>Competing readings (${(p.readings||[]).length})</summary><table><tr><th>Reading</th><th>Why not excluded</th><th>What would distinguish it</th></tr>${readings}</table></details>
+    <details class="card"><summary>Modules (${(p.modules||[]).length})</summary>
+      <p class="small muted">A module is a subset of this program's genes that the annotator grouped under a narrower process or mechanism than the label. A program can contain several. Strength says how well the genes and enrichment terms back it: supported, suggestive or speculative.</p>${modules || '<p class="muted">None.</p>'}</details>
+    <details class="card"><summary>Alternative program annotations (${(p.readings||[]).length})</summary>
+      <p class="small muted">Other annotations of the same gene set that the evidence does not rule out.</p><table><tr><th>Alternative annotation</th><th>Why it is not ruled out</th><th>What would distinguish it</th></tr>${readings}</table></details>
     ${p.overview ? `<details class="card"><summary>Overview</summary><p>${esc(p.overview)}</p></details>` : ""}
     ${openQs ? `<details class="card"><summary>Open questions</summary><ul>${openQs}</ul></details>` : ""}
     ${qcCard(p)}
@@ -584,8 +579,7 @@ def main() -> int:
         shared = sorted({p["group"] for p in programs.values()} - set(artifact_groups) - {"Other themes"}, key=str.lower)
         meta["groups"] = shared + ["Other themes", *artifact_groups]
 
-    cited = {c["pmid"] for p in programs.values() for c in p["citations"]}
-    cited |= {s["pmid"] for p in programs.values() for claim in p["support"].values()
+    cited = {s["pmid"] for p in programs.values() for claim in p["support"].values()
               for s in claim["supports"] for pmid in [s.get("pmid", "")] if pmid}
     cited = {one for pmid in cited for one in pmid.split(",") if one}
     titles = fetch_titles(cited, data_dir / "cited_pmid_titles.json")
