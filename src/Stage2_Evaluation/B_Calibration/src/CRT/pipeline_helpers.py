@@ -211,6 +211,34 @@ def _skew_calibrated_crt(
     return pvals_sn, beta_obs, skew_params, pvals_raw
 
 
+def covariate_adjusted_control_mean(
+    inputs: Any,
+    obs_idx: np.ndarray,
+    beta: np.ndarray,
+) -> np.ndarray:
+    """
+    Mean outcome the treated cells would have without the perturbation, from the fit
+    Y ~ beta*x + C*gamma: mean over treated cells of C_i @ gamma_hat. With
+    gamma_hat = A (C^T Y - C^T x beta^T) and C^T x = v (covariate sums over treated
+    cells), this is v^T A (CTY - v beta^T) / n1. For outcome="usage" it is the
+    covariate-adjusted control usage share, the baseline for a relative effect.
+    Returns:
+        control_mean: vector of length K
+    """
+    v = inputs.C[obs_idx].sum(axis=0)
+    gamma = inputs.A @ (inputs.CTY - np.outer(v, beta))
+    return (v @ gamma) / obs_idx.size
+
+
+def stack_control_means(
+    results: List[Any],
+    gene_list: List[str],
+    program_names: List[str],
+) -> pd.DataFrame:
+    control_mat = np.vstack([r.control_means for r in results])
+    return pd.DataFrame(control_mat, index=gene_list, columns=program_names)
+
+
 def _stack_gene_results(
     results: List[Any],
     gene_list: List[str],

@@ -88,7 +88,14 @@ The observed $\beta$ is identical under both options; only the null distribution
 
 #### Outcome: CLR or usage share (`--outcome`)
 
-By default (`--outcome clr`) $Y_{ik}$ is the centered log-ratio of cell $i$'s usage, floored at $10^{-8}$ and renormalized, and the effect is reported as `log2FC` (see above). With `--outcome usage`, $Y_{ik} = U_{ik} / \sum_{k'} U_{ik'}$ is the per-cell **usage share** of program $k$: usage is row-normalized to proportions (no log, no floor, zeros stay 0). Row-normalizing matters because some staged h5mu files hold raw, depth-scaled cNMF usages whose row sums track library size. The design, covariates, resampling and p-values are unchanged; $\beta_k$ becomes the covariate-adjusted difference in mean usage share (treated minus control, on the 0–1 scale) and is written as `usage_share_diff`, not `log2FC`.
+By default (`--outcome clr`) $Y_{ik}$ is the centered log-ratio of cell $i$'s usage, floored at $10^{-8}$ and renormalized, and the effect is reported as `log2FC` (see above). With `--outcome usage`, $Y_{ik} = U_{ik} / \sum_{k'} U_{ik'}$ is the per-cell **usage share** of program $k$: usage is row-normalized to proportions (no log, no floor, zeros stay 0). Row-normalizing matters because some staged h5mu files hold raw, depth-scaled cNMF usages whose row sums track library size. The design, covariates, resampling and p-values are unchanged; $\beta_k$ becomes the covariate-adjusted difference in mean usage share (treated minus control, on the 0–1 scale) and is written as `usage_share_diff`, not `log2FC`. Two more columns give a relative effect: `control_usage_share`, the covariate-adjusted mean share the treated cells would have without the perturbation ($\bar{C}_T \hat\gamma$), and `usage_share_relative_diff` $= \beta / $ `control_usage_share` (a fold change minus 1 on mean usage; NaN if the baseline is $\le 0$).
+
+What changes with the usage scale:
+- **Additive, not multiplicative.** 0.02→0.03 and 0.40→0.60 are both 1.5× on the CLR scale, but +0.01 vs +0.20 in `usage_share_diff`. Sorting by `usage_share_diff` favors abundant programs; use `usage_share_relative_diff` to compare programs with different baselines. p-values are per program, so validity is unaffected.
+- **Arithmetic vs geometric mean.** The usage mean is driven by high-usage cells; CLR is driven by the typical cell, including near-zero ones. Usage is more sensitive to gains in abundant programs, less to a program switching off in cells where it was already low.
+- **Zeros.** 0 stays 0 instead of becoming a floor-dependent outlier (CLR $\approx -18$ at a $10^{-8}$ floor), which is why no floor hyperparameter is needed.
+- **Compositional in both cases.** Shares sum to 1, so a gain in one program forces losses elsewhere (CLR has the same constraint).
+- **Downstream thresholds** written for `log2FC` do not apply to `usage_share_diff`.
 
 On teloHAEC 2kG (K=60, lane covariate, 5,000 permutations), judged against a cell-count-matched, guide-structured NTC null, `--resampling fixed_count --outcome usage` was calibrated (null $\lambda = 1.01$) and found as many regulators as the best CLR floor, without a floor hyperparameter; the $10^{-8}$ floor used by `--outcome clr` found ~40% fewer. **Recommended: `--resampling fixed_count --outcome usage`.**
 
@@ -180,7 +187,7 @@ Per (K, sel_thresh, condition) CRT writes three files into the output folder:
 
 | File | Contents |
 |------|----------|
-| `{K}_CRT_{covar_tag}_{condition}.txt` | **Real** perturbation results — columns: `target_name, program_name, log2FC` (`usage_share_diff` with `--outcome usage`), `p-value` (skew-calibrated), `adj_pval` (FDR of skew), `p-value_raw` (raw CRT), `adj_pval_raw` (FDR of raw) |
+| `{K}_CRT_{covar_tag}_{condition}.txt` | **Real** perturbation results — columns: `target_name, program_name, log2FC` (with `--outcome usage`: `usage_share_diff, control_usage_share, usage_share_relative_diff`), `p-value` (skew-calibrated), `adj_pval` (FDR of skew), `p-value_raw` (raw CRT), `adj_pval_raw` (FDR of raw) |
 | `{K}_CRT_fake_{covar_tag}_{condition}.txt` | **Fake / NTC null** distribution — columns: `ensemble, target_name` (NTC pseudo-gene id, e.g. `ntc_3`), `program_name, p-value` (skew-calibrated, the p the real calls use), `adj_pval`, `p-value_raw, adj_pval_raw` (no effect size) |
 | `{K}_CRT_{covar_tag}_{condition}.png` | QQ plot of real (raw) vs NTC-null (raw) p-values |
 | `{K}_CRT_{covar_tag}_{condition}_skew.png` | QQ plot of real vs NTC-null **skew-calibrated** p-values (the scale significance calls are made on) |

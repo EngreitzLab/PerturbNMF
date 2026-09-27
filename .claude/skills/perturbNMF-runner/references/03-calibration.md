@@ -56,7 +56,7 @@ Key parameters (always ask):
 > **`--number_guide` controls the NTC null.** CRT calibrates its p-values by building non-targeting-control (NTC) pseudo-gene groups of size `--number_guide`, frequency-matched to real genes, and comparing them to real targets on a QQ plot. Set `--number_guide` to your real guides-per-gene (it is no longer hardcoded to 6, so a wrong value skews the null).
 
 **Output files** (covariate token *before* the condition, so different covariate combinations can share a `--save_dir`; no covariates → token is `no_covariates`):
-- `{K}_CRT_<covariates>_{condition}.txt` — **real** results: `target_name, program_name, log2FC` (`usage_share_diff` with `--outcome usage`), `p-value` (skew), `adj_pval`, `p-value_raw`, `adj_pval_raw`.
+- `{K}_CRT_<covariates>_{condition}.txt` — **real** results: `target_name, program_name, log2FC` (with `--outcome usage`: `usage_share_diff, control_usage_share, usage_share_relative_diff`), `p-value` (skew), `adj_pval`, `p-value_raw`, `adj_pval_raw`.
 - `{K}_CRT_fake_<covariates>_{condition}.txt` — **fake / NTC null**: `ensemble, target_name` (NTC pseudo-gene id), `program_name, p-value` (skew), `adj_pval`, `p-value_raw, adj_pval_raw`.
 - `{K}_CRT_<covariates>_{condition}.png` — real-vs-NTC QQ plot (raw p-values); `..._skew.png` — same on skew-calibrated p-values (the scale `adj_pval` calls use).
 - `{K}_CRT_matched_null_<covariates>_{condition}.txt` — only with `--matched_ntc_null`.

@@ -18,7 +18,9 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
 - CRT `--outcome usage` (`outcome="usage"` in `prepare_crt_inputs`): Y is the per-cell
   program usage share (usage row-normalized, no log, no floor) instead of the CLR of
   floored usage; the effect is written as `usage_share_diff` (difference in mean usage
-  share) instead of `log2FC`. Default stays `clr`. Recommended with
+  share) instead of `log2FC`, plus `control_usage_share` (covariate-adjusted baseline
+  share) and `usage_share_relative_diff` (diff / baseline). `run_all_genes_union_crt`
+  returns `control_means_df`. Default stays `clr`. Recommended with
   `--resampling fixed_count`.
 - CRT `--matched_ntc_null`: cell-count-matched NTC pseudo-targets as a calibration
   diagnostic for few-cell targets (`{K}_CRT_matched_null_*.txt`).

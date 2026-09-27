@@ -280,7 +280,10 @@ def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=No
 
     # --outcome usage: beta_hat is the covariate-adjusted difference in mean usage
     # share (treated minus control, on the 0-1 proportion scale). It is not a fold
-    # change, so it is reported as usage_share_diff instead of log2FC.
+    # change, so it is reported as usage_share_diff instead of log2FC. Alongside it:
+    # control_usage_share, the covariate-adjusted share the treated cells would have
+    # without the perturbation, and usage_share_relative_diff = diff / control share
+    # (a fold change minus 1 on mean usage; NaN when the control share is <= 0).
     #
     # --outcome clr: the CRT effect size is beta_hat on the CLR (natural-log) scale, NOT a log2 fold
     # change. A shift of beta in CLR coordinate k corresponds to a natural-log fold
@@ -288,9 +291,16 @@ def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=No
     # shift across the K programs, so ln-FC = beta * K/(K-1). Converting to base 2:
     #     approx_log2FC = [K / (K - 1)] * beta_hat / ln(2)
     # K = k = number of programs (CLR is centered over all program columns).
+    effect_cols = []
     if args.outcome == 'usage':
         effect_col = 'usage_share_diff'
         result_df[effect_col] = result_df['beta']
+        control_long = _melt_programs(out['control_means_df'], 'control_usage_share')
+        result_df = result_df.merge(control_long, on=['program_name', 'target_name'], how='left')
+        control = result_df['control_usage_share']
+        result_df['usage_share_relative_diff'] = (
+            result_df['beta'] / control.where(control > 0))
+        effect_cols = ['control_usage_share', 'usage_share_relative_diff']
     else:
         effect_col = 'log2FC'
         result_df[effect_col] = result_df['beta'] * (k / (k - 1)) / np.log(2)
@@ -301,7 +311,7 @@ def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=No
         result_df = _add_adj_pval(result_df, 'p-value_raw', args, out_col='adj_pval_raw')
 
     # Reorder columns (each p-value followed by its adjusted p-value)
-    cols = ['target_name', 'program_name', effect_col, 'p-value', 'adj_pval']
+    cols = ['target_name', 'program_name', effect_col, *effect_cols, 'p-value', 'adj_pval']
     if has_raw:
         cols += ['p-value_raw', 'adj_pval_raw']
     result_df = result_df[cols]
@@ -553,7 +563,7 @@ def main():
     parser.add_argument('--number_permutations', help='Number of calibration iterations to run with (default: 1024)', type=int, default=1024)
     parser.add_argument('--guide_annotation_key', nargs='*', type=str,  help='Name of target for non-targeting/safe-targeting guides,default="non-targeting"', default='non-targeting')
     parser.add_argument('--resampling', type=str, choices=list(RESAMPLING_METHODS), default='bernoulli', help='How CRT null treated sets are drawn. bernoulli (default): each cell independently ~ Bernoulli(propensity), so the null set size varies around the observed count. fixed_count: every null set keeps the observed treated count within each stratum of the categorical covariates (exact within-stratum permutation when all covariates are categorical; propensity-weighted Pareto sampling within strata, an approximation, when continuous covariates are present). fixed_count is calibrated for few-cell targets where bernoulli is anticonservative.')
-    parser.add_argument('--outcome', type=str, choices=list(OUTCOMES), default='clr', help='CRT outcome Y per cell and program. clr (default): centered log-ratio of usage floored at 1e-8; effect reported as log2FC. usage: per-cell usage share (usage row-normalized to proportions, no log, no floor); effect reported as usage_share_diff, the covariate-adjusted difference in mean usage share (not a fold change). usage with --resampling fixed_count is the recommended configuration (calibrated on a matched NTC null, no floor hyperparameter). Output file names do not change; use --save_dir to keep runs apart.')
+    parser.add_argument('--outcome', type=str, choices=list(OUTCOMES), default='clr', help='CRT outcome Y per cell and program. clr (default): centered log-ratio of usage floored at 1e-8; effect reported as log2FC. usage: per-cell usage share (usage row-normalized to proportions, no log, no floor); effect reported as usage_share_diff, the covariate-adjusted difference in mean usage share (not a fold change), plus control_usage_share (covariate-adjusted baseline share) and usage_share_relative_diff (diff / baseline). usage with --resampling fixed_count is the recommended configuration (calibrated on a matched NTC null, no floor hyperparameter). Output file names do not change; use --save_dir to keep runs apart.')
     parser.add_argument('--matched_ntc_null', action='store_true', help='Also build a cell-count-matched NTC null (one NTC pseudo-target per real target with exactly its cell count, scored with the same CRT) and write {K}_CRT_matched_null_{covar_tag}_{condition}.txt. Roughly doubles CRT runtime. The frequency-matched guide groups rarely reach the few-cell regime, so this is the calibration diagnostic for small targets.')
     parser.add_argument('--FDR_method', type=str, choices=['BH', 'StoreyQ'], default='BH', help='FDR correction method: BH (Benjamini-Hochberg) or StoreyQ (Storey Q-value) (default: BH)')
     parser.add_argument('--save_dir', type=str, default=None, help='Base directory under which {K}_{thresh} subdirs are created. Default: <out_dir>/<run_name>/Evaluation/')

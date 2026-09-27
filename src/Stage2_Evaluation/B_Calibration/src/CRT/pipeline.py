@@ -33,6 +33,8 @@ from .pipeline_helpers import (
     _stack_gene_results,
     _stack_raw_outputs,
     _stack_skew_outputs,
+    covariate_adjusted_control_mean,
+    stack_control_means,
 )
 from .propensity import fit_propensity_logistic
 
@@ -66,6 +68,9 @@ class CRTGeneResult:
     pvals_sn: Optional[np.ndarray] = None
     skew_params: Optional[np.ndarray] = None
     pvals_raw: Optional[np.ndarray] = None
+    # Covariate-adjusted mean outcome of the treated cells without the perturbation
+    # (see covariate_adjusted_control_mean); NaN for untestable genes.
+    control_means: Optional[np.ndarray] = None
 
 
 def prepare_crt_inputs(
@@ -188,6 +193,7 @@ def _trivial_gene_result(
         pvals_sn=np.ones(K, dtype=np.float64) if calibrate_skew_normal else None,
         skew_params=np.full((K, 3), np.nan) if calibrate_skew_normal else None,
         pvals_raw=np.ones(K, dtype=np.float64) if calibrate_skew_normal else None,
+        control_means=np.full(K, np.nan),
     )
 
 
@@ -252,6 +258,7 @@ def run_one_gene_union_crt(
         pvals_sn=pvals_sn,
         skew_params=skew_params,
         pvals_raw=pvals_raw,
+        control_means=covariate_adjusted_control_mean(inputs, obs_idx, beta_obs),
     )
 
 
@@ -291,6 +298,9 @@ def run_all_genes_union_crt(
                 is True, these are skew-normal calibrated values.
             betas_df: DataFrame of CRT effect sizes (genes x programs)
             treated_df: Series of number of treated cells per gene
+            control_means_df: covariate-adjusted mean outcome of each gene's treated
+                cells without the perturbation (genes x programs); for
+                outcome="usage", the baseline usage share for betas_df
             results: list of CRTGeneResult dataclasses for all genes
             pvals_raw_df (optional): raw CRT p-values (genes x programs)
             pvals_skew_df (optional): skew-normal p-values (genes x programs)
@@ -347,6 +357,7 @@ def run_all_genes_union_crt(
         "pvals_df": pvals_df,
         "betas_df": betas_df,
         "treated_df": treated_df,
+        "control_means_df": stack_control_means(results, gene_list, inputs.program_names),
         "results": results,
     }
     if return_raw_pvals:

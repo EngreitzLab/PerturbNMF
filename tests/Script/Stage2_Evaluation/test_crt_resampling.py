@@ -22,8 +22,8 @@ Test strategy
     (c) beta_obs does not depend on resampling and equals the OLS coefficient
     (d) outcome="usage": Y is the row-normalized usage share (no floor, zeros stay 0);
         with fixed_count and 2-10-cell targets on zero-inflated usage (30-50% zeros),
-        null p-values are ~uniform and beta is the lane-adjusted difference in mean
-        usage share
+        null p-values are ~uniform, beta is the lane-adjusted difference in mean
+        usage share, and control_means_df is the lane-adjusted baseline share
     plus: pipeline wiring and invalid-option error, two-sided p <= 1, matched NTC
     pseudo-targets have exactly the target's cell count
 """
@@ -547,3 +547,21 @@ def test_usage_outcome_beta_is_adjusted_usage_share_difference(usage_fixed_count
         assert np.allclose(out["betas_df"].loc[gene].to_numpy(), expected,
                            rtol=1e-8, atol=1e-12), (
             f"{gene}: beta {out['betas_df'].loc[gene].to_numpy()} != {expected}")
+
+
+def test_usage_outcome_control_mean_matches_lstsq(usage_fixed_count_null):
+    """control_means_df = mean over treated cells of C_i @ gamma_hat from the full fit
+    Y ~ beta*x + C*gamma, i.e. the covariate-adjusted usage share without the
+    perturbation; beta / control is the relative effect."""
+    inputs, out = usage_fixed_count_null
+    C, Y = inputs.C, inputs.Y
+    for gene in ("gene0", "gene4", "gene8"):
+        treated = inputs.G[:, inputs.gene_to_cols[gene]].nonzero()[0]
+        x = np.zeros(Y.shape[0])
+        x[treated] = 1.0
+        coef, *_ = np.linalg.lstsq(np.column_stack([x, C]), Y, rcond=None)
+        expected = (C[treated] @ coef[1:]).mean(axis=0)
+        control = out["control_means_df"].loc[gene].to_numpy()
+        assert np.allclose(control, expected, rtol=1e-8, atol=1e-12), (
+            f"{gene}: control {control} != lstsq {expected}")
+        assert (control > 0).all(), f"{gene}: lane-adjusted baseline share should be > 0"
