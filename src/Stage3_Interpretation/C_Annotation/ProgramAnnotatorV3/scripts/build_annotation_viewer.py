@@ -10,7 +10,7 @@ Per program: label (and the label before the collision pass), brief summary; act
 condition and the temporal window (multi-condition); top and distinctive genes (the same genes the
 prompt showed); the genes the label rests on WITH the support the citation pass chose for each;
 regulator volcano plot(s) with the regulators named in the annotation labelled, plus a table view;
-regulator hypotheses with their support; confounder rule-outs; layered interpretation; modules;
+regulator hypotheses with their support; non-specific explanations checked; layered interpretation; modules;
 alternative program annotations; QC.
 
 Inputs are the same config the prompt builder used (build_annotation_prompts.py), plus the
@@ -117,7 +117,6 @@ def common_fields(pid: int, sources: dict) -> dict:
         "label_before": answer.get("label_before_disambiguation", ""),
         "used_bare_number": bool(answer.get("disambiguation_used_bare_number")),
         "summary": answer.get("brief_summary", ""),
-        "overview": answer.get("overview", ""),
         "coherence": answer.get("coherence", ""),
         "confounders": answer.get("confounder_assessment", []),
         "primary_confounders": primary,
@@ -245,7 +244,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const SEARCH_INDEX = {};
 for (const id of IDS) {
   const p = PROGRAMS[id];
-  SEARCH_INDEX[id] = [p.label, p.family, p.label_before, p.summary, p.overview, p.group,
+  SEARCH_INDEX[id] = [p.label, p.family, p.label_before, p.summary, p.group,
     p.top_genes.map(g=>g[0]).join(" "), p.distinctive.map(g=>g[0]).join(" "), p.grid.map(g=>g.gene).join(" "),
     (p.temporal||{}).claim, "P"+id, "program "+id].join(" ").toLowerCase();
 }
@@ -500,14 +499,15 @@ function render(id, keepScroll) {
       <details style="margin-top:8px"><summary class="small" style="cursor:pointer">Table view — ${DAYS.length > 1 ? "log2FC of every significant regulator on every day" : "significant regulators"}</summary>${regulatorGrid(p)}</details></div>
     <details class="card" open><summary>Regulator hypotheses (${(p.model_regulators||[]).length}) — with support</summary><table><tr><th>Regulator</th><th>Role</th><th>log2FC</th><th>Conf.</th><th>Hypothesis</th><th>Support (citation pass)</th></tr>${regRows}</table>
       <p class="small muted">Support was sought for label-evidence regulators and high/medium-confidence hypotheses; low-confidence hypotheses were not checked.</p></details>
-    <div class="card"><h3>Confounder rule-outs</h3><table><tr><th>Confounder</th><th>Status</th><th>Deciding evidence</th></tr>${confRows}</table></div>
+    <div class="card"><h3>Non-specific explanations checked</h3>
+      <p class="small muted" style="margin:0 0 6px">Before reading the biology, the annotator checked whether a technical or non-specific cause explains why these genes vary together: genomic position (neighbouring genes), cell cycle, technical QC, essentiality or growth arrest, RNA processing, CRISPRi effects around the targeted genes, ${DAYS.length > 1 ? "ribosome / housekeeping, and a change in the mix of cell stages across conditions" : "and ribosome / housekeeping"}. Most statuses are decided by deterministic screens.</p>
+      <table><tr><th>Explanation</th><th>Status</th><th>Deciding evidence</th></tr>${confRows}</table></div>
     <div class="card"><h3>Layered interpretation</h3><div class="grid3">
       ${slotCard("Upstream trigger", p.slots.upstream_trigger)}${slotCard("Co-regulation mechanism", p.slots.coregulation_mechanism)}${slotCard("Cellular output", p.slots.cellular_output)}</div></div>
     <details class="card"><summary>Modules (${(p.modules||[]).length})</summary>
       <p class="small muted">A module is a subset of this program's genes that the annotator grouped under a narrower process or mechanism than the label. A program can contain several. Strength says how well the genes and enrichment terms back it: supported, suggestive or speculative.</p>${modules || '<p class="muted">None.</p>'}</details>
     <details class="card"><summary>Alternative program annotations (${(p.readings||[]).length})</summary>
       <p class="small muted">Other annotations of the same gene set that the evidence does not rule out.</p><table><tr><th>Alternative annotation</th><th>Why it is not ruled out</th><th>What would distinguish it</th></tr>${readings}</table></details>
-    ${p.overview ? `<details class="card"><summary>Overview</summary><p>${esc(p.overview)}</p></details>` : ""}
     ${openQs ? `<details class="card"><summary>Open questions</summary><ul>${openQs}</ul></details>` : ""}
     ${qcCard(p)}
     <p class="small muted">Built ${esc(META.built)} from ${esc(META.source)}. 

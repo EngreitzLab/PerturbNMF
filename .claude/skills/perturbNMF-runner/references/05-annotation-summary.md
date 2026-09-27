@@ -264,9 +264,11 @@ python build_annotation_viewer.py --config <config.json> --dispatch <dir> --arm 
   with the support the citation pass chose, PMIDs inline next to each gene (★ discovery,
   ◆ context, ◐ restatement, or none); regulator volcano plots (one per condition, shared axes,
   regulators named in the annotation labelled) with a table view; regulator hypotheses with their
-  support; confounders; layered interpretation; modules (defined on the page); alternative
+  support; "Non-specific explanations checked" (the `confounder_assessment`, explained on the
+  page); layered interpretation; modules (defined on the page); alternative
   program annotations (the answer's `competing_readings`); QC (re-dispatches, validator warnings,
-  collision-pass renames). No separate citation list and no comparator annotations.
+  collision-pass renames). No separate citation list, no comparator annotations, and no
+  `overview` (it repeated the brief summary; the prompt still asks for it).
 
 ---
 
