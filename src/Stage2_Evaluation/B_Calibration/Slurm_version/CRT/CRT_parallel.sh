@@ -105,6 +105,11 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Eval
         #   --number_permutations   default 1024
         #   --guide_annotation_key  default "non-targeting"
         #   --FDR_method            default "BH"   (choices: "BH", "StoreyQ")
+        #   --resampling            default "bernoulli" (choices: "bernoulli", "fixed_count");
+        #                           fixed_count keeps each lane's treated count in every
+        #                           permutation — calibrated for few-cell targets
+        #   --matched_ntc_null      off by default; append to also write a cell-count-matched
+        #                           NTC null ({K}_CRT_matched_null_*.txt; ~2x runtime)
         #   --save_dir              default <out_dir>/<run_name>/Evaluation/{K}_{thresh}/
         #   --covariates            default None  (e.g. --covariates pct_counts_mt doublet_scores)
         #   --log_covariates        default None  (e.g. --log_covariates total_counts guides_per_cell)

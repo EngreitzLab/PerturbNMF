@@ -322,3 +322,87 @@ def crt_betas_for_gene(
         beta_null[b, :] = _beta_from_summaries(n1, v, sY, A, CTY)
 
     return beta_obs, beta_null
+
+
+@nb.njit
+def crt_index_sampler_fixed_count_numba(
+    pool: np.ndarray,
+    strata_ptr: np.ndarray,
+    stratum_counts: np.ndarray,
+    inverse_odds: np.ndarray,
+    B: int,
+    seed: int,
+):
+    """
+    Fixed-count resampler: every resample holds each stratum's treated count fixed.
+
+    In the Bernoulli sampler above the null treated-set SIZE is random with mean
+    sum(p), not the observed count n. The unstandardized beta of a few-cell set is
+    dominated by single extreme CLR values (zero usage -> CLR ~ -18), so its null
+    distribution depends strongly on set size: larger null sets dilute extremes,
+    empty ones give beta = 0. Whenever sum(p) != n (e.g. an under-converged propensity
+    fit for a rare target), observed extremes look too rare or too common. Here each
+    resample draws exactly stratum_counts[s] cells from stratum s, without replacement.
+
+    pool: cell indices grouped by stratum; stratum s owns pool[strata_ptr[s]:strata_ptr[s+1]]
+          (the array is shuffled in place)
+    strata_ptr: array of length S+1 with stratum offsets into pool
+    stratum_counts: array of length S, treated cells per stratum (the counts to preserve)
+    inverse_odds: per-cell (1-p)/p (p = propensity) indexed by cell id, or an empty array
+        - empty: uniform draw within each stratum (partial Fisher-Yates). With
+          categorical-only covariates the strata are the unique design rows, so this is
+          an exact permutation test conditional on the per-stratum treated counts.
+        - non-empty: Pareto sampling (Rosen 1997) within each stratum: key_j =
+          U_j/(1-U_j) * (1-p_j)/p_j, take the stratum_counts[s] smallest keys. This is the
+          standard fixed-size approximation to conditional Poisson sampling with weights
+          p_j/(1-p_j) (inclusion prob. ~ p_j, sample size exactly n). Used when the
+          design has continuous covariates; approximate, and O(N) per resample.
+    B: number of resamples
+    seed: random seed for reproducibility
+    Returns:
+        indptr, indices in the same CSC-like format as crt_index_sampler_fast_numba,
+        so crt_pvals_for_gene / crt_betas_for_gene consume them unchanged.
+    """
+    np.random.seed(seed)
+    n_strata = stratum_counts.shape[0]
+    n_per_resample = 0
+    for s in range(n_strata):
+        n_per_resample += stratum_counts[s]
+
+    indptr = np.empty(B + 1, dtype=np.int64)
+    for b in range(B + 1):
+        indptr[b] = b * n_per_resample
+    indices = np.empty(B * n_per_resample, dtype=np.int32)
+
+    use_weights = inverse_odds.shape[0] > 0
+    write = 0
+    for b in range(B):
+        for s in range(n_strata):
+            c = stratum_counts[s]
+            if c == 0:
+                continue
+            lo = strata_ptr[s]
+            size = strata_ptr[s + 1] - lo
+            if not use_weights or c == size:
+                # Partial Fisher-Yates: a uniform ordered c-subset from any starting
+                # arrangement, so the pool never needs resetting between resamples.
+                for t in range(c):
+                    j = lo + t + np.random.randint(size - t)
+                    tmp = pool[lo + t]
+                    pool[lo + t] = pool[j]
+                    pool[j] = tmp
+                    indices[write] = pool[lo + t]
+                    write += 1
+            else:
+                keys = np.empty(size, dtype=np.float64)
+                for t in range(size):
+                    u = np.random.random()
+                    keys[t] = u / (1.0 - u) * inverse_odds[pool[lo + t]]
+                cutoff = np.partition(keys, c - 1)[c - 1]
+                taken = 0
+                for t in range(size):
+                    if keys[t] <= cutoff and taken < c:
+                        indices[write] = pool[lo + t]
+                        write += 1
+                        taken += 1
+    return indptr, indices

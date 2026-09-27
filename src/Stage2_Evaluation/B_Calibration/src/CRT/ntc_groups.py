@@ -3,17 +3,19 @@ NTC guide-group construction and evaluation for QQ diagnostics.
 """
 
 import logging
+import zlib
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
+from joblib import Parallel, delayed
 
 from .adata_utils import build_gene_to_cols, union_obs_idx_from_cols
 from .pipeline_helpers import (
+    _check_resampling,
+    _draw_null_treated_sets,
     _empirical_crt,
-    _fit_propensity,
-    _sample_crt_indices,
     _skew_calibrated_crt,
 )
 from .propensity import fit_propensity_logistic
@@ -238,23 +240,52 @@ def _validate_group_sizes(
     return stats
 
 
+def _crt_pvals_for_treated_cells(
+    inputs,
+    obs_idx: np.ndarray,
+    B: int,
+    seed: int,
+    propensity_model=fit_propensity_logistic,
+    resampling: str = "bernoulli",
+    calibrate_skew_normal: bool = False,
+    side_code: int = 0,
+) -> Tuple[Optional[np.ndarray], np.ndarray]:
+    """
+    Score one treated cell set with the same CRT used for real targets.
+    Returns (skew-normal p-values or None, raw CRT p-values) across programs.
+    """
+    K = inputs.Y.shape[1]
+    if obs_idx.size == 0 or obs_idx.size == inputs.C.shape[0] or B <= 0:
+        ones = np.ones(K, dtype=np.float64)
+        return (ones if calibrate_skew_normal else None), ones
+
+    indptr, idx = _draw_null_treated_sets(
+        inputs, obs_idx, B, seed, propensity_model, resampling
+    )
+    if calibrate_skew_normal:
+        pvals_sn, _, _, pvals_raw = _skew_calibrated_crt(
+            inputs, indptr, idx, obs_idx, B, side_code
+        )
+        return pvals_sn, pvals_raw
+    pvals, _ = _empirical_crt(inputs, indptr, idx, obs_idx, B)
+    return None, pvals
+
+
 def crt_pvals_for_guide_set(
     inputs,
     guide_idx: np.ndarray,
     B: int,
     seed: int,
     propensity_model=fit_propensity_logistic,
+    resampling: str = "bernoulli",
 ) -> np.ndarray:
     """
     Returns CRT p-values across programs for one guide set.
     """
     obs_idx = union_obs_idx_from_cols(inputs.G, guide_idx)
-    if obs_idx.size == 0 or obs_idx.size == inputs.C.shape[0] or B <= 0:
-        return np.ones(inputs.Y.shape[1], dtype=np.float64)
-
-    p = _fit_propensity(inputs, obs_idx, propensity_model)
-    indptr, idx = _sample_crt_indices(p, B, seed)
-    pvals, _ = _empirical_crt(inputs, indptr, idx, obs_idx, B)
+    _, pvals = _crt_pvals_for_treated_cells(
+        inputs, obs_idx, B, seed, propensity_model, resampling
+    )
     return pvals
 
 
@@ -265,21 +296,81 @@ def crt_pvals_for_guide_set_skew(
     seed: int,
     propensity_model=fit_propensity_logistic,
     side_code: int = 0,
+    resampling: str = "bernoulli",
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Returns skew-calibrated and raw CRT p-values across programs for one guide set.
     """
     obs_idx = union_obs_idx_from_cols(inputs.G, guide_idx)
-    if obs_idx.size == 0 or obs_idx.size == inputs.C.shape[0] or B <= 0:
-        ones = np.ones(inputs.Y.shape[1], dtype=np.float64)
-        return ones, ones
-
-    p = _fit_propensity(inputs, obs_idx, propensity_model)
-    indptr, idx = _sample_crt_indices(p, B, seed)
-    pvals_sn, _, _, pvals_raw = _skew_calibrated_crt(
-        inputs, indptr, idx, obs_idx, B, side_code
+    return _crt_pvals_for_treated_cells(
+        inputs,
+        obs_idx,
+        B,
+        seed,
+        propensity_model,
+        resampling,
+        calibrate_skew_normal=True,
+        side_code=side_code,
     )
-    return pvals_sn, pvals_raw
+
+
+def _crt_pvals_for_ntc_groups_ensemble_both(
+    inputs,
+    ntc_groups_ens: Sequence[Mapping[str, Sequence[str]]],
+    B: int,
+    seed0: int,
+    propensity_model,
+    resampling: str,
+    calibrate_skew_normal: bool,
+    side_code: int,
+) -> Tuple[Dict[int, pd.DataFrame], Dict[int, pd.DataFrame]]:
+    """
+    Shared loop: returns (e -> skew DataFrame, e -> raw DataFrame); the skew dict is
+    empty when calibrate_skew_normal is False. Group size is inferred from the groups.
+    """
+    _check_resampling(resampling)
+    guide_to_col = {g: i for i, g in enumerate(inputs.guide_names)}
+    out_skew: Dict[int, pd.DataFrame] = {}
+    out_raw: Dict[int, pd.DataFrame] = {}
+    K = inputs.Y.shape[1]
+
+    for e, groups in enumerate(ntc_groups_ens):
+        _validate_group_sizes(groups)
+        rows_skew: List[np.ndarray] = []
+        rows_raw: List[np.ndarray] = []
+        group_ids: List[str] = []
+        for group_id, guides in groups.items():
+            cols = [guide_to_col[g] for g in guides if g in guide_to_col]
+            if not cols:
+                continue
+            seed = (hash((seed0, e, group_id)) & 0xFFFFFFFF)
+            obs_idx = union_obs_idx_from_cols(inputs.G, np.asarray(cols, dtype=np.int32))
+            pvals_skew, pvals_raw = _crt_pvals_for_treated_cells(
+                inputs,
+                obs_idx,
+                B,
+                seed,
+                propensity_model,
+                resampling,
+                calibrate_skew_normal=calibrate_skew_normal,
+                side_code=side_code,
+            )
+            rows_skew.append(pvals_skew)
+            rows_raw.append(pvals_raw)
+            group_ids.append(group_id)
+        empty = np.empty((0, K), dtype=np.float64)
+        out_raw[e] = pd.DataFrame(
+            np.vstack(rows_raw) if rows_raw else empty,
+            index=group_ids,
+            columns=inputs.program_names,
+        )
+        if calibrate_skew_normal:
+            out_skew[e] = pd.DataFrame(
+                np.vstack(rows_skew) if rows_skew else empty,
+                index=group_ids,
+                columns=inputs.program_names,
+            )
+    return out_skew, out_raw
 
 
 def crt_pvals_for_ntc_groups_ensemble(
@@ -288,39 +379,16 @@ def crt_pvals_for_ntc_groups_ensemble(
     B: int,
     seed0: int,
     propensity_model=fit_propensity_logistic,
-    # CHANGED: removed `expected_group_size: int = 6` param (it defaulted to 6 and
-    # crashed for any other --number_guide); group size is inferred from the groups now
+    resampling: str = "bernoulli",
 ) -> Dict[int, pd.DataFrame]:
     """
-    Returns mapping e -> DataFrame(rows=group_id, cols=programs).
+    Returns mapping e -> DataFrame(rows=group_id, cols=programs) of raw p-values.
     """
-    guide_to_col = {g: i for i, g in enumerate(inputs.guide_names)}
-    out: Dict[int, pd.DataFrame] = {}
-
-    for e, groups in enumerate(ntc_groups_ens):
-        _validate_group_sizes(groups)  # CHANGED: no longer passes expected_group_size
-        rows: List[np.ndarray] = []
-        group_ids: List[str] = []
-        for group_id, guides in groups.items():
-            cols = [guide_to_col[g] for g in guides if g in guide_to_col]
-            if not cols:
-                continue
-            seed = (hash((seed0, e, group_id)) & 0xFFFFFFFF)
-            pvals = crt_pvals_for_guide_set(
-                inputs=inputs,
-                guide_idx=np.asarray(cols, dtype=np.int32),
-                B=B,
-                seed=seed,
-                propensity_model=propensity_model,
-            )
-            rows.append(pvals)
-            group_ids.append(group_id)
-        if rows:
-            mat = np.vstack(rows)
-        else:
-            mat = np.empty((0, inputs.Y.shape[1]), dtype=np.float64)
-        out[e] = pd.DataFrame(mat, index=group_ids, columns=inputs.program_names)
-    return out
+    _, out_raw = _crt_pvals_for_ntc_groups_ensemble_both(
+        inputs, ntc_groups_ens, B, seed0, propensity_model, resampling,
+        calibrate_skew_normal=False, side_code=0,
+    )
+    return out_raw
 
 
 def crt_pvals_for_ntc_groups_ensemble_skew(
@@ -330,40 +398,140 @@ def crt_pvals_for_ntc_groups_ensemble_skew(
     seed0: int,
     propensity_model=fit_propensity_logistic,
     side_code: int = 0,
-    # CHANGED: removed `expected_group_size: int = 6` param (it defaulted to 6 and
-    # crashed for any other --number_guide); group size is inferred from the groups now
+    resampling: str = "bernoulli",
 ) -> Dict[int, pd.DataFrame]:
     """
     Returns mapping e -> DataFrame(rows=group_id, cols=programs) of skew p-values.
     """
-    guide_to_col = {g: i for i, g in enumerate(inputs.guide_names)}
-    out: Dict[int, pd.DataFrame] = {}
+    out_skew, _ = _crt_pvals_for_ntc_groups_ensemble_both(
+        inputs, ntc_groups_ens, B, seed0, propensity_model, resampling,
+        calibrate_skew_normal=True, side_code=side_code,
+    )
+    return out_skew
 
-    for e, groups in enumerate(ntc_groups_ens):
-        _validate_group_sizes(groups)  # CHANGED: no longer passes expected_group_size
-        rows: List[np.ndarray] = []
-        group_ids: List[str] = []
-        for group_id, guides in groups.items():
-            cols = [guide_to_col[g] for g in guides if g in guide_to_col]
-            if not cols:
+
+def crt_pvals_for_ntc_groups_ensemble_skew_and_raw(
+    inputs,
+    ntc_groups_ens: Sequence[Mapping[str, Sequence[str]]],
+    B: int,
+    seed0: int,
+    propensity_model=fit_propensity_logistic,
+    side_code: int = 0,
+    resampling: str = "bernoulli",
+) -> Tuple[Dict[int, pd.DataFrame], Dict[int, pd.DataFrame]]:
+    """
+    One pass over the NTC groups returning both (e -> skew p DataFrame, e -> raw p
+    DataFrame). The skew-normal p-value is the one real-target calls are made on, so
+    this is the null to compare against when judging those calls. The raw p-values
+    are identical to crt_pvals_for_ntc_groups_ensemble with the same seeds.
+    """
+    return _crt_pvals_for_ntc_groups_ensemble_both(
+        inputs, ntc_groups_ens, B, seed0, propensity_model, resampling,
+        calibrate_skew_normal=True, side_code=side_code,
+    )
+
+
+def make_ntc_pseudotargets_matched_by_cell_count(
+    inputs,
+    ntc_label: Union[str, Iterable[str]] = "NTC",
+    targets: Optional[Iterable[str]] = None,
+    seed: int = 0,
+) -> Tuple[Dict[str, np.ndarray], Dict[str, List[str]]]:
+    """
+    Build one negative-control pseudo-target per real target with EXACTLY the target's
+    treated-cell count (capped at the number of NTC cells), keeping guide structure:
+    whole NTC guides are added in random order until the next guide would overshoot,
+    and the remainder is a random subset of that next guide's cells.
+
+    The frequency-matched guide groups above use a fixed number of guides, so their
+    cell counts sit well above the few-cell regime where calibration is hardest; this
+    null samples every target's cell count, including 2-10 cells.
+
+    targets: real targets to match; default = every gene in inputs.gene_to_cols that
+        is not an NTC label
+    Returns:
+        pseudo_cells: target -> sorted int32 array of NTC cell indices
+        pseudo_guides: target -> NTC guide names used
+    """
+    ntc_labels = _normalize_ntc_labels(ntc_label)
+    ntc_cols = [
+        j for gene, cols in inputs.gene_to_cols.items() if gene in ntc_labels for j in cols
+    ]
+    if not ntc_cols:
+        raise ValueError(f"No guides found for NTC label(s) {sorted(ntc_labels)}.")
+    ntc_cols = np.asarray(sorted(ntc_cols), dtype=np.int64)
+    n_ntc_cells = union_obs_idx_from_cols(inputs.G, ntc_cols).size
+    if targets is None:
+        targets = sorted(g for g in inputs.gene_to_cols if g not in ntc_labels)
+
+    G = inputs.G
+    rng = np.random.default_rng(seed)
+    pseudo_cells: Dict[str, np.ndarray] = {}
+    pseudo_guides: Dict[str, List[str]] = {}
+    for target in targets:
+        n_cells = min(
+            union_obs_idx_from_cols(G, inputs.gene_to_cols[target]).size, n_ntc_cells
+        )
+        cells = np.empty(0, dtype=np.int32)
+        chosen: List[str] = []
+        for col in rng.permutation(ntc_cols):
+            guide_cells = np.setdiff1d(G.indices[G.indptr[col] : G.indptr[col + 1]], cells)
+            if guide_cells.size == 0:
                 continue
-            seed = (hash((seed0, e, group_id)) & 0xFFFFFFFF)
-            pvals_skew, _ = crt_pvals_for_guide_set_skew(
-                inputs=inputs,
-                guide_idx=np.asarray(cols, dtype=np.int32),
-                B=B,
-                seed=seed,
-                propensity_model=propensity_model,
-                side_code=side_code,
-            )
-            rows.append(pvals_skew)
-            group_ids.append(group_id)
-        if rows:
-            mat = np.vstack(rows)
-        else:
-            mat = np.empty((0, inputs.Y.shape[1]), dtype=np.float64)
-        out[e] = pd.DataFrame(mat, index=group_ids, columns=inputs.program_names)
-    return out
+            need = n_cells - cells.size
+            if guide_cells.size > need:
+                guide_cells = rng.choice(guide_cells, need, replace=False)
+            cells = np.union1d(cells, guide_cells)
+            chosen.append(inputs.guide_names[col])
+            if cells.size == n_cells:
+                break
+        pseudo_cells[target] = cells.astype(np.int32)
+        pseudo_guides[target] = chosen
+    return pseudo_cells, pseudo_guides
+
+
+def crt_pvals_for_matched_ntc_pseudotargets(
+    inputs,
+    pseudo_cells: Mapping[str, np.ndarray],
+    B: int,
+    seed0: int,
+    propensity_model=fit_propensity_logistic,
+    side_code: int = 0,
+    resampling: str = "bernoulli",
+    n_jobs: int = 1,
+    backend: str = "loky",
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
+    """
+    Score cell-count-matched NTC pseudo-targets with the same CRT as real targets.
+    Returns (skew p DataFrame, raw p DataFrame, n_cells Series), rows = matched target.
+    """
+    _check_resampling(resampling)
+    targets = list(pseudo_cells.keys())
+    results = Parallel(n_jobs=n_jobs, backend=backend)(
+        delayed(_crt_pvals_for_treated_cells)(
+            inputs,
+            np.asarray(pseudo_cells[t], dtype=np.int32),
+            B,
+            (seed0 + zlib.crc32(t.encode())) & 0xFFFFFFFF,
+            propensity_model,
+            resampling,
+            calibrate_skew_normal=True,
+            side_code=side_code,
+        )
+        for t in targets
+    )
+    K = inputs.Y.shape[1]
+    empty = np.empty((0, K), dtype=np.float64)
+    skew = np.vstack([r[0] for r in results]) if results else empty
+    raw = np.vstack([r[1] for r in results]) if results else empty
+    n_cells = pd.Series(
+        [len(pseudo_cells[t]) for t in targets], index=targets, name="n_cells"
+    )
+    return (
+        pd.DataFrame(skew, index=targets, columns=inputs.program_names),
+        pd.DataFrame(raw, index=targets, columns=inputs.program_names),
+        n_cells,
+    )
 
 
 def build_ntc_group_inputs(

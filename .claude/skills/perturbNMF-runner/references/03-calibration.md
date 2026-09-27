@@ -47,6 +47,8 @@ Key parameters (always ask):
 | `--covariates` | None | obs columns to include as-is (e.g. `pct_counts_mt doublet_scores`) |
 | `--log_covariates` | None | obs columns to log1p-transform before inclusion (e.g. `total_counts n_genes`) |
 | `--FDR_method` | `BH` | FDR correction: `BH` or `StoreyQ` |
+| `--resampling` | `bernoulli` | Null treated-set draw: `bernoulli` (size varies) or `fixed_count` (treated count fixed within each categorical-covariate stratum; exact for categorical-only covariates, approximate Pareto sampling with continuous ones). `fixed_count` is calibrated for few-cell targets; output names don't change, so use `--save_dir` to keep runs apart |
+| `--matched_ntc_null` | off | Also write `{K}_CRT_matched_null_<covariates>_{condition}.txt`: one NTC pseudo-target per real target with exactly its cell count, scored with the same CRT (~2x runtime) |
 | `--save_dir` | auto | Custom output directory (default: `<out_dir>/<run_name>/Evaluation/<K>_<sel_thresh>/`) |
 | `--skip_existing` | off | Skip the CRT recompute for a (K, sel_thresh, condition) when **both** its real and fake `.txt` exist, and regenerate the QQ `.png` from the cached raw p-values. Resume a preempted job **or** re-plot without recomputing. |
 
@@ -54,10 +56,11 @@ Key parameters (always ask):
 
 **Output files** (covariate token *before* the condition, so different covariate combinations can share a `--save_dir`; no covariates → token is `no_covariates`):
 - `{K}_CRT_<covariates>_{condition}.txt` — **real** results: `target_name, program_name, log2FC, p-value` (skew), `adj_pval`, `p-value_raw`, `adj_pval_raw`.
-- `{K}_CRT_fake_<covariates>_{condition}.txt` — **fake / NTC null**: `ensemble, target_name` (NTC pseudo-gene id), `program_name, p-value_raw, adj_pval_raw` (raw p-values only).
-- `{K}_CRT_<covariates>_{condition}.png` — real-vs-NTC QQ plot (raw p-values).
+- `{K}_CRT_fake_<covariates>_{condition}.txt` — **fake / NTC null**: `ensemble, target_name` (NTC pseudo-gene id), `program_name, p-value` (skew), `adj_pval`, `p-value_raw, adj_pval_raw`.
+- `{K}_CRT_<covariates>_{condition}.png` — real-vs-NTC QQ plot (raw p-values); `..._skew.png` — same on skew-calibrated p-values (the scale `adj_pval` calls use).
+- `{K}_CRT_matched_null_<covariates>_{condition}.txt` — only with `--matched_ntc_null`.
 
-Real and null share the **raw** p-value scale so they're directly comparable; `--skip_existing` re-plots the QQ from these cached `.txt`s without recomputing.
+Real and null carry both raw and skew p-values; judge calibration of the calls on the `_skew` outputs. `--skip_existing` re-plots the QQs from these cached `.txt`s without recomputing.
 
 Covariate token = `--covariates` values, then each `--log_covariates` value prefixed with `log_`, joined by `_`.
 

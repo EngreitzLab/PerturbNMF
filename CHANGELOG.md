@@ -9,6 +9,22 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
 
 ## [Unreleased]
 
+### Added
+- CRT `--resampling fixed_count` (`resampling="fixed_count"` in
+  `run_all_genes_union_crt`, `run_one_gene_union_crt` and the NTC functions): null
+  treated sets keep the observed treated count within each categorical-covariate
+  stratum. Exact for categorical-only covariates; approximate (Pareto sampling on the
+  propensity) with continuous covariates. Default stays `bernoulli`.
+- CRT `--matched_ntc_null`: cell-count-matched NTC pseudo-targets as a calibration
+  diagnostic for few-cell targets (`{K}_CRT_matched_null_*.txt`).
+- CRT NTC null now also carries the skew-normal p-value (`p-value`, `adj_pval` in
+  `{K}_CRT_fake_*.txt`), plus a `_skew.png` QQ plot and a `_skew` NTC-significance
+  summary on that scale.
+
+### Fixed
+- ⚠️ Two-sided skew-normal and empirical CRT p-values are clipped at 1 (could reach
+  ~1.04). Only p-values that were > 1 change.
+
 ## [0.1.1] - 2026-08-10
 
 ### Added

@@ -88,9 +88,12 @@ def compute_empirical_p_value(
         else:
             counter = np.sum(z_orig <= null_statistics)
         return (1.0 + counter) / (1.0 + B)
-    return 2.0 * min(
-        compute_empirical_p_value(null_statistics, z_orig, -1),
-        compute_empirical_p_value(null_statistics, z_orig, 1),
+    return min(
+        1.0,
+        2.0 * min(
+            compute_empirical_p_value(null_statistics, z_orig, -1),
+            compute_empirical_p_value(null_statistics, z_orig, 1),
+        ),
     )
 
 
@@ -185,7 +188,9 @@ def fit_and_evaluate_skew_normal(
             )
             if side_code == 0:
                 p_tail = dist.sf(z_orig) if check_right_tail else dist.cdf(z_orig)
-                p_val = 2.0 * p_tail
+                # Doubling one tail exceeds 1 when z_orig sits near the median of a
+                # skewed fit (the median tail can hold > 1/2 of the mass); clip.
+                p_val = min(2.0 * p_tail, 1.0)
             elif side_code == 1:
                 p_val = dist.sf(z_orig)
             else:

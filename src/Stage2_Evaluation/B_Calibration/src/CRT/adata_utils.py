@@ -234,3 +234,34 @@ def get_program_names(adata: Any, n_programs: int) -> List[str]:
         if "program_names" in uns:
             return list(uns["program_names"])
     return [f"program_{k}" for k in range(n_programs)]
+
+
+def covariate_strata_from_design(C: np.ndarray) -> Tuple[np.ndarray, bool]:
+    """
+    Group cells into strata of identical discrete covariate values, for fixed-count CRT.
+    A design column is treated as discrete when it takes at most 2 distinct values
+    (one-hot dummies, binary flags; get_covar_matrix one-hot encodes categorical
+    covariates, so each level becomes such a column). Constant columns (intercept)
+    are ignored. Strata are the unique rows of the discrete columns.
+    C: covariate matrix (N x p) as built by get_covar_matrix
+    Returns:
+        strata: int64 array of length N, stratum id per cell (0..S-1)
+        has_continuous: True if any non-constant column has > 2 distinct values; the
+            fixed-count resampler is then approximate (propensity-weighted within strata)
+    """
+    C = np.asarray(C, dtype=np.float64)
+    n_cells = C.shape[0]
+    discrete_cols: List[int] = []
+    has_continuous = False
+    for j in range(C.shape[1]):
+        n_unique = np.unique(C[:, j]).size
+        if n_unique == 1:
+            continue
+        if n_unique == 2:
+            discrete_cols.append(j)
+        else:
+            has_continuous = True
+    if not discrete_cols:
+        return np.zeros(n_cells, dtype=np.int64), has_continuous
+    _, strata = np.unique(C[:, discrete_cols], axis=0, return_inverse=True)
+    return strata.astype(np.int64).ravel(), has_continuous
