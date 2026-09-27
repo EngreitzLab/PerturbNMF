@@ -48,6 +48,7 @@ def _make_crt_args(
     number_permutations=8,
     guide_annotation_key="non-targeting",
     FDR_method="BH",
+    outcome="clr",
     out_dir=None,
     run_name=None,
     save_dir=None,
@@ -67,6 +68,7 @@ def _make_crt_args(
         number_permutations=number_permutations,
         guide_annotation_key=guide_annotation_key,
         FDR_method=FDR_method,
+        outcome=outcome,
         save_dir=save_dir,
     )
 

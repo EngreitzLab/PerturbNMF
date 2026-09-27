@@ -11,6 +11,7 @@ import scipy.sparse as sp
 from joblib import Parallel, delayed
 
 from .adata_utils import (
+    OUTCOMES,
     build_gene_to_cols,
     clr_from_usage,
     covariate_strata_from_design,
@@ -19,6 +20,7 @@ from .adata_utils import (
     get_program_names,
     limit_threading,
     to_csc_matrix,
+    row_normalize_usage,
     union_obs_idx_from_cols,
 )
 from .pipeline_helpers import (
@@ -51,6 +53,8 @@ class CRTInputs:
     # covariate columns) and whether any continuous covariate is in the design.
     covariate_strata: Optional[np.ndarray] = None
     has_continuous_covariates: bool = False
+    # Outcome Y: "clr" (CLR of floored usage) or "usage" (per-cell usage share).
+    outcome: str = "clr"
 
 
 @dataclass
@@ -76,23 +80,29 @@ def prepare_crt_inputs(
     standardize: bool = True,
     numeric_as_category_threshold: Optional[int] = 20,
     clamp_threads: bool = True,
+    outcome: str = "clr",
 ) -> CRTInputs:
     """
-    Load matrices from AnnData, build CLR usage, and precompute regression pieces.
+    Load matrices from AnnData, build the outcome Y, and precompute regression pieces.
     adata: AnnData-like object with required data
     usage_key: key in adata to extract usage matrix
     covar_key: key in adata to extract covariate matrix
     guide_assignment_key: key in adata to extract guide assignment matrix
     guide_names_key: key in adata.uns to extract guide column names if not in DataFrame
     guide2gene_key: key in adata to extract guide-to-gene mapping
-    eps_quantile: quantile for flooring small values in usage before CLR
+    eps_quantile: quantile for flooring small values in usage before CLR (outcome="clr" only)
     add_intercept: whether to add intercept column to covariate matrix
     standardize: whether to z-score covariate columns
     numeric_as_category_threshold: treat numeric columns with <= this many unique values as categorical
     clamp_threads: whether to limit threading for numerical libraries
+    outcome: "clr" (default; Y = CLR of floored usage, beta is a CLR shift) or "usage"
+        (Y = per-cell usage share, row-normalized with no log and no floor; beta is
+        the covariate-adjusted difference in mean usage share)
     Returns:
         CRTInputs dataclass with all required inputs for CRT
     """
+    if outcome not in OUTCOMES:
+        raise ValueError(f"outcome must be one of {OUTCOMES}; got {outcome!r}.")
     if clamp_threads:
         limit_threading()
 
@@ -107,7 +117,10 @@ def prepare_crt_inputs(
     U = get_from_adata_any(adata, usage_key)
     if isinstance(U, pd.DataFrame):
         U = U.to_numpy()
-    Y = clr_from_usage(U, eps_quantile=eps_quantile)
+    if outcome == "clr":
+        Y = clr_from_usage(U, eps_quantile=eps_quantile)
+    else:
+        Y = row_normalize_usage(U)
 
     G_raw = get_from_adata_any(adata, guide_assignment_key)
     G, guide_names = to_csc_matrix(G_raw)
@@ -156,6 +169,7 @@ def prepare_crt_inputs(
         covar_cols=covar_cols,
         covariate_strata=covariate_strata,
         has_continuous_covariates=has_continuous_covariates,
+        outcome=outcome,
     )
 
 

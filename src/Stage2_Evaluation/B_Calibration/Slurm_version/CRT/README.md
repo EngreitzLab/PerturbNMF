@@ -86,6 +86,12 @@ With Bernoulli resampling the size of each null treated set is random, with mean
 
 The observed $\beta$ is identical under both options; only the null distribution changes.
 
+#### Outcome: CLR or usage share (`--outcome`)
+
+By default (`--outcome clr`) $Y_{ik}$ is the centered log-ratio of cell $i$'s usage, floored at $10^{-8}$ and renormalized, and the effect is reported as `log2FC` (see above). With `--outcome usage`, $Y_{ik} = U_{ik} / \sum_{k'} U_{ik'}$ is the per-cell **usage share** of program $k$: usage is row-normalized to proportions (no log, no floor, zeros stay 0). Row-normalizing matters because some staged h5mu files hold raw, depth-scaled cNMF usages whose row sums track library size. The design, covariates, resampling and p-values are unchanged; $\beta_k$ becomes the covariate-adjusted difference in mean usage share (treated minus control, on the 0–1 scale) and is written as `usage_share_diff`, not `log2FC`.
+
+On teloHAEC 2kG (K=60, lane covariate, 5,000 permutations), judged against a cell-count-matched, guide-structured NTC null, `--resampling fixed_count --outcome usage` was calibrated (null $\lambda = 1.01$) and found as many regulators as the best CLR floor, without a floor hyperparameter; the $10^{-8}$ floor used by `--outcome clr` found ~40% fewer. **Recommended: `--resampling fixed_count --outcome usage`.**
+
 The empirical two-sided p-value for program $k$ was then computed as the fraction of resampled effect sizes whose magnitude equaled or exceeded the observed effect size, with the standard $+1$ correction in both numerator and denominator to prevent p-values of zero:
 
 **Empirical p-value:**
@@ -163,6 +169,7 @@ The p-values from step 5 are exactly the **NTC null p-values** written to `{K}_C
 | guide_annotation_key | list of str | "non-targeting" | Name of target label for non-targeting/safe-targeting guides |
 | FDR_method | str | "BH" | FDR correction method: "BH" (Benjamini-Hochberg) or "StoreyQ" (Storey Q-value) |
 | resampling | str | "bernoulli" | How null treated sets are drawn: "bernoulli" (each cell ~ Bernoulli(propensity); set size varies) or "fixed_count" (treated count fixed within each categorical-covariate stratum; see *Fixed-count resampling*). Output file names do not change with this flag — use `--save_dir` to keep runs apart |
+| outcome | str | "clr" | CRT outcome $Y$: "clr" (CLR of usage floored at 1e-8; effect column `log2FC`) or "usage" (per-cell usage share, row-normalized, no log/floor; effect column `usage_share_diff`, a difference in mean usage share). See *Outcome*. Output file names do not change — use `--save_dir` to keep runs apart |
 | matched_ntc_null | flag | off | Also build a cell-count-matched NTC null: one NTC pseudo-target per real target with exactly its cell count (whole NTC guides in random order, topped up from the next guide), scored with the same CRT. Writes `{K}_CRT_matched_null_{covar_tag}_{condition}.txt` and prints the share of null p < 0.05 by cells per target. Roughly doubles runtime. Not recomputed under `--skip_existing` |
 | save_dir | str | None | Directory to save results and figures. If not provided, defaults to `<out_dir>/<run_name>/Evaluation/<K>_<sel_thresh>/` |
 | skip_existing | flag | off | If set, skip the CRT recompute for any (K, sel_thresh, condition) whose **both** result files (real `.txt` and fake `.txt`) already exist, and instead **regenerate the QQ `.png` from the cached raw p-values**. Use to resume a preempted job or to re-plot without recomputing. |
@@ -173,7 +180,7 @@ Per (K, sel_thresh, condition) CRT writes three files into the output folder:
 
 | File | Contents |
 |------|----------|
-| `{K}_CRT_{covar_tag}_{condition}.txt` | **Real** perturbation results — columns: `target_name, program_name, log2FC, p-value` (skew-calibrated), `adj_pval` (FDR of skew), `p-value_raw` (raw CRT), `adj_pval_raw` (FDR of raw) |
+| `{K}_CRT_{covar_tag}_{condition}.txt` | **Real** perturbation results — columns: `target_name, program_name, log2FC` (`usage_share_diff` with `--outcome usage`), `p-value` (skew-calibrated), `adj_pval` (FDR of skew), `p-value_raw` (raw CRT), `adj_pval_raw` (FDR of raw) |
 | `{K}_CRT_fake_{covar_tag}_{condition}.txt` | **Fake / NTC null** distribution — columns: `ensemble, target_name` (NTC pseudo-gene id, e.g. `ntc_3`), `program_name, p-value` (skew-calibrated, the p the real calls use), `adj_pval`, `p-value_raw, adj_pval_raw` (no effect size) |
 | `{K}_CRT_{covar_tag}_{condition}.png` | QQ plot of real (raw) vs NTC-null (raw) p-values |
 | `{K}_CRT_{covar_tag}_{condition}_skew.png` | QQ plot of real vs NTC-null **skew-calibrated** p-values (the scale significance calls are made on) |

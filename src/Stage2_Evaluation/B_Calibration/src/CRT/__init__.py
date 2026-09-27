@@ -12,7 +12,9 @@ This package exposes helpers to:
 
 from .adata_utils import (
     THREAD_ENV_VARS,
+    OUTCOMES,
     clr_from_usage,
+    row_normalize_usage,
     covariate_strata_from_design,
     encode_categorical_covariates,
     get_covar_matrix,
@@ -63,7 +65,9 @@ from .qq_plot import qq_plot_real_vs_null
 
 __all__ = [
     "THREAD_ENV_VARS",
+    "OUTCOMES",
     "clr_from_usage",
+    "row_normalize_usage",
     "covariate_strata_from_design",
     "encode_categorical_covariates",
     "get_covar_matrix",

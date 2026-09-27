@@ -15,6 +15,11 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
   treated sets keep the observed treated count within each categorical-covariate
   stratum. Exact for categorical-only covariates; approximate (Pareto sampling on the
   propensity) with continuous covariates. Default stays `bernoulli`.
+- CRT `--outcome usage` (`outcome="usage"` in `prepare_crt_inputs`): Y is the per-cell
+  program usage share (usage row-normalized, no log, no floor) instead of the CLR of
+  floored usage; the effect is written as `usage_share_diff` (difference in mean usage
+  share) instead of `log2FC`. Default stays `clr`. Recommended with
+  `--resampling fixed_count`.
 - CRT `--matched_ntc_null`: cell-count-matched NTC pseudo-targets as a calibration
   diagnostic for few-cell targets (`{K}_CRT_matched_null_*.txt`).
 - CRT NTC null now also carries the skew-normal p-value (`p-value`, `adj_pval` in

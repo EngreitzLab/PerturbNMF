@@ -169,6 +169,32 @@ def get_covar_matrix(
     return C, covar_cols
 
 
+# CRT outcome Y: "clr" = centered log-ratio of floored usage (clr_from_usage);
+# "usage" = per-cell usage share, no log and no floor (row_normalize_usage).
+OUTCOMES = ("clr", "usage")
+
+
+def row_normalize_usage(U: Any) -> np.ndarray:
+    """
+    Row-normalize a usage matrix to per-cell program proportions (rows sum to 1).
+    No floor and no log: zero usage stays exactly 0. Normalizing matters because some
+    cNMF usage matrices are raw and depth-scaled (row sums track library size).
+    U: usage matrix (N x K), non-negative
+    Returns:
+        P: usage share matrix (N x K)
+    """
+    U = np.asarray(U, dtype=np.float64)
+    if (U < 0).any():
+        raise ValueError("Usage matrix has negative entries; expected non-negative usage.")
+    row_sums = U.sum(axis=1, keepdims=True)
+    n_empty = int((row_sums <= 0).sum())
+    if n_empty:
+        raise ValueError(
+            f"{n_empty} cells have zero total usage; cannot row-normalize to proportions."
+        )
+    return U / row_sums
+
+
 def clr_from_usage(U: Any, eps_quantile: float = 1e-4) -> np.ndarray:
     """
     Compute centered log-ratio from usage matrix with flooring and renormalization.

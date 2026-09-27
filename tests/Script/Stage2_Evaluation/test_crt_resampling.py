@@ -20,6 +20,10 @@ Test strategy
     (b) under a heavy-tailed null with 2-10-cell targets, fixed_count p-values are
         ~uniform and bernoulli p-values are inflated
     (c) beta_obs does not depend on resampling and equals the OLS coefficient
+    (d) outcome="usage": Y is the row-normalized usage share (no floor, zeros stay 0);
+        with fixed_count and 2-10-cell targets on zero-inflated usage (30-50% zeros),
+        null p-values are ~uniform and beta is the lane-adjusted difference in mean
+        usage share
     plus: pipeline wiring and invalid-option error, two-sided p <= 1, matched NTC
     pseudo-targets have exactly the target's cell count
 """
@@ -27,6 +31,7 @@ Test strategy
 import importlib.util
 import os
 import sys
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -52,7 +57,11 @@ from crt_calibration.ntc_groups import (  # noqa: E402
     crt_pvals_for_matched_ntc_pseudotargets,
     make_ntc_pseudotargets_matched_by_cell_count,
 )
-from crt_calibration.pipeline import CRTInputs, run_all_genes_union_crt  # noqa: E402
+from crt_calibration.pipeline import (  # noqa: E402
+    CRTInputs,
+    prepare_crt_inputs,
+    run_all_genes_union_crt,
+)
 from crt_calibration.pipeline_helpers import (  # noqa: E402
     _draw_null_treated_sets,
     _skew_calibrated_crt,
@@ -414,3 +423,127 @@ def test_matched_null_scores_every_pseudotarget():
     assert (skew.to_numpy() <= 1.0).all() and (raw.to_numpy() >= 1.0 / 100).all(), (
         "p-values outside [1/(B+1), 1]")
     assert n_cells.to_dict() == {t: c.size for t, c in pseudo_cells.items()}, "n_cells mismatch"
+
+
+# ===========================================================================
+# outcome="usage": Y = per-cell usage share (no log, no floor)
+# ===========================================================================
+
+def zero_inflated_raw_usage(rng, n_cells, n_programs):
+    """Raw, depth-scaled cNMF-like usage: each program is exactly zero in 30-50% of
+    cells, and row sums track a per-cell depth (~700-32,000), like the 2021 teloHAEC
+    h5mu. Every cell keeps at least one nonzero program."""
+    zero_rate = np.linspace(0.3, 0.5, n_programs)
+    used = rng.random((n_cells, n_programs)) >= zero_rate
+    share = np.where(used, rng.lognormal(0.0, 1.0, (n_cells, n_programs)), 0.0)
+    empty = share.sum(axis=1) == 0
+    share[empty, rng.integers(0, n_programs, empty.sum())] = 1.0
+    share /= share.sum(axis=1, keepdims=True)
+    depth = np.exp(rng.uniform(np.log(700), np.log(32_000), n_cells))
+    return share * depth[:, None]
+
+
+def usage_adata(rng, U, lane, target_cells):
+    """AnnData-like object for prepare_crt_inputs: one guide per target."""
+    n_cells = U.shape[0]
+    guide_names = [f"g{t}" for t in range(len(target_cells))]
+    G = np.zeros((n_cells, len(target_cells)), dtype=np.float32)
+    for t, cells in enumerate(target_cells):
+        G[cells, t] = 1.0
+    return SimpleNamespace(
+        obsm={
+            "cnmf_usage": U,
+            "covar": pd.DataFrame({"lane": pd.Categorical(lane)}),
+            "guide_assignment": pd.DataFrame(G, columns=guide_names),
+        },
+        uns={"guide2gene": {g: f"gene{t}" for t, g in enumerate(guide_names)}},
+    )
+
+
+def test_usage_outcome_row_normalizes_without_floor():
+    rng = np.random.default_rng(12)
+    U = zero_inflated_raw_usage(rng, 500, 8)
+    adata = usage_adata(rng, U, rng.integers(0, 3, 500), [np.arange(5)])
+    inputs = prepare_crt_inputs(adata, outcome="usage", clamp_threads=False)
+    assert inputs.outcome == "usage"
+    assert np.allclose(inputs.Y, U / U.sum(axis=1, keepdims=True), rtol=0, atol=1e-15)
+    assert np.array_equal(inputs.Y == 0, U == 0), "usage outcome must keep zeros exactly 0"
+    # default is unchanged: CLR of usage floored as CRT.py does before the CLR
+    floored = np.maximum(U, 1e-8)
+    floored /= floored.sum(axis=1, keepdims=True)
+    adata.obsm["cnmf_usage"] = floored
+    default = prepare_crt_inputs(adata, clamp_threads=False)
+    assert default.outcome == "clr"
+    assert np.array_equal(default.Y, clr_from_usage(floored))
+
+
+def test_usage_outcome_rejects_bad_input():
+    rng = np.random.default_rng(13)
+    U = zero_inflated_raw_usage(rng, 200, 4)
+    lane = rng.integers(0, 2, 200)
+    with pytest.raises(ValueError, match="outcome"):
+        prepare_crt_inputs(usage_adata(rng, U, lane, [np.arange(3)]), outcome="log",
+                           clamp_threads=False)
+    U[7] = 0.0
+    with pytest.raises(ValueError, match="zero total usage"):
+        prepare_crt_inputs(usage_adata(rng, U, lane, [np.arange(3)]), outcome="usage",
+                           clamp_threads=False)
+
+
+USAGE_NULL_N_CELLS = 20_000
+USAGE_NULL_TARGETS = 90
+USAGE_NULL_B = 999
+
+
+@pytest.fixture(scope="module")
+def usage_fixed_count_null():
+    """(inputs, run_all_genes_union_crt output) for 90 null targets of 2-10 cells on
+    zero-inflated raw usage, outcome="usage", resampling="fixed_count"."""
+    rng = np.random.default_rng(14)
+    U = zero_inflated_raw_usage(rng, USAGE_NULL_N_CELLS, 10)
+    lane = rng.integers(0, 8, USAGE_NULL_N_CELLS)
+    shuffled = rng.permutation(USAGE_NULL_N_CELLS)
+    sizes = 2 + np.arange(USAGE_NULL_TARGETS) % 9
+    starts = np.concatenate([[0], np.cumsum(sizes)[:-1]])
+    target_cells = [np.sort(shuffled[s:s + n]) for s, n in zip(starts, sizes)]
+    inputs = prepare_crt_inputs(usage_adata(rng, U, lane, target_cells),
+                                outcome="usage", clamp_threads=False)
+    out = run_all_genes_union_crt(
+        inputs, B=USAGE_NULL_B, n_jobs=1, calibrate_skew_normal=True,
+        return_raw_pvals=True, return_skew_normal=True, resampling="fixed_count")
+    return inputs, out
+
+
+@pytest.mark.parametrize("key", ["pvals_raw_df", "pvals_skew_df"], ids=["raw", "skew_normal"])
+def test_usage_outcome_fixed_count_null_pvals_uniform(usage_fixed_count_null, key):
+    inputs, out = usage_fixed_count_null
+    zero_share = (inputs.Y == 0).mean(axis=0)
+    assert zero_share.min() > 0.25 and zero_share.max() < 0.55, (
+        f"precondition: 30-50% zeros per program, got {zero_share.round(2)}")
+    assert out["treated_df"].between(2, 10).all(), "precondition: 2-10 treated cells"
+    p = out[key].to_numpy().ravel()
+    for alpha in (0.05, 0.1, 0.25, 0.5):
+        share = np.mean(p <= alpha)
+        assert 0.6 * alpha < share < 1.5 * alpha, (
+            f"usage/fixed_count P(p <= {alpha}) = {share:.3f} over {p.size} null tests; "
+            f"expected within [0.6, 1.5] x {alpha}")
+
+
+def test_usage_outcome_beta_is_adjusted_usage_share_difference(usage_fixed_count_null):
+    """With a lane-only design, OLS beta on the treated indicator is the weighted mean
+    over lanes of (treated - control) mean usage share, weights n_t n_c / n per lane."""
+    inputs, out = usage_fixed_count_null
+    lane = inputs.covariate_strata
+    for gene in ("gene0", "gene4", "gene8"):
+        treated = np.zeros(inputs.Y.shape[0], dtype=bool)
+        treated[inputs.G[:, inputs.gene_to_cols[gene]].nonzero()[0]] = True
+        diffs, weights = [], []
+        for s in np.unique(lane[treated]):
+            in_s = lane == s
+            t, c = treated & in_s, ~treated & in_s
+            diffs.append(inputs.Y[t].mean(axis=0) - inputs.Y[c].mean(axis=0))
+            weights.append(t.sum() * c.sum() / in_s.sum())
+        expected = np.average(diffs, axis=0, weights=weights)
+        assert np.allclose(out["betas_df"].loc[gene].to_numpy(), expected,
+                           rtol=1e-8, atol=1e-12), (
+            f"{gene}: beta {out['betas_df'].loc[gene].to_numpy()} != {expected}")
