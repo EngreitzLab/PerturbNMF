@@ -2,9 +2,9 @@
 
 # SLURM job configuration
 #SBATCH --job-name=cNMF_excel_summary                                                                                          # Job name
-#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Results/111025_D0_IGVF_10iter_torch_halsvar_batch_e7_v100s_test/Interpretation/Summary_table/logs/%j.out   # Output file (%j = job ID)
-#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Results/111025_D0_IGVF_10iter_torch_halsvar_batch_e7_v100s_test/Interpretation/Summary_table/logs/%j.err    # Error file
-#SBATCH --partition=engreitz,owners,bigmem   # partition name(s)
+#SBATCH --output=/path/to/logs/%j.out   # edit: SLURM does not expand variables here
+#SBATCH --error=/path/to/logs/%j.err   # edit: SLURM does not expand variables here
+#SBATCH --partition=<partition>   # partition name(s)
 #SBATCH --time=02:00:00                  # Time limit
 #SBATCH --nodes=1                        # Number of nodes
 #SBATCH --ntasks=1                       # Number of tasks
@@ -13,11 +13,14 @@
 
 # Email notifications
 #SBATCH --mail-type=BEGIN,END,FAIL       # Send email at start, end, and on failure
-#SBATCH --mail-user=ymo@stanford.edu     # Email address
+#SBATCH --mail-user=<your_email>     # Email address
 
 # Define the cNMF case
-OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Results"
-RUN_NAME="111025_D0_IGVF_10iter_torch_halsvar_batch_e7_v100s_test"
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
+
+OUT_DIR="/path/to/output_dir"
+RUN_NAME="example_run"
 LOG_DIR="$OUT_DIR/$RUN_NAME"
 
 # Store start time
@@ -47,7 +50,7 @@ echo "Python path: $(which python)"
 
 # Run the Python script
 echo "Running Python script..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Interpretation/B_Summarization/Slurm_Version/cNMF_excel_summary.py \
+python3 "${PIPELINE_ROOT}/src/Stage3_Interpretation/B_Summarization/Slurm_Version/cNMF_excel_summary.py" \
         --out_dir "$OUT_DIR" \
         --run_name "$RUN_NAME" \
         --K 50 \

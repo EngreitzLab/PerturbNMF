@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=gpu,owners
+#SBATCH --partition=<partition>
 #SBATCH --gres=gpu:1
 #SBATCH --time=01:00:00
 #SBATCH --mem=32G
@@ -8,11 +8,14 @@
 #SBATCH --output=tests/output/torch-cNMF/minibatch/Inference/logs/slurm_%j.out
 #SBATCH --error=tests/output/torch-cNMF/minibatch/Inference/logs/slurm_%j.err
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --mail-user=ymo@stanford.edu
+#SBATCH --mail-user=<your_email>
+
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
 
 set -euo pipefail
 
-PIPELINE_DIR="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF"
+PIPELINE_DIR="$PIPELINE_ROOT"
 cd "$PIPELINE_DIR"
 export PYTHONPATH="$PIPELINE_DIR/src:${PYTHONPATH:-}"
 

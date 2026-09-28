@@ -2,9 +2,9 @@
 
 # SLURM job configuration
 #SBATCH --job-name=Perturb_gene           # Job name
-#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/Plot/Perturb_gene/logs/%j.out      # Output file (%j = job ID)
-#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/Plot/Perturb_gene/logs/%j.err       # Error file
-#SBATCH --partition=engreitz,owners,bigmem            # partition name
+#SBATCH --output=/path/to/logs/%j.out   # edit: SLURM does not expand variables here
+#SBATCH --error=/path/to/logs/%j.err   # edit: SLURM does not expand variables here
+#SBATCH --partition=<partition>            # partition name
 #SBATCH --time=05:00:00                  # Time limit 
 #SBATCH --nodes=1                       # Number of nodes
 #SBATCH --ntasks=1                      # Number of tasks
@@ -13,11 +13,14 @@
 
 # Email notifications
 #SBATCH --mail-type=BEGIN,END,FAIL      # Send email at start, end, and on failure
-#SBATCH --mail-user=ymo@stanford.edu    # Email address
+#SBATCH --mail-user=<your_email>    # Email address
 
 
 # Define the cNMF case
-LOG_DIR="/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/Plot/Perturb_gene"
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
+
+LOG_DIR="/path/to/output_dir/run_name/Plots/logs"
 
 # Store start time
 START_TIME=$(date +%s)
@@ -46,9 +49,9 @@ echo "Python path: $(which python)"
 
 # Run the Python script
 echo "Running Python script..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_perturbed_gene_analysis.py \
-        --mdata_path "/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/adata/cNMF_50_0_2.h5mu" \
-        --perturb_path_base "/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/Evaluation/50_0_2/50_CRT" \
+python3 "${PIPELINE_ROOT}/src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNMF_perturbed_gene_analysis.py" \
+        --mdata_path "/path/to/cNMF_K_thresh.h5mu" \
+        --perturb_path_base "/path/to/output_dir/run_name/Evaluation/K_thresh/K_CRT" \
         --top_n_programs 10 \
         --perturb_target_col "target_name" \
         --perturb_program_col "program_name" \

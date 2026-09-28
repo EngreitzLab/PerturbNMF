@@ -1,11 +1,10 @@
 #!/bin/bash
-set -euo pipefail
 
 # SLURM job configuration
 #SBATCH --job-name=U-test_calibration_test_par   # Job name
-#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/tests/output/torch-cNMF/batch/Evaluation/logs/%A_%a.out      # Output file (%A=array job id, %a=array task id)
-#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/tests/output/torch-cNMF/batch/Evaluation/logs/%A_%a.err       # Error file
-#SBATCH --partition=owners,engreitz            # partition name
+#SBATCH --output=tests/output/torch-cNMF/batch/Evaluation/logs/%A_%a.out   # relative to the submit dir (repo root)
+#SBATCH --error=tests/output/torch-cNMF/batch/Evaluation/logs/%A_%a.err   # relative to the submit dir (repo root)
+#SBATCH --partition=<partition>            # partition name
 #SBATCH --array=1-3                     # Run parallel jobs (array indices 1-#K)
 #SBATCH --time=01:00:00                 # Time limit per K
 #SBATCH --nodes=1                       # Number of nodes
@@ -15,7 +14,12 @@ set -euo pipefail
 
 # Email notifications
 #SBATCH --mail-type=BEGIN,END,FAIL      # Send email at start, end, and on failure
-#SBATCH --mail-user=ymo@stanford.edu    # Email address
+#SBATCH --mail-user=<your_email>    # Email address
+
+
+set -euo pipefail
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
 
 START_TIME=$(date +%s)
 
@@ -26,7 +30,7 @@ K_VALUES=(5 10 15)
 K=${K_VALUES[$((SLURM_ARRAY_TASK_ID-1))]}
 
 # Define the cNMF case
-OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/tests/output/torch-cNMF"
+OUT_DIR="${PIPELINE_ROOT}/tests/output/torch-cNMF"
 RUN_NAME="batch"
 LOG_DIR="$OUT_DIR/$RUN_NAME"
 
@@ -49,7 +53,7 @@ mkdir -p "$LOG_DIR/Evaluation/logs"
 echo "Activating conda environment..."
 eval "$(conda shell.bash hook)"
 conda activate Evaluation_metric
-export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
+export PYTHONPATH="${PIPELINE_ROOT}/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
 echo "Python version: $(python --version)"
@@ -82,7 +86,7 @@ free -h
 
 # Run the Python script for a single K
 echo "Running Python script with (K=$K)..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/B_Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py \
+python3 "${PIPELINE_ROOT}/src/Stage2_Evaluation/B_Calibration/Slurm_version/U-test_perturbation_calibration/U-test_perturbation_calibration.py" \
         --out_dir "$OUT_DIR" \
         --run_name "$RUN_NAME" \
         --guide_annotation_key "non-targeting" \

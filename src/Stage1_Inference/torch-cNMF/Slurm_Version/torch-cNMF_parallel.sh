@@ -1,11 +1,10 @@
 #!/bin/bash
-set -euo pipefail
 
 # SLURM job configuration
-#SBATCH --job-name=120325_100k_cells_10iter_allhvg_torch_halsvar_batch_e7_h100_par        # Job name
-#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/Ronghao_100K_sample/Results/120325_100k_cells_10iter_allhvg_torch_halsvar_batch_e7_h100_par/Inference/logs/%A_%a.out       # Output file (fixed double slash)
-#SBATCH --error=//oak/stanford/groups/engreitz/Users/ymo/Ronghao_100K_sample/Results/120325_100k_cells_10iter_allhvg_torch_halsvar_batch_e7_h100_par/Inference/logs/%A_%a.err     # Error file (fixed double slash)
-#SBATCH --partition=gpu                # partition name
+#SBATCH --job-name=torch-cNMF_parallel        # Job name
+#SBATCH --output=/path/to/logs/%A_%a.out   # edit: SLURM does not expand variables here
+#SBATCH --error=/path/to/logs/%A_%a.err   # edit: SLURM does not expand variables here
+#SBATCH --partition=<partition>                # partition name
 #SBATCH --array=1-8                    # Run parallel jobs (array indices 1-#)
 #SBATCH --time=15:00:00                # Time limit 
 #SBATCH --nodes=1                      # Number of nodes
@@ -14,11 +13,16 @@ set -euo pipefail
 #SBATCH --mem=80G                      # Memory per node
 #SBATCH --gres=gpu:1                   # Request 1 GPU (for future use)
 ##SBATCH --constraint="GPU_MEM:32GB|GPU_MEM:48GB|GPU_MEM:80GB"  # Request specific GPU type if available
-#SBATCH -C GPU_SKU:V100S_PCIE
+##SBATCH -C <gpu_constraint>        # optional, cluster-specific GPU type
 
 # Email notifications
 #SBATCH --mail-type=BEGIN,END,FAIL      # Send email at start, end, and on failure
-#SBATCH --mail-user=ymo@stanford.edu    # Email address
+#SBATCH --mail-user=<your_email>    # Email address
+
+
+set -euo pipefail
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
 
 START_TIME=$(date +%s)
 
@@ -29,8 +33,8 @@ K_VALUES=(30 50 60 80 100 200 250 300)
 K=${K_VALUES[$((SLURM_ARRAY_TASK_ID-1))]}
 
 # Configuration - Set your log directory here (fixed to match SLURM paths)
-OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/Ronghao_100K_sample/Results"
-RUN_NAME="120325_100k_cells_10iter_allhvg_torch_halsvar_batch_e7_h100_par"
+OUT_DIR="/path/to/output_dir"
+RUN_NAME="example_run"
 LOG_DIR="$OUT_DIR/$RUN_NAME/Inference/logs"
 
 # Create logs directory if it doesn't exist
@@ -56,7 +60,7 @@ echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 echo "Activating conda base environment..."
 eval "$(conda shell.bash hook)"
 conda activate torch-nmf-dl
-export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
+export PYTHONPATH="${PIPELINE_ROOT}/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
 echo "Python version: $(python --version)"
@@ -96,8 +100,8 @@ nvidia-smi 2>/dev/null || echo "GPU monitoring not available"
 
 # Run the Python script
 echo "Running Python script with (K=$K)..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py \
-        --counts_fn "/oak/stanford/groups/engreitz/Users/ymo/Ronghao_100K_sample/Data/eRZ53_56_filtered_cNMF.h5ad" \
+python3 "${PIPELINE_ROOT}/src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py" \
+        --counts_fn "/path/to/counts.h5ad" \
         --output_directory "$OUT_DIR/$RUN_NAME" \
         --run_name "${RUN_NAME}_${K}" \
         # Nested layout: per-K jobs land at $OUT_DIR/$RUN_NAME/${RUN_NAME}_${K}/Inference/
@@ -140,7 +144,7 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         #--parallel_running
         #--remove_noncoding
         #--ensembl_prefix "ENSG"
-        #--gtf_path "/oak/stanford/groups/engreitz/Users/ymo/Tools/AGeneTic/refs/gencode.v43.annotation.gtf.gz"
+        #--gtf_path "/path/to/annotation.gtf.gz"
         #--gene_id_key "gene_id"
         #--add_gene_names_from_gtf
         #--gene_names_key "symbol"

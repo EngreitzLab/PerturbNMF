@@ -3,7 +3,7 @@
 #SBATCH --output=%x_%j.out
 #SBATCH --error=%x_%j.err
 #SBATCH --time=01:00:00
-#SBATCH --partition=engreitz
+#SBATCH --partition=<partition>
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --nodes=1
@@ -78,8 +78,10 @@
 #
 # =============================================================================
 
-# Get directory where this script lives
-SCRIPT_DIR="/oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Script/Tony_method"
+# Directory containing run_matching_de_batch.R and de_testing_utils.R
+# (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
+SCRIPT_DIR="${PIPELINE_ROOT}/src/Stage2_Evaluation/B_Calibration/Slurm_version/Matched_cell_programDE"
 cd "$SCRIPT_DIR"
 
 # =============================================================================
@@ -94,10 +96,12 @@ export R_ENVIRON_USER=/dev/null
 export R_PROFILE_USER=/dev/null
 
 # Redirect R caching and temp files to fast local storage
-export TMPDIR="${SCRATCH}/tmp_r_$$"
-export XDG_CACHE_HOME="${SCRATCH}/tmp_r_$$/cache"
-export XDG_DATA_HOME="${SCRATCH}/tmp_r_$$/data"
-export XDG_CONFIG_HOME="${SCRATCH}/tmp_r_$$/config"
+# (set LOCAL_TMP_ROOT to your cluster's scratch/local disk; defaults to $TMPDIR or /tmp)
+R_TMP_ROOT="${LOCAL_TMP_ROOT:-${TMPDIR:-/tmp}}/tmp_r_$$"
+export TMPDIR="${R_TMP_ROOT}"
+export XDG_CACHE_HOME="${R_TMP_ROOT}/cache"
+export XDG_DATA_HOME="${R_TMP_ROOT}/data"
+export XDG_CONFIG_HOME="${R_TMP_ROOT}/config"
 export R_USER_CACHE_DIR="${XDG_CACHE_HOME}/R"
 export R_USER_DATA_DIR="${XDG_DATA_HOME}/R"
 export R_USER_CONFIG_DIR="${XDG_CONFIG_HOME}/R"
@@ -116,14 +120,14 @@ echo "Running genes batch 198 (self-contained)..."
 echo "Working directory: $SCRIPT_DIR"
 
 stdbuf -oL -eL Rscript run_matching_de_batch.R \
-    --input /oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Script/Tony_method \
-    --cell_metadata /oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Script/Tony_method/cells_metadata.tsv \
-    --cnmf_usages /oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Results/111025_D0_IGVF_10iter_torch_halsvar_batch_e7_v100s_test/111025_D0_IGVF_10iter_torch_halsvar_batch_e7_v100s_test.usages.k_30.dt_2_0.consensus.txt \
-    --gene_perturbations_sparse /oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Script/Tony_method/gene_perturbations_sparse.tsv \
-    --gene_batch_file /oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Script/Tony_method/perturbed_expressed_genes.txt \
-    --perturbation_names /oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Script/Tony_method/all_perturbed_genes.txt\
+    --input /path/to/input_dir \
+    --cell_metadata /path/to/input_dir/cells_metadata.tsv \
+    --cnmf_usages /path/to/input_dir/run_name.usages.k_60.dt_0_5.consensus.txt \
+    --gene_perturbations_sparse /path/to/input_dir/gene_perturbations_sparse.tsv \
+    --gene_batch_file /path/to/input_dir/batch_198.txt \
+    --perturbation_names /path/to/input_dir/perturbation_names.txt \
     --condition Day0 \
-    --output_dir /oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Script/Tony_method \
+    --output_dir /path/to/output_dir \
     --test_type genes \
     --method matching \
     --min_cells_per_gene 50 \
@@ -137,7 +141,7 @@ stdbuf -oL -eL Rscript run_matching_de_batch.R \
     --matching_method nearest \
     --n_bootstrap 100 \
     --bootstrap_ncpus 8 \
-    --script_dir /oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Script/Tony_method \
+    --script_dir "$SCRIPT_DIR" \
     --de_level programs \
     --save_matched_cells \
     2>&1 | tee "${SCRIPT_DIR}/run.log"
