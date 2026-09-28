@@ -1,5 +1,5 @@
 {
-  "_note": "Template for build_annotation_prompts.py and build_annotation_viewer.py. Paths are relative to data_dir. Drop conditions/regulators_by_condition/program_activity for a single-condition screen and use \"regulators\" instead. condition_design: \"unordered\" (default; stimuli, donors, cohorts) or \"ordered\" (timepoints, a dose series).",
+  "_note": "Template for build_annotation_prompts.py and build_annotation_viewer.py. Paths are relative to data_dir. Drop conditions/regulators_by_condition/program_activity for a single-condition screen and use \"regulators\" instead. condition_design: \"unordered\" (default; stimuli, donors, cohorts) or \"ordered\" (timepoints, a dose series). motif_enrichment / candidate_tfs (Stage 2 TSVs) and motif_logos (Stage 2 {K}_motif_logos.json, viewer only) are optional: leave them empty for no TF-motif section.",
   "data_dir": "path/to/annotation_inputs",
   "gene_loading": "gene_loading_top300_with_uniqueness.csv",
   "regulators_by_condition": "regulators_by_condition.csv",
@@ -13,6 +13,9 @@
   "screens": "confounder_screens.json",
   "ncbi_context": "ncbi_context.json",
   "excluded_pmids": "excluded_pool_pmids.json",
+  "motif_enrichment": "",
+  "candidate_tfs": "",
+  "motif_logos": "",
   "programs": [0, 1, 2],
   "settings": {
     "dataset_name": "My screen (cNMF k=K, density threshold 0.2)",

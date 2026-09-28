@@ -19,6 +19,16 @@ settings.condition_design = "ordered" (e.g. timepoints, a dose series) adds orde
 default "unordered" adds none. A `condition_composition` confounder is added when the screens were
 built with --condition-markers. Without `conditions` the single-condition prompt is produced.
 
+TF motifs (optional): when the config names a `motif_enrichment` table (and optionally
+`candidate_tfs`) from Stage 2, section E2 of the user message says how to read motif enrichment
+(correlative), then, per element type (promoter / enhancer), lists the top significant motif
+families (Stage 2 `motif_family`: MotifCompendium family such as KLF-SP, or the TFClass family for
+HOCOMOCO), one line each: the family's best motifs with enrichment / FDR, then its candidate TFs
+with extra support and their evidence tier. The system prompt is not touched. Without those keys
+the prompts are unchanged.
+When the table has several motif sources (`motif_source` column from Stage 2 --motif_source both:
+FIMO and Fi-NeMo), each element type x source gets its own block, FIMO first; they are never pooled.
+
 Config: see ../configs/example_config.json and ../README.md.
 
 Usage:
@@ -49,6 +59,22 @@ MAX_GENE_SUMMARIES = 40
 TOP_ENRICHMENT_PER_CATEGORY = 3
 GENES_PER_TERM = 10
 MAX_REFERENCES = 40
+MOTIF_FAMILIES_PER_ELEMENT_TYPE = 5
+MOTIFS_PER_FAMILY = 3
+CANDIDATES_PER_FAMILY = 6
+MOTIF_ELEMENT_TYPES = ("promoter", "enhancer")
+MOTIF_SOURCE_ORDER = ("fimo", "finemo")    # Stage 2 motif_source values, shown in this order
+FIMO_DATABASE_LABELS = {"motifcompendium": "FIMO/MotifCompendium", "hocomoco": "FIMO/HOCOMOCO"}
+MOTIF_SOURCE_LABELS = {"fimo": FIMO_DATABASE_LABELS["hocomoco"], "finemo": "Fi-NeMo"}
+MOTIF_SOURCES_NOTES = {
+    "FIMO/MotifCompendium": "FIMO/MotifCompendium = motif scan with MotifCompendium database clusters",
+    "FIMO/HOCOMOCO": "FIMO/HOCOMOCO = HOCOMOCO v11 motif scan",
+    "Fi-NeMo": "Fi-NeMo = ChromBPNet motif calls in accessible chromatin, named by the matched database cluster",
+}
+MOTIFCOMPENDIUM_CLUSTER_RE = r"_\d+$"      # KLF-SP_0: a MotifCompendium cluster name
+# Candidate TFs shown under each motif family (nominate_candidate_tfs.py tiers, strongest first). A motif
+# cluster lists many TFs; the expressed ones say which could act here. motif_only (not expressed) is hidden.
+CANDIDATE_TIERS_SHOWN = ("motif+regulator", "motif+expressed_in_program", "motif+expressed")
 
 
 SYSTEM_PROMPT = """You are a {annotation_role} annotating gene expression programs derived by \
@@ -95,6 +121,27 @@ telling a confident single story the genes do not support.
 8. Respond with ONLY the JSON object specified. No preamble, no markdown fences."""
 
 
+# First line of section E2: how to read the motif evidence, worded for the Stage 2 test.
+MOTIF_GUIDE_TESTS = {
+    "ttest": "TF motifs over-represented in the promoters / linked enhancers of the top {n_top} \
+genes versus expressed genes (FDR < 0.05, enrichment > 1)",
+    "correlation": "TF motifs whose count in a gene's promoter / linked enhancers correlates \
+positively with the gene's program loading across expressed genes (FDR < 0.05, r > 0)",
+}
+MOTIF_GUIDE = """{test}. Correlative: a motif nominates a TF \
+family (TFs of one family share motifs) as a candidate co-regulation mechanism; it does not show \
+that TF acts here. Motifs are grouped by family, strongest first; candidate TFs are the expressed \
+TFs of the family's motifs, strongest support first: motif+regulator = its knockdown also moves the \
+program; motif+expressed_in_program = it is among the program genes; motif+expressed = expressed only."""
+DEFAULT_MOTIF_TEST = {"method": "ttest", "n_top": 300}   # Stage 2 run_motif_enrichment.py defaults
+
+
+def format_motif_guide(motif_test: dict | None = None) -> str:
+    """The first line of section E2 for the Stage 2 test (`method` ttest / correlation, `n_top`)."""
+    motif_test = {**DEFAULT_MOTIF_TEST, **(motif_test or {})}
+    return MOTIF_GUIDE.format(test=MOTIF_GUIDE_TESTS[motif_test["method"]].format(n_top=motif_test["n_top"]))
+
+
 USER_TEMPLATE = """# PROGRAM {program_id} — {dataset_name}
 
 ## Experimental context
@@ -123,7 +170,7 @@ program's real signal. Read the whole list.
 
 ## E. Explanation-class screens (deterministic, computed from the data — not opinions)
 {screen_block}
-
+{motif_section}
 ## F. REFERENCE POOL — the only citable sources
 {reference_block}
 
@@ -648,6 +695,198 @@ def format_screens(screen: dict) -> str:
     return "\n".join(lines)
 
 
+def program_number(value) -> int | None:
+    """Program id as an int: 12, "12" and "K10_12" all give 12; None if there is no number."""
+    match = re.search(r"(\d+)$", str(value).strip())
+    return int(match.group(1)) if match else None
+
+
+def as_bool(values: pd.Series) -> pd.Series:
+    if values.dtype == bool:
+        return values
+    return values.astype(str).str.strip().str.lower().isin({"true", "1", "yes"})
+
+
+def read_motif_test(config: dict, motif_table_path: Path) -> dict:
+    """How Stage 2 tested the motifs: {"method": "ttest" | "correlation", "n_top": int}. Config keys
+    `motif_method` / `motif_n_top` win; else the run's `{K}_motif_enrichment_config.yml` next to the
+    table (run_motif_enrichment.py writes it as JSON); else the Stage 2 defaults (t-test, top 300)."""
+    motif_test = dict(DEFAULT_MOTIF_TEST)
+    stage2_config = motif_table_path.with_name(motif_table_path.stem + "_config.yml")
+    if stage2_config.is_file():
+        try:
+            arguments = json.loads(stage2_config.read_text()).get("arguments", {})
+        except ValueError:
+            arguments = {}
+        motif_test.update({key: arguments[name] for key, name in (("method", "motif_method"), ("n_top", "n_top"))
+                           if arguments.get(name) is not None})
+    motif_test.update({key: config[name] for key, name in (("method", "motif_method"), ("n_top", "motif_n_top"))
+                       if config.get(name) is not None})
+    if motif_test["method"] not in MOTIF_GUIDE_TESTS:
+        raise ValueError(f"motif_method must be one of {sorted(MOTIF_GUIDE_TESTS)}, got {motif_test['method']!r}")
+    motif_test["n_top"] = int(motif_test["n_top"])
+    return motif_test
+
+
+def read_motif_tables(config: dict, data: Path) -> dict:
+    """The optional Stage 2 TF-motif tables named by config keys `motif_enrichment` and
+    `candidate_tfs` (TSV, relative to data_dir), keyed by int `program_id`, plus `motif_test`
+    (read_motif_test). {} if not configured."""
+    if not config.get("motif_enrichment"):
+        return {}
+    motifs = pd.read_csv(data / config["motif_enrichment"], sep="\t")
+    motifs["program_id"] = motifs["program"].map(program_number)
+    motifs["element_type"] = motifs["element_type"].astype(str).str.lower()
+    if "significant" in motifs.columns:
+        motifs["significant"] = as_bool(motifs["significant"])
+    else:
+        motifs["significant"] = (motifs["fdr"] < 0.05) & (motifs["enrichment"] > 1)
+    tables = {"motif_enrichment": motifs, "candidate_tfs": None,
+              "motif_test": read_motif_test(config, data / config["motif_enrichment"])}
+    if config.get("candidate_tfs"):
+        candidates = pd.read_csv(data / config["candidate_tfs"], sep="\t")
+        candidates["program_id"] = candidates["program"].map(program_number)
+        tables["candidate_tfs"] = candidates
+    return tables
+
+
+def fimo_source_label(motifs: pd.DataFrame) -> str:
+    """"FIMO/MotifCompendium" when most FIMO motif names are MotifCompendium clusters (``KLF-SP_0``),
+    else "FIMO/HOCOMOCO" (TF names such as ``KLF4``)."""
+    fimo = motifs[motifs["motif_source"].astype(str) == "fimo"] if "motif_source" in motifs.columns else motifs
+    names = fimo["tf"].astype(str).drop_duplicates()
+    is_cluster = names.str.contains(MOTIFCOMPENDIUM_CLUSTER_RE, regex=True)
+    return FIMO_DATABASE_LABELS["motifcompendium" if len(names) and is_cluster.mean() > 0.5 else "hocomoco"]
+
+
+def list_motif_sections(motifs: pd.DataFrame) -> list:
+    """(key, element_type, source) for each motif block: ('promoter', 'promoter', None), ('enhancer', ...)
+    for one motif source; with several (`motif_source` column), one per source x element type, FIMO
+    first, keyed '<element_type>_<source>'."""
+    sources = [None]
+    if "motif_source" in motifs.columns and motifs["motif_source"].nunique() > 1:
+        present = list(motifs["motif_source"].astype(str).unique())
+        sources = sorted(present, key=lambda s: (MOTIF_SOURCE_ORDER.index(s) if s in MOTIF_SOURCE_ORDER
+                                                 else len(MOTIF_SOURCE_ORDER), s))
+    return [(element_type if source is None else f"{element_type}_{source}", element_type, source)
+            for source in sources for element_type in MOTIF_ELEMENT_TYPES]
+
+
+def candidate_entry(row: pd.Series) -> dict:
+    """One candidate TF as shown: symbol, tier, the motif it rests on, knockdown or loading-rank support."""
+    symbol = row["tf_gene_symbol"] if pd.notna(row.get("tf_gene_symbol")) else row["tf"]
+    entry = {"tf": str(symbol), "tier": row["evidence_tier"], "motif": str(row["tf"])}
+    if row["evidence_tier"] == "motif+regulator":
+        entry.update(log2fc=round(float(row["knockdown_log2fc"]), 3), adj_p=float(f"{row['knockdown_fdr']:.2g}"))
+    elif pd.notna(row.get("tf_program_loading_rank")):
+        entry["loading_rank"] = int(row["tf_program_loading_rank"])
+    return entry
+
+
+def select_program_motifs(program_id: int, motifs: pd.DataFrame, candidates: pd.DataFrame | None) -> dict:
+    """What prompt section E2 and the viewer show for one program. Per element type (x motif source, see
+    list_motif_sections): the number of motifs tested and significant, and the top
+    MOTIF_FAMILIES_PER_ELEMENT_TYPE significant motif families (Stage 2 `motif_family`; the motif name
+    when the table has none), ordered by their best motif (FDR, ties higher enrichment). Each family:
+    `family`, `n_significant` motifs, its best MOTIFS_PER_FAMILY motifs [tf, enrichment, FDR] and up to
+    CANDIDATES_PER_FAMILY candidate TFs of those significant motifs in CANDIDATE_TIERS_SHOWN (strongest tier,
+    then FDR, then loading rank; one per TF gene).
+    `section_sources` maps each block key to its raw Stage 2 motif_source (None if the table has none);
+    with several sources, `sections` lists [key, element_type, source label]."""
+    rows = motifs[motifs["program_id"] == program_id]
+    sections = list_motif_sections(motifs)
+    multi_source = sections[0][2] is not None
+    labels = {**MOTIF_SOURCE_LABELS, "fimo": fimo_source_label(motifs)}
+    program_candidates = None
+    if candidates is not None:
+        program_candidates = candidates[(candidates["program_id"] == program_id)
+                                        & candidates["evidence_tier"].isin(CANDIDATE_TIERS_SHOWN)].copy()
+        program_candidates["tier_rank"] = program_candidates["evidence_tier"].map(
+            {t: i for i, t in enumerate(CANDIDATE_TIERS_SHOWN)})
+        program_candidates["symbol"] = (program_candidates["tf_gene_symbol"].fillna(program_candidates["tf"])
+                                        if "tf_gene_symbol" in program_candidates else program_candidates["tf"])
+        tie_break = ["tf_program_loading_rank"] if "tf_program_loading_rank" in program_candidates else []
+        program_candidates = program_candidates.sort_values(["tier_rank", "fdr"] + tie_break, kind="stable")
+    single_source = (str(motifs["motif_source"].iloc[0]) if "motif_source" in motifs.columns and len(motifs)
+                     else None)
+    selection = {"n_tested": {}, "n_significant": {}, "n_families": {}, "families": {}, "section_sources": {}}
+    for key, element_type, source in sections:
+        typed = rows[rows["element_type"] == element_type]
+        if source is not None:
+            typed = typed[typed["motif_source"].astype(str) == source]
+        hits = typed[typed["significant"]].sort_values(["fdr", "enrichment"], ascending=[True, False], kind="stable")
+        hits = hits.assign(family=hits["motif_family"].fillna(hits["tf"]) if "motif_family" in hits else hits["tf"])
+        selection["n_tested"][key] = int(typed["tf"].nunique())
+        selection["n_significant"][key] = int(len(hits))
+        selection["n_families"][key] = int(hits["family"].nunique())
+        selection["section_sources"][key] = source if source is not None else single_source
+        families = []
+        for family, members in list(hits.groupby("family", sort=False))[:MOTIF_FAMILIES_PER_ELEMENT_TYPE]:
+            entry = {"family": str(family), "n_significant": int(len(members)),
+                     "motifs": [[str(tf), round(float(enrichment), 2), float(f"{fdr:.2g}")] for tf, enrichment, fdr
+                                in zip(members["tf"], members["enrichment"], members["fdr"])][:MOTIFS_PER_FAMILY],
+                     "candidates": []}
+            if program_candidates is not None:
+                chosen = program_candidates[(program_candidates["element_type"] == element_type)
+                                            & program_candidates["tf"].isin(set(members["tf"]))]
+                if source is not None and "motif_source" in chosen:
+                    chosen = chosen[chosen["motif_source"].astype(str) == source]
+                chosen = chosen.drop_duplicates("symbol").head(CANDIDATES_PER_FAMILY)
+                entry["candidates"] = [candidate_entry(row) for _, row in chosen.iterrows()]
+            families.append(entry)
+        selection["families"][key] = families
+    if multi_source:
+        selection["sections"] = [[key, element_type, labels.get(source, source)] for key, element_type, source in sections]
+    return selection
+
+
+def format_candidate(candidate: dict) -> str:
+    if candidate["tier"] == "motif+regulator":
+        return (f"{candidate['tf']} (motif+regulator; knockdown log2FC={candidate['log2fc']:+.2f}, "
+                f"adj p={candidate['adj_p']:.1e})")
+    rank = f", loading rank {candidate['loading_rank']}" if candidate["tier"] == "motif+expressed_in_program" \
+        and "loading_rank" in candidate else ""
+    return f"{candidate['tf']} ({candidate['tier']}{rank})"
+
+
+def format_motifs(selection: dict, method: str = "ttest") -> str:
+    """Section E2 body: per element type (x motif source) a header line, then one line per motif family:
+    the family's best motifs with enrichment (correlation r for `method` correlation) and FDR, then its
+    candidate TFs with their evidence tier."""
+    if not any(selection["n_tested"].values()):
+        return "No motif enrichment results for this program."
+    sections = selection.get("sections") or [[et, et, None] for et in MOTIF_ELEMENT_TYPES]
+    lines = []
+    if "sections" in selection:
+        labels = list(dict.fromkeys(label for _, _, label in sections))
+        lines.append("Motif sources, tested separately: "
+                     + "; ".join(MOTIF_SOURCES_NOTES.get(label, label) for label in labels) + ".")
+    effect = "{tf} r={value:.2f}" if method == "correlation" else "{tf} {value:.2f}x"
+    for key, element_type, source_label in sections:
+        families = selection["families"][key]
+        label = element_type.capitalize() + (f" ({source_label})" if source_label else "")
+        n_families = selection["n_families"][key]
+        header = (f"{label} ({selection['n_significant'][key]} of {selection['n_tested'][key]} motifs significant"
+                  + (f" in {n_families} {'family' if n_families == 1 else 'families'}" if n_families else "")
+                  + (f"; top {len(families)} shown" if n_families > len(families) else "") + ")")
+        if not families:
+            lines.append(f"{header}: none")
+            continue
+        lines.append(f"{header}:")
+        for family in families:
+            motifs = ", ".join(effect.format(tf=tf, value=value) + f" FDR={fdr:.1e}"
+                               for tf, value, fdr in family["motifs"])
+            more = family["n_significant"] - len(family["motifs"])
+            motifs += f" (+{more} more)" if more > 0 else ""
+            names = [tf for tf, _, _ in family["motifs"]]
+            prefix = "" if names == [family["family"]] else f"{family['family']}: "
+            candidates = "; ".join(format_candidate(c) for c in family["candidates"])
+            lines.append(f"- {prefix}{motifs}" + (f" | candidate TFs: {candidates}" if candidates else ""))
+    if not any(family["candidates"] for families in selection["families"].values() for family in families):
+        lines.append("Candidate TFs: none (no enriched motif lists an expressed TF)")
+    return "\n".join(lines)
+
+
 def format_reference_pool(context: dict, allowed_genes: set, excluded_pmids: frozenset = frozenset()) -> str:
     """One line per citable PMID, deduplicated across genes.
 
@@ -734,6 +973,13 @@ def build_prompt(program_id: int, resources: dict, settings: dict) -> dict:
     enrichment = resources["enrichment"]
     program_enrichment = enrichment[enrichment["program_id"] == program_id]
 
+    motif_section = ""
+    if resources.get("motif_enrichment") is not None:
+        selection = select_program_motifs(program_id, resources["motif_enrichment"], resources.get("candidate_tfs"))
+        motif_test = resources.get("motif_test") or DEFAULT_MOTIF_TEST
+        motif_section = (f"\n## E2. TF motifs in program promoters/enhancers (correlative)\n"
+                         f"{format_motif_guide(motif_test)}\n{format_motifs(selection, motif_test['method'])}\n")
+
     conditions = resources.get("conditions")
     condition_blocks = {}
     if conditions:
@@ -770,6 +1016,7 @@ def build_prompt(program_id: int, resources: dict, settings: dict) -> dict:
         regulator_block=regulator_block,
         enrichment_block=format_enrichment(program_enrichment),
         screen_block=screen_block,
+        motif_section=motif_section,
         reference_block=format_reference_pool(context, allowed_genes, resources["excluded_pmids"]),
         gene_summary_block=format_gene_summaries(context, genes_by_priority),
         output_schema=output_schema,
@@ -833,6 +1080,7 @@ def main() -> int:
     if config.get("conditions"):
         resources["conditions"] = normalise_conditions(config["conditions"])
         resources["activity"] = pd.read_csv(data / config["program_activity"])
+    resources.update(read_motif_tables(config, data))
 
     requests = [build_prompt(pid, resources, config["settings"]) for pid in config["programs"]]
     args.output.parent.mkdir(parents=True, exist_ok=True)

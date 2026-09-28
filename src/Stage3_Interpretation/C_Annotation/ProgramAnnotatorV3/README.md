@@ -38,9 +38,28 @@ Design and rules: `.claude/skills/perturbNMF-runner/references/05-annotation-sum
 | program activity (optional) | `program_id, condition, mean_score` | per-condition mean program score |
 | confounder screens | JSON | `build_confounder_screens.py` (below) |
 | excluded PMIDs | JSON `{"retracted": [...], "unresolved": [...]}` | `flag_retracted_pmids.py` (below) |
+| TF-motif enrichment (optional; config key `motif_enrichment`) | TSV `program, element_type (promoter/enhancer), tf, fdr, enrichment, significant` (+ Stage 2 extras). `program` may be `12` or `K10_12` | Stage 2 motif enrichment (`Stage2_Evaluation/A_Metrics/src/motif_enrichment.py`) |
+| candidate TFs (optional; config key `candidate_tfs`) | TSV `program, element_type, tf, tf_gene_symbol, fdr, tf_program_loading_rank, knockdown_log2fc, knockdown_fdr, evidence_tier` | Stage 2 `nominate_candidate_tfs.py` |
 
 Copy `configs/example_config.json` and fill it in. For a single-condition screen, drop
 `conditions`, `program_activity` and `regulators_by_condition` and give `regulators`.
+
+**TF motifs are optional.** With `motif_enrichment` (and optionally `candidate_tfs`) the user
+message gains section E2 (between the screens, E, and the reference pool, F): one line saying how
+the motifs were tested and that motif enrichment is correlative, then per element type the top 5
+significant motif families (Stage 2 `motif_family`, e.g. KLF-SP; the motif name for older tables), one
+line each: up to 3 motifs with enrichment and FDR, then up to 6 expressed candidate TFs of the family
+(tiers `motif+regulator` > `motif+expressed_in_program` > `motif+expressed`). The system prompt is unchanged. The viewer shows
+the same selection per program, with sequence logos when the config key `motif_logos` names the Stage 2
+`{K}_motif_logos.json` (only the logos of shown motifs are embedded). An optional
+`motif_enrichment_label` names the source on the viewer page.
+Leave the keys out (or empty) and the prompts are byte-identical to a build without them.
+With a Stage 2 `--motif_source both` table (`motif_source` column: FIMO and Fi-NeMo) each
+element type x source gets its own block, FIMO first (labelled FIMO/MotifCompendium or FIMO/HOCOMOCO
+from the motif names); the two are never pooled. The how-to-read line follows the Stage 2 test: t-test on the
+top `n_top` genes (default) or `correlation` (r > 0). It is read from the run's
+`{K}_motif_enrichment_config.yml` next to the table, or set with config keys `motif_method` /
+`motif_n_top`.
 
 ## Multi-condition screens
 

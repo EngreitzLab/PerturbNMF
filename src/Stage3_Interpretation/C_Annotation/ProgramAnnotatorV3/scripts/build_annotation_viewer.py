@@ -10,8 +10,12 @@ Per program: label (and the label before the collision pass), brief summary; act
 condition and the condition dependence (multi-condition); top and distinctive genes (the same genes the
 prompt showed); the genes the label rests on WITH the support the citation pass chose for each;
 regulator volcano plot(s) with the regulators named in the annotation labelled, plus a table view;
-regulator hypotheses with their support; non-specific explanations checked; layered interpretation; modules;
-alternative program annotations; QC.
+regulator hypotheses with their support; TF motifs in the program's promoters / enhancers as one
+table per element type, one row per motif (analysis method, motif (+ family if the name lacks it), sequence logo,
+enrichment, FDR, candidate TFs with their evidence tier), strongest families first, logos drawn in
+the page from Stage 2 `{K}_motif_logos.json` (config key `motif_logos`; when the config names Stage 2
+motif tables; the same selection prompt section E2 showed); non-specific explanations checked; layered
+interpretation; modules; alternative program annotations; QC.
 
 Inputs are the same config the prompt builder used (build_annotation_prompts.py), plus the
 annotation dispatch directory and, optionally, the citation-pass dispatch directory.
@@ -35,7 +39,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
-from build_annotation_prompts import TOP_LOADING, TOP_UNIQUE  # noqa: E402
+from build_annotation_prompts import TOP_LOADING, TOP_UNIQUE, read_motif_tables, select_program_motifs  # noqa: E402
 from validate_annotation_answers import validate  # noqa: E402
 from conditions import normalise_conditions  # noqa: E402
 from viewer_common import VIEWER_CSS, fetch_titles, load_answer, load_support, to_js  # noqa: E402
@@ -140,6 +144,8 @@ def common_fields(pid: int, sources: dict) -> dict:
         "n_sig_by_condition": n_sig,
         "volcano": volcano_points(program_regs, sources["conditions"]),
         "support": load_support(sources.get("citations"), pid),
+        "motifs": (select_program_motifs(pid, sources["motif_enrichment"], sources.get("candidate_tfs"))
+                   if sources.get("motif_enrichment") is not None else None),
         "activity": None,
         "qc": {
             "rejected": len(list(directory.glob("answer.rejected.*.json"))),
@@ -148,6 +154,31 @@ def common_fields(pid: int, sources: dict) -> dict:
             "warnings": warnings,
         },
     }
+
+
+def read_motif_logos(config: dict, data: Path) -> dict:
+    """Stage 2 logo matrices ({source: {motif: entry}}) from config key `motif_logos` (relative to data_dir);
+    {} if not configured."""
+    if not config.get("motif_logos"):
+        return {}
+    return json.loads((data / config["motif_logos"]).read_text()).get("logos", {})
+
+
+def select_shown_logos(programs: dict, logos: dict) -> dict:
+    """Only the logos of motifs the viewer shows, keyed '<source>|<motif>' (keeps the page small). A block
+    without a motif source uses the logo file's only source."""
+    default_source = next(iter(logos)) if len(logos) == 1 else None
+    shown = {}
+    for program in programs.values():
+        motifs = program.get("motifs") or {}
+        for key, families in (motifs.get("families") or {}).items():
+            source = motifs.get("section_sources", {}).get(key) or default_source
+            for family in families:
+                for tf, _, _ in family["motifs"]:
+                    entry = logos.get(source, {}).get(tf)
+                    if entry is not None:
+                        shown[f"{source}|{tf}"] = {"kind": entry["kind"], "matrix": entry["matrix"]}
+    return shown
 
 
 def technical_group(program: dict) -> Optional[str]:
@@ -180,6 +211,8 @@ def load_from_config(args) -> tuple:
     sources = {"dispatch": args.dispatch, "arm": args.arm, "conditions": conditions,
                "citations": args.citations, "loading": loading, "regulators": regulators,
                "programs_per_gene": loading.groupby("Name")["program_id"].nunique()}
+    sources.update(read_motif_tables(config, data))
+    sources["motif_logos"] = read_motif_logos(config, data)
 
     def build(pid: int) -> dict:
         program = common_fields(pid, sources)
@@ -205,6 +238,10 @@ def load_from_config(args) -> tuple:
         "groups": [f"Peak {c['label']} · {c['description']}" for c in conditions] if (multi and activity is not None) else None,
         "significance": settings.get("significance_label", "adjusted p < 0.05"),
         "k": int(loading["program_id"].nunique()),
+        "motif_source": config.get("motif_enrichment_label") or config.get("motif_enrichment") or "",
+        "motif_test": sources.get("motif_test"),
+        "motif_logos_all": sources["motif_logos"],
+        "logo_default_source": next(iter(sources["motif_logos"])) if len(sources["motif_logos"]) == 1 else None,
     }
     return build, meta, data
 
@@ -216,7 +253,12 @@ PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>__TITLE__</title>
 <style>
-""" + VIEWER_CSS + """</style>
+""" + VIEWER_CSS + """
+.motif-table { margin: 4px 0 8px; }
+.motif-table td { vertical-align: middle; padding: 2px 8px; }
+.motif-table td.num { white-space: nowrap; }
+svg.logo { display: block; background: #fff; border-radius: 3px; }
+</style>
 </head>
 <body>
 <div class="top">
@@ -246,12 +288,17 @@ const IDS = Object.keys(PROGRAMS).map(Number).sort((a,b)=>a-b);
 let currentId = null;
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function motifNames(p) {
+  if (!p.motifs) return "";
+  return Object.values(p.motifs.families).flat().flatMap(f => [f.family, ...f.motifs.map(m => m[0]),
+    ...f.candidates.map(c => c.tf)]).join(" ");
+}
 const SEARCH_INDEX = {};
 for (const id of IDS) {
   const p = PROGRAMS[id];
   SEARCH_INDEX[id] = [p.label, p.family, p.label_before, p.summary, p.group,
     p.top_genes.map(g=>g[0]).join(" "), p.distinctive.map(g=>g[0]).join(" "), p.grid.map(g=>g.gene).join(" "),
-    (p.condition_dependence||{}).claim, "P"+id, "program "+id].join(" ").toLowerCase();
+    (p.condition_dependence||{}).claim, motifNames(p), "P"+id, "program "+id].join(" ").toLowerCase();
 }
 
 function artifactTag(p) { return p.tag || ""; }
@@ -454,6 +501,79 @@ function supportCell(p, kind, symbol) {
   }).join("");
 }
 
+// sequence logo as inline SVG: information content (bits, max 2) or a CWM (positive up, negative down)
+const LOGO_COLORS = {A: "#109648", C: "#255C99", G: "#F7B32B", T: "#D62839"};
+function logoSvg(entry, width, height) {
+  if (!entry) return "";
+  const m = entry.matrix, n = m.length, col = width / Math.max(n, 1), cwm = entry.kind === "cwm";
+  const pos = m.map(r => r.reduce((a, v) => a + Math.max(v, 0), 0)), neg = m.map(r => r.reduce((a, v) => a + Math.max(-v, 0), 0));
+  const top = cwm ? Math.max(...pos, 1e-9) : 2, bottom = cwm ? Math.max(...neg, 0) : 0;
+  const scale = height / (top + bottom), base = top * scale;
+  let out = "";
+  m.forEach((row, i) => {
+    const letters = row.map((v, j) => ["ACGT"[j], v]);
+    let up = base, down = base;
+    letters.filter(l => l[1] > 0).sort((a, b) => a[1] - b[1]).forEach(([b, v]) => { const h = v * scale; if (h < 0.3) return;
+      out += `<text transform="translate(${(i * col).toFixed(1)},${up.toFixed(1)}) scale(${(col / 7.2).toFixed(3)},${(h / 7.2).toFixed(3)})" textLength="7.2" lengthAdjust="spacingAndGlyphs" fill="${LOGO_COLORS[b]}">${b}</text>`; up -= h; });
+    letters.filter(l => l[1] < 0).sort((a, b) => a[1] - b[1]).forEach(([b, v]) => { const h = -v * scale; if (h < 0.3) return; down += h;
+      out += `<text transform="translate(${(i * col).toFixed(1)},${down.toFixed(1)}) scale(${(col / 7.2).toFixed(3)},${(h / 7.2).toFixed(3)})" textLength="7.2" lengthAdjust="spacingAndGlyphs" fill="${LOGO_COLORS[b]}">${b}</text>`; });
+  });
+  const label = cwm ? "contribution weight matrix (TF-MoDISco pattern)" : "information content (bits)";
+  return `<svg class="logo" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="Helvetica,Arial,sans-serif" font-size="10" font-weight="700" role="img"><title>${label}</title>${cwm && bottom ? `<line x1="0" x2="${width}" y1="${base}" y2="${base}" stroke="var(--border)" stroke-width="0.5"/>` : ""}${out}</svg>`;
+}
+function motifLogo(source, tf) {
+  const key = `${source || META.logo_default_source}|${tf}`, entry = (META.motif_logos || {})[key];
+  return entry ? logoSvg(entry, Math.min(entry.matrix.length * 7, 150), 26) : "";
+}
+
+function candidateChip(c) {
+  const support = c.tier === "motif+regulator" ? `knockdown log2FC ${c.log2fc > 0 ? "+" : ""}${c.log2fc.toFixed(2)}, adj p ${c.adj_p.toExponential(1)}`
+    : (c.loading_rank ? `loading rank ${c.loading_rank}` : "");
+  const tier = {"motif+regulator": "regulator", "motif+expressed_in_program": "in program", "motif+expressed": "expressed"}[c.tier] || c.tier;
+  if (c.tier === "motif+expressed") return `<span class="chip" style="opacity:.75" data-tip="${esc(c.tier)} via ${esc(c.motif)}"><i>${esc(c.tf)}</i> <span class="muted small">expressed</span></span>`;
+  return `<span class="chip hit" data-tip="${esc(c.tier)} via ${esc(c.motif)}${support ? " · " + esc(support) : ""}"><i>${esc(c.tf)}</i> <span class="small">${tier}${support ? " · " + esc(support) : ""}</span></span>`;
+}
+
+function motifCard(p) {
+  const m = p.motifs;
+  if (!m) return "";
+  if (!Object.values(m.n_tested).some(n => n)) return `<div class="card"><h3>TF motifs in program promoters / enhancers</h3><p class="muted small">No motif enrichment results for this program.${META.motif_source ? ` Source: ${esc(META.motif_source)}.` : ""}</p></div>`;
+  // one table per element type; one row per significant motif (strongest families first), the analysis method
+  // (motif source) as a column, never pooled across methods; candidate TFs on the row of the motif they came via
+  const sections = m.sections || [["promoter", "promoter", ""], ["enhancer", "enhancer", ""]];
+  const test = META.motif_test || {method: "ttest", n_top: 300}, corr = test.method === "correlation";
+  const multiMethod = sections.some(s => s[2]);
+  const tables = ["promoter", "enhancer"].map(et => {
+    const mine = sections.filter(s => s[1] === et);
+    if (!mine.length) return "";
+    const counts = mine.map(([key, , source]) => {
+      const nf = m.n_families ? m.n_families[key] : m.families[key].length;
+      return `${source ? esc(source) + ": " : ""}${m.n_significant[key]} of ${m.n_tested[key]} motifs significant${nf ? ` in ${nf} famil${nf > 1 ? "ies" : "y"}` : ""}${nf > m.families[key].length ? ` (top ${m.families[key].length} families shown)` : ""}`;
+    }).join(" · ");
+    const rows = mine.flatMap(([key, , source]) => {
+      const raw = (m.section_sources || {})[key];
+      return m.families[key].flatMap(f => {
+        const shown = new Set(f.motifs.map(x => x[0]));
+        return f.motifs.map(([tf, e, q], i) => {
+          // candidates reached via this motif; a family's candidates via motifs not shown go on its first row
+          const cands = f.candidates.filter(c => c.motif === tf || (i === 0 && !shown.has(c.motif)));
+          const strong = cands.filter(c => c.tier !== "motif+expressed"), weak = cands.filter(c => c.tier === "motif+expressed");
+          const family = String(tf).startsWith(f.family) ? "" : `<div class="muted small">${esc(f.family)}</div>`;
+          return `<tr>${multiMethod ? `<td class="small">${esc(source || "")}</td>` : ""}
+            <td><span style="font-family:var(--mono);white-space:nowrap">${esc(tf)}</span>${family}</td><td>${motifLogo(raw, tf)}</td>
+            <td class="num">${corr ? "r=" + e.toFixed(2) : e.toFixed(2) + "×"}</td><td class="num">${q.toExponential(1)}</td>
+            <td class="small">${strong.map(candidateChip).join(" ")}${weak.length ? `${strong.length ? "<br>" : ""}<span class="muted">expressed: ${weak.map(c => `<i>${esc(c.tf)}</i>`).join(", ")}</span>` : ""}</td></tr>`;
+        });
+      });
+    }).join("");
+    return `<h4 style="margin:10px 0 4px">${et === "promoter" ? "Promoters" : "Enhancers"} <span class="muted small">· ${counts}</span></h4>
+      ${rows ? `<table class="motif-table"><tr>${multiMethod ? "<th>Method</th>" : ""}<th>Motif</th><th>Logo</th><th>${corr ? "Correlation" : "Enrichment"}</th><th>FDR</th><th>Candidate TFs</th></tr>${rows}</table>`
+             : `<p class="muted small">No significant motif.</p>`}`;
+  }).join("");
+  return `<div class="card"><h3>TF motifs in program promoters / enhancers</h3>${tables}
+    <p class="small muted">Correlative: ${corr ? "a motif whose per-gene count correlates with the program loadings (FDR &lt; 0.05, r &gt; 0, over expressed genes)" : `a motif over-represented near the top ${test.n_top} genes (FDR &lt; 0.05, enrichment &gt; 1, vs expressed genes)`} nominates a TF family; it does not show that TF acts on the program. Method: FIMO scan of a motif database, or Fi-NeMo hits from ChromBPNet / TF-MoDISco; methods are tested separately. Family = MotifCompendium family (TFClass family for HOCOMOCO). Candidate TFs = expressed TFs on the motif's database TF list: regulator = the TF's knockdown also moves the program; in program = the TF is among the program genes; expressed = expressed only. Logos: information content (FIMO database motif) or the TF-MoDISco contribution weight matrix (Fi-NeMo). The annotator saw these same motifs (evidence section E2).${META.motif_source ? ` Source: ${esc(META.motif_source)}.` : ""}</p></div>`;
+}
+
 function qcCard(p) {
   const q = p.qc, notes = [];
   if (p.label_before && p.label_before !== p.label) notes.push(`Collision pass renamed this program: <b>${esc(p.label_before)}</b> → <b>${esc(p.label)}</b>${p.used_bare_number ? " (bare number: nothing in the evidence separated it from a sibling)" : ""}.`);
@@ -504,6 +624,7 @@ function render(id, keepScroll) {
       <details style="margin-top:8px"><summary class="small" style="cursor:pointer">Table view — ${LABELS.length > 1 ? `log2FC of every significant regulator ${ON} every ${WORD}` : "significant regulators"}</summary>${regulatorGrid(p)}</details></div>
     <details class="card" open><summary>Regulator hypotheses (${(p.model_regulators||[]).length}) — with support</summary><table><tr><th>Regulator</th><th>Role</th><th>log2FC</th><th>Conf.</th><th>Hypothesis</th><th>Support (citation pass)</th></tr>${regRows}</table>
       <p class="small muted">Support was sought for label-evidence regulators and high/medium-confidence hypotheses; low-confidence hypotheses were not checked.</p></details>
+    ${motifCard(p)}
     <div class="card"><h3>Non-specific explanations checked</h3>
       <p class="small muted" style="margin:0 0 6px">Before reading the biology, the annotator checked whether a technical or non-specific cause explains why these genes vary together: genomic position (neighbouring genes), cell cycle, technical QC, essentiality or growth arrest, RNA processing, CRISPRi effects around the targeted genes, ${LABELS.length > 1 ? "ribosome / housekeeping, and, where assessed, a change in the mix of cells across conditions" : "and ribosome / housekeeping"}. Most statuses are decided by deterministic screens.</p>
       <table><tr><th>Explanation</th><th>Status</th><th>Deciding evidence</th></tr>${confRows}</table></div>
@@ -571,6 +692,7 @@ def main() -> int:
         if (d / "answer.json").exists()
     )
     programs = {pid: build(pid) for pid in ids}
+    meta["motif_logos"] = select_shown_logos(programs, meta.pop("motif_logos_all"))
     if not meta["groups"]:
         # Single-condition runs group the rail by family; one-program families would each get a
         # header of their own, so they are folded into "Other themes".
