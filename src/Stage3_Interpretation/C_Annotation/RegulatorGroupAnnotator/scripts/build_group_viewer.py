@@ -42,7 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
 from conditions import normalise_conditions  # noqa: E402
 from validate_group_answers import symbol, validate  # noqa: E402
-from viewer_common import VIEWER_CSS, bare_pmid, fetch_titles, load_answer, load_support, to_js  # noqa: E402
+from viewer_common import VIEWER_CSS, bare_pmid, fetch_titles, load_answer, load_support, read_effect_label, to_js  # noqa: E402
 
 SIGNIFICANCE = 0.05
 ENRICHMENT_SHOWN = 10
@@ -200,6 +200,7 @@ def load_from_config(args) -> tuple:
         "alpha": SIGNIFICANCE,
         "conditions": conditions,
         "significance": settings.get("significance_label", f"adjusted p < {SIGNIFICANCE}"),
+        "effect_label": read_effect_label(settings),
         "programs_labelled": bool(payload.get("programs_labelled")),
         "calibration_used": bool(grouping.get("calibration_used_for_parameters")),
         "n_regulators": grouping.get("n_regulators"),
@@ -253,6 +254,7 @@ const GROUPS = __GROUPS__;
 const TITLES = __TITLES__;
 const META = __META__;
 const MULTI = META.conditions.length > 1;
+const EFFECT = META.effect_label;  // what the effect matrix holds
 const DESCRIPTIONS = Object.fromEntries(META.conditions.map(c => [c.label, c.description]));
 document.getElementById("brand").innerHTML = `${META.title}<small>${META.subtitle}</small>`;
 const IDS = Object.keys(GROUPS).map(Number).sort((a,b)=>a-b);
@@ -376,20 +378,20 @@ function effectHeatmap(g) {
   const roles = roleOf(g);
   const all = g.rows.flatMap(m => (g.effects[m.gene] || []).filter(c => c).map(c => Math.abs(c[0])));
   const scale = Math.min(3, Math.max(1, ...all));
-  const head = `<tr><th>Member</th><th class="ann">Clustering</th><th class="ann">Annotated</th><th class="ann" data-tip="Bootstrap co-assignment with the rest of the group">Stab.</th><th class="ann" data-tip="Share of the member's effect profile that is signal, not noise">Rel.</th>${g.signature.map(s => `<th data-tip="${esc(`P${s.program_id}${s.program_label ? " — " + s.program_label : ""}${MULTI ? " · " + s.condition + " · " + (DESCRIPTIONS[s.condition] || "") : ""}: mean log2FC ${s.mean_log2fc > 0 ? "+" : ""}${s.mean_log2fc.toFixed(2)}, ${s.members_significant_same_direction} of ${s.members} members significant in this direction`)}">
+  const head = `<tr><th>Member</th><th class="ann">Clustering</th><th class="ann">Annotated</th><th class="ann" data-tip="Bootstrap co-assignment with the rest of the group">Stab.</th><th class="ann" data-tip="Share of the member's effect profile that is signal, not noise">Rel.</th>${g.signature.map(s => `<th data-tip="${esc(`P${s.program_id}${s.program_label ? " — " + s.program_label : ""}${MULTI ? " · " + s.condition + " · " + (DESCRIPTIONS[s.condition] || "") : ""}: mean ${EFFECT} ${s.mean_log2fc > 0 ? "+" : ""}${s.mean_log2fc.toFixed(2)}, ${s.members_significant_same_direction} of ${s.members} members significant in this direction`)}">
       ${programRef(s.program_id)}${MULTI ? `<br><span class="muted">${esc(s.condition)}</span>` : ""}<br><span class="muted">${s.members_significant_same_direction}/${s.members}</span></th>`).join("")}</tr>`;
   const body = g.rows.map(m => `<tr${m.excluded ? ' class="excl"' : ""}>${rowHead(g, m, roles)}` + (g.effects[m.gene] || g.signature.map(() => null)).map((c, i) => {
       const s = g.signature[i];
       if (!c) return `<td class="c na">n/a</td>`;
       const [v, q] = c, sig = q != null && q < META.alpha;
-      const tip = `${m.gene} · P${s.program_id}${MULTI ? " " + s.condition : ""}: log2FC ${v > 0 ? "+" : ""}${v.toFixed(2)}${q != null ? ", adj p " + q.toExponential(1) : ""}${sig ? " — significant" : " — not significant"}${m.excluded ? " (excluded member)" : ""}`;
+      const tip = `${m.gene} · P${s.program_id}${MULTI ? " " + s.condition : ""}: ${EFFECT} ${v > 0 ? "+" : ""}${v.toFixed(2)}${q != null ? ", adj p " + q.toExponential(1) : ""}${sig ? " — significant" : " — not significant"}${m.excluded ? " (excluded member)" : ""}`;
       return `<td class="c${sig ? " sig" : ""}" style="background:${divColor(v, scale)};color:${inkFor(v, scale)}" data-tip="${esc(tip)}">${v > 0 ? "+" : ""}${v.toFixed(2)}${sig ? "*" : ""}</td>`;
     }).join("") + `</tr>`).join("");
   return `<div class="legend"><span><span class="sw" style="background:var(--div-neg)"></span>negative = knockdown lowers the program (member needed for it)</span>
       <span><span class="sw" style="background:var(--div-pos)"></span>positive = knockdown raises it (member restrains it)</span>
       <span><b>bold, outlined, *</b> = significant (${esc(META.significance)})</span><span class="flag" style="color:var(--serious)">⚠</span> promoter caveat</div>
     <div style="overflow-x:auto"><table class="heat">${head}${body}</table></div>
-    <p class="small muted">Columns: the group's effect signature, ranked by |mean log2FC| x the share of members moving it the same way significantly (count under each header). Rows: members in clustered order of their effect-profile correlation${g.excluded.length ? "; members the promoter screen excluded are greyed at the bottom and were not interpreted" : ""}. Colour saturates at |log2FC| = ${scale.toFixed(1)}. Hover a member for its statistics, gene summary and notes; a header for the program label${META.program_viewer ? " (click to open the program)" : ""}.</p>`;
+    <p class="small muted">Columns: the group's effect signature, ranked by |mean ${esc(EFFECT)}| x the share of members moving it the same way significantly (count under each header). Rows: members in clustered order of their effect-profile correlation${g.excluded.length ? "; members the promoter screen excluded are greyed at the bottom and were not interpreted" : ""}. Colour saturates at |${esc(EFFECT)}| = ${scale.toFixed(1)}. Hover a member for its statistics, gene summary and notes; a header for the program label${META.program_viewer ? " (click to open the program)" : ""}.</p>`;
 }
 let corrMode = "raw";
 function correlationHeatmap(g) {
@@ -407,7 +409,7 @@ function correlationHeatmap(g) {
   return `<h3 style="margin-top:18px">Member × member correlation of effect profiles</h3>
     <p class="small" style="margin:0 0 6px">${button("raw", "raw r")} · ${button("corrected", "noise-corrected r")}</p>
     <div style="overflow-x:auto"><table class="heat corr">${head}${body}</table></div>
-    <p class="small muted">Pearson r between members' log2FC profiles across every program${MULTI ? " x condition" : ""}; same row order as above. Noise-corrected r = r / √(reliability₁ × reliability₂), capped at ±1 — what the grouping used, so a group of weak regulators can be as coherent as a group of strong ones.</p>`;
+    <p class="small muted">Pearson r between members' ${esc(EFFECT)} profiles across every program${MULTI ? " x condition" : ""}; same row order as above. Noise-corrected r = r / √(reliability₁ × reliability₂), capped at ±1 — what the grouping used, so a group of weak regulators can be as coherent as a group of strong ones.</p>`;
 }
 
 // ---- STRING network -----------------------------------------------------------------------
@@ -552,7 +554,7 @@ function render(id, keepScroll) {
     <details class="card"><summary>Alternative annotations (${g.readings.length})</summary><p class="small muted">Other annotations of the same group that the evidence does not rule out.</p><table><tr><th>Alternative annotation</th><th>Why it is not ruled out</th><th>What would distinguish it</th></tr>${readings}</table></details>
     ${openQs ? `<details class="card"><summary>Open questions (${g.open_questions.length})</summary><ul>${openQs}</ul></details>` : ""}
     ${qcCard(g)}
-    <p class="small muted">Built ${esc(META.built)} from ${esc(META.source)}. Grouping: shared nearest neighbours of the noise-corrected correlation between regulators' effect profiles (log2FC on every program${MULTI ? " x condition" : ""}), kept when stable under bootstrap resampling of the programs${META.n_eligible ? `; ${META.n_eligible} of ${META.n_regulators} regulators were reliable enough to group` : ""}. Members sharing a curated complex with the core and correlating significantly with the group were rescued in. ${META.calibration_used ? "<b>CORUM complexes were partly used to calibrate the grouping parameters</b>, so complex recovery here is not an independent check." : "Curated complexes were not used to set the grouping parameters."} Guides whose effect a neighbouring promoter could explain were excluded before annotation.</p>`;
+    <p class="small muted">Built ${esc(META.built)} from ${esc(META.source)}. Grouping: shared nearest neighbours of the noise-corrected correlation between regulators' effect profiles (${esc(EFFECT)} on every program${MULTI ? " x condition" : ""}), kept when stable under bootstrap resampling of the programs${META.n_eligible ? `; ${META.n_eligible} of ${META.n_regulators} regulators were reliable enough to group` : ""}. Members sharing a curated complex with the core and correlating significantly with the group were rescued in. ${META.calibration_used ? "<b>CORUM complexes were partly used to calibrate the grouping parameters</b>, so complex recovery here is not an independent check." : "Curated complexes were not used to set the grouping parameters."} Guides whose effect a neighbouring promoter could explain were excluded before annotation.</p>`;
 }
 
 function prev() { const i = IDS.indexOf(currentId); if (i > 0) render(IDS[i-1]); }

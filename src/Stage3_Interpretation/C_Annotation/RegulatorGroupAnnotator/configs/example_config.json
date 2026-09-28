@@ -11,6 +11,7 @@
     "cell_system": "the cell system and state, as a reader should see it",
     "assay": "CRISPRi Perturb-seq (N targeted genes), 10x scRNA-seq",
     "k": 50,
+    "effect_label": "what the effect matrix holds, as an axis label; default log2FC (e.g. Calibrated t-statistic)",
     "significance_label": "how program effects were called, e.g. CRT adjusted p < 0.05 per condition",
     "annotation_role": "the specialist the model should act as, e.g. developmental biologist",
     "condition_variable": "what the conditions vary, e.g. timepoint, cytokine stimulus, donor, genotype",

@@ -162,7 +162,9 @@ $PYTHON build_group_viewer.py --config $C --dispatch dispatch_groups --arm rg \
 ```
 
 Copy `configs/example_config.json` for `$C`. Its settings match the ProgramAnnotatorV3 config of
-the same screen.
+the same screen. That includes `settings.effect_label` (default `"log2FC"`): what the effect
+matrix holds, used for the heatmap headers, tooltips and captions. Set it when `log2_fc` holds
+another statistic (e.g. a calibrated t-statistic). The group prompt is unchanged.
 
 ## Multi-condition screens
 

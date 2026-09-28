@@ -137,6 +137,11 @@ $PYTHON build_annotation_viewer.py --config $C --dispatch dispatch --arm v3 \
     --citations dispatch_citations/cite --output annotation_viewer.html
 ```
 
+`settings.effect_label` (default `"log2FC"`) names what the regulator table's `log2_fc` column
+holds. The viewer uses it for the volcano x-axis, the effect table headers and every tooltip. Set
+it when the column holds another statistic, e.g. `"Calibrated t-statistic"`. Keep it
+short: it is the axis title. The prompts are unchanged: they still call the column log2FC.
+
 ## What to expect
 
 - About 3 minutes per program per LLM call on Sonnet; citation retrieval about 8 minutes per

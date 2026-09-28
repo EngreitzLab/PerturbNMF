@@ -42,7 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
 from build_annotation_prompts import TOP_LOADING, TOP_UNIQUE, read_motif_tables, select_program_motifs  # noqa: E402
 from validate_annotation_answers import validate  # noqa: E402
 from conditions import normalise_conditions  # noqa: E402
-from viewer_common import VIEWER_CSS, fetch_titles, load_answer, load_support, to_js  # noqa: E402
+from viewer_common import VIEWER_CSS, fetch_titles, load_answer, load_support, read_effect_label, to_js  # noqa: E402
 
 # The same genes the annotation prompt showed (its sections A and B).
 TOP_GENES_SHOWN = TOP_LOADING
@@ -237,6 +237,7 @@ def load_from_config(args) -> tuple:
         "conditions": conditions,
         "groups": [f"Peak {c['label']} · {c['description']}" for c in conditions] if (multi and activity is not None) else None,
         "significance": settings.get("significance_label", "adjusted p < 0.05"),
+        "effect_label": read_effect_label(settings),
         "k": int(loading["program_id"].nunique()),
         "motif_source": config.get("motif_enrichment_label") or config.get("motif_enrichment") or "",
         "motif_test": sources.get("motif_test"),
@@ -282,6 +283,7 @@ const META = __META__;
 const LABELS = META.conditions.map(c => c.label);
 const WORD = "condition";
 const ON = "in";
+const EFFECT = META.effect_label;  // what the regulator table's effect column holds
 const DESCRIPTIONS = Object.fromEntries(META.conditions.map(c => [c.label, c.description]));
 document.getElementById("brand").innerHTML = `${META.title}<small>${META.subtitle}</small>`;
 const IDS = Object.keys(PROGRAMS).map(Number).sort((a,b)=>a-b);
@@ -359,21 +361,21 @@ function regulatorGrid(p) {
   const rows = gridShowAll ? p.grid : p.grid.slice(0, 30);
   const scale = Math.max(1, ...p.grid.flatMap(g => g.cells.filter(c=>c).map(c => Math.abs(c[0])))) ;
   const capped = Math.min(scale, 3);
-  const head = `<tr><th></th>${LABELS.map((d,i)=>`<th>${LABELS.length > 1 ? d : "log2FC"}<br><span class="muted">${p.n_sig_by_condition[i]} sig</span></th>`).join("")}</tr>`;
+  const head = `<tr><th></th>${LABELS.map((d,i)=>`<th>${LABELS.length > 1 ? d : esc(EFFECT)}<br><span class="muted">${p.n_sig_by_condition[i]} sig</span></th>`).join("")}</tr>`;
   const body = rows.map(g => `<tr><td class="g">${esc(g.gene)}</td>` + g.cells.map((c, i) => {
       if (!c) return `<td class="c na">n/a</td>`;
       const [v, sig, q] = c;
       const role = v < 0 ? "activator (knockdown lowers program)" : "repressor (knockdown raises program)";
-      const tip = `${g.gene} · ${LABELS[i]}: log2FC ${v>0?"+":""}${v.toFixed(2)}, adj p ${q.toExponential(1)}${sig ? " — significant, " + role : " — not significant"}`;
+      const tip = `${g.gene} · ${LABELS[i]}: ${EFFECT} ${v>0?"+":""}${v.toFixed(2)}, adj p ${q.toExponential(1)}${sig ? " — significant, " + role : " — not significant"}`;
       return `<td class="c${sig?" sig":""}" style="background:${divColor(v, capped)};color:${inkFor(v, capped)}" data-tip="${esc(tip)}">${v>0?"+":""}${v.toFixed(2)}${sig?"*":""}</td>`;
     }).join("") + `</tr>`).join("");
   const more = p.grid.length > 30
     ? `<p class="small"><button class="link" onclick="gridShowAll=!gridShowAll;render(currentId,true)">${gridShowAll ? "Show top 30" : `Show all ${p.grid.length} regulators`}</button></p>` : "";
-  return `<div class="legend"><span><span class="sw" style="background:var(--div-neg)"></span>negative log2FC = knockdown lowers program (activator)</span>
+  return `<div class="legend"><span><span class="sw" style="background:var(--div-neg)"></span>negative ${esc(EFFECT)} = knockdown lowers program (activator)</span>
       <span><span class="sw" style="background:var(--div-pos)"></span>positive = knockdown raises program (repressor)</span>
       <span><b>bold, outlined, *</b> = significant (${esc(META.significance)})</span></div>
     <div style="overflow-x:auto"><table class="heat">${head}${body}</table></div>${more}
-    <p class="small muted">${LABELS.length > 1 ? `Every regulator significant ${ON} ≥1 ${WORD}, ordered by number of significant ${WORD}s then best adjusted p. Non-significant values are shown so "no effect" can be told from "same direction, below threshold".` : "Every significant regulator, ordered by adjusted p."} Colour saturates at |log2FC| = ${capped.toFixed(1)}.</p>`;
+    <p class="small muted">${LABELS.length > 1 ? `Every regulator significant ${ON} ≥1 ${WORD}, ordered by number of significant ${WORD}s then best adjusted p. Non-significant values are shown so "no effect" can be told from "same direction, below threshold".` : "Every significant regulator, ordered by adjusted p."} Colour saturates at |${esc(EFFECT)}| = ${capped.toFixed(1)}.</p>`;
 }
 
 // ---- volcano ------------------------------------------------------------------------------
@@ -408,7 +410,7 @@ function volcanoes(p) {
       const x = v.x[j] / 100, y = v.y[j] / 100, gene = names[v.g[j]], sig = v.s[j];
       const fill = sig ? (x < 0 ? "var(--div-neg)" : "var(--div-pos)") : "var(--muted)";
       const r = sig ? 3.2 : 1.8, op = sig ? 0.95 : 0.35;
-      const tip = `${gene} · ${LABELS[i]}: log2FC ${x > 0 ? "+" : ""}${x.toFixed(2)}, adj p ${Math.pow(10, -y).toExponential(1)}${sig ? (x < 0 ? " — activator" : " — repressor") : " — n.s."}`;
+      const tip = `${gene} · ${LABELS[i]}: ${EFFECT} ${x > 0 ? "+" : ""}${x.toFixed(2)}, adj p ${Math.pow(10, -y).toExponential(1)}${sig ? (x < 0 ? " — activator" : " — repressor") : " — n.s."}`;
       dots += `<circle cx="${sx(x).toFixed(1)}" cy="${sy(y).toFixed(1)}" r="${r}" fill="${fill}" fill-opacity="${op}" stroke="var(--surface)" stroke-width="${sig ? 1 : 0}" data-tip="${esc(tip)}"/>`;
       if (sig) labels.push({gene, x, y, key: keys.has(gene)});
     }
@@ -430,7 +432,7 @@ function volcanoes(p) {
       <text x="${W - m.r}" y="${sy(thr) - 3}" font-size="9.5" text-anchor="end" fill="var(--muted)">adj p = 0.05</text>
       ${ticks.map(t => `<text x="${sx(t)}" y="${H - m.b + 12}" font-size="10" text-anchor="middle" fill="var(--text-soft)">${t}</text>`).join("")}
       ${yticks.map(t => `<text x="${m.l - 4}" y="${sy(t) + 3}" font-size="10" text-anchor="end" fill="var(--text-soft)">${t}</text>`).join("")}
-      <text x="${(m.l + W - m.r) / 2}" y="${H - 4}" font-size="10" text-anchor="middle" fill="var(--text-soft)">log2FC (knockdown effect)</text>
+      <text x="${(m.l + W - m.r) / 2}" y="${H - 4}" font-size="10" text-anchor="middle" fill="var(--text-soft)">${esc(EFFECT)}</text>
       <text x="12" y="${(m.t + H - m.b) / 2}" font-size="10" text-anchor="middle" fill="var(--text-soft)" transform="rotate(-90 10 ${(m.t + H - m.b) / 2})">−log10 adj p</text>
       <text x="${m.l}" y="13" font-size="11.5" font-weight="700" fill="var(--text)">${multi ? LABELS[i] + " · " + esc(DESCRIPTIONS[LABELS[i]]) : ""}</text>
       <text x="${W - m.r}" y="13" font-size="10.5" text-anchor="end" fill="var(--text-soft)">${p.n_sig_by_condition[i]} significant</text>`;
@@ -527,7 +529,7 @@ function motifLogo(source, tf) {
 }
 
 function candidateChip(c) {
-  const support = c.tier === "motif+regulator" ? `knockdown log2FC ${c.log2fc > 0 ? "+" : ""}${c.log2fc.toFixed(2)}, adj p ${c.adj_p.toExponential(1)}`
+  const support = c.tier === "motif+regulator" ? `knockdown ${EFFECT} ${c.log2fc > 0 ? "+" : ""}${c.log2fc.toFixed(2)}, adj p ${c.adj_p.toExponential(1)}`
     : (c.loading_rank ? `loading rank ${c.loading_rank}` : "");
   const tier = {"motif+regulator": "regulator", "motif+expressed_in_program": "in program", "motif+expressed": "expressed"}[c.tier] || c.tier;
   if (c.tier === "motif+expressed") return `<span class="chip" style="opacity:.75" data-tip="${esc(c.tier)} via ${esc(c.motif)}"><i>${esc(c.tf)}</i> <span class="muted small">expressed</span></span>`;
@@ -621,8 +623,8 @@ function render(id, keepScroll) {
       <p class="small muted" style="margin:6px 0 0">From loading ranks ${p.top_genes.length + 1}–${p.n_program_genes}, the ${p.distinctive.length} genes with the highest uniqueness score = loading × ln((K+1)/(n+1)), where K = ${META.k} programs and n = the number of programs whose top ${p.n_program_genes} genes include the gene: genes that load well here and in few other programs. The annotator saw these same genes. Hover a gene for its rank and n.</p></div>
     <details class="card" open><summary>Genes that drove the label (${(p.label_genes||[]).length}) — with support</summary><table><tr><th>Gene</th><th>Rank</th><th>Why</th><th>Support (citation pass)</th></tr>${geneRows}</table></details>
     <div class="card"><h3>${LABELS.length > 1 ? `Regulators by ${WORD}` : "Significant regulators"}</h3>${volcanoes(p)}
-      <details style="margin-top:8px"><summary class="small" style="cursor:pointer">Table view — ${LABELS.length > 1 ? `log2FC of every significant regulator ${ON} every ${WORD}` : "significant regulators"}</summary>${regulatorGrid(p)}</details></div>
-    <details class="card" open><summary>Regulator hypotheses (${(p.model_regulators||[]).length}) — with support</summary><table><tr><th>Regulator</th><th>Role</th><th>log2FC</th><th>Conf.</th><th>Hypothesis</th><th>Support (citation pass)</th></tr>${regRows}</table>
+      <details style="margin-top:8px"><summary class="small" style="cursor:pointer">Table view — ${LABELS.length > 1 ? `${esc(EFFECT)} of every significant regulator ${ON} every ${WORD}` : "significant regulators"}</summary>${regulatorGrid(p)}</details></div>
+    <details class="card" open><summary>Regulator hypotheses (${(p.model_regulators||[]).length}) — with support</summary><table><tr><th>Regulator</th><th>Role</th><th>${esc(EFFECT)}</th><th>Conf.</th><th>Hypothesis</th><th>Support (citation pass)</th></tr>${regRows}</table>
       <p class="small muted">Support was sought for label-evidence regulators and high/medium-confidence hypotheses; low-confidence hypotheses were not checked.</p></details>
     ${motifCard(p)}
     <div class="card"><h3>Non-specific explanations checked</h3>

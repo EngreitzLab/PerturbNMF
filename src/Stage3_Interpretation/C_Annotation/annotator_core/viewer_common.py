@@ -91,6 +91,18 @@ def load_support(citations_prefix: Optional[Path], pid: int) -> dict:
     return support
 
 
+DEFAULT_EFFECT_LABEL = "log2FC"
+
+
+def read_effect_label(settings: dict) -> str:
+    """What the regulator effect column holds, as the viewers label it (axis, headers, tooltips).
+
+    settings.effect_label, default "log2FC". Screens whose `log2_fc` column holds another
+    statistic (e.g. a calibrated t-statistic) set it so the pages do not call it a fold change.
+    """
+    return settings.get("effect_label") or DEFAULT_EFFECT_LABEL
+
+
 def to_js(obj) -> str:
     """JSON for a <script> block: "</" inside the JSON would end the script block early."""
     return json.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
