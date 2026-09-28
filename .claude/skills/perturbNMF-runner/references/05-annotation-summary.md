@@ -296,14 +296,15 @@ Curated complexes (CORUM / ComplexPortal / SIGNOR via OmniPath) are used for:
   `rescued`).
 
 Promoter confounds (`measure_neighbour_knockdown.py` + `build_promoter_confound_screen.py`):
-- CRISPRi guides silence neighbouring promoters (22 of 26 measurable neighbours on the CC screen).
+- CRISPRi guides silence neighbouring promoters.
 - A member is **excluded** from annotation when:
   - the neighbour explains the group (another member, a complex subunit or a STRING partner) and is
     knocked down or unmeasured within 1 kb; or
   - the neighbour is knocked down and the target is not.
 - Shared loci (two members sharing a promoter) keep the better-supported member.
 - Guide positions from hCRISPRi-v2 names are used only when they sit at the target's TSS in the
-  coordinate file. The CC names are hg19 and the coordinates hg38, so the screen fell back to TSSs.
+  coordinate file. If guide names are on a different assembly than the coordinates, the screen
+  falls back to TSSs.
 
 Annotation:
 - The prompt asks the model to:

@@ -1,15 +1,14 @@
 """Answer, or repair, one blinded prompt directory with a headless `claude -p` call.
 
 Called once per directory by run_blinded_annotations.sh (answer) and repair_rejected_answers.sh
-(repair). A directory holds `prompt.md` (the per-item data) and, for prompts built since the
-2026-09 cost cut, `system.md` (the static instructions, byte-identical across a batch).
+(repair). A directory holds `prompt.md` (the per-item data) and, optionally, `system.md` (the
+static instructions, byte-identical across a batch).
 
-The call is minimal on purpose (audit of 602 earlier calls, 2026-09-25):
+The call is minimal on purpose:
 
 - `--safe-mode --strict-mcp-config --disable-slash-commands` and a working directory outside the
-  user's tree: no CLAUDE.md, skills, plugins, hooks or MCP servers. Earlier calls carried ~45k
-  tokens of Claude Code context each, and inherited the user's CLAUDE.md writing rules only when
-  launched from inside ~/Claude, so the answer style depended on the launch directory.
+  user's tree. Minimal call: no CLAUDE.md, skills, plugins, hooks or MCP from the caller's
+  directory, so answers do not depend on where the call is launched.
 - `--tools ""`: no tools at all. `--allowed-tools ""` (used before) only governs permission
   prompts; the old calls ran Bash and one read another program's prompt.
 - `--system-prompt-file system.md`: replaces Claude Code's system prompt with the task's static

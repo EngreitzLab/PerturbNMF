@@ -26,9 +26,9 @@ though both pairs are equally related. This script replaces the single cut with 
                                   clusters of 1 - co-assignment, cut at --consensus-cut (default
                                   0.7: members co-assigned in >= 30% of bootstraps on average).
                                   A single clustering of the full data puts a gene that bridges two
-                                  modules into whichever it happens to meet first (teloHAEC: CCM2
-                                  landed with the proteasome although it co-clusters with KRIT1 in
-                                  41% of bootstraps and with the proteasome in 26%). A member's
+                                  modules into whichever it happens to meet first (e.g. a gene
+                                  co-assigned with module A in 41% of bootstraps and module B in
+                                  26%). A member's
                                   stability is its mean co-assignment with the rest of its group;
                                   members at or above --min-member-stability are core, the rest
                                   peripheral. A group is kept when it has >= --min-group-size core
@@ -39,8 +39,8 @@ A regulator with no significant effect on any single program can still move many
 little, the same way as a module does. Such a regulator is recruited when it has significant
 (step 2) correlation edges to >= --recruit-min-partners regulators that do have significant
 effects; it is then grouped like any other and marked `recruited` downstream.
-EXPERIMENTAL — not trustworthy until the pair null models correlated sampling noise: on the
-teloHAEC U-test table the program-permutation null called 10% of all pairs significant and
+EXPERIMENTAL — not trustworthy until the pair null models correlated sampling noise: on one
+test screen the program-permutation null called a sizeable share of pairs significant and
 recruited nearly every target (sampling noise moves e.g. the cell-cycle programs together, which
 shuffling programs destroys). Needs an NTC fake-perturbation null.
 

@@ -30,3 +30,7 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Local worklogs / handoffs
+tasks/
+.baton/

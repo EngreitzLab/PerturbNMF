@@ -176,7 +176,7 @@ BRIEF SUMMARY (`brief_summary`): exactly two sentences, in this form —
   Mediator complex / act in Hippo signalling / have no shared annotated function>. They most
   strongly regulate P<id>—<program label> and P<id>—<program label>."
 <N> counts the members in section B. The programs are the top of section D, with the direction
-if it helps ("raise P36—KLF2 flow response and lower P23—Weibel-Palade body secretion"). No
+if it helps ("raise P<a>—<label> and lower P<b>—<label>"). No
 comment on coherence or confidence.
 
 # OUTPUT — JSON only, exactly this shape

@@ -111,8 +111,8 @@ able to tell which program it refers to.
 Make the set mutually distinguishable, changing as little as possible. Rules:
 
 0. DO NO HARM. If a program's current label is already specific and distinct from every other \
-label in this group, KEEP IT VERBATIM. Only rewrite labels that actually collide. Two real \
-regressions from an earlier pass, to show what harm looks like — both replaced a good, \
+label in this group, KEEP IT VERBATIM. Only rewrite labels that actually collide. Two \
+illustrative examples of what harm looks like — both replaced a good, \
 established label with a worse one:
      "ATF4 Amino Acid Stress Response"      -> "Integrated stress response - Serine/tRNA synthesis"
      "Angiogenesis - Caveolar Endocytosis"  -> "Angiogenesis - SMAD3"

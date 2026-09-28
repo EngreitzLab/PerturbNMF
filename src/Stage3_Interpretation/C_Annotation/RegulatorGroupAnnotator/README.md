@@ -36,9 +36,9 @@ cut. `define_regulator_groups.py` uses four steps instead:
    regulator is judged against its own neighbours.
 4. **Consensus.** The programs are bootstrapped 100 times and steps 1 and 3 re-run each time. The
    final groups are clusters of how often two regulators land together, not one clustering of
-   the full data. A single clustering put CCM2 with the proteasome on teloHAEC, although it sits
-   with KRIT1 in 41% of bootstraps and with the proteasome in 26%. A member's stability is its
-   mean co-assignment with its group. Core members are at ≥ 0.3; the rest are peripheral.
+   the full data: in a single clustering, a gene bridging two modules can land in whichever it
+   meets first. A member's stability is its mean co-assignment with its group. Core members are
+   at ≥ 0.3; the rest are peripheral.
 
 Curated complexes (CORUM / ComplexPortal / SIGNOR via OmniPath) are used in two ways:
 - **Calibration** (`--calibrate`). Tune `--neighbors` / `--snn-cut` on co-complex pair recovery.
@@ -46,29 +46,14 @@ Curated complexes (CORUM / ComplexPortal / SIGNOR via OmniPath) are used in two 
 - **Rescue.** A complex partner of ≥ 2 core members that correlates significantly with the group
   centroid is added with role `rescued`.
 
-On the CC-Perturb-seq k50 screen (238 eligible regulators, 192 co-complex pairs), at the same
-precision (≈0.64), recall of co-complex pairs was:
-
-| Method | Recall, all pairs | Recall, weak-tier pairs |
-|---|---|---|
-| GeneProgramExplorer global cut | 0.10 | 0.02 |
-| Noise-corrected SNN (k=5, cut 0.7, the defaults) | 0.20 | 0.08 |
-
-The noise correction alone raised precision at matched recall (0.64 vs 0.49).
-
-Recall / precision on co-complex pairs, with consensus grouping (the default):
-
-| Screen | Consensus SNN | Single-run SNN | GPE global cut 0.5 |
-|---|---|---|---|
-| CC k50 (192 pairs) | 0.20 / 0.68 | 0.20 / 0.64 | 0.10 / 0.63 |
-| teloHAEC k60 (50 pairs) | 0.16 / 0.67 | 0.12 / 0.46 | 0.18 / 0.56 |
-
-On teloHAEC the U-test p-values give reliability ≈ 0.8 for every target, so the noise correction
-does little there. The benchmark is also small.
+Calibrated on co-complex pair recovery in two CRISPRi screens; the SNN defaults roughly doubled
+recall at matched precision versus a global correlation cut. On one screen with near-uniform
+reliability, the noise correction does little.
 
 **Recruiting regulators without a significant effect** (`--recruit-correlated`, with the matrix
-built using `--min-significant-features 0`) is experimental. On the teloHAEC U-test table the
-program-permutation null called 10% of all pairs significant, even after centring each program.
+built using `--min-significant-features 0`) is experimental. On one test screen the
+program-permutation null called a sizeable share of all pairs significant, even after centring
+each program.
 Sampling noise moves related programs (e.g. the cell-cycle ones) together, which a permutation
 of programs destroys, so nearly every target got recruited. It needs an NTC fake-perturbation
 null before it can be used.
@@ -76,8 +61,8 @@ null before it can be used.
 ## Promoter confounds
 
 CRISPRi represses a window around the guide, so a guide for gene A can silence gene B next to it.
-This is most often a divergent (bidirectional) pair. On the CC screen, 22 of the 26 measurable
-promoter neighbours of grouped regulators were knocked down by the target's guides.
+This is most often a divergent (bidirectional) pair. In practice most measurable neighbours are
+knocked down.
 
 - `measure_neighbour_knockdown.py` measures, per condition, whether each neighbour is knocked down
   in the target's cells compared with non-targeting cells.
@@ -90,10 +75,9 @@ promoter neighbours of grouped regulators were knocked down by the target's guid
 
 Where the promoter search starts, in order of preference:
 1. An IGVF "guide RNA sequences" table (`--guide-table`). These are GRCh38 guide coordinates,
-   checked by chromosome. For teloHAEC that is IGVFFI9754AGFB (construct library
-   IGVFDS1298TUYG).
+   checked by chromosome.
 2. Positions parsed from hCRISPRi-v2 guide names, used only when they sit at the target's TSS.
-   The CC names are hg19 while its coordinate file is hg38.
+   Guide names may be on an older assembly than the coordinate file.
 3. The target's TSSs.
 
 ## Requirements

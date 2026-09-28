@@ -96,6 +96,8 @@ $PYTHON build_annotation_viewer.py --config $C --dispatch dispatch --arm v3 \
 - `claude -p` exits nonzero with an empty stderr when usage-limited; the dispatcher sleeps and
   retries. It can also return a truncated or prose-prefixed answer — the completeness check
   rejects those and the next pass retries them.
+- Validate any prompt change with a blinded pairwise judge on the full program set. For cost,
+  the Claude Code harness, not the prompt, dominated: trimming prompt text saved little.
 
 ## Scripts
 
