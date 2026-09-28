@@ -17,7 +17,7 @@ and summarizes results.
 
 ## Environment
 
-- **Pipeline root**: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF`
+- **Pipeline root**: `$PIPELINE_ROOT` — your PerturbNMF checkout (the SLURM test scripts require `export PIPELINE_ROOT=/path/to/PerturbNMF`)
 - **Inference tests**: `tests/Script/Stage1_Inference/`
 - **Evaluation tests**: `tests/Script/Stage2_Evaluation/`
 - **Output directory**: `tests/output/`
@@ -65,16 +65,18 @@ and summarizes results.
 
 All SLURM scripts are in `tests/Script/Stage1_Inference/` and `tests/Script/Stage2_Evaluation/`:
 
-| Script | What it runs | Partition |
+Each script has `#SBATCH --partition=<partition>` / `--mail-user=<your_email>` placeholders — set them for your cluster before `sbatch`.
+
+| Script | What it runs | Resources |
 |--------|-------------|-----------|
-| `Stage1_Inference/run_inference_test_sklearn.sh` | sk-cNMF end-to-end | engreitz,owners (CPU) |
-| `Stage1_Inference/run_test_parallel_sklearn.sh` | sk-cNMF parallel | engreitz,owners (CPU) |
-| `Stage1_Inference/run_gpu_test_batch.sh` | torch batch mode | gpu,owners (GPU) |
-| `Stage1_Inference/run_gpu_test_minibatch.sh` | torch minibatch mode | gpu,owners (GPU) |
-| `Stage1_Inference/run_gpu_test_dataloader.sh` | torch dataloader mode | gpu,owners (GPU) |
-| `Stage1_Inference/run_gpu_test_parallel.sh` | torch parallel mode | gpu,owners (GPU) |
-| `Stage1_Inference/run_gpu_test_edge_cases.sh` | torch edge cases | gpu,owners (GPU) |
-| `Stage2_Evaluation/run_eval_test.sh` | evaluation unit tests | engreitz,owners (CPU) |
+| `Stage1_Inference/run_inference_test_sklearn.sh` | sk-cNMF end-to-end | CPU |
+| `Stage1_Inference/run_test_parallel_sklearn.sh` | sk-cNMF parallel | CPU |
+| `Stage1_Inference/run_gpu_test_batch.sh` | torch batch mode | GPU |
+| `Stage1_Inference/run_gpu_test_minibatch.sh` | torch minibatch mode | GPU |
+| `Stage1_Inference/run_gpu_test_dataloader.sh` | torch dataloader mode | GPU |
+| `Stage1_Inference/run_gpu_test_parallel.sh` | torch parallel mode | GPU |
+| `Stage1_Inference/run_gpu_test_edge_cases.sh` | torch edge cases | GPU |
+| `Stage2_Evaluation/run_eval_test.sh` | evaluation unit tests | CPU |
 
 ## Conda Environments
 
@@ -103,7 +105,7 @@ Default if unspecified: run sk-cNMF end-to-end + all torch-cNMF modes.
 **ALWAYS remove previous test output before submitting inference jobs.** Tests depend on clean state and will produce incorrect results or fail silently if stale output exists. This step is non-negotiable.
 
 ```bash
-cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
+cd "$PIPELINE_ROOT"
 
 # sk-cNMF:
 rm -rf tests/output/sk-cNMF
@@ -125,7 +127,7 @@ rm -rf tests/output/torch-cNMF/dataloader/Evaluation
 Run directly on the current node (CPU only, ~30 seconds each):
 
 ```bash
-cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
+cd "$PIPELINE_ROOT"
 
 # End-to-end:
 eval "$(conda shell.bash hook)" && conda activate sk-cNMF && python -m pytest tests/Script/Stage1_Inference/test_inference_sklearn.py -v --tb=short

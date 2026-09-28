@@ -448,7 +448,7 @@ def main():
     print(f"  Cells: {n_cells:,} | Genes: {n_genes:,}")
     print(f"  sk-cNMF:    mem={mem_rec}, time={time_rec_sk} (numiter=10, 8 K values)")
     print(f"  torch-cNMF: mem={'64G' if n_cells < 100000 else '128G' if n_cells < 300000 else '256G'}, time={time_rec_torch}")
-    partition = "engreitz,owners" if n_cells < 200000 else "engreitz,owners,bigmem"
+    partition = "standard CPU partition" if n_cells < 200000 else "large-memory partition (if your cluster has one)"
     print(f"  Partition:  {partition}")
 
     # Report

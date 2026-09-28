@@ -34,7 +34,7 @@ Enrichment file patterns use `{k}` placeholder (and `{sample}` for perturbation)
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`, CPUs: 4, Memory: 32-64G, Time: 1h
+- Partition: standard CPU partition (ask the user), CPUs: 4, Memory: 32-64G, Time: 1h
 
 ---
 
@@ -69,7 +69,7 @@ See `references/parameter-catalog.md` Section 5 for all optional params.
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`, CPUs: 4-8, Memory: 64-128G, Time: 2-4h
+- Partition: standard CPU partition (ask the user), CPUs: 4-8, Memory: 64-128G, Time: 2-4h
 
 ---
 
@@ -108,4 +108,4 @@ See `references/parameter-catalog.md` Section 6 for all optional params.
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`, CPUs: 4-10, Memory: 64-128G, Time: 2-6h
+- Partition: standard CPU partition (ask the user), CPUs: 4-10, Memory: 64-128G, Time: 2-6h

@@ -44,7 +44,7 @@ The config YAML specifies: input spectra file, output directory, LLM model, STRI
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`
+- Partition: standard CPU partition (ask the user)
 - CPUs: 4
 - Memory: 32G
 - Time: 1-2h (depends on number of programs and LLM response time)
@@ -82,7 +82,7 @@ Mines PubMed/PubTator for evidence supporting the program annotations produced b
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`
+- Partition: standard CPU partition (ask the user)
 - CPUs: 4
 - Memory: 32G
 - Time: 1-3h (depends on `--max-papers` and LLM throughput)
@@ -169,7 +169,7 @@ Per job, written to `--save_path` (default `{out_dir}/{run_name}/Interpretation/
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`
+- Partition: standard CPU partition (ask the user)
 - CPUs: 4
 - Memory: 64G
 - Time: 2h (MyGene API queries for gene annotations are the bottleneck)

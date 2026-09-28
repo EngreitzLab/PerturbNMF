@@ -12,12 +12,15 @@ Output to stdout = drift report. Exit 0 always (informational, not a gate).
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path("/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF")
+# Repo root: $PIPELINE_ROOT if set, else derived from this file's location
+# (<repo>/.claude/skills/pipeline-drift-check/scripts/check-pipeline-drift.py).
+ROOT = Path(os.environ.get("PIPELINE_ROOT") or Path(__file__).resolve().parents[4])
 
 if not (ROOT / ".git").exists():
     sys.exit(0)

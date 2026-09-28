@@ -73,19 +73,19 @@ Optional TSV file with guide metadata. Used for evaluation and calibration.
 ### Reference GTF
 - Standard GTF format (e.g., GENCODE v43)
 - Used for validating gene names against genome annotation
-- Path: `/oak/stanford/groups/engreitz/Users/opushkar/genome/IGVFFI9573KOZR.gtf.gz`
+- Path: user-supplied (ask the user; e.g. a GENCODE `.gtf.gz`)
 
 ### GWAS Data
 - OpenTargets L2G filtered data
 - Used for trait enrichment analysis in evaluation
-- Path: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz`
+- Path: `${PIPELINE_ROOT}/src/Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz` (populated by `setup_resources.sh`)
 
 ### Motif Files
 - HOCOMOCO motif database in MEME format
 - Used for motif enrichment analysis
-- Path: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/hocomoco_meme.meme`
+- Path: `${PIPELINE_ROOT}/src/Stage2_Evaluation/Resources/hocomoco_meme.meme` (populated by `setup_resources.sh`)
 
 ### Genome Sequence
 - hg38 reference genome FASTA
 - Required for motif analysis
-- Path: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/hg38.fa`
+- Path: `${PIPELINE_ROOT}/src/Stage2_Evaluation/Resources/hg38.fa` (populated by `setup_resources.sh`)
