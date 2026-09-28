@@ -64,6 +64,8 @@ Enrichment file patterns use `{k}` placeholder (and `{sample}` for perturbation)
 | `--corr_matrix_path` | None | Base path for precomputed waterfall correlation matrices (`<base>_<sample>.txt`); falls back to computing |
 | `--skip_existing` | on (default) | Default skips programs whose output already exists. Pass `--skip_existing` to force re-process all (inverted flag) |
 | `--tagert_col_name` | `program_name` | Column name for target programs in perturbation results (**note typo**: use as-is) |
+| `--motif_enrichment_path` | None | [HTML only] Stage 2 `{K}_motif_enrichment.txt`: per-program TF-motif panel (omit to leave it out) |
+| `--candidate_tfs_path` | None | [HTML only] Stage 2 `{K}_candidate_tfs.txt`: candidate TFs beside the motif panel |
 
 See `references/parameter-catalog.md` Section 5 for all optional params.
 

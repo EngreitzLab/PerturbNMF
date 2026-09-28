@@ -54,6 +54,8 @@ Exported by `src/__init__.py`:
 | `Compile_Association_sheet`, `Compile_Explained_variance` | Read the per-K categorical association and explained-variance files. |
 | `Compile_Target_Summary_sheet(mdata, perturbation_path, ...)` | Per-target summary: mean expression / cell counts / significant programs / specificity (PMI) / gene-gene correlation / KD efficiency. |
 | `Compile_Summary_sheet(mdata, df_GO, df_Geneset, df_Perturbation, df_Program_loading, df_Explained_Variance, ...)` | Per-program summary: GO/geneset top terms, regulator counts, top-loaded genes, mean program score per condition, variance explained, specificity-based top regulators. |
+| `Compile_Motif_sheet(Motif_path, top_n=5, method=None)` | Stage 2 TF-motif enrichment → (per-program summary: number significant / tested and top `top_n` significant motifs per element type — per element type x source for `--motif_source both`, FIMO first; significant rows only). `method` (ttest / correlation; default read from the Stage 2 `{K}_motif_enrichment_config.yml`) shows correlations as "r=0.12". In `Compile_motif_sheet.py` (pandas only) |
+| `Compile_Candidate_TF_sheet(Candidate_TF_path)` | Stage 2 candidate TFs, strongest evidence tier first (motif+regulator, motif+expressed_in_program, motif+expressed, motif_only), then FDR |
 | `add_specificity_scores_file(save_path, perturb_base, samp)` | Merge per-target PMI scores back into a perturbation file. |
 | `check_program_name_match(mdata, dataframes, prog_key)` | Sanity-check that program names align across files. |
 | `compute_kd_efficiency(mdata, categorical_key, ...)` | Standalone KD efficiency per target per condition (CP10K-normalized). |
@@ -133,7 +135,12 @@ Sidecar files (`specificity_score_*`, `corr_gene_matrix_*`, `kd_efficiency.txt`)
 | **Trait** | enriched trait × program | `Compile_Trait_sheet` | same shape, from `{K}_trait_enrichment.txt` |
 | **Perturbation** | (target, program, condition) | `Compile_Perturbation_sheet` | `target_name`, `program_name`, `log2FC` (or user-chosen `effect_size`), `adj_pval`, `Sample` |
 | **Categorical_association** | cNMF program | `Compile_Association_sheet` | indexed by `program_name`; columns from `{K}_categorical_association_results.txt` |
+| **Motif Summary** | cNMF program | `Compile_Motif_sheet` | `n_significant_{promoter,enhancer}_motifs`, `n_tested_{promoter,enhancer}_motifs`, `top5_{promoter,enhancer}_motifs` ("motif (enrichment x, FDR)"), `families_{promoter,enhancer}_motifs` ("KLF-SP (4); GATA (1)", when the table has `motif_family`); with two motif sources `n_significant_promoter_fimo_motifs`, `..._finemo_...` etc. |
+| **Motif Enrichment** | significant (program, element type, TF) | `Compile_Motif_sheet` | Stage 2 columns, rows with FDR < 0.05 and enrichment > 1 only |
+| **Candidate TFs** | (program, element type, TF) | `Compile_Candidate_TF_sheet` | `tf_gene_symbol`, `fdr`, `enrichment`, `tf_expressed`, `tf_program_loading_rank`, `knockdown_log2fc`, `knockdown_fdr`, `evidence_tier` |
 | **Explained_variance** | cNMF program | `Compile_Explained_variance` | indexed by `program_name`; `VarianceExplained` (and any other variance columns from the file) |
+
+The motif sheets are written by `Slurm_Version/cNMF_excel_summary.py` when `--motif_enrichment_path` / `--candidate_tfs_path` exist (defaults `{Evaluation}/{K}_{thresh}/{K}_motif_enrichment.txt` and `{K}_candidate_tfs.txt`; `--motif_top_n` sets the summary's top N); otherwise they are skipped. Motif enrichment is correlative: it nominates TFs, it does not show they act.
 
 Optional sheets (`GO`, `Geneset`, `Trait`, `Perturbation`, `Categorical_association`, `Explained_variance`) are written only if the corresponding source file exists — `load_simple_sheets()` returns `None` for any file it can't find and the example loop above skips writing those sheets.
 

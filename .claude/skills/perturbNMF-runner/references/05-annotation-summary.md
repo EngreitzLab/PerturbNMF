@@ -75,6 +75,10 @@ What is different from the ProgramExplorer prompt:
 - **Evidence:** top 30 genes in detail plus all program genes ranked, 30 distinctive genes, every
   significant regulator split by sign (per condition, with a cross-condition log2FC profile),
   STRING enrichment, gene summaries, a PMID reference pool.
+- **TF motifs (optional):** config keys `motif_enrichment` / `candidate_tfs` (Stage 2
+  `{K}_motif_enrichment.txt` / `{K}_candidate_tfs.txt`) add section E2: the top significant motif
+  families per element type (and per motif source with `--motif_source both`), each with its
+  expressed candidate TFs, framed as correlative. Leave the keys empty and prompts are unchanged.
 - **Label rules:** no quality words; a distinguisher is a process, pathway, compartment or state
   term, never a bare gene; several processes as a comma-separated list.
 - **Structural blinding:** one tool-less `claude -p` per prompt, prompt on stdin. Never use
@@ -282,7 +286,9 @@ python build_annotation_viewer.py --config <config.json> --dispatch <dir> --arm 
   with the support the citation pass chose, PMIDs inline next to each gene (★ discovery,
   ◆ context, ◐ restatement, or none); regulator volcano plots (one per condition, shared axes,
   regulators named in the annotation labelled) with a table view; regulator hypotheses with their
-  support; "Non-specific explanations checked" (the `confounder_assessment`, explained on the
+  support; TF motifs (optional; config keys `motif_enrichment`, `candidate_tfs`, `motif_logos`,
+  `motif_enrichment_label`: one table per element type, one row per motif with sequence logo,
+  enrichment, FDR and candidate TFs — the same selection as prompt section E2); "Non-specific explanations checked" (the `confounder_assessment`, explained on the
   page); layered interpretation; modules (defined on the page); alternative
   program annotations (the answer's `competing_readings`); QC (re-dispatches, validator warnings,
   collision-pass renames). No separate citation list, no comparator annotations, and no
@@ -420,6 +426,9 @@ other stage (no notebook required). Submit one job per K to cover multiple K val
 | `--effect_size` | `log2FC` | Effect-size column (e.g. `approx_log2FC`) |
 | `--gene_names_key` | `symbol` | var column with gene symbols |
 | `--non_targeting_key` | `non-targeting` | Negative-control target label(s) |
+| `--motif_enrichment_path` | `Evaluation/{K}_{thresh}/{K}_motif_enrichment.txt` | Stage 2 motif table; "Motif Summary" / "Motif Enrichment" sheets skipped if absent |
+| `--candidate_tfs_path` | `Evaluation/{K}_{thresh}/{K}_candidate_tfs.txt` | Stage 2 candidate TFs; "Candidate TFs" sheet skipped if absent |
+| `--motif_top_n` | `5` | Top significant motifs per program and element type in "Motif Summary" |
 
 See `references/parameter-catalog.md` (Section 12) for the full flag list, including
 `--save_path`, `--mdata_path`, `--num_gene`, the `--prog_key`/`--data_key`/`--guide_targets_key`
@@ -465,6 +474,8 @@ Per job, written to `--save_path` (default `{out_dir}/{run_name}/Interpretation/
 | **Trait Enrichment** | GWAS trait enrichment via Fisher exact test (Open Targets L2G) |
 | **GO Term Enrichment** | GO Biological Process 2023 enrichment |
 | **Geneset Enrichment** | Reactome 2022 pathway enrichment |
+| **Motif Summary** / **Motif Enrichment** | Top significant TF motifs per program x element type / the full Stage 2 motif table (when present) |
+| **Candidate TFs** | Stage 2 candidate TFs, strongest evidence tier first (when present) |
 
 ### SLURM resources
 

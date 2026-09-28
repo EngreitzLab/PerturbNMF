@@ -108,6 +108,8 @@ Produces one comprehensive panel per cNMF program. Loops over all programs in th
 | `--programs` | int list | `None` (all) | Specific program numbers to plot (e.g. `4 5 6`). If omitted, every program in the h5mu is plotted |
 | `--subsample_frac` | float | `None` (all) | Fraction of cells to subsample for UMAP plots (e.g. `0.1` for 10%) |
 | `--corr_matrix_path` | str | `None` | Base path for precomputed waterfall correlation matrices. Files are expected as `<base>_<sample>.txt`. Falls back to computing if not found |
+| `--motif_enrichment_path` | str | `None` | HTML only, optional. Stage 2 TF-motif enrichment TSV (`program, element_type, tf, fdr, enrichment, significant`, …). Adds a per-program TF-motif panel (`images/motif_ranks.png`, top significant motifs in promoters / enhancers). Program ids are matched to the h5mu program names as strings |
+| `--candidate_tfs_path` | str | `None` | HTML only, optional; needs `--motif_enrichment_path`. Stage 2 candidate-TF TSV (`program, element_type, tf, tf_gene_symbol, evidence_tier`, …). Candidate TFs are outlined in red in the motif panel and listed beside it |
 | `--skip_existing` | flag | on (default) | Default behavior **skips** programs whose output already exists. Passing `--skip_existing` turns OFF skipping and re-processes every program from scratch (handy for resuming preempted jobs) |
 | `--data_key` | str | `rna` | Key to access gene expression data in MuData |
 | `--prog_key` | str | `cNMF` | Key to access cNMF programs in MuData |
@@ -123,7 +125,7 @@ Produces one comprehensive panel per cNMF program. Loops over all programs in th
 - Program-program correlation waterfall
 - Combined panel → one page in the PDF
 
-Set `--output_format HTML` to emit a shareable HTML report under `save_path` (per-program subdirectories).
+Set `--output_format HTML` to emit a shareable HTML report under `save_path` (per-program subdirectories). With `--motif_enrichment_path` each program page also gets a TF-motif panel (`motif_enrichment_plots.plot_program_motif_ranks`) and `data/motifs.json`; motif enrichment is correlative and the panel says so. With a Stage 2 `--motif_source both` table the panel gets one row per source (FIMO, then Fi-NeMo); sources are never pooled.
 
 ### Running without perturbation results
 

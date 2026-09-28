@@ -206,7 +206,7 @@ Same as sk-cNMF except:
 | `--Perform_geneset` | Gene set enrichment (Reactome + GO terms) |
 | `--Perform_trait` | GWAS trait enrichment |
 | `--Perform_explained_variance` | Explained variance per K |
-| `--Perform_motif` | TF motif enrichment (WIP) |
+| `--Perform_motif` | TF motif enrichment + candidate TFs (options: `02-evaluation.md` "TF motif enrichment"; `A_Metrics/README.md#motif-enrichment`) |
 
 ### Optional
 
@@ -302,6 +302,8 @@ Same as sk-cNMF except:
 | `--programs` | int (nargs=+) | None | No | Specific program numbers to plot (e.g. `4 5 6`). If omitted, all programs plotted |
 | `--subsample_frac` | float | None | No | Fraction of cells to subsample for UMAP (e.g. `0.1` for 10%) |
 | `--corr_matrix_path` | str | None | No | Base path for precomputed waterfall correlation matrices |
+| `--motif_enrichment_path` | str | None | No | [HTML only] Stage 2 `{K}_motif_enrichment.txt`; adds a per-program TF-motif panel |
+| `--candidate_tfs_path` | str | None | No | [HTML only] Stage 2 `{K}_candidate_tfs.txt`; outlines candidate TFs in the motif panel (needs `--motif_enrichment_path`) |
 
 ### Keys
 
