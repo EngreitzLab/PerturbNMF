@@ -260,7 +260,8 @@ def find_column(columns: Iterable[str], aliases: List[str]) -> Optional[str]:
 
 
 def read_enhancer_gene_links(path: str, link_format: str = "auto", score_threshold: Optional[float] = None,
-                             score_column: Optional[str] = None, drop_promoters: bool = True) -> pd.DataFrame:
+                             score_column: Optional[str] = None, drop_promoters: bool = True,
+                             merge_overlapping: bool = False) -> pd.DataFrame:
     """Read element-gene links into chrom, start, end, element_class, element_name, gene, score.
 
     Formats:
@@ -273,6 +274,8 @@ def read_enhancer_gene_links(path: str, link_format: str = "auto", score_thresho
         gene's TSS +/- ``BEDPE_SELF_PROMOTER_WINDOW`` (500 bp, ABC's promoter definition) gets class
         ``promoter``, every other element ``.``.
     ``score_threshold`` keeps score >= threshold. ``drop_promoters`` drops class ``promoter`` elements.
+    ``merge_overlapping`` then merges overlapping elements of the same target gene
+    (:func:`merge_overlapping_links`), e.g. for links pooled over several conditions or samples.
     """
     if link_format not in LINK_FORMATS:
         raise ValueError(f"link_format must be one of {LINK_FORMATS}, got {link_format!r}")
@@ -326,8 +329,50 @@ def read_enhancer_gene_links(path: str, link_format: str = "auto", score_thresho
         links = links[links["element_class"] != "promoter"]
     if score_threshold is not None:
         links = links[links["score"] >= score_threshold]
+    if merge_overlapping:
+        return merge_overlapping_links(links)
     return links.reset_index(drop=True)
 
+
+def merge_overlapping_links(links: pd.DataFrame) -> pd.DataFrame:
+    """Merge overlapping elements linked to the same target gene into one interval.
+
+    Links pooled over several conditions or samples list the same element several times with slightly
+    shifted ends; counted as they are, one motif hit would count once per copy for that gene. Per
+    (gene, chrom), elements whose intervals overlap (``start < end`` of the open merged interval; touching
+    intervals stay separate) become one row: start = min, end = max, score = max. A merged row has
+    element_class ``merged`` (unless all its rows share one class) and element_name = its source names
+    joined by ``+``; a single element is kept unchanged. Output columns and order as the link reader.
+    """
+    columns = ["chrom", "start", "end", "element_class", "element_name", "gene", "score"]
+    if links.empty:
+        return links[columns].reset_index(drop=True)
+    ordered = links.sort_values(["gene", "chrom", "start", "end"], kind="stable")
+    rows = []
+
+    def close(chrom, gene, group_rows):
+        classes = {row.element_class for row in group_rows}
+        names = list(dict.fromkeys(str(row.element_name) for row in group_rows))
+        scores = [row.score for row in group_rows if pd.notna(row.score)]
+        rows.append((chrom, min(row.start for row in group_rows), max(row.end for row in group_rows),
+                     classes.pop() if len(classes) == 1 else "merged", "+".join(names), gene,
+                     max(scores) if scores else np.nan))
+
+    for (gene, chrom), group in ordered.groupby(["gene", "chrom"], sort=False):
+        current, current_end = [], None
+        for row in group.itertuples(index=False):
+            if current and row.start < current_end:
+                current.append(row)
+                current_end = max(current_end, row.end)
+                continue
+            if current:
+                close(chrom, gene, current)
+            current, current_end = [row], row.end
+        close(chrom, gene, current)
+    merged = pd.DataFrame(rows, columns=columns)
+    merged["start"] = merged["start"].astype(np.int64)
+    merged["end"] = merged["end"].astype(np.int64)
+    return merged.sort_values(["chrom", "start", "end", "gene"], kind="stable").reset_index(drop=True)
 
 
 def build_enhancer_regions(links: pd.DataFrame) -> pd.DataFrame:

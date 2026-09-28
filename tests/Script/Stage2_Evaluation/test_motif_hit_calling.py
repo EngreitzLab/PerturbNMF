@@ -523,3 +523,38 @@ def test_describe_fimo_backend_records_binary_and_version(tmp_path):
                          "fimo_version": "5.3.3"}
     assert motif_hit_calling.describe_fimo_backend("auto", str(tmp_path / "missing"))["fimo_backend"] == "memelite"
 
+
+# ---------------------------------------------------------------------------
+# merge_overlapping_links (links pooled over conditions)
+# ---------------------------------------------------------------------------
+
+def test_merge_overlapping_links_merges_per_gene_only():
+    links = pd.DataFrame([
+        ("chr1", 100, 200, "enhancer", "e1_A", "GENEA", 0.2),
+        ("chr1", 150, 260, "enhancer", "e1_B", "GENEA", 0.5),     # overlaps e1_A -> merged
+        ("chr1", 260, 300, "enhancer", "e2", "GENEA", 0.1),       # touches (260 == end) -> separate
+        ("chr1", 120, 180, "genic", "e1_C", "GENEB", 0.3),        # other gene -> not merged into GENEA
+        ("chr1", 100, 200, "enhancer", "e1_A", "GENEB", np.nan),  # same gene B, overlaps, other class
+        ("chr2", 100, 200, "enhancer", "e3", "GENEA", 0.4),       # other chromosome
+    ], columns=["chrom", "start", "end", "element_class", "element_name", "gene", "score"])
+    merged = motif_hit_calling.merge_overlapping_links(links)
+    rows = {(r.chrom, r.start, r.end, r.gene): (r.element_class, r.element_name, r.score)
+            for r in merged.itertuples(index=False)}
+    assert rows[("chr1", 100, 260, "GENEA")] == ("enhancer", "e1_A+e1_B", 0.5), rows
+    assert rows[("chr1", 260, 300, "GENEA")] == ("enhancer", "e2", 0.1), "touching intervals stay separate"
+    assert rows[("chr1", 100, 200, "GENEB")] == ("merged", "e1_A+e1_C", 0.3), "mixed classes -> merged, NaN score ignored"
+    assert ("chr2", 100, 200, "GENEA") in rows
+    assert len(merged) == 4, merged
+    assert list(merged.columns) == ["chrom", "start", "end", "element_class", "element_name", "gene", "score"]
+
+
+def test_read_enhancer_gene_links_merge_option(tmp_path):
+    path = tmp_path / "links.tsv"
+    pd.DataFrame({"chr": ["chr1", "chr1", "chr1"], "start": [100, 150, 500], "end": [200, 250, 600],
+                  "name": ["a", "b", "c"], "class": ["enhancer", "enhancer", "promoter"],
+                  "TargetGene": ["G", "G", "G"], "Score": [0.1, 0.9, 0.5]}).to_csv(path, sep="\t", index=False)
+    plain = motif_hit_calling.read_enhancer_gene_links(str(path))
+    merged = motif_hit_calling.read_enhancer_gene_links(str(path), merge_overlapping=True)
+    assert len(plain) == 2 and len(merged) == 1, (plain, merged)
+    assert merged.iloc[0][["start", "end", "score"]].tolist() == [100, 250, 0.9]
+    assert "promoter" not in set(merged["element_class"]), "promoters are dropped before merging"

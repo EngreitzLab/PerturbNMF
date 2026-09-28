@@ -53,6 +53,8 @@ def parse_arguments(argv=None):
     enhancer.add_argument("--link_score_column", default=None)
     enhancer.add_argument("--keep_promoter_elements", action="store_true",
                           help="keep links whose element class is 'promoter' (dropped by default)")
+    enhancer.add_argument("--merge_overlapping_links", action="store_true",
+                          help="merge overlapping elements of the same target gene (links pooled over conditions)")
 
     hits = parser.add_argument_group("hit calling")
     hits.add_argument("--hit_caller", default="fimo", choices=["fimo", "finemo"])
@@ -86,7 +88,7 @@ def build_regions(args) -> pd.DataFrame:
         raise SystemExit("--enhancer_links is required for --region_type enhancer")
     links = motif_hit_calling.read_enhancer_gene_links(
         args.enhancer_links, args.link_format, args.link_score_threshold, args.link_score_column,
-        drop_promoters=not args.keep_promoter_elements)
+        drop_promoters=not args.keep_promoter_elements, merge_overlapping=args.merge_overlapping_links)
     return motif_hit_calling.build_enhancer_regions(links)
 
 
