@@ -29,6 +29,10 @@ the prompts are unchanged.
 When the table has several motif sources (`motif_source` column from Stage 2 --motif_source both:
 FIMO and Fi-NeMo), each element type x source gets its own block, FIMO first; they are never pooled.
 
+settings.effect_label (default "log2FC", the viewers' setting) replaces the word "log2FC" wherever the
+prompt names the regulator effect (system rules, regulator and motif-candidate lines). The answer
+schema keeps its `log2fc` fields. With the default the prompts are byte-identical.
+
 Config: see ../configs/example_config.json and ../README.md.
 
 Usage:
@@ -49,6 +53,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
 from conditions import normalise_conditions, read_condition_design, read_condition_variable  # noqa: E402
+from viewer_common import DEFAULT_EFFECT_LABEL, read_effect_label  # noqa: E402
 
 MODEL = "claude-sonnet-4-5-20250929"
 MAX_TOKENS = 8192
@@ -942,6 +947,13 @@ def format_full_gene_list(frame: pd.DataFrame) -> str:
     return ", ".join(f"{rank}.{name}" for rank, name in enumerate(frame["Name"], start=1))
 
 
+def name_effect(text: str, effect_label: str) -> str:
+    """The prompts call the regulator effect "log2FC"; name it `effect_label` instead (settings.effect_label).
+    Applied only to text this script writes (templates, regulator and motif blocks), never to the
+    literature evidence. The default leaves the text unchanged."""
+    return text if effect_label == DEFAULT_EFFECT_LABEL else text.replace(DEFAULT_EFFECT_LABEL, effect_label)
+
+
 def build_prompt(program_id: int, resources: dict, settings: dict) -> dict:
     loading = resources["loading"]
     frame = loading[loading["program_id"] == program_id].sort_values("Score", ascending=False)
@@ -1000,6 +1012,11 @@ def build_prompt(program_id: int, resources: dict, settings: dict) -> dict:
         system_template, user_template, output_schema = SYSTEM_PROMPT, USER_TEMPLATE, OUTPUT_SCHEMA
         regulator_block = format_regulators(program_regulators, string_partners)
         screen_block = format_screens(resources["screens"][str(program_id)])
+
+    effect_label = read_effect_label(settings)
+    system_template = name_effect(system_template, escape_braces(effect_label))
+    regulator_block = name_effect(regulator_block, effect_label)
+    motif_section = name_effect(motif_section, effect_label)
 
     user = user_template.format(
         program_id=program_id,

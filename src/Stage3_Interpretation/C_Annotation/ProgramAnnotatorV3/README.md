@@ -140,7 +140,9 @@ $PYTHON build_annotation_viewer.py --config $C --dispatch dispatch --arm v3 \
 `settings.effect_label` (default `"log2FC"`) names what the regulator table's `log2_fc` column
 holds. The viewer uses it for the volcano x-axis, the effect table headers and every tooltip. Set
 it when the column holds another statistic, e.g. `"Calibrated t-statistic"`. Keep it
-short: it is the axis title. The prompts are unchanged: they still call the column log2FC.
+short: it is the axis title. The prompts use it too, wherever they name the regulator effect
+(system rules, regulator and motif-candidate lines; the answer schema keeps its `log2fc` fields), so
+set it only with a blinded comparison or a fresh run. With the default the prompts are byte-identical.
 
 ## What to expect
 
