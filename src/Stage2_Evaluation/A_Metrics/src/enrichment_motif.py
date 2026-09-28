@@ -1,3 +1,11 @@
+"""SUPERSEDED -- use motif_enrichment.py + motif_hit_calling.py (driver: Slurm_Version/run_motif_enrichment.py).
+
+Legacy tangermeme/correlation implementation of motif enrichment (tangermeme FIMO + correlation of motif counts with
+program loadings). Its statistic is reimplemented as ``motif_enrichment.test_motif_enrichment_correlation``
+(``run_motif_enrichment.py --motif_method correlation``). Kept only because ``A_Metrics/src/__init__.py``
+and the Jupyter evaluation notebook still import ``compute_motif_enrichment``; do not add new callers.
+"""
+
 import os
 import argparse
 
