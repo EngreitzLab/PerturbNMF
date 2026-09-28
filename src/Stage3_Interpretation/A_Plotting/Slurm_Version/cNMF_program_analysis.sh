@@ -81,6 +81,8 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Inte
         #--up_thred_log 0.00                  # upper volcano log2FC threshold
         #--down_thred_log -0.00               # lower volcano log2FC threshold
         #--tagert_col_name "program_name"     # column in perturbation results (note typo: tagert)
+        #--motif_enrichment_path ".../Evaluation/50_0_2/50_motif_enrichment.txt"   # HTML only: per-program TF-motif panel
+        #--candidate_tfs_path ".../Evaluation/50_0_2/50_candidate_tfs.txt"         # HTML only: outline/list candidate TFs
         #--plot_col_name "target_name"
         #--log2fc_col "log2FC"
         #--corr_matrix_path "/path/to/corr_matrices"

@@ -5,7 +5,8 @@ Compiles Stage 1 (.h5mu) and Stage 2 (Evaluation) outputs into a single
 multi-sheet Excel summary workbook for one (K, sel_thresh):
   program loadings, GO / geneset / trait enrichment, perturbation association
   (merged with specificity scores), categorical association, explained variance,
-  per-target and per-program summaries.
+  per-target and per-program summaries, and (when the Stage 2 files exist) TF-motif enrichment
+  and candidate TFs.
 
 Mirrors the reference notebook flow (JupterNote_Version/cNMF_compile_excel_table.ipynb).
 
@@ -41,6 +42,8 @@ from Stage3_Interpretation.B_Summarization.src import (
     Compile_Summary_sheet,
     add_specificity_scores_file,
     check_program_name_match,
+    Compile_Motif_sheet,
+    Compile_Candidate_TF_sheet,
 )
 
 # Excel hard limit is 1,048,576 rows incl. header; keep one below for the header row.
@@ -79,6 +82,16 @@ def main():
         help='Effect-size column in perturbation files. Default: log2FC')
     parser.add_argument('--control_target_name', type=str, default='non-targeting',
         help='Control target name for KD efficiency. Default: non-targeting')
+    parser.add_argument('--motif_enrichment_path', type=str, default=None,
+        help='Stage 2 TF-motif enrichment table (TSV: program, element_type, tf, fdr, enrichment, significant, ...). '
+             'Default: {out_dir}/{run_name}/Evaluation/{K}_{thresh}/{K}_motif_enrichment.txt. '
+             'The "Motif Summary" and "Motif Enrichment" sheets are skipped if the file does not exist.')
+    parser.add_argument('--candidate_tfs_path', type=str, default=None,
+        help='Stage 2 candidate-TF table (TSV: program, element_type, tf, evidence_tier, ...). '
+             'Default: {out_dir}/{run_name}/Evaluation/{K}_{thresh}/{K}_candidate_tfs.txt. '
+             'The "Candidate TFs" sheet is skipped if the file does not exist.')
+    parser.add_argument('--motif_top_n', type=int, default=5,
+        help='Number of top significant motifs per program and element type in the "Motif Summary" sheet. Default: 5')
 
 
     # keys
@@ -116,6 +129,10 @@ def main():
         args.save_path = f'{args.out_dir}/{args.run_name}/Interpretation/Summary_table/{args.K}_{thresh_str}'
     if args.mdata_path is None:
         args.mdata_path = f'{args.out_dir}/{args.run_name}/Inference/adata/cNMF_{args.K}_{thresh_str}.h5mu'
+    if args.motif_enrichment_path is None:
+        args.motif_enrichment_path = f'{eval_base}/{args.K}_motif_enrichment.txt'
+    if args.candidate_tfs_path is None:
+        args.candidate_tfs_path = f'{eval_base}/{args.K}_candidate_tfs.txt'
 
     # create output directory
     os.makedirs(f'{args.save_path}', exist_ok=True)
@@ -179,6 +196,18 @@ def main():
     # ── Categorical association & explained variance ──
     df_Association = Compile_Association_sheet(Association_path, gene_num=args.num_gene) if os.path.exists(Association_path) else None
     df_Explained_Variance = Compile_Explained_variance(Explained_Variance_path) if os.path.exists(Explained_Variance_path) else None
+
+    # ── TF-motif enrichment & candidate TFs (optional) ──
+    if os.path.exists(args.motif_enrichment_path):
+        df_Motif_Summary, df_Motif_significant = Compile_Motif_sheet(args.motif_enrichment_path, top_n=args.motif_top_n)
+    else:
+        print(f'Motif enrichment file not found, skipping motif sheets: {args.motif_enrichment_path}')
+        df_Motif_Summary, df_Motif_significant = None, None
+    if os.path.exists(args.candidate_tfs_path):
+        df_Candidate_TFs = Compile_Candidate_TF_sheet(args.candidate_tfs_path)
+    else:
+        print(f'Candidate TF file not found, skipping candidate TF sheet: {args.candidate_tfs_path}')
+        df_Candidate_TFs = None
 
     # ── Validate program names align across loaded DataFrames ──
     check_program_name_match(mdata, prog_key=args.prog_key, dataframes=[
@@ -252,6 +281,11 @@ def main():
             df_GO.to_excel(writer, sheet_name='GO Term Enrichment', index=True)
         if df_Geneset is not None:
             df_Geneset.to_excel(writer, sheet_name='Geneset Enrichment', index=True)
+        if df_Motif_Summary is not None:
+            df_Motif_Summary.to_excel(writer, sheet_name='Motif Summary', index=True)
+            df_Motif_significant.to_excel(writer, sheet_name='Motif Enrichment', index=True)
+        if df_Candidate_TFs is not None:
+            df_Candidate_TFs.to_excel(writer, sheet_name='Candidate TFs', index=True)
 
     print(f'Done. Saved to {excel_path}')
     print("Pipeline finished.")

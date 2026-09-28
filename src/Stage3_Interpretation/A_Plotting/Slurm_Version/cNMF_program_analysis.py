@@ -49,6 +49,8 @@ def main():
     parser.add_argument('--programs', nargs='+', type=int, default=None, help='specific program numbers to plot (e.g. 4 5 6 ... 100). If omitted, all programs are plotted.')
     parser.add_argument('--subsample_frac', type=float, default=None, help='fraction of cells to subsample for UMAP plots (e.g. 0.1 for 10%%). Default: None (plot all cells)')
     parser.add_argument('--corr_matrix_path', type=str, default=None, help='base path for precomputed waterfall correlation matrices (e.g. /path/to/corr_matrix). Files are expected as <base>_<sample>.txt. Falls back to computing if not found.')
+    parser.add_argument('--motif_enrichment_path', type=str, default=None, help='[HTML only, optional] Stage 2 TF-motif enrichment table (TSV: program, element_type, tf, fdr, enrichment, significant, ...). Adds a per-program TF-motif panel (top motifs in promoters / enhancers). Omit to leave the panel out.')
+    parser.add_argument('--candidate_tfs_path', type=str, default=None, help='[HTML only, optional] Stage 2 candidate-TF table (TSV: program, element_type, tf, tf_gene_symbol, evidence_tier, ...). Candidate TFs are outlined in the motif panel and listed beside it. Needs --motif_enrichment_path.')
     parser.add_argument('--skip_existing', action='store_false', help='[default on] skip programs whose output already exists. Pass --skip_existing to force re-process all.')
 
     # keys
@@ -68,6 +70,9 @@ def main():
         parser.error("--output_format HTML requires --perturb_path_base "
                      "(the HTML export always renders the perturbation sections). "
                      "Use --output_format PDF or SVG to plot without perturbation results.")
+
+    if args.candidate_tfs_path and not args.motif_enrichment_path:
+        parser.error("--candidate_tfs_path needs --motif_enrichment_path")
 
     # save comfigs used
     args_dict = vars(args)
@@ -114,6 +119,23 @@ def main():
             waterfall_correlation[samp] = (df)
 
     program_correlation = compute_program_correlation_matrix(mdata, prog_key=args.prog_key)
+
+    # TF-motif tables (optional, HTML panel). Program ids are compared as strings.
+    motif_results, candidate_tfs = None, None
+    if args.motif_enrichment_path:
+        motif_results = pd.read_csv(args.motif_enrichment_path, sep="\t")
+        motif_results["program"] = motif_results["program"].astype(str)
+        motif_results["element_type"] = motif_results["element_type"].astype(str).str.lower()
+        if "significant" in motif_results.columns:
+            motif_results["significant"] = motif_results["significant"].astype(str).str.lower().isin({"true", "1", "yes"})
+        else:
+            motif_results["significant"] = (motif_results["fdr"] < 0.05) & (motif_results["enrichment"] > 1)
+        unmatched = set(motif_results["program"]) - {str(p) for p in mdata[args.prog_key].var_names}
+        if unmatched:
+            print(f"WARNING: {len(unmatched)} motif-table program id(s) are not program names in the h5mu, e.g. {sorted(unmatched)[:5]}")
+        if args.candidate_tfs_path:
+            candidate_tfs = pd.read_csv(args.candidate_tfs_path, sep="\t")
+            candidate_tfs["program"] = candidate_tfs["program"].astype(str)
         
     
     programs_to_plot = args.programs if args.programs is not None else list(mdata[args.prog_key].var_names)
@@ -172,6 +194,8 @@ def main():
                 position_total=n_progs,
                 data_key=args.data_key,
                 prog_key=args.prog_key,
+                motif_results=motif_results,
+                candidate_tfs=candidate_tfs,
             )
         else:
             create_comprehensive_program_plot(

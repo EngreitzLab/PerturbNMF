@@ -73,6 +73,10 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Inte
         # --Geneset_Term_key "Term" --Geneset_Genes_key "Genes" \
         # --Trait_Term_key "Term" --Trait_Genes_key "Genes" \
         # --Perturbation_Sample_key "Sample"
+        # Optional: TF-motif sheets (skipped when the files are absent; defaults shown):
+        # --motif_enrichment_path "$LOG_DIR/Evaluation/50_0_2/50_motif_enrichment.txt" \
+        # --candidate_tfs_path "$LOG_DIR/Evaluation/50_0_2/50_candidate_tfs.txt" \
+        # --motif_top_n 5
 
 
 # Calculate and print elapsed time at the end

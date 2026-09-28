@@ -3,3 +3,4 @@ from .Compile_excel_sheet import compile_Program_loading_score_sheet_long, compi
     Compile_Geneset_sheet, Compile_Trait_sheet, Compile_Perturbation_sheet, Compile_Association_sheet, Compile_Explained_variance, \
     Compile_Target_Summary_sheet, Compile_Summary_sheet, load_simple_sheets, add_specificity_scores_file, check_program_name_match, \
     compute_kd_efficiency
+from .Compile_motif_sheet import Compile_Motif_sheet, Compile_Candidate_TF_sheet

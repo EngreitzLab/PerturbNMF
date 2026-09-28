@@ -8,6 +8,8 @@ module renders one self-contained share folder containing:
   * program_{N}/metadata.json     : program-level summary stats
   * program_{N}/data/*.json       : per-panel raw arrays
   * program_{N}/images/umap.png   : matplotlib UMAP, embedded as <img>
+  * program_{N}/images/motif_ranks.png : top TF motifs (promoter / enhancer), only when
+                                    motif enrichment results are passed in
   * index.html                    : table linking all programs
   * shared/style.css, manifest.json
 
@@ -30,6 +32,8 @@ import plotly.graph_objects as go
 
 from .Program_QC_plots import plot_umap_per_program
 from .Program_expression_weighted_plots import compute_program_expression_by_condition
+from .motif_enrichment_plots import (plot_program_motif_ranks, motif_panel_png_path, list_motif_sources,
+                                     rows_of_source, MOTIF_SOURCE_LABEL)
 from .utilities import rename_list_gene_dictionary
 
 
@@ -549,6 +553,92 @@ def _render_umap_png(mdata, target_program, out_path, subsample_frac, prog_key="
 
 
 # ---------------------------------------------------------------------------
+# TF-motif panel (optional)
+# ---------------------------------------------------------------------------
+
+MOTIF_TOP_N = 10
+MOTIF_CANDIDATES_SHOWN = 10
+
+
+def motif_panel_keys(motif_results):
+    """(key, element_type, source) per motif panel: 'promoter' / 'enhancer' for one motif source;
+    'promoter_fimo', 'enhancer_fimo', 'promoter_finemo', ... (FIMO first) for ``--motif_source both``."""
+    return [(element_type if source is None else f"{element_type}_{source}", element_type, source)
+            for source in list_motif_sources(motif_results) for element_type in ("promoter", "enhancer")]
+
+
+def motif_panel_label(key):
+    """'promoter' -> 'promoter'; 'promoter_finemo' -> 'promoter Fi-NeMo'."""
+    element_type, _, source = key.partition("_")
+    return element_type if not source else f"{element_type} {MOTIF_SOURCE_LABEL.get(source, source)}"
+
+
+def build_motifs(motif_results, candidate_tfs, target_program):
+    """Top significant motifs per element type (x motif source) and the program's candidate TFs.
+
+    ``motif_results`` / ``candidate_tfs`` carry a string ``program`` column (see
+    ``cNMF_program_analysis.py --motif_enrichment_path``). Keys of ``n_significant`` / ``top`` are
+    ``motif_panel_keys``; sources are never pooled."""
+    pid = str(target_program)
+    sub = motif_results[(motif_results["program"] == pid) & motif_results["significant"]]
+    top, n_significant = {}, {}
+    for key, element_type, source in motif_panel_keys(motif_results):
+        rows = rows_of_source(sub[sub["element_type"] == element_type], source)
+        rows = rows.sort_values(["fdr", "enrichment"], ascending=[True, False])
+        n_significant[key] = int(len(rows))
+        families = rows["motif_family"] if "motif_family" in rows else rows["tf"]
+        top[key] = [{"tf": tf, "motif_family": str(family), "enrichment": float(e), "fdr": float(q)}
+                    for tf, family, e, q in zip(rows["tf"], families, rows["enrichment"], rows["fdr"])][:MOTIF_TOP_N]
+    candidates = []
+    if candidate_tfs is not None:
+        multi_source = list_motif_sources(candidate_tfs) != [None]
+        rows = candidate_tfs[candidate_tfs["program"] == pid].copy()
+        # ties (a motif family expanded to its member genes shares one FDR): higher-loading TF first
+        tie_break = ["tf_program_loading_rank"] if "tf_program_loading_rank" in rows else []
+        rows = rows.sort_values(["fdr"] + tie_break, kind="stable")
+        rows["symbol"] = rows["tf_gene_symbol"].fillna(rows["tf"]) if "tf_gene_symbol" in rows else rows["tf"]
+        rows = rows.drop_duplicates(["symbol", "motif_source"] if multi_source else "symbol")
+        for _, row in rows.head(MOTIF_CANDIDATES_SHOWN).iterrows():
+            candidate = {
+                "tf": row["tf_gene_symbol"] if pd.notna(row.get("tf_gene_symbol")) else row["tf"],
+                "motif": row["tf"],
+                "motif_family": row["motif_family"] if pd.notna(row.get("motif_family")) else row["tf"],
+                "element_type": row["element_type"],
+                "evidence_tier": row["evidence_tier"], "fdr": float(row["fdr"]),
+                "knockdown_log2fc": None if pd.isna(row.get("knockdown_log2fc")) else float(row["knockdown_log2fc"]),
+            }
+            if multi_source:
+                candidate["motif_source"] = row["motif_source"]
+            candidates.append(candidate)
+    return {"n_significant": n_significant, "top": top, "candidates": candidates}
+
+
+def motif_section_html(motif_d):
+    rows = []
+    for c in motif_d["candidates"]:
+        log2fc = "" if c["knockdown_log2fc"] is None else f"{c['knockdown_log2fc']:+.2f}"
+        element = c["element_type"]
+        if "motif_source" in c:
+            element += f" ({MOTIF_SOURCE_LABEL.get(c['motif_source'], c['motif_source'])})"
+        motif = c.get("motif", "")
+        family = c.get("motif_family", motif)
+        motif_label = motif if family == motif else f"{motif} ({family})"
+        rows.append(f"<tr><td><i>{c['tf']}</i></td><td>{motif_label}</td><td>{element}</td><td>{c['evidence_tier']}</td>"
+                    f"<td>{c['fdr']:.1e}</td><td>{log2fc}</td></tr>")
+    table = ("<table class='motif-table'><tr><th>Candidate TF</th><th>Motif (family)</th><th>Element</th>"
+             f"<th>Evidence tier</th><th>Motif FDR</th><th>KD log2FC</th></tr>{''.join(rows)}</table>") if rows else ""
+    n = motif_d["n_significant"]
+    counts = ", ".join(f"{count} {motif_panel_label(key)}" for key, count in n.items())
+    return f"""<section class="motif-row">
+  <div class="panel">
+    <h3 class="panel-title">TF motif enrichment <span class="muted">— promoters / enhancers of the top genes; {counts} motifs significant (FDR &lt; 0.05, enrichment &gt; 1). Correlative: nominates TFs, does not show they act. Red outline = candidate TF.</span></h3>
+    <div class="panel-body motif-body"><img src="images/motif_ranks.png" alt="Top TF motifs">{table}</div>
+  </div>
+</section>
+"""
+
+
+# ---------------------------------------------------------------------------
 # HTML rendering
 # ---------------------------------------------------------------------------
 
@@ -598,7 +688,7 @@ _PAGE_TEMPLATE = """<!DOCTYPE html>
   </div>
 </section>
 
-<section class="sample-rows">
+{motif_section}<section class="sample-rows">
 {sample_blocks}
 </section>
 
@@ -730,6 +820,10 @@ section { margin-bottom: 28px; }
 .panel:hover { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
 .panel.wide { min-height: 360px; }
 .panel.umap .panel-body img { width: 100%; height: auto; display: block; border-radius: 4px; }
+.motif-body { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+.motif-body img { max-width: 560px; width: 100%; height: auto; }
+.motif-table { border-collapse: collapse; font-size: 12px; }
+.motif-table th, .motif-table td { text-align: left; padding: 3px 10px 3px 0; border-bottom: 1px solid var(--border); }
 
 .panel-title {
   margin: 0 0 10px 0;
@@ -892,8 +986,14 @@ def export_program_html(
     position_total=None,
     data_key="rna",
     prog_key="cNMF",
+    motif_results=None,
+    candidate_tfs=None,
 ):
-    """Write program_{N}/ subtree under html_share_path."""
+    """Write program_{N}/ subtree under html_share_path.
+
+    ``motif_results`` (Stage 2 motif-enrichment table) and ``candidate_tfs`` are optional; with
+    ``motif_results`` the page gets a TF-motif panel (images/motif_ranks.png + candidate-TF table).
+    Both need a string ``program`` column and a boolean ``significant`` column on the results."""
     share_root = Path(html_share_path)
     pid = str(Target_Program)
     prog_dir = share_root / f"program_{pid}"
@@ -953,6 +1053,17 @@ def export_program_html(
     _write_json(prog_dir / "data" / "heatmap.json", heatmap_d)
     heatmap_fig = _make_heatmap_fig(heatmap_d)
 
+    # ---- TF motifs (optional) ----
+    motif_section = ""
+    motif_d = None
+    if motif_results is not None:
+        motif_d = build_motifs(motif_results, candidate_tfs, pid)
+        _write_json(prog_dir / "data" / "motifs.json", motif_d)
+        png = Path(motif_panel_png_path(str(share_root), pid))
+        plot_program_motif_ranks(motif_results, pid, candidate_tfs=candidate_tfs,
+                                 save_path=str(png.parent), save_name=png.stem)
+        motif_section = motif_section_html(motif_d)
+
     # ---- nav strings ----
     position = ""
     if position_index is not None and position_total is not None:
@@ -978,6 +1089,7 @@ def export_program_html(
         go_div=_fig_to_div(go_fig, "div-go"),
         corr_div=_fig_to_div(corr_fig, "div-corr"),
         top_genes_div=_fig_to_div(top_genes_fig, "div-top-genes"),
+        motif_section=motif_section,
         sample_blocks="".join(sample_blocks),
         heatmap_div=_fig_to_div(heatmap_fig, "div-heatmap"),
         timestamp=datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
@@ -1006,6 +1118,7 @@ def export_program_html(
         "top_GO_terms": [{"term": t, "adj_pval": p} for t, p in zip(go_d["terms"], go_d["adj_pval"])],
         "top_GO_term": top_go_term,
         "n_significant_regulators_total": n_sig_total,
+        "top_motifs": motif_d["top"] if motif_d else None,
         "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
     }
     _write_json(prog_dir / "metadata.json", metadata)
