@@ -5,7 +5,8 @@ import yaml
 import os
 
 # Change path to wherever you have repo locally
-sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
 
 from Stage3_Interpretation.A_Plotting.src import (load_stablity_error_data, plot_stablity_error,\
                          load_enrichment_data, plot_enrichment,\

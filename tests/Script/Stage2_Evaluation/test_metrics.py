@@ -9,7 +9,7 @@ saving results into Evaluation/{K}_2_0/ subdirectories.
 
 Usage:
     eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking
-    cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src
+    cd <repo root>/src
     python -m pytest tests/Script/Stage2_Evaluation/test_metrics.py -v
 
     # Custom inference path:

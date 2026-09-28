@@ -22,7 +22,8 @@ import pandas as pd
 import numpy as np
 
 # Change path to wherever you have repo locally
-sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
 
 from torch_cnmf import cNMF
 

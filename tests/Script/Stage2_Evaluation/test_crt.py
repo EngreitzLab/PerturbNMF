@@ -5,7 +5,7 @@ Requires the programDE conda environment (sceptre dependency).
 
 Usage:
     eval "$(conda shell.bash hook)" && conda activate programDE
-    cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
+    cd <repo root>
     python -m pytest tests/Script/Stage2_Evaluation/test_crt.py -v
 """
 

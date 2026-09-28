@@ -15,10 +15,11 @@ import argparse
 import pandas as pd
 
 # Change path to wherever you have repo locally
-sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[5] / 'src'))
 
 # Point at B_Calibration/src so the U_test package (src/U_test/) is importable.
-sys.path.insert(0, '/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/B_Calibration/src')
+sys.path.insert(0, str(Path(__file__).resolve().parents[5] / 'src/Stage2_Evaluation/B_Calibration/src'))
 
 from U_test import (
     compute_real_perturbation_tests,

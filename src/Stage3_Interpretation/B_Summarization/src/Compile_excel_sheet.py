@@ -15,7 +15,8 @@ from functools import reduce
 
 
 # Change path to wherever you have repo locally
-sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
 
 
 from Stage3_Interpretation.A_Plotting.src import rename_adata_gene_dictionary ,compute_gene_waterfall_cor

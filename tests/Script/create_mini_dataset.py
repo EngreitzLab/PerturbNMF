@@ -1,28 +1,38 @@
 """
-Subsample the full CC-Perturb-seq h5ad to create a mini test dataset.
+Subsample a full Perturb-seq h5ad to create a mini test dataset.
 
 Takes 500 cells per condition (batch), subsets guide_assignment to non-empty
 guides, and saves to tests/data/mini_ccperturb.h5ad.
 
+The input h5ad needs obs["batch"], obsm["guide_assignment"], and
+uns["guide_names"] / uns["guide_targets"].
+
 Usage:
     conda activate sk-cNMF
-    python tests/create_mini_dataset.py
+    python tests/Script/create_mini_dataset.py --full_data /path/to/full_counts.h5ad
 """
+
+import argparse
 
 import numpy as np
 import anndata as ad
 import scipy.sparse as sp
 from pathlib import Path
 
-FULL_DATA = "/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Data/raw_updated_withguide_030526.h5ad"
-OUTPUT = Path(__file__).parent / "data" / "mini_ccperturb.h5ad"
+OUTPUT = Path(__file__).resolve().parents[1] / "data" / "mini_ccperturb.h5ad"
 CELLS_PER_CONDITION = 500
 SEED = 42
 
 
 def main():
-    print(f"Loading {FULL_DATA} ...")
-    adata = ad.read_h5ad(FULL_DATA)
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
+    parser.add_argument("--full_data", required=True,
+                        help="Path to the full counts .h5ad to subsample")
+    args = parser.parse_args()
+    full_data = args.full_data
+
+    print(f"Loading {full_data} ...")
+    adata = ad.read_h5ad(full_data)
     print(f"Full shape: {adata.shape}")
 
     # Sample 500 cells per batch condition

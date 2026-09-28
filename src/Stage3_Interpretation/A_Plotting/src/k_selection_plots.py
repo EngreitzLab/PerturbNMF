@@ -325,7 +325,7 @@ def load_enrichment_data(folder, components = [30, 50, 60, 80, 100, 200, 250, 30
 
         return df
 
-    # Default file name patterns (original IGVF convention)
+    # Default file name patterns (legacy convention)
     if go_file is None:
         go_file = '{k}_GO_term_enrichment.txt'
     if geneset_file is None:
@@ -407,7 +407,7 @@ def load_perturbation_data(folder, pval = 0.000335, components = [30, 50, 60, 80
  conditions = ['D0', 'sample_D1', 'sample_D2', 'sample_D3'], perturbation_file=None,
  perturb_adjpval_col='adj_pval', perturb_target_col='target_name', perturb_log2fc_col='log2FC'):
 
-    # Default file name pattern (original IGVF convention): {k}_perturbation_association_results_{sample}.txt
+    # Default file name pattern (legacy convention): {k}_perturbation_association_results_{sample}.txt
     # Use {k} and {sample} as placeholders in custom patterns.
     if perturbation_file is None:
         perturbation_file = '{k}_perturbation_association_results_{sample}.txt'

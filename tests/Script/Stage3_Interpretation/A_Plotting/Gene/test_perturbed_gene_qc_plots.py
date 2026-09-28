@@ -6,7 +6,7 @@ perturbation data. All plots are saved to tests/output/Interpretation/Plotting/G
 
 Usage:
     eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking
-    cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
+    cd <repo root>
     python -m pytest tests/Script/Stage3_Interpretation/A_Plotting/Gene/test_perturbed_gene_qc_plots.py -v
 """
 

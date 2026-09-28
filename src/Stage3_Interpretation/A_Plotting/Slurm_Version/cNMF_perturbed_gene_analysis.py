@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 # Change path to wherever you have repo locally
-sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
+sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
 
 from Stage3_Interpretation.A_Plotting.src import plot_umap_per_gene, plot_top_program_per_gene, perturbed_gene_dotplot,\
                          plot_log2FC, plot_volcano, programs_dotplot, analyze_correlations, \

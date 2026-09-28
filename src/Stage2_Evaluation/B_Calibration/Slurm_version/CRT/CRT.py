@@ -25,7 +25,8 @@ import numpy as np
 # insert(0, ...) — not append — so the package wins over this same-named script
 # (this file is CRT.py; the interpreter puts its own dir on sys.path[0], which would
 # otherwise shadow the `CRT` package and cause a circular self-import).
-sys.path.insert(0, '/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/B_Calibration/src')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[5] / 'src/Stage2_Evaluation/B_Calibration/src'))
 
 from CRT import (
     prepare_crt_inputs,
