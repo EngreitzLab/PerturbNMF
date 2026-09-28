@@ -77,7 +77,7 @@ Y_{ik} = \beta_k^{(b)} x_i^{(b)} + \sum_j \gamma_j^{(b)} C_{ij} + \varepsilon_i.
 
 #### Fixed-count resampling (`--resampling fixed_count`)
 
-With Bernoulli resampling the size of each null treated set is random, with mean $\sum_i p_i$ rather than the observed count $n$. For few-cell targets the unstandardized $\beta$ is dominated by single extreme CLR values (a program with zero usage, floored at $10^{-8}$, gives CLR $\approx -18$), so its null distribution depends strongly on set size: larger null sets dilute extreme cells and empty ones give $\beta = 0$. On teloHAEC 2kG (K=60, lane covariate), a cell-count-matched negative-control null showed Bernoulli CRT p-values are anticonservative (null $\lambda = 1.19$; 31% of null tests at $p < 0.05$ for targets with $\le 10$ cells).
+With Bernoulli resampling the size of each null treated set is random, with mean $\sum_i p_i$ rather than the observed count $n$. For few-cell targets the unstandardized $\beta$ is dominated by single extreme CLR values (a program with zero usage, floored at $10^{-8}$, gives CLR $\approx -18$), so its null distribution depends strongly on set size: larger null sets dilute extreme cells and empty ones give $\beta = 0$. In a CRISPRi Perturb-seq screen (K=60, lane covariate), a cell-count-matched negative-control null showed Bernoulli CRT p-values are anticonservative (null $\lambda = 1.19$; 31% of null tests at $p < 0.05$ for targets with $\le 10$ cells).
 
 `--resampling fixed_count` draws every null treated set with exactly the observed treated count in each **covariate stratum** (cells with identical values of all discrete design columns, i.e. the one-hot encoded categorical covariates such as lane):
 
@@ -97,7 +97,7 @@ What changes with the usage scale:
 - **Compositional in both cases.** Shares sum to 1, so a gain in one program forces losses elsewhere (CLR has the same constraint).
 - **Downstream thresholds** written for `log2FC` do not apply to `usage_share_diff`.
 
-On teloHAEC 2kG (K=60, lane covariate, 5,000 permutations), judged against a cell-count-matched, guide-structured NTC null, `--resampling fixed_count --outcome usage` was calibrated (null $\lambda = 1.01$) and found as many regulators as the best CLR floor, without a floor hyperparameter; the $10^{-8}$ floor used by `--outcome clr` found ~40% fewer. **Recommended: `--resampling fixed_count --outcome usage`.**
+In an internal benchmark (K=60, lane covariate, 5,000 permutations), judged against a cell-count-matched, guide-structured NTC null, `--resampling fixed_count --outcome usage` was calibrated (null $\lambda = 1.01$) and found as many regulators as the best CLR floor, without a floor hyperparameter; the $10^{-8}$ floor used by `--outcome clr` found ~40% fewer. **Recommended: `--resampling fixed_count --outcome usage`.**
 
 The empirical two-sided p-value for program $k$ was then computed as the fraction of resampled effect sizes whose magnitude equaled or exceeded the observed effect size, with the standard $+1$ correction in both numerator and denominator to prevent p-values of zero:
 

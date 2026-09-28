@@ -4,7 +4,7 @@ clip, and the cell-count-matched NTC null. Synthetic data only — no inference 
 
 Usage:
     eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking
-    cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
+    cd <repo root>
     python -m pytest tests/Script/Stage2_Evaluation/test_crt_resampling.py -v
 
 Test strategy
@@ -431,8 +431,9 @@ def test_matched_null_scores_every_pseudotarget():
 
 def zero_inflated_raw_usage(rng, n_cells, n_programs):
     """Raw, depth-scaled cNMF-like usage: each program is exactly zero in 30-50% of
-    cells, and row sums track a per-cell depth (~700-32,000), like the 2021 teloHAEC
-    h5mu. Every cell keeps at least one nonzero program."""
+    cells, and row sums track a per-cell depth (~700-32,000), like raw,
+    depth-scaled cNMF usage in some staged h5mu files. Every cell keeps at least
+    one nonzero program."""
     zero_rate = np.linspace(0.3, 0.5, n_programs)
     used = rng.random((n_cells, n_programs)) >= zero_rate
     share = np.where(used, rng.lognormal(0.0, 1.0, (n_cells, n_programs)), 0.0)
