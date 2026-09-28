@@ -78,7 +78,14 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Eval
         #--guide_targets_key "guide_targets"
         #--guide_assignment_key "guide_assignment"
         #--guide_annotation_key "non-targeting"
-        #--Perform_motif
+        #--Perform_motif                              # TF motif enrichment + candidate TFs (run_motif_enrichment.py)
+        #--motif_method ttest                         # or correlation (--motif_correlation pearson|spearman)
+        #--motif_source fimo                          # fimo | finemo | both
+        #--enhancer_links /path/to/E2G_links.bedpe.gz # or --regulatory_resources_manifest regulatory_resources_manifest.tsv
+        #--fimo_binary <path/to/fimo>                 # MEME fimo; also --genome_fasta, --gene_annotation, --motif_file
+        #--n_jobs 20
+        #--finemo_instances ENCFF..._instances.tar.gz --finemo_report ENCFF..._report.tar.gz
+        #--promoter_window_mode strand_aware          # or schnitzler2024 (published window)
         #--reassign_name
 
 

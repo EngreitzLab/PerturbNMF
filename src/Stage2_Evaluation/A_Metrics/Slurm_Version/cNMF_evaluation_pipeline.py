@@ -56,8 +56,11 @@ from Stage2_Evaluation.A_Metrics.src import (
     compute_trait_enrichment,
     compute_perturbation_association,
     compute_explained_variance,
-    compute_motif_enrichment
 )
+
+# Motif enrichment (regions -> hits -> enrichment -> candidate TFs) lives next to this script
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import run_motif_enrichment  # noqa: E402
 
 
 def _reassign_name(mdata, gene_names_key='symbol', data_key = 'rna'):
@@ -81,7 +84,7 @@ def main():
     parser.add_argument('--Perform_geneset', action="store_true", help='If set, perform gene set enrichment analysis (Reactome and GO terms) on program genes')
     parser.add_argument('--Perform_trait', action="store_true", help='If set, perform GWAS trait enrichment analysis on program genes')
     parser.add_argument('--Perform_explained_variance', action="store_true", help='If set, compute explained variance for each K value')
-    parser.add_argument('--Perform_motif', action="store_true", help='If set, perform transcription factor motif enrichment analysis')
+    parser.add_argument('--Perform_motif', action="store_true", help='If set, perform TF motif enrichment of program genes (promoter/enhancer FIMO or Fi-NeMo hits; see run_motif_enrichment.py and the "motif enrichment" options) and nominate candidate TFs')
 
     # resources
     parser.add_argument('--X_normalized_path', type=str,  help='Path to normalized cell x gene matrix (.h5ad) from cNMF pipeline (required for explained variance)', default=None)
@@ -105,6 +108,8 @@ def main():
     parser.add_argument('--use_cache', action="store_true", help='If set, load gene set libraries from cached JSON in Resources/ instead of downloading. Falls back to download if cache not found, and saves a cache copy after download.')
     parser.add_argument('--skip_existing', action="store_true", help='If set, skip metric computations whose output files already exist. Useful for resuming jobs that were preempted mid-batch.')
     parser.add_argument('--reassign_name', action="store_true",  help='Reform the data if needed')
+
+    run_motif_enrichment.add_motif_arguments(parser)
 
     args = parser.parse_args()
 
@@ -183,6 +188,9 @@ def main():
                 if args.Perform_trait and not os.path.exists(out_trait):
                     early_skip_ok = False
                 if args.Perform_explained_variance and not (os.path.exists(out_expvar) and os.path.exists(out_expvar_sum)):
+                    early_skip_ok = False
+                if args.Perform_motif and not all(os.path.exists(p) for key, p in run_motif_enrichment.motif_output_paths(args, k, sel_thresh).items()
+                                                  if key in ("motif_enrichment", "candidate_tfs")):
                     early_skip_ok = False
                 if args.Perform_perturbation:
                     h5mu_path = '{out_dir}/{run_name}/Inference/adata/cNMF_{k}_{sel_thresh}.h5mu'.format(
@@ -291,38 +299,9 @@ def main():
                     pre_res_trait.to_csv(out_trait, sep='\t', index=False)
 
 
-            # Run motif analysis
+            # Run motif enrichment (needs no mdata: programs from Inference/, knockdowns from this folder)
             if args.Perform_motif:
-
-                ''' working in progress
-                fimo_thresh_enhancer = 1e-6
-                fimo_thresh_promoter = 1e-4
-
-                for samp in mdata['rna'].obs[args.categorical_key].unique():
-                    for class_, thresh in [('enhancer', fimo_thresh_enhancer),
-                                        ('promoter', fimo_thresh_promoter)]:
-
-                        loci_file = '/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/scE2G_links/EnhancerPredictionsAllPutative.ForVariantOverlap.shrunk150bp_{}_{}.tsv'.format(samp, class_)
-                        motif_match_df, motif_count_df, motif_enrichment_df = compute_motif_enrichment(
-                            mdata,
-                            prog_key='cNMF',
-                            data_key='rna',
-                            motif_file='/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/hocomoco_meme.meme',
-                            seq_file='/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/hg38.fa',
-                            loci_file=loci_file,
-                            window=1000,
-                            sig=thresh,
-                            eps=1e-4,
-                            n_top=2000,
-                            n_jobs=-1,
-                            inplace=False,
-                            gene_names_key=args.gene_names_key
-                        )
-
-                        motif_match_df.to_csv(os.path.join(args.out_dir, f'cNMF_{class_}_pearson_topn2000_{samp}_motif_match.txt'), sep='\t', index=False)
-                        motif_count_df.to_csv(os.path.join(args.out_dir, f'cNMF_{class_}_pearson_topn2000_{samp}_motif_count.txt'), sep='\t', index=False)
-                        motif_enrichment_df.to_csv(os.path.join(args.out_dir, f'cNMF_{class_}_pearson_topn2000_{samp}_motif_enrichment.txt'), sep='\t', index=False)
-                '''
+                run_motif_enrichment.run_motif_enrichment_for_k(args, k, sel_thresh)
 
             # Run explained variance
             if args.Perform_explained_variance:
