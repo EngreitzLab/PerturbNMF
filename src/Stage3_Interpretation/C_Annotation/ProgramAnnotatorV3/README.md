@@ -17,6 +17,10 @@ Design and rules: `.claude/skills/perturbNMF-runner/references/05-annotation-sum
   JSON (logged to `usage.jsonl`); see `annotator_core/answer_one_prompt.py`. Run the dispatch
   scripts outside any sandbox (keychain + network). `PYTHON` and `ANNOTATOR_MODEL` (default
   `sonnet`) are read from the environment.
+- `ANNOTATOR_SPECIES` (environment, NCBI taxon id): `9606` human (default) or `10090` mouse. It
+  sets the species for STRING, mygene.info, UniProt and QuickGO lookups, and maps the
+  human-curated complexes and confounder marker sets to mouse symbol case. Run the STRING
+  enrichment input with the same `--species`.
 - Network for the retrieval steps, no API keys: `www.ncbi.nlm.nih.gov` (PubTator3),
   `eutils.ncbi.nlm.nih.gov`, `www.ebi.ac.uk` (Europe PMC, QuickGO), `mygene.info`,
   `rest.uniprot.org`, `string-db.org`.
@@ -38,6 +42,34 @@ Design and rules: `.claude/skills/perturbNMF-runner/references/05-annotation-sum
 Copy `configs/example_config.json` and fill it in. For a single-condition screen, drop
 `conditions`, `program_activity` and `regulators_by_condition` and give `regulators`.
 
+## Multi-condition screens
+
+A screen read out separately in several **conditions** is annotated per condition. A condition
+is whatever the screen varies: timepoints, stimuli, doses, donors, genotypes, age × sex cohorts.
+
+| Config key | Meaning |
+|---|---|
+| `conditions` | `[{"label", "description"}]`; labels match the `condition` column of the regulator and activity tables |
+| `settings.condition_variable` | what the conditions vary, in plain words (e.g. `"timepoint"`, `"cytokine stimulus"`, `"donor"`); default `"condition"` |
+| `settings.condition_design` | `"unordered"` (default) or `"ordered"` (timepoints, a dose series) |
+
+The prompt shows each regulator per condition plus a cross-condition log2FC profile, and
+activity per condition with its peak. The answer fills a `condition_dependence` slot: where the
+program is active, where its regulators act, and whether each effect is condition-specific,
+constitutive or switches sign. Only an `"ordered"` design adds ordering language (contiguous
+blocks of conditions; a regulator acting after the peak cannot be its trigger).
+
+`condition_composition` confounder (optional): when conditions differ in which cells are
+present (e.g. timepoints of a differentiation), pass `--activity-by-condition` and
+`--condition-markers` (canonical marker genes of each condition's cells;
+`configs/example_condition_markers.json`) to `build_confounder_screens.py`. The prompt then asks
+whether the program just reads out which cells are present.
+
+Older spellings still work, with a warning: a condition's `stage` (now `description`),
+`condition_design` `"time_course"` / `"groups"` (now `"ordered"` / `"unordered"`),
+`--condition-markers`, formerly `--stage-markers`. Answers with the older `temporal_window` /
+`group_dependence` slot are still read by the gate, the collision pass and the viewer.
+
 **Check the program index first.** cNMF spectra files can number programs 1..K while regulator
 tables number them 0..K-1. Confirm on one program (its top genes in both) before building prompts.
 
@@ -49,7 +81,7 @@ CORE=../../annotator_core   # dispatch, PMID gates and citation pass, shared wit
 export PYTHON=python
 D=path/to/annotation_inputs; C=my_config.json
 
-# 1. deterministic screens (add --activity-by-condition + --stage-markers for a time course)
+# 1. deterministic screens (add --activity-by-condition + --condition-markers for the condition_composition screen)
 $PYTHON build_confounder_screens.py --gene-loading $D/gene_loading_top300_with_uniqueness.csv \
     --gene-coordinates $D/gene_coordinates.tsv --targets $D/targets.tsv \
     --regulators $D/regulators.csv --output $D/confounder_screens.json
@@ -105,7 +137,7 @@ In `scripts/` (program-specific):
 
 | Script | Does |
 |---|---|
-| `build_confounder_screens.py` | positional, cell-cycle, stress-set, symbol-family, cis-target and stage-composition screens |
+| `build_confounder_screens.py` | positional, cell-cycle, stress-set, symbol-family, cis-target and (optional) condition-composition screens |
 | `build_annotation_prompts.py` | the v3 prompt per program (single- or multi-condition) |
 | `validate_annotation_answers.py` | annotation gate |
 | `resolve_label_collisions.py` | cross-program label disambiguation |
@@ -120,3 +152,4 @@ In `../annotator_core/` (shared with `RegulatorGroupAnnotator`, so a fix lands i
 | `verify_cited_pmids.py`, `flag_retracted_pmids.py` | PMID existence / retraction checks |
 | `build_citation_candidates.py`, `build_citation_prompts.py`, `validate_citation_answers.py` | citation pass (`--subject program`, the default) |
 | `answer_io.py`, `gene_coordinates.py`, `viewer_common.py` | answer loading, coordinate loading, viewer helpers + stylesheet |
+| `conditions.py`, `species.py` | multi-condition config reading (with deprecated aliases); `ANNOTATOR_SPECIES` |

@@ -65,7 +65,15 @@ This is most often a divergent (bidirectional) pair. In practice most measurable
 knocked down.
 
 - `measure_neighbour_knockdown.py` measures, per condition, whether each neighbour is knocked down
-  in the target's cells compared with non-targeting cells.
+  in the target's cells compared with control cells.
+  - `--control ntc` (default): cells carrying only that target's guides vs non-targeting cells.
+  - `--control complement`: for high-MOI screens, where almost no cell carries a single target.
+    All cells carrying any of the target's guides vs a random sample of the condition's cells
+    carrying none of them (a SCEPTRE-style complement control).
+  - `--guide-target-key` picks the `uns` key naming each guide's target (e.g. `guide_gene` pools
+    a gene's promoters).
+  - The guide assignment may be CSR- or CSC-encoded (the h5ad `encoding-type` is honoured);
+    explicit zeros are not counted as assignments.
 - `build_promoter_confound_screen.py` decides what to do with each member:
   - **Excluded:** the neighbour explains the group (it is a member, a complex subunit or a STRING
     partner of members), or the neighbour is knocked down and the target is not.
@@ -84,6 +92,8 @@ Where the promoter search starts, in order of preference:
 
 - Python 3.10+ with `pandas`, `numpy`, `scipy`, `h5py`. `../pixi.toml` has the environment:
   `pixi run -m ../pixi.toml python ...`.
+- `ANNOTATOR_SPECIES` (environment): `9606` human (default) or `10090` mouse, as in
+  ProgramAnnotatorV3. It covers the STRING, mygene.info and complex lookups.
 - The Claude Code CLI (`claude`), logged in (same as ProgramAnnotatorV3).
 - Network for the evidence and citation steps: `string-db.org`, `mygene.info`,
   `www.ncbi.nlm.nih.gov` (PubTator3), `eutils.ncbi.nlm.nih.gov`, `omnipathdb.org` (once), plus the
@@ -119,8 +129,9 @@ $PYTHON build_regulator_effect_matrix.py --regulators $D/regulators_by_condition
 $PYTHON define_regulator_groups.py --matrix-dir $G --complexes $D/omnipath_complexes.tsv --output-dir $G
 # 3. promoter confounds
 $PYTHON measure_neighbour_knockdown.py --groups $G/regulator_groups.json \
-    --gene-coordinates $D/gene_coordinates.tsv --h5mu cNMF.h5mu --condition-key day \
-    [--guide-table IGVF_guide_RNA_sequences.tsv.gz] --output $G/knockdown.tsv   # run where the h5mu lives (SLURM)
+    --gene-coordinates $D/gene_coordinates.tsv --h5mu cNMF.h5mu --condition-key <obs column> \
+    [--control complement] [--guide-table IGVF_guide_RNA_sequences.tsv.gz] \
+    --output $G/knockdown.tsv   # run where the h5mu lives
 $PYTHON build_promoter_confound_screen.py --groups $G/regulator_groups.json \
     --gene-coordinates $D/gene_coordinates.tsv --knockdown $G/knockdown.tsv [--guide-table ...] \
     --complexes $D/omnipath_complexes.tsv --string-cache $G/cache --output $G/promoter_confounds.json
@@ -153,6 +164,23 @@ $PYTHON build_group_viewer.py --config $C --dispatch dispatch_groups --arm rg \
 Copy `configs/example_config.json` for `$C`. Its settings match the ProgramAnnotatorV3 config of
 the same screen.
 
+## Multi-condition screens
+
+`conditions`, `settings.condition_variable` and `settings.condition_design` mean the same as in
+ProgramAnnotatorV3 (see its README): a condition is whatever the screen varies — timepoints,
+stimuli, donors, genotypes, cohorts. The group prompt then names the condition of each program
+effect.
+
+The `shared_state_shift` confounder asks whether the members are grouped only because their
+knockdowns all shift the cells toward or away from one state, which moves every state-dependent
+program at once. With `condition_design: "ordered"` the default wording is a slowed, blocked or
+advanced progression through the ordered conditions (e.g. a differentiation delay). Set
+`settings.shared_state_shift_description` to describe it in the screen's own terms.
+
+Older spellings still work, with a warning: `differentiation_delay_description` (now
+`shared_state_shift_description`); answers that assess `differentiation_delay` pass the gate.
+`condition_word` is no longer used.
+
 ## Scripts
 
 | Script | Does |
@@ -169,4 +197,6 @@ the same screen.
 Tests: `cd .. && pixi run -m ../pixi.toml pytest ../tests -q`. They cover:
 - grouping on a synthetic screen, where weak and strong blocks must both be recovered;
 - promoter-neighbour geometry;
+- neighbour knockdown with NTC and complement controls on CSC-encoded guide matrices;
+- condition wording (unordered vs ordered designs, deprecated keys);
 - the group gate.

@@ -68,13 +68,13 @@ whole citation pass (`split_prompts_for_blinded_dispatch.py`, `run_blinded_annot
 What is different from the ProgramExplorer prompt:
 - **Confounders first.** Deterministic screens (positional clusters, cell cycle, heat shock /
   ISR / UPR / interferon sets, ribosomal and other symbol families, CRISPRi cis-targets,
-  regulator counts; plus `stage_composition` for a time course) are computed before any LLM
+  regulator counts; plus an optional `condition_composition` screen) are computed before any LLM
   sees the program, and the model must clear each one citing a number.
 - **Layered reading:** upstream trigger / co-regulation mechanism / cellular output (plus
-  `temporal_window` for multi-condition screens), not one forced category.
+  `condition_dependence` for multi-condition screens), not one forced category.
 - **Evidence:** top 30 genes in detail plus all program genes ranked, 30 distinctive genes, every
-  significant regulator split by sign (per condition, in experimental order, with a
-  cross-condition log2FC profile), STRING enrichment, gene summaries, a PMID reference pool.
+  significant regulator split by sign (per condition, with a cross-condition log2FC profile),
+  STRING enrichment, gene summaries, a PMID reference pool.
 - **Label rules:** no quality words; a distinguisher is a process, pathway, compartment or state
   term, never a bare gene; several processes as a comma-separated list.
 - **Structural blinding:** one tool-less `claude -p` per prompt, prompt on stdin. Never use
@@ -83,8 +83,8 @@ What is different from the ProgramExplorer prompt:
 Gates (deterministic; a failing answer is kept as `answer.rejected.<n>.json` and re-dispatched):
 - the answer must PARSE as JSON — `claude -p` can return a truncated answer and exit 0;
 - every gene and PMID named must appear in the prompt; label <= 6 words, no banned words; no
-  coherence talk in the brief summary; every confounder assessed; the temporal window's peak
-  matches the data;
+  coherence talk in the brief summary; every confounder assessed; the condition-dependence
+  peak matches the data;
 - every cited PMID exists and is not retracted (retraction NOTICES are caught too).
 
 Operational landmines:
@@ -94,6 +94,24 @@ Operational landmines:
 - cNMF spectra files can index programs 1..K while regulator tables index 0..K-1 — verify the
   mapping on one program before building any prompt.
 - `02_fetch_ncbi_data.py --keyword` defaults to an endothelial keyword; set it for your system.
+
+Multi-condition screens. A **condition** is whatever the screen varies: timepoints, stimuli,
+doses, donors, genotypes, cohorts. Config:
+- `conditions`: `[{"label", "description"}]`, matching the `condition` column of the tables;
+- `settings.condition_variable`: what the conditions vary, in plain words (default `"condition"`);
+- `settings.condition_design`: `"unordered"` (default) or `"ordered"` (timepoints, dose series).
+  Only `"ordered"` adds ordering language (contiguous blocks; a regulator acting after the peak
+  cannot be its trigger).
+- `condition_composition` confounder: only when `build_confounder_screens.py` gets
+  `--activity-by-condition` and `--condition-markers` (marker genes of each condition's cells).
+- Older spellings are still read, with a warning: condition `stage` (now `description`),
+  `condition_design` `time_course` / `groups` (now `ordered` / `unordered`), answer slots
+  `temporal_window` / `group_dependence` (now `condition_dependence`), and
+  `--condition-markers`, formerly `--stage-markers`.
+
+Species: `ANNOTATOR_SPECIES` (environment) = `9606` human (default) or `10090` mouse. It sets
+STRING, mygene.info, UniProt and QuickGO lookups and maps human-curated complexes and marker sets
+to mouse symbol case. Both annotators read it.
 
 ## Cross-program label disambiguation (Stage 3d, second pass)
 
@@ -258,7 +276,7 @@ python build_annotation_viewer.py --config <config.json> --dispatch <dir> --arm 
   condition); positional / technical programs tagged. Full-text search, `#program-N` deep links,
   arrow keys, dark mode.
 - Per program: label and brief summary (family and distinguisher are used for the rail and the
-  collision pass, not shown); activity by condition and the temporal window; top and distinctive
+  collision pass, not shown); activity by condition and the condition dependence; top and distinctive
   genes — the same genes the prompt showed, with the uniqueness score defined on the page and
   each distinctive gene's loading rank and program count on hover; the genes the label rests on
   with the support the citation pass chose, PMIDs inline next to each gene (★ discovery,
@@ -297,6 +315,10 @@ Curated complexes (CORUM / ComplexPortal / SIGNOR via OmniPath) are used for:
 
 Promoter confounds (`measure_neighbour_knockdown.py` + `build_promoter_confound_screen.py`):
 - CRISPRi guides silence neighbouring promoters.
+- Controls: `--control ntc` (default; single-target cells vs non-targeting cells) or
+  `--control complement` for high-MOI screens (all carriers of a target vs sampled non-carriers
+  in the same condition). `--guide-target-key guide_gene` pools a gene's promoters. CSR- and
+  CSC-encoded guide matrices are both read; explicit zeros are not assignments.
 - A member is **excluded** from annotation when:
   - the neighbour explains the group (another member, a complex subunit or a STRING partner) and is
     knocked down or unmeasured within 1 kb; or
@@ -308,8 +330,9 @@ Promoter confounds (`measure_neighbour_knockdown.py` + `build_promoter_confound_
 
 Annotation:
 - The prompt asks the model to:
-  1. rule out generic fitness / stress, differentiation delay, promoter neighbours and weak-effect
-     noise;
+  1. rule out generic fitness / stress, a shared state shift (`shared_state_shift`; wording set by
+     `settings.shared_state_shift_description`, formerly `differentiation_delay_description`),
+     promoter neighbours and weak-effect noise;
   2. name the shared function;
   3. say why the group forms here, read through the programs it moves;
   4. give a role for every member (`core_explained`, `consistent`, `unexplained` with a testable

@@ -15,7 +15,7 @@ High-MOI screens (several guides per cell) have almost no cells carrying one tar
 a random sample of the condition's cells that carry none of them (SCEPTRE's complement control);
 the other guides in those cells are spread evenly over both arms.
 
-Per-condition comparison matters: a regulator that changes differentiation changes many genes
+Per-condition comparison matters: a regulator that shifts cell state changes many genes
 in trans, and pooled cells would read that as knockdown. A strong cis knockdown (the gene falls
 as far as the target does) is still the thing to look for; modest drops can be trans.
 
@@ -28,7 +28,7 @@ n_target_cells, ntc_mean, conditions).
 
 Usage:
     python measure_neighbour_knockdown.py --groups regulator_groups/regulator_groups.json \
-        --gene-coordinates gene_coordinates.tsv --h5mu cNMF.h5mu --condition-key day \
+        --gene-coordinates gene_coordinates.tsv --h5mu cNMF.h5mu --condition-key condition \
         --output regulator_groups/knockdown.tsv
 """
 from __future__ import annotations
@@ -141,7 +141,7 @@ def main() -> int:
     parser.add_argument("--expression-prefix", default="mod/rna", help="HDF5 path of the AnnData holding expression")
     parser.add_argument("--guide-prefix", default="mod/cNMF", help="HDF5 path of the AnnData holding guide_assignment")
     parser.add_argument("--gene-name-key", default=None, help="var column with gene symbols (default: the var index)")
-    parser.add_argument("--condition-key", default=None, help="obs column to stratify by (e.g. day)")
+    parser.add_argument("--condition-key", default=None, help="obs column to stratify by (e.g. timepoint, stimulus, donor)")
     parser.add_argument("--guide-target-key", default="guide_targets",
                         help="uns key naming each guide's target (e.g. guide_gene to pool a gene's promoters)")
     parser.add_argument("--control", choices=("ntc", "complement"), default="ntc",
