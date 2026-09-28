@@ -126,6 +126,9 @@ def add_motif_arguments(parser: argparse.ArgumentParser) -> None:
     group.add_argument("--link_format", default="auto", choices=list(motif_hit_calling.LINK_FORMATS))
     group.add_argument("--link_score_threshold", type=float, default=None)
     group.add_argument("--link_score_column", default=None)
+    group.add_argument("--merge_overlapping_links", action="store_true",
+                       help="merge overlapping enhancer elements of the same target gene into one region (for links "
+                            "pooled over several conditions / samples, so a hit is counted once per gene)")
     # FIMO
     group.add_argument("--genome_fasta", default=DEFAULT_GENOME_FASTA,
                        help="genome FASTA for FIMO (default $PERTURBNMF_GENOME_FASTA)")
@@ -436,7 +439,8 @@ def build_regions(element_type: str, args, resources) -> pd.DataFrame:
         return motif_hit_calling.build_promoter_regions(gene_tss, args.promoter_upstream, args.promoter_downstream,
                                                         args.promoter_window_mode)
     links = motif_hit_calling.read_enhancer_gene_links(resources["enhancer_links"], args.link_format,
-                                                       args.link_score_threshold, args.link_score_column)
+                                                       args.link_score_threshold, args.link_score_column,
+                                                       merge_overlapping=args.merge_overlapping_links)
     return motif_hit_calling.build_enhancer_regions(links)
 
 
@@ -450,6 +454,8 @@ def hit_table_parameters(element_type: str, source: str, args, resources) -> dic
     else:
         parameters.update(enhancer_links=file_fingerprint(resources["enhancer_links"]), link_format=args.link_format,
                           link_score_threshold=args.link_score_threshold, link_score_column=args.link_score_column)
+        if args.merge_overlapping_links:     # only when set, so existing caches keep their key
+            parameters["merge_overlapping_links"] = True
         link_format = (motif_hit_calling.detect_link_format(resources["enhancer_links"])
                        if args.link_format == "auto" else args.link_format)
         if link_format == "bedpe":   # bedpe elements get their promoter class from the target TSS
