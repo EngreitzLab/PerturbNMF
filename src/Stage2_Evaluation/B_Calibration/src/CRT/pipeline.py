@@ -11,25 +11,30 @@ import scipy.sparse as sp
 from joblib import Parallel, delayed
 
 from .adata_utils import (
+    OUTCOMES,
     build_gene_to_cols,
     clr_from_usage,
+    covariate_strata_from_design,
     get_covar_matrix,
     get_from_adata_any,
     get_program_names,
     limit_threading,
     to_csc_matrix,
+    row_normalize_usage,
     union_obs_idx_from_cols,
 )
 from .pipeline_helpers import (
+    _check_resampling,
+    _draw_null_treated_sets,
     _empirical_crt,
-    _fit_propensity,
     _gene_obs_idx,
     _gene_seed,
-    _sample_crt_indices,
     _skew_calibrated_crt,
     _stack_gene_results,
     _stack_raw_outputs,
     _stack_skew_outputs,
+    covariate_adjusted_control_mean,
+    stack_control_means,
 )
 from .propensity import fit_propensity_logistic
 
@@ -46,6 +51,12 @@ class CRTInputs:
     gene_to_cols: Dict[str, List[int]]
     program_names: List[str]
     covar_cols: Optional[List[str]] = None
+    # Fixed-count resampling: stratum id per cell (unique rows of the discrete
+    # covariate columns) and whether any continuous covariate is in the design.
+    covariate_strata: Optional[np.ndarray] = None
+    has_continuous_covariates: bool = False
+    # Outcome Y: "clr" (CLR of floored usage) or "usage" (per-cell usage share).
+    outcome: str = "clr"
 
 
 @dataclass
@@ -57,6 +68,9 @@ class CRTGeneResult:
     pvals_sn: Optional[np.ndarray] = None
     skew_params: Optional[np.ndarray] = None
     pvals_raw: Optional[np.ndarray] = None
+    # Covariate-adjusted mean outcome of the treated cells without the perturbation
+    # (see covariate_adjusted_control_mean); NaN for untestable genes.
+    control_means: Optional[np.ndarray] = None
 
 
 def prepare_crt_inputs(
@@ -71,23 +85,29 @@ def prepare_crt_inputs(
     standardize: bool = True,
     numeric_as_category_threshold: Optional[int] = 20,
     clamp_threads: bool = True,
+    outcome: str = "clr",
 ) -> CRTInputs:
     """
-    Load matrices from AnnData, build CLR usage, and precompute regression pieces.
+    Load matrices from AnnData, build the outcome Y, and precompute regression pieces.
     adata: AnnData-like object with required data
     usage_key: key in adata to extract usage matrix
     covar_key: key in adata to extract covariate matrix
     guide_assignment_key: key in adata to extract guide assignment matrix
     guide_names_key: key in adata.uns to extract guide column names if not in DataFrame
     guide2gene_key: key in adata to extract guide-to-gene mapping
-    eps_quantile: quantile for flooring small values in usage before CLR
+    eps_quantile: quantile for flooring small values in usage before CLR (outcome="clr" only)
     add_intercept: whether to add intercept column to covariate matrix
     standardize: whether to z-score covariate columns
     numeric_as_category_threshold: treat numeric columns with <= this many unique values as categorical
     clamp_threads: whether to limit threading for numerical libraries
+    outcome: "clr" (default; Y = CLR of floored usage, beta is a CLR shift) or "usage"
+        (Y = per-cell usage share, row-normalized with no log and no floor; beta is
+        the covariate-adjusted difference in mean usage share)
     Returns:
         CRTInputs dataclass with all required inputs for CRT
     """
+    if outcome not in OUTCOMES:
+        raise ValueError(f"outcome must be one of {OUTCOMES}; got {outcome!r}.")
     if clamp_threads:
         limit_threading()
 
@@ -102,7 +122,10 @@ def prepare_crt_inputs(
     U = get_from_adata_any(adata, usage_key)
     if isinstance(U, pd.DataFrame):
         U = U.to_numpy()
-    Y = clr_from_usage(U, eps_quantile=eps_quantile)
+    if outcome == "clr":
+        Y = clr_from_usage(U, eps_quantile=eps_quantile)
+    else:
+        Y = row_normalize_usage(U)
 
     G_raw = get_from_adata_any(adata, guide_assignment_key)
     G, guide_names = to_csc_matrix(G_raw)
@@ -136,6 +159,7 @@ def prepare_crt_inputs(
     CTY = C.T @ Y
 
     program_names = get_program_names(adata, Y.shape[1])
+    covariate_strata, has_continuous_covariates = covariate_strata_from_design(C)
 
     return CRTInputs(
         C=C.astype(np.float64, copy=False),
@@ -148,6 +172,9 @@ def prepare_crt_inputs(
         gene_to_cols=gene_to_cols,
         program_names=program_names,
         covar_cols=covar_cols,
+        covariate_strata=covariate_strata,
+        has_continuous_covariates=has_continuous_covariates,
+        outcome=outcome,
     )
 
 
@@ -166,6 +193,7 @@ def _trivial_gene_result(
         pvals_sn=np.ones(K, dtype=np.float64) if calibrate_skew_normal else None,
         skew_params=np.full((K, 3), np.nan) if calibrate_skew_normal else None,
         pvals_raw=np.ones(K, dtype=np.float64) if calibrate_skew_normal else None,
+        control_means=np.full(K, np.nan),
     )
 
 
@@ -177,6 +205,7 @@ def run_one_gene_union_crt(
     propensity_model: Callable = fit_propensity_logistic,
     calibrate_skew_normal: bool = False,
     skew_normal_side_code: int = 0,
+    resampling: str = "bernoulli",
 ) -> CRTGeneResult:
     """
     Run union CRT for a single gene and return p-values and betas across programs.
@@ -187,6 +216,10 @@ def run_one_gene_union_crt(
     propensity_model: function to fit propensity scores given C and y01
     calibrate_skew_normal: if True, compute skew-normal calibrated p-values
     skew_normal_side_code: 0 two-sided, 1 right-tailed, -1 left-tailed
+    resampling: "bernoulli" (default; null treated sets drawn cell-by-cell from the
+        propensity, so their size varies) or "fixed_count" (null treated sets keep the
+        observed treated count within each covariate stratum; see
+        crt_index_sampler_fixed_count_numba)
     y01: binary union indicator for the gene
     Returns:
         CRTGeneResult dataclass with all results for the gene. If calibrate_skew_normal
@@ -202,10 +235,10 @@ def run_one_gene_union_crt(
     if obs_idx.size == 0 or obs_idx.size == inputs.C.shape[0] or B <= 0:
         return _trivial_gene_result(gene, inputs, obs_idx.size, calibrate_skew_normal)
 
-    p = _fit_propensity(inputs, obs_idx, propensity_model)
     seed = _gene_seed(gene, base_seed)
-
-    indptr, idx = _sample_crt_indices(p, B, seed)
+    indptr, idx = _draw_null_treated_sets(
+        inputs, obs_idx, B, seed, propensity_model, resampling
+    )
 
     if calibrate_skew_normal:
         pvals_sn, beta_obs, skew_params, pvals_raw = _skew_calibrated_crt(
@@ -225,6 +258,7 @@ def run_one_gene_union_crt(
         pvals_sn=pvals_sn,
         skew_params=skew_params,
         pvals_raw=pvals_raw,
+        control_means=covariate_adjusted_control_mean(inputs, obs_idx, beta_obs),
     )
 
 
@@ -241,6 +275,7 @@ def run_all_genes_union_crt(
     return_skew_normal: bool = False,
     return_raw_pvals: bool = False,
     return_format: str = "dict",
+    resampling: str = "bernoulli",
 ) -> Union[Tuple, Dict[str, Any]]:
     """
     Run union CRT across all genes and return DataFrames for p-values and betas.
@@ -256,17 +291,22 @@ def run_all_genes_union_crt(
     return_skew_normal: if True, return skew-normal pvals and parameters
     return_raw_pvals: if True, return raw CRT p-values when skew calibration is enabled
     return_format: "dict" (default) or "tuple" for backward-compatible ordering
+    resampling: "bernoulli" (default) or "fixed_count"; see run_one_gene_union_crt
     Returns:
         dict with keys:
             pvals_df: DataFrame of CRT p-values (genes x programs). If calibrate_skew_normal
                 is True, these are skew-normal calibrated values.
             betas_df: DataFrame of CRT effect sizes (genes x programs)
             treated_df: Series of number of treated cells per gene
+            control_means_df: covariate-adjusted mean outcome of each gene's treated
+                cells without the perturbation (genes x programs); for
+                outcome="usage", the baseline usage share for betas_df
             results: list of CRTGeneResult dataclasses for all genes
             pvals_raw_df (optional): raw CRT p-values (genes x programs)
             pvals_skew_df (optional): skew-normal p-values (genes x programs)
             skew_params (optional): fitted parameters (genes x programs x 3)
     """
+    _check_resampling(resampling)
     gene_list = sorted(inputs.gene_to_cols.keys()) if genes is None else list(genes)
 
     results: List[CRTGeneResult] = Parallel(n_jobs=n_jobs, backend=backend)(
@@ -278,6 +318,7 @@ def run_all_genes_union_crt(
             propensity_model=propensity_model,
             calibrate_skew_normal=calibrate_skew_normal,
             skew_normal_side_code=skew_normal_side_code,
+            resampling=resampling,
         )
         for gene in gene_list
     )
@@ -316,6 +357,7 @@ def run_all_genes_union_crt(
         "pvals_df": pvals_df,
         "betas_df": betas_df,
         "treated_df": treated_df,
+        "control_means_df": stack_control_means(results, gene_list, inputs.program_names),
         "results": results,
     }
     if return_raw_pvals:

@@ -12,7 +12,10 @@ This package exposes helpers to:
 
 from .adata_utils import (
     THREAD_ENV_VARS,
+    OUTCOMES,
     clr_from_usage,
+    row_normalize_usage,
+    covariate_strata_from_design,
     encode_categorical_covariates,
     get_covar_matrix,
     get_from_adata_any,
@@ -25,17 +28,23 @@ from .crt import (
     compute_null_pvals_from_null_stats,
     crt_betas_for_gene,
     crt_index_sampler_fast_numba,
+    crt_index_sampler_fixed_count_numba,
     crt_pvals_for_gene,
 )
 from .ntc_groups import (
     build_ntc_group_inputs,
     crt_pvals_for_guide_set,
+    crt_pvals_for_guide_set_skew,
+    crt_pvals_for_matched_ntc_pseudotargets,
     crt_pvals_for_ntc_groups_ensemble,
     crt_pvals_for_ntc_groups_ensemble_skew,
+    crt_pvals_for_ntc_groups_ensemble_skew_and_raw,
     guide_frequency,
     make_ntc_groups_ensemble,
     make_ntc_groups_matched_by_freq,
+    make_ntc_pseudotargets_matched_by_cell_count,
 )
+from .pipeline_helpers import RESAMPLING_METHODS
 from .pipeline import (
     CRTGeneResult,
     CRTInputs,
@@ -56,7 +65,10 @@ from .qq_plot import qq_plot_real_vs_null
 
 __all__ = [
     "THREAD_ENV_VARS",
+    "OUTCOMES",
     "clr_from_usage",
+    "row_normalize_usage",
+    "covariate_strata_from_design",
     "encode_categorical_covariates",
     "get_covar_matrix",
     "get_from_adata_any",
@@ -65,6 +77,8 @@ __all__ = [
     "to_csc_matrix",
     "union_obs_idx_from_cols",
     "crt_index_sampler_fast_numba",
+    "crt_index_sampler_fixed_count_numba",
+    "RESAMPLING_METHODS",
     "crt_pvals_for_gene",
     "crt_betas_for_gene",
     "compute_null_pvals_from_null_stats",
@@ -72,8 +86,12 @@ __all__ = [
     "make_ntc_groups_matched_by_freq",
     "make_ntc_groups_ensemble",
     "crt_pvals_for_guide_set",
+    "crt_pvals_for_guide_set_skew",
+    "crt_pvals_for_matched_ntc_pseudotargets",
     "crt_pvals_for_ntc_groups_ensemble",
     "crt_pvals_for_ntc_groups_ensemble_skew",
+    "crt_pvals_for_ntc_groups_ensemble_skew_and_raw",
+    "make_ntc_pseudotargets_matched_by_cell_count",
     "build_ntc_group_inputs",
     "CRTGeneResult",
     "CRTInputs",

@@ -442,15 +442,19 @@ CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['gu
 | `--number_permutations` | int | `1024` | CRT permutations |
 | `--guide_annotation_key` | str (nargs=\*) | `non-targeting` | Non-targeting label (accepts multiple values) |
 | `--FDR_method` | str | `BH` | `BH` or `StoreyQ` (choices enforced) |
+| `--resampling` | str | `bernoulli` | `bernoulli` or `fixed_count` (choices enforced); `fixed_count` holds the treated count fixed within each categorical-covariate stratum in every permutation |
+| `--outcome` | str | `clr` | `clr` or `usage` (choices enforced); `usage` = per-cell usage share (row-normalized, no log/floor), effect column `usage_share_diff` instead of `log2FC` |
+| `--matched_ntc_null` | flag | off | Also score a cell-count-matched NTC null → `{K}_CRT_matched_null_<covariate_token>_{condition}.txt` |
 | `--save_dir` | str | None | Custom save directory (default: `<out_dir>/<run_name>/Evaluation/<K>_<sel_thresh>/`) |
 | `--skip_existing` | flag | off | Skip the CRT recompute for a (K, sel_thresh, condition) when **both** its real and fake `.txt` exist, and regenerate the QQ `.png` from the cached raw p-values (resume a preempted job or re-plot without recomputing) |
 
 **Null calibration:** CRT builds NTC (non-targeting control) pseudo-gene groups of size `--number_guide`, frequency-matched to real genes, and compares them to real targets on a real-vs-NTC QQ plot (one `.png` per K/sel_thresh/condition). `--number_guide` therefore controls the null group size (no longer hardcoded to 6). Ensemble count / bin count / seeds are set inside the vendored `src/CRT/` package, not exposed as flags.
 
 **Output files** (covariate token = `--covariates` then `log_`-prefixed `--log_covariates` joined by `_`, or `no_covariates` when none):
-- `{K}_CRT_<covariate_token>_{condition}.txt` — real results: `target_name, program_name, log2FC, p-value` (skew), `adj_pval`, `p-value_raw`, `adj_pval_raw`.
-- `{K}_CRT_fake_<covariate_token>_{condition}.txt` — fake/NTC null: `ensemble, target_name` (NTC pseudo-gene id), `program_name, p-value_raw, adj_pval_raw` (raw p-values only).
-- `{K}_CRT_<covariate_token>_{condition}.png` — real-vs-NTC QQ plot. Real and null use raw p-values so they're directly comparable.
+- `{K}_CRT_<covariate_token>_{condition}.txt` — real results: `target_name, program_name, log2FC` (with `--outcome usage`: `usage_share_diff, control_usage_share, usage_share_relative_diff`), `p-value` (skew), `adj_pval`, `p-value_raw`, `adj_pval_raw`.
+- `{K}_CRT_fake_<covariate_token>_{condition}.txt` — fake/NTC null: `ensemble, target_name` (NTC pseudo-gene id), `program_name, p-value` (skew), `adj_pval`, `p-value_raw, adj_pval_raw`.
+- `{K}_CRT_<covariate_token>_{condition}.png` — real-vs-NTC QQ plot on raw p-values; `..._skew.png` — same on the skew-calibrated p-values the calls use.
+- `{K}_CRT_matched_null_<covariate_token>_{condition}.txt` — only with `--matched_ntc_null`: `matched_target, n_cells, n_guides, program_name, p-value, p-value_raw`.
 
 ---
 

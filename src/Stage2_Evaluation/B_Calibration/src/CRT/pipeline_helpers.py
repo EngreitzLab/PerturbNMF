@@ -2,13 +2,18 @@
 Internal helpers for CRT pipeline orchestration.
 """
 
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
-from .adata_utils import union_obs_idx_from_cols
-from .crt import crt_betas_for_gene, crt_index_sampler_fast_numba, crt_pvals_for_gene
+from .adata_utils import covariate_strata_from_design, union_obs_idx_from_cols
+from .crt import (
+    crt_betas_for_gene,
+    crt_index_sampler_fast_numba,
+    crt_index_sampler_fixed_count_numba,
+    crt_pvals_for_gene,
+)
 from .skew_normal import compute_empirical_p_value, fit_and_evaluate_skew_normal
 
 
@@ -48,6 +53,73 @@ def _fit_propensity(
 
 def _sample_crt_indices(p: np.ndarray, B: int, seed: int) -> Tuple[np.ndarray, np.ndarray]:
     return crt_index_sampler_fast_numba(p, B, seed)
+
+
+RESAMPLING_METHODS = ("bernoulli", "fixed_count")
+
+
+def _check_resampling(resampling: str) -> None:
+    if resampling not in RESAMPLING_METHODS:
+        raise ValueError(
+            f"resampling must be one of {RESAMPLING_METHODS}; got {resampling!r}."
+        )
+
+
+def _sample_fixed_count_indices(
+    strata: np.ndarray,
+    obs_idx: np.ndarray,
+    p: Optional[np.ndarray],
+    B: int,
+    seed: int,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Fixed-count resamples: each stratum keeps its observed treated count. p
+    (propensities) is only used when the design has continuous covariates; pass None
+    for categorical-only designs (exact within-stratum shuffle).
+    """
+    n_strata = int(strata.max()) + 1
+    pool = np.argsort(strata, kind="stable").astype(np.int32)
+    strata_ptr = np.concatenate(
+        [[0], np.cumsum(np.bincount(strata, minlength=n_strata))]
+    ).astype(np.int64)
+    stratum_counts = np.bincount(strata[obs_idx], minlength=n_strata).astype(np.int64)
+    if p is None:
+        inverse_odds = np.empty(0, dtype=np.float64)
+    else:
+        inverse_odds = (1.0 - p) / p
+    return crt_index_sampler_fixed_count_numba(
+        pool, strata_ptr, stratum_counts, inverse_odds, B, seed
+    )
+
+
+def _draw_null_treated_sets(
+    inputs: Any,
+    obs_idx: np.ndarray,
+    B: int,
+    seed: int,
+    propensity_model: Callable,
+    resampling: str = "bernoulli",
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Draw B null treated sets for one observed treated set, as (indptr, indices).
+    resampling="bernoulli": each cell independently ~ Bernoulli(propensity); the null
+        set size varies around n (original behavior).
+    resampling="fixed_count": null sets keep the treated count fixed within each
+        covariate stratum (exact for categorical-only covariates; propensity-weighted
+        Pareto sampling within strata when continuous covariates are present).
+    """
+    _check_resampling(resampling)
+    if resampling == "bernoulli":
+        p = _fit_propensity(inputs, obs_idx, propensity_model)
+        return _sample_crt_indices(p, B, seed)
+    strata = inputs.covariate_strata
+    has_continuous = inputs.has_continuous_covariates
+    if strata is None:  # CRTInputs built without prepare_crt_inputs
+        strata, has_continuous = covariate_strata_from_design(inputs.C)
+    p = None
+    if has_continuous:
+        p = _fit_propensity(inputs, obs_idx, propensity_model)
+    return _sample_fixed_count_indices(strata, obs_idx, p, B, seed)
 
 
 def _empirical_crt(
@@ -137,6 +209,34 @@ def _skew_calibrated_crt(
     pvals_sn, skew_params = _compute_skew_normal_pvals(beta_obs, beta_null, side_code)
     pvals_raw = _raw_pvals_from_betas(beta_obs, beta_null)
     return pvals_sn, beta_obs, skew_params, pvals_raw
+
+
+def covariate_adjusted_control_mean(
+    inputs: Any,
+    obs_idx: np.ndarray,
+    beta: np.ndarray,
+) -> np.ndarray:
+    """
+    Mean outcome the treated cells would have without the perturbation, from the fit
+    Y ~ beta*x + C*gamma: mean over treated cells of C_i @ gamma_hat. With
+    gamma_hat = A (C^T Y - C^T x beta^T) and C^T x = v (covariate sums over treated
+    cells), this is v^T A (CTY - v beta^T) / n1. For outcome="usage" it is the
+    covariate-adjusted control usage share, the baseline for a relative effect.
+    Returns:
+        control_mean: vector of length K
+    """
+    v = inputs.C[obs_idx].sum(axis=0)
+    gamma = inputs.A @ (inputs.CTY - np.outer(v, beta))
+    return (v @ gamma) / obs_idx.size
+
+
+def stack_control_means(
+    results: List[Any],
+    gene_list: List[str],
+    program_names: List[str],
+) -> pd.DataFrame:
+    control_mat = np.vstack([r.control_means for r in results])
+    return pd.DataFrame(control_mat, index=gene_list, columns=program_names)
 
 
 def _stack_gene_results(

@@ -169,6 +169,32 @@ def get_covar_matrix(
     return C, covar_cols
 
 
+# CRT outcome Y: "clr" = centered log-ratio of floored usage (clr_from_usage);
+# "usage" = per-cell usage share, no log and no floor (row_normalize_usage).
+OUTCOMES = ("clr", "usage")
+
+
+def row_normalize_usage(U: Any) -> np.ndarray:
+    """
+    Row-normalize a usage matrix to per-cell program proportions (rows sum to 1).
+    No floor and no log: zero usage stays exactly 0. Normalizing matters because some
+    cNMF usage matrices are raw and depth-scaled (row sums track library size).
+    U: usage matrix (N x K), non-negative
+    Returns:
+        P: usage share matrix (N x K)
+    """
+    U = np.asarray(U, dtype=np.float64)
+    if (U < 0).any():
+        raise ValueError("Usage matrix has negative entries; expected non-negative usage.")
+    row_sums = U.sum(axis=1, keepdims=True)
+    n_empty = int((row_sums <= 0).sum())
+    if n_empty:
+        raise ValueError(
+            f"{n_empty} cells have zero total usage; cannot row-normalize to proportions."
+        )
+    return U / row_sums
+
+
 def clr_from_usage(U: Any, eps_quantile: float = 1e-4) -> np.ndarray:
     """
     Compute centered log-ratio from usage matrix with flooring and renormalization.
@@ -234,3 +260,34 @@ def get_program_names(adata: Any, n_programs: int) -> List[str]:
         if "program_names" in uns:
             return list(uns["program_names"])
     return [f"program_{k}" for k in range(n_programs)]
+
+
+def covariate_strata_from_design(C: np.ndarray) -> Tuple[np.ndarray, bool]:
+    """
+    Group cells into strata of identical discrete covariate values, for fixed-count CRT.
+    A design column is treated as discrete when it takes at most 2 distinct values
+    (one-hot dummies, binary flags; get_covar_matrix one-hot encodes categorical
+    covariates, so each level becomes such a column). Constant columns (intercept)
+    are ignored. Strata are the unique rows of the discrete columns.
+    C: covariate matrix (N x p) as built by get_covar_matrix
+    Returns:
+        strata: int64 array of length N, stratum id per cell (0..S-1)
+        has_continuous: True if any non-constant column has > 2 distinct values; the
+            fixed-count resampler is then approximate (propensity-weighted within strata)
+    """
+    C = np.asarray(C, dtype=np.float64)
+    n_cells = C.shape[0]
+    discrete_cols: List[int] = []
+    has_continuous = False
+    for j in range(C.shape[1]):
+        n_unique = np.unique(C[:, j]).size
+        if n_unique == 1:
+            continue
+        if n_unique == 2:
+            discrete_cols.append(j)
+        else:
+            has_continuous = True
+    if not discrete_cols:
+        return np.zeros(n_cells, dtype=np.int64), has_continuous
+    _, strata = np.unique(C[:, discrete_cols], axis=0, return_inverse=True)
+    return strata.astype(np.int64).ravel(), has_continuous

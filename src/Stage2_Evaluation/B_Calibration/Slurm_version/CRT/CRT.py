@@ -28,10 +28,14 @@ import numpy as np
 sys.path.insert(0, '/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/B_Calibration/src')
 
 from CRT import (
+    OUTCOMES,
+    RESAMPLING_METHODS,
     prepare_crt_inputs,
     build_ntc_group_inputs,
-    crt_pvals_for_ntc_groups_ensemble,
+    crt_pvals_for_matched_ntc_pseudotargets,
+    crt_pvals_for_ntc_groups_ensemble_skew_and_raw,
     make_ntc_groups_ensemble,
+    make_ntc_pseudotargets_matched_by_cell_count,
     run_all_genes_union_crt,
     qq_plot_real_vs_null,
 )
@@ -85,13 +89,14 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
         real_txt = f"{output_folder}/{k}_CRT_{covar_tag}_{condition}.txt"
         fake_txt = f"{output_folder}/{k}_CRT_fake_{covar_tag}_{condition}.txt"
         png = f"{output_folder}/{k}_CRT_{covar_tag}_{condition}.png"
+        png_skew = f"{output_folder}/{k}_CRT_{covar_tag}_{condition}_skew.png"
 
         # Cache path: if both real and fake results already exist, skip the (expensive)
         # CRT recompute and just (re)generate the QQ plot from the cached raw p-values.
         if args.skip_existing and os.path.exists(real_txt) and os.path.exists(fake_txt):
             print(f"  Cached K={k}, sel_thresh={sel_thresh}, condition={condition}: "
                   f"skipping compute, plotting from cache")
-            plot_qq_from_cache(real_txt, fake_txt, png, condition)
+            plot_qq_from_cache(real_txt, fake_txt, png, png_skew, condition)
             summarize_ntc_significance_from_cache(
                 real_txt, args, k, output_folder, condition, covar_tag)
             continue
@@ -103,7 +108,8 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
             usage_key="cnmf_usage",
             covar_key="covar",
             guide_assignment_key="guide_assignment",
-            guide2gene_key="guide2gene"
+            guide2gene_key="guide2gene",
+            outcome=args.outcome,
         )
 
 
@@ -114,6 +120,7 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
             calibrate_skew_normal=True,
             return_raw_pvals=True,
             return_skew_normal=True,
+            resampling=args.resampling,
         )
 
         ntc_labels = args.guide_annotation_key # Identify NTC guides and build guide-frequency bins / real-gene signatures
@@ -136,17 +143,23 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
             max_groups=None,
         )
 
-        # Compute raw CRT p-values for each NTC group in each ensemble (null distribution)
-        ntc_group_pvals_ens = crt_pvals_for_ntc_groups_ensemble(
+        # CRT p-values for each NTC group in each ensemble (null distribution): the
+        # skew-normal p the real-target calls are made on, plus the raw permutation p
+        ntc_group_pvals_skew_ens, ntc_group_pvals_ens = crt_pvals_for_ntc_groups_ensemble_skew_and_raw(
             inputs=inputs,
             ntc_groups_ens=ntc_groups_ens,
             B=args.number_permutations,
             seed0=23,
+            resampling=args.resampling,
         )
 
-        # Save real + fake (NTC null) results (raw p-values for both, so they are comparable)
+        # Save real + fake (NTC null) results (skew and raw p-values for both)
         save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag)
-        save_fake_result(ntc_group_pvals_ens, k, output_folder, condition, args, covar_tag)
+        save_fake_result(ntc_group_pvals_ens, k, output_folder, condition, args, covar_tag,
+                         ntc_group_pvals_skew_ens=ntc_group_pvals_skew_ens)
+
+        if args.matched_ntc_null:
+            run_matched_ntc_null(inputs, args, k, output_folder, condition, covar_tag)
 
         # Empirical-FDR calibration check: treat non-targeting controls as genes and
         # count NTC regulator-program pairs passing FDR < 0.05 (per condition).
@@ -163,6 +176,53 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
         plt.tight_layout()
         plt.savefig(png, dpi=100)
         plt.close()
+
+        # Same QQ on the skew-normal p-values that the significance calls use
+        qq_plot_real_vs_null(
+            real_pvals=out["pvals_skew_df"],
+            null_pvals=ntc_group_pvals_skew_ens,
+            title=f"CRT QQ (skew-normal p): real vs null (NTC) for {condition}",
+        )
+        plt.tight_layout()
+        plt.savefig(png_skew, dpi=100)
+        plt.close()
+
+
+def run_matched_ntc_null(inputs, args, k, output_folder, condition, covar_tag):
+    """
+    Cell-count-matched NTC null: one NTC pseudo-target per real target with exactly the
+    target's cell count, scored with the same CRT settings. Writes
+    {k}_CRT_matched_null_{covar_tag}_{condition}.txt and prints the share of null tests
+    with skew-normal p < 0.05 by cells per target (nominal: 0.05 in every bin).
+    """
+    ntc_labels = args.guide_annotation_key
+    pseudo_cells, pseudo_guides = make_ntc_pseudotargets_matched_by_cell_count(
+        inputs, ntc_label=ntc_labels, seed=20260925,
+    )
+    pvals_skew, pvals_raw, n_cells = crt_pvals_for_matched_ntc_pseudotargets(
+        inputs,
+        pseudo_cells,
+        B=args.number_permutations,
+        seed0=29,
+        resampling=args.resampling,
+        n_jobs=-1,
+    )
+    null_df = _melt_programs(pvals_skew, 'p-value').merge(
+        _melt_programs(pvals_raw, 'p-value_raw'), on=['target_name', 'program_name'])
+    null_df = null_df.rename(columns={'target_name': 'matched_target'})
+    null_df['n_cells'] = null_df['matched_target'].map(n_cells)
+    null_df['n_guides'] = null_df['matched_target'].map(lambda t: len(pseudo_guides[t]))
+    null_df = null_df[['matched_target', 'n_cells', 'n_guides', 'program_name',
+                       'p-value', 'p-value_raw']]
+    null_df.to_csv(f'{output_folder}/{k}_CRT_matched_null_{covar_tag}_{condition}.txt',
+                   sep='\t', index=False)
+
+    bins = pd.cut(null_df['n_cells'], [0, 10, 30, np.inf], labels=['<=10', '11-30', '>30'])
+    share = (null_df['p-value'] < 0.05).groupby(bins, observed=True).mean()
+    print(f"  [matched NTC null] condition={condition}: share of null tests with "
+          f"p < 0.05 (nominal 0.05): overall {(null_df['p-value'] < 0.05).mean():.4f}; "
+          + "; ".join(f"{b} cells {v:.4f}" for b, v in share.items()))
+    return null_df
 
 
 def _covariate_tag(args):
@@ -202,7 +262,7 @@ def _melt_programs(df, value_name):
 def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=None):
 
     pval_long = _melt_programs(out['pvals_skew_df'], 'p-value')
-    beta_long = _melt_programs(out['betas_df'], 'beta_clr')
+    beta_long = _melt_programs(out['betas_df'], 'beta')
 
     # Merge on program and target_gene
     result_df = pval_long.merge(
@@ -218,13 +278,32 @@ def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=No
         raw_long = _melt_programs(out['pvals_raw_df'], 'p-value_raw')
         result_df = result_df.merge(raw_long, on=['program_name', 'target_name'], how='left')
 
-    # The CRT effect size is beta_hat on the CLR (natural-log) scale, NOT a log2 fold
+    # --outcome usage: beta_hat is the covariate-adjusted difference in mean usage
+    # share (treated minus control, on the 0-1 proportion scale). It is not a fold
+    # change, so it is reported as usage_share_diff instead of log2FC. Alongside it:
+    # control_usage_share, the covariate-adjusted share the treated cells would have
+    # without the perturbation, and usage_share_relative_diff = diff / control share
+    # (a fold change minus 1 on mean usage; NaN when the control share is <= 0).
+    #
+    # --outcome clr: the CRT effect size is beta_hat on the CLR (natural-log) scale, NOT a log2 fold
     # change. A shift of beta in CLR coordinate k corresponds to a natural-log fold
     # change of beta * K/(K-1) in program k's usage: the CLR mean absorbs 1/K of the
     # shift across the K programs, so ln-FC = beta * K/(K-1). Converting to base 2:
     #     approx_log2FC = [K / (K - 1)] * beta_hat / ln(2)
     # K = k = number of programs (CLR is centered over all program columns).
-    result_df['log2FC'] = result_df['beta_clr'] * (k / (k - 1)) / np.log(2)
+    effect_cols = []
+    if args.outcome == 'usage':
+        effect_col = 'usage_share_diff'
+        result_df[effect_col] = result_df['beta']
+        control_long = _melt_programs(out['control_means_df'], 'control_usage_share')
+        result_df = result_df.merge(control_long, on=['program_name', 'target_name'], how='left')
+        control = result_df['control_usage_share']
+        result_df['usage_share_relative_diff'] = (
+            result_df['beta'] / control.where(control > 0))
+        effect_cols = ['control_usage_share', 'usage_share_relative_diff']
+    else:
+        effect_col = 'log2FC'
+        result_df[effect_col] = result_df['beta'] * (k / (k - 1)) / np.log(2)
 
     # Multiple-testing correction: FDR for the skew-calibrated AND the raw p-values.
     result_df = _add_adj_pval(result_df, 'p-value', args, out_col='adj_pval')
@@ -232,7 +311,7 @@ def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=No
         result_df = _add_adj_pval(result_df, 'p-value_raw', args, out_col='adj_pval_raw')
 
     # Reorder columns (each p-value followed by its adjusted p-value)
-    cols = ['target_name', 'program_name', 'log2FC', 'p-value', 'adj_pval']
+    cols = ['target_name', 'program_name', effect_col, *effect_cols, 'p-value', 'adj_pval']
     if has_raw:
         cols += ['p-value_raw', 'adj_pval_raw']
     result_df = result_df[cols]
@@ -245,22 +324,32 @@ def save_result(out, k, thresh_tag, output_folder, condition, args, covar_tag=No
 
 
 # save fake / null (NTC group ensemble) raw p-values
-def save_fake_result(ntc_group_pvals_ens, k, output_folder, condition, args, covar_tag=None):
+def save_fake_result(ntc_group_pvals_ens, k, output_folder, condition, args, covar_tag=None,
+                     ntc_group_pvals_skew_ens=None):
     """
-    Write the NTC null distribution (raw p-values only) so it can be re-analyzed /
-    re-plotted offline. `ntc_group_pvals_ens` is a dict {ensemble -> DataFrame(rows=NTC
-    group id, cols=programs)}. Columns: ensemble, target_name (NTC pseudo-gene id, e.g.
-    'ntc_3'), program_name, p-value_raw, adj_pval_raw.
+    Write the NTC null distribution so it can be re-analyzed / re-plotted offline.
+    `ntc_group_pvals_ens` (raw p) and `ntc_group_pvals_skew_ens` (skew-normal p, the
+    p-value real-target calls are made on; optional) are dicts {ensemble ->
+    DataFrame(rows=NTC group id, cols=programs)}. Columns: ensemble, target_name (NTC
+    pseudo-gene id, e.g. 'ntc_3'), program_name, [p-value, adj_pval,] p-value_raw,
+    adj_pval_raw.
     """
     frames = []
     for e in sorted(ntc_group_pvals_ens.keys()):
         long_e = _melt_programs(ntc_group_pvals_ens[e], 'p-value_raw')
+        if ntc_group_pvals_skew_ens is not None:
+            skew_e = _melt_programs(ntc_group_pvals_skew_ens[e], 'p-value')
+            long_e = long_e.merge(skew_e, on=['target_name', 'program_name'], how='left')
         long_e['ensemble'] = e
         frames.append(long_e)
 
     fake_df = pd.concat(frames, ignore_index=True)
     fake_df = _add_adj_pval(fake_df, 'p-value_raw', args, out_col='adj_pval_raw')
-    fake_df = fake_df[['ensemble', 'target_name', 'program_name', 'p-value_raw', 'adj_pval_raw']]
+    cols = ['ensemble', 'target_name', 'program_name']
+    if ntc_group_pvals_skew_ens is not None:
+        fake_df = _add_adj_pval(fake_df, 'p-value', args, out_col='adj_pval')
+        cols += ['p-value', 'adj_pval']
+    fake_df = fake_df[cols + ['p-value_raw', 'adj_pval_raw']]
 
     if covar_tag is None:
         covar_tag = _covariate_tag(args)
@@ -271,7 +360,8 @@ def save_fake_result(ntc_group_pvals_ens, k, output_folder, condition, args, cov
 
 # negative-control calibration: empirical FDR from non-targeting "genes"
 def _ntc_significance_core(raw_long, args, k, output_folder, condition,
-                           covar_tag=None, p_thresh=0.05):
+                           covar_tag=None, p_thresh=0.05, adj_col='adj_pval_raw',
+                           file_suffix=''):
     """
     Shared core for the NTC empirical-FDR check.
 
@@ -292,8 +382,10 @@ def _ntc_significance_core(raw_long, args, k, output_folder, condition,
         p_thresh, across every gene) -- classical FDR = false / total discoveries.
 
     Writes a per-gene summary (plus an ALL_NTC row) to
-    ``{output_folder}/{k}_CRT_ntc_significance_{covar_tag}_{condition}.txt`` and
-    prints both rates. Returns a dict (or None if no control target was tested).
+    ``{output_folder}/{k}_CRT_ntc_significance_{covar_tag}_{condition}{file_suffix}.txt``
+    and prints both rates. ``adj_col`` selects the adjusted p-value column (default
+    ``adj_pval_raw``; ``adj_pval`` scores the skew-normal p the calls are made on).
+    Returns a dict (or None if no control target was tested).
     """
     ntc_labels = args.guide_annotation_key
     if isinstance(ntc_labels, str):
@@ -307,7 +399,7 @@ def _ntc_significance_core(raw_long, args, k, output_folder, condition,
         return None
 
     raw_long = raw_long.copy()
-    raw_long['significant'] = raw_long['adj_pval_raw'] < p_thresh
+    raw_long['significant'] = raw_long[adj_col] < p_thresh
 
     # total discoveries across every regulator-program pair (all genes)
     n_sig_total_all = int(raw_long['significant'].sum())
@@ -328,7 +420,7 @@ def _ntc_significance_core(raw_long, args, k, output_folder, condition,
     frac_ntc = n_sig_ntc / n_ntc_pairs if n_ntc_pairs else float('nan')
     empirical_fdr = n_sig_ntc / n_sig_total_all if n_sig_total_all else float('nan')
 
-    print(f"  [NTC significance] condition={condition}: {n_sig_ntc}/{n_ntc_pairs} "
+    print(f"  [NTC significance, {adj_col}] condition={condition}: {n_sig_ntc}/{n_ntc_pairs} "
           f"NTC regulator-program pairs pass FDR < {p_thresh} "
           f"(fraction_of_ntc_pairs={frac_ntc:.4f}); "
           f"empirical_fdr={n_sig_ntc}/{n_sig_total_all}={empirical_fdr:.4f} "
@@ -347,7 +439,7 @@ def _ntc_significance_core(raw_long, args, k, output_folder, condition,
     }])
     summary = pd.concat([per_gene, overall], ignore_index=True)
     summary.to_csv(
-        f'{output_folder}/{k}_CRT_ntc_significance_{covar_tag}_{condition}.txt',
+        f'{output_folder}/{k}_CRT_ntc_significance_{covar_tag}_{condition}{file_suffix}.txt',
         sep='\t', index=False,
     )
 
@@ -378,8 +470,18 @@ def summarize_ntc_significance(out, args, k, output_folder, condition,
 
     raw_long = _melt_programs(pvals_raw, 'p-value_raw')
     raw_long = _add_adj_pval(raw_long, 'p-value_raw', args, out_col='adj_pval_raw')
-    return _ntc_significance_core(raw_long, args, k, output_folder, condition,
-                                  covar_tag=covar_tag, p_thresh=p_thresh)
+    result = _ntc_significance_core(raw_long, args, k, output_folder, condition,
+                                    covar_tag=covar_tag, p_thresh=p_thresh)
+
+    # Same check on the skew-normal p-values that save_result's calls (adj_pval) use
+    pvals_skew = out.get('pvals_skew_df')
+    if pvals_skew is not None:
+        skew_long = _melt_programs(pvals_skew, 'p-value')
+        skew_long = _add_adj_pval(skew_long, 'p-value', args, out_col='adj_pval')
+        _ntc_significance_core(skew_long, args, k, output_folder, condition,
+                               covar_tag=covar_tag, p_thresh=p_thresh,
+                               adj_col='adj_pval', file_suffix='_skew')
+    return result
 
 
 def summarize_ntc_significance_from_cache(real_txt, args, k, output_folder, condition,
@@ -395,13 +497,19 @@ def summarize_ntc_significance_from_cache(real_txt, args, k, output_folder, cond
         print(f"  [NTC significance] cached {os.path.basename(real_txt)} lacks "
               f"'adj_pval_raw' (condition={condition}); skipping.")
         return None
-    return _ntc_significance_core(real_df[['target_name', 'adj_pval_raw']],
-                                  args, k, output_folder, condition,
-                                  covar_tag=covar_tag, p_thresh=p_thresh)
+    result = _ntc_significance_core(real_df[['target_name', 'adj_pval_raw']],
+                                    args, k, output_folder, condition,
+                                    covar_tag=covar_tag, p_thresh=p_thresh)
+    if 'adj_pval' in real_df.columns:
+        _ntc_significance_core(real_df[['target_name', 'adj_pval']],
+                               args, k, output_folder, condition,
+                               covar_tag=covar_tag, p_thresh=p_thresh,
+                               adj_col='adj_pval', file_suffix='_skew')
+    return result
 
 
 # regenerate the QQ plot from cached result files (no CRT recompute)
-def plot_qq_from_cache(real_txt, fake_txt, png, condition):
+def plot_qq_from_cache(real_txt, fake_txt, png, png_skew, condition):
     import matplotlib.pyplot as plt
 
     real_df = pd.read_csv(real_txt, sep='\t')
@@ -415,6 +523,17 @@ def plot_qq_from_cache(real_txt, fake_txt, png, condition):
     plt.tight_layout()
     plt.savefig(png, dpi=100)
     plt.close()
+
+    # Skew-normal QQ only when the cached null carries it (older caches are raw-only)
+    if 'p-value' in fake_df.columns:
+        qq_plot_real_vs_null(
+            real_pvals=real_df['p-value'],
+            null_pvals=fake_df['p-value'],
+            title=f"CRT QQ (skew-normal p): real vs null (NTC) for {condition}",
+        )
+        plt.tight_layout()
+        plt.savefig(png_skew, dpi=100)
+        plt.close()
 
 
 def main():
@@ -443,6 +562,9 @@ def main():
     parser.add_argument('--number_guide', help='Number of non-targeting guides to randomly designate as "targeting" in each calibration iteration (default: 6)', type=int, default=6)
     parser.add_argument('--number_permutations', help='Number of calibration iterations to run with (default: 1024)', type=int, default=1024)
     parser.add_argument('--guide_annotation_key', nargs='*', type=str,  help='Name of target for non-targeting/safe-targeting guides,default="non-targeting"', default='non-targeting')
+    parser.add_argument('--resampling', type=str, choices=list(RESAMPLING_METHODS), default='bernoulli', help='How CRT null treated sets are drawn. bernoulli (default): each cell independently ~ Bernoulli(propensity), so the null set size varies around the observed count. fixed_count: every null set keeps the observed treated count within each stratum of the categorical covariates (exact within-stratum permutation when all covariates are categorical; propensity-weighted Pareto sampling within strata, an approximation, when continuous covariates are present). fixed_count is calibrated for few-cell targets where bernoulli is anticonservative.')
+    parser.add_argument('--outcome', type=str, choices=list(OUTCOMES), default='clr', help='CRT outcome Y per cell and program. clr (default): centered log-ratio of usage floored at 1e-8; effect reported as log2FC. usage: per-cell usage share (usage row-normalized to proportions, no log, no floor); effect reported as usage_share_diff, the covariate-adjusted difference in mean usage share (not a fold change), plus control_usage_share (covariate-adjusted baseline share) and usage_share_relative_diff (diff / baseline). usage with --resampling fixed_count is the recommended configuration (calibrated on a matched NTC null, no floor hyperparameter). Output file names do not change; use --save_dir to keep runs apart.')
+    parser.add_argument('--matched_ntc_null', action='store_true', help='Also build a cell-count-matched NTC null (one NTC pseudo-target per real target with exactly its cell count, scored with the same CRT) and write {K}_CRT_matched_null_{covar_tag}_{condition}.txt. Roughly doubles CRT runtime. The frequency-matched guide groups rarely reach the few-cell regime, so this is the calibration diagnostic for small targets.')
     parser.add_argument('--FDR_method', type=str, choices=['BH', 'StoreyQ'], default='BH', help='FDR correction method: BH (Benjamini-Hochberg) or StoreyQ (Storey Q-value) (default: BH)')
     parser.add_argument('--save_dir', type=str, default=None, help='Base directory under which {K}_{thresh} subdirs are created. Default: <out_dir>/<run_name>/Evaluation/')
     parser.add_argument('--skip_existing', help='If set, skip per-(K, sel_thresh, condition) computations whose output .txt files already exist. Useful for resuming preempted jobs.', action='store_true')
@@ -513,11 +635,13 @@ def main():
                                           covariates=args.covariates,
                                           log_covariates=args.log_covariates)
 
-            # add flooring for program matrix with exceesive zeros
-            U = adata.obsm["cnmf_usage"].copy()
-            U = np.maximum(U, 1e-8)
-            U /= U.sum(axis=1, keepdims=True)
-            adata.obsm["cnmf_usage"] = U
+            # CLR outcome: floor the program matrix (excessive zeros) before the log.
+            # Usage outcome: no floor; prepare_crt_inputs row-normalizes to shares.
+            if args.outcome == 'clr':
+                U = adata.obsm["cnmf_usage"].copy()
+                U = np.maximum(U, 1e-8)
+                U /= U.sum(axis=1, keepdims=True)
+                adata.obsm["cnmf_usage"] = U
 
             # run CRT
             run_CRT(adata, k, sel_thresh, output_folder, args)
