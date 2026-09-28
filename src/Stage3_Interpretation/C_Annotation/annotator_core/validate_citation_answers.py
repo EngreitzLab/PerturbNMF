@@ -36,7 +36,10 @@ def load(path: Path):
 
 
 def normalise(text: str) -> str:
-    return re.sub(r"\s+", " ", str(text)).strip().strip('"').strip()
+    # Abstract text from the tokenised sources carries a space before punctuation ("CCM2 , and");
+    # a quote that drops it is still verbatim, so both sides lose it.
+    text = re.sub(r"\s+", " ", str(text))
+    return re.sub(r" (?=[,;:.)\]])", "", text).strip().strip('"').strip()
 
 
 def is_verbatim(quote: str, text: str) -> bool:
@@ -115,10 +118,10 @@ def validate_program(directory: Path, coverage: Counter, warnings: list) -> list
                 continue
             index = int(match.group(2)) - 1
             if match.group(1) == "L":
-                if index >= len(claim["literature"]):
+                resolved, slipped = resolve_literature_ref(claim, ref, pmid, support.get("quote", ""))
+                if index >= len(claim["literature"]) and resolved is None:
                     problems.append(f"P{pid} {claim_id}: {ref} was not offered")
                     continue
-                resolved, slipped = resolve_literature_ref(claim, ref, pmid, support.get("quote", ""))
                 target = claim["literature"][resolved if resolved is not None else index]
                 if support.get("role") == "discovery":
                     coverage["_discovery"] += 1
