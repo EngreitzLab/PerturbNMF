@@ -98,6 +98,19 @@ def test_read_abc_links_tsv_drops_promoters_and_thresholds(tmp_path):
     assert len(kept) == 4
 
 
+def test_read_sce2g_tsv_with_igvf_metadata_preamble(tmp_path):
+    path = tmp_path / "sce2g.e2g.tsv.gz"
+    with gzip.open(path, "wt") as handle:
+        handle.write("# Source: scE2G_multiome_powerlaw_v3\n# ScoreThreshold: Score >= 0.177\n"
+                     "ElementChr\tElementStart\tElementEnd\tElementName\tElementClass\tGeneSymbol\tScore\n"
+                     "chr1\t100\t600\tchr1:100-600\tintergenic\tGENEA\t0.3\n"
+                     "chr1\t900\t1400\tchr1:900-1400\tpromoter\tGENEB\t0.9\n")
+    assert motif_hit_calling.detect_link_format(str(path)) == "tsv"
+    links = motif_hit_calling.read_enhancer_gene_links(str(path))
+    assert links["gene"].tolist() == ["GENEA"]
+    assert links.loc[0, "score"] == pytest.approx(0.3)
+
+
 def test_read_abc_headerless(tmp_path):
     row = ["chr1", "100", "600", "genic|chr1:100-600", "genic"] + ["0"] + ["GENEA"] + ["0"] * 13 + ["0.2"] + ["0", "0"] + ["CellA_Ctrl"]
     assert len(row) == len(motif_hit_calling.ABC_HEADERLESS_COLUMNS)

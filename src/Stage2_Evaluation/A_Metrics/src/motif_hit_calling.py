@@ -241,11 +241,26 @@ BEDPE_SELF_PROMOTER_WINDOW = 500
 UNSAFE_NAME_RE = re.compile(r"[|\s]+")
 
 
+def count_metadata_lines(path: str) -> int:
+    """Leading ``# key: value`` metadata lines (IGVF / scE2G tsv preamble). A ``#chr``-style header is not one."""
+    count = 0
+    with open_text(path) as handle:
+        for line in handle:
+            if not (line.startswith("# ") or line.rstrip("\n") == "#"):
+                break
+            count += 1
+    return count
+
+
 def detect_link_format(path: str) -> str:
-    """``bedpe`` if the file name says so; else ``tsv`` if the first line is a header, else ``abc_headerless``."""
+    """``bedpe`` if the file name says so; else ``tsv`` if the first line after any metadata preamble is a
+    header, else ``abc_headerless``."""
     if ".bedpe" in os.path.basename(path):
         return "bedpe"
+    n_metadata = count_metadata_lines(path)
     with open_text(path) as handle:
+        for _ in range(n_metadata):
+            handle.readline()
         first = handle.readline().rstrip("\n").split("\t")
     try:
         int(first[1])
@@ -296,9 +311,10 @@ def read_enhancer_gene_links(path: str, link_format: str = "auto", score_thresho
         })
     else:
         if link_format == "abc_headerless":
-            raw = pd.read_csv(path, sep="\t", header=None, names=ABC_HEADERLESS_COLUMNS, dtype={"chr": str})
+            raw = pd.read_csv(path, sep="\t", header=None, names=ABC_HEADERLESS_COLUMNS, dtype={"chr": str},
+                              skiprows=count_metadata_lines(path))
         else:
-            raw = pd.read_csv(path, sep="\t", comment=None, dtype=str)
+            raw = pd.read_csv(path, sep="\t", comment=None, dtype=str, skiprows=count_metadata_lines(path))
         column = {key: find_column(raw.columns, aliases) for key, aliases in LINK_COLUMN_ALIASES.items()}
         if score_column is not None:
             if score_column not in raw.columns:
