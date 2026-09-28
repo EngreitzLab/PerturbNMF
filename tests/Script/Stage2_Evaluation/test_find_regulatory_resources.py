@@ -30,7 +30,7 @@ def test_parse_query_requires_something():
 EXAMPLE_SYNONYMS = os.path.join(
     PIPELINE_ROOT, "src", "Stage2_Evaluation", "A_Metrics", "src", "resources", "cell_type_synonyms.example.json"
 )
-EXAMPLE_QUERY = "immortalized hepatocyte line"
+EXAMPLE_QUERY = "immortalized T cell line"
 
 
 def example_query(ontology_id=None):
@@ -39,8 +39,8 @@ def example_query(ontology_id=None):
 
 def test_example_synonyms_file_loads():
     rules = frr.load_matching_rules(EXAMPLE_SYNONYMS)
-    assert "immortalized hepatocyte" in rules.synonyms
-    assert [label for _, _, label in rules.tier_rules][0] == "hepatocyte"
+    assert "immortalized t cell" in rules.synonyms
+    assert [label for _, _, label in rules.tier_rules][0] == "T cell"
     assert rules.tissue_rule is not None
 
 
@@ -51,7 +51,7 @@ def test_no_synonyms_file_means_no_curated_terms():
 
 def test_curated_terms_match_example_alias():
     terms = example_query().curated_terms()
-    assert ("hepatocyte", "CL:0000182") in terms
+    assert ("t cell", "CL:0000084") in terms
 
 
 def test_tier_score_outside_band_is_rejected(tmp_path):
@@ -77,9 +77,9 @@ def make_candidate(**kwargs) -> frr.Candidate:
 
 
 def test_score_ontology_id_exact_beats_term_name():
-    query = frr.parse_query("hepatocyte", "CL:0000182")
-    exact_id = make_candidate(biosample_term_name="something else", ontology_id="CL:0000182")
-    exact_name = make_candidate(biosample_term_name="hepatocyte", ontology_id="CL:9999999")
+    query = frr.parse_query("t cell", "CL:0000084")
+    exact_id = make_candidate(biosample_term_name="something else", ontology_id="CL:0000084")
+    exact_name = make_candidate(biosample_term_name="t cell", ontology_id="CL:9999999")
     score_id, reason_id = frr.score_biosample_match(query, exact_id)
     score_name, _ = frr.score_biosample_match(query, exact_name)
     assert score_id > score_name
@@ -87,7 +87,7 @@ def test_score_ontology_id_exact_beats_term_name():
 
 
 def test_score_curated_synonym_for_example_alias():
-    candidate = make_candidate(biosample_term_name="hepatocyte", ontology_id="CL:0000182")
+    candidate = make_candidate(biosample_term_name="t cell", ontology_id="CL:0000084")
     score, reason = frr.score_biosample_match(example_query(), candidate)
     assert score >= 80.0
     assert "curated synonym" in reason
@@ -95,26 +95,26 @@ def test_score_curated_synonym_for_example_alias():
 
 def test_curated_synonym_without_tier_rules_scores_flat_80(tmp_path):
     path = tmp_path / "rules.json"
-    path.write_text('{"synonyms": {"my line": [["hepatocyte", "CL:0000182"]]}}')
+    path.write_text('{"synonyms": {"my line": [["t cell", "CL:0000084"]]}}')
     query = frr.parse_query("my line", None, frr.load_matching_rules(str(path)))
-    score, reason = frr.score_biosample_match(query, make_candidate(biosample_term_name="hepatocyte"))
+    score, reason = frr.score_biosample_match(query, make_candidate(biosample_term_name="t cell"))
     assert int(score) == 80
-    assert reason.startswith("curated synonym -> hepatocyte")
+    assert reason.startswith("curated synonym -> t cell")
 
 
 # ---------------------------------------------------------------------------
-# Curated sub-tiers from the example file: hepatocyte > liver progenitor >
-# generic epithelial cell > liver tissue > no match.
+# Curated sub-tiers from the example file: T cell > T cell progenitor >
+# generic lymphocyte > thymus tissue > no match.
 # ---------------------------------------------------------------------------
 
 def test_tier_rules_order_candidates_by_specificity():
     query = example_query()
     kinds = frr.RESOURCE_MOTIF_INSTANCES
     candidates = {
-        "exact": make_candidate(resource_type=kinds, biosample_term_name="hepatocyte"),
-        "progenitor": make_candidate(resource_type=kinds, biosample_term_name="hepatoblast"),
-        "generic": make_candidate(resource_type=kinds, biosample_term_name="epithelial cell"),
-        "tissue": make_candidate(resource_type=kinds, biosample_term_name="right lobe of liver", is_tissue=True),
+        "exact": make_candidate(resource_type=kinds, biosample_term_name="t cell"),
+        "progenitor": make_candidate(resource_type=kinds, biosample_term_name="thymocyte"),
+        "generic": make_candidate(resource_type=kinds, biosample_term_name="lymphocyte"),
+        "tissue": make_candidate(resource_type=kinds, biosample_term_name="thymus", is_tissue=True),
     }
     scored = {label: frr.score_biosample_match(query, c)[0] for label, c in candidates.items()}
     ordered = sorted(scored, key=lambda label: scored[label], reverse=True)
@@ -124,7 +124,7 @@ def test_tier_rules_order_candidates_by_specificity():
 def test_tier_rules_use_cell_slims_when_term_name_is_uninformative():
     candidate = make_candidate(
         resource_type=frr.RESOURCE_MOTIF_INSTANCES, biosample_term_name="unusual biosample name",
-        cell_slims=("hepatocyte",), organ_slims=("liver",),
+        cell_slims=("t cell",), organ_slims=("thymus",),
     )
     score, reason = frr.score_biosample_match(example_query(), candidate)
     assert score >= 80.0, f"Expected a curated tier via cell_slims, got {score} ({reason})"
@@ -132,10 +132,10 @@ def test_tier_rules_use_cell_slims_when_term_name_is_uninformative():
 
 def test_tissue_rule_does_not_match_other_cell_type_named_after_tissue():
     """Regression: a different cell type whose name mentions the tissue (a fibroblast line from
-    liver) must not be mistaken for a tissue sample -- it scores 0 (no match)."""
+    thymus) must not be mistaken for a tissue sample -- it scores 0 (no match)."""
     fibroblast = make_candidate(
-        resource_type=frr.RESOURCE_MOTIF_INSTANCES, biosample_term_name="fibroblast of liver",
-        cell_slims=("fibroblast",), organ_slims=("liver",), is_tissue=False,
+        resource_type=frr.RESOURCE_MOTIF_INSTANCES, biosample_term_name="fibroblast of thymus",
+        cell_slims=("fibroblast",), organ_slims=("thymus",), is_tissue=False,
     )
     score, reason = frr.score_biosample_match(example_query(), fibroblast)
     assert score == 0.0, f"Expected 0 (no match), got {score} ({reason})"
@@ -145,7 +145,7 @@ def test_score_ancestry_match():
     candidate = make_candidate(
         biosample_term_name="unrelated specific subtype",
         ontology_id="CL:9999999",
-        ancestor_terms=("liver",),
+        ancestor_terms=("thymus",),
     )
     score, reason = frr.score_biosample_match(example_query(), candidate)
     assert 50.0 <= score < 80.0
@@ -153,8 +153,8 @@ def test_score_ancestry_match():
 
 
 def test_score_substring_match_lowest_nonzero_tier():
-    query = frr.parse_query("hepatocyte progenitor cell", None)
-    candidate = make_candidate(biosample_term_name="human hepatocyte progenitor cell primary", ontology_id="")
+    query = frr.parse_query("t cell progenitor", None)
+    candidate = make_candidate(biosample_term_name="human t cell progenitor primary", ontology_id="")
     score, reason = frr.score_biosample_match(query, candidate)
     assert 20.0 <= score < 50.0
     assert "substring" in reason
@@ -168,9 +168,9 @@ def test_score_no_match_is_zero():
 
 
 def test_tie_break_prefers_cell_line_over_tissue():
-    query = frr.parse_query("hepatocyte", "CL:0000182")
-    cell_line = make_candidate(biosample_term_name="hepatocyte", ontology_id="CL:0000182", is_tissue=False)
-    tissue = make_candidate(biosample_term_name="hepatocyte", ontology_id="CL:0000182", is_tissue=True)
+    query = frr.parse_query("t cell", "CL:0000084")
+    cell_line = make_candidate(biosample_term_name="t cell", ontology_id="CL:0000084", is_tissue=False)
+    tissue = make_candidate(biosample_term_name="t cell", ontology_id="CL:0000084", is_tissue=True)
     score_cell_line, _ = frr.score_biosample_match(query, cell_line)
     score_tissue, _ = frr.score_biosample_match(query, tissue)
     assert score_cell_line > score_tissue
@@ -181,14 +181,14 @@ def test_tie_break_prefers_cell_line_over_tissue():
 def test_score_e2g_prefers_bedpe_over_tsv_sidecar_at_same_score():
     """A bedpe (the actual links) and a same-dataset tsv (a QC/summary sidecar) both pass the
     file-type filter and share the same biosample -- the bedpe must rank first."""
-    query = frr.parse_query("hepatocyte", "CL:0000182")
+    query = frr.parse_query("t cell", "CL:0000084")
     bedpe = make_candidate(
         resource_type=frr.RESOURCE_E2G, file_format="bedpe",
-        biosample_term_name="hepatocyte", ontology_id="CL:0000182",
+        biosample_term_name="t cell", ontology_id="CL:0000084",
     )
     tsv = make_candidate(
         resource_type=frr.RESOURCE_E2G, file_format="tsv",
-        biosample_term_name="hepatocyte", ontology_id="CL:0000182",
+        biosample_term_name="t cell", ontology_id="CL:0000084",
     )
     score_bedpe, _ = frr.score_biosample_match(query, bedpe)
     score_tsv, _ = frr.score_biosample_match(query, tsv)
@@ -197,7 +197,7 @@ def test_score_e2g_prefers_bedpe_over_tsv_sidecar_at_same_score():
 
 
 def test_rank_candidates_sorts_descending_and_drops_zero_score():
-    good = make_candidate(biosample_term_name="hepatocyte", ontology_id="CL:0000182")
+    good = make_candidate(biosample_term_name="t cell", ontology_id="CL:0000084")
     bad = make_candidate(biosample_term_name="keratinocyte", ontology_id="CL:0000312")
     ranked = frr.rank_candidates(example_query(), [bad, good])
     assert ranked == [good]
@@ -208,15 +208,15 @@ def test_tf_chip_bpnet_and_other_cell_type_do_not_outrank_chrombpnet():
     different cell type named after the tissue may outrank the matching ChromBPNet candidate."""
     chrombpnet = make_candidate(
         resource_type=frr.RESOURCE_MOTIF_INSTANCES, dataset_accession="ENCSR000AAB",
-        biosample_term_name="hepatocyte", is_tf_chip_bpnet=False,
+        biosample_term_name="t cell", is_tf_chip_bpnet=False,
     )
     ctcf_chip = make_candidate(
         resource_type=frr.RESOURCE_MOTIF_INSTANCES, dataset_accession="ENCSR000AAC",
-        biosample_term_name="hepatocyte", is_tf_chip_bpnet=True,
+        biosample_term_name="t cell", is_tf_chip_bpnet=True,
     )
     fibroblast = make_candidate(
         resource_type=frr.RESOURCE_MOTIF_INSTANCES, dataset_accession="ENCSR000AAD",
-        biosample_term_name="fibroblast of liver", cell_slims=("fibroblast",), organ_slims=("liver",),
+        biosample_term_name="fibroblast of thymus", cell_slims=("fibroblast",), organ_slims=("thymus",),
     )
     ranked = [c.dataset_accession for c in frr.rank_candidates(example_query(), [ctcf_chip, fibroblast, chrombpnet])]
     assert ranked[0] == "ENCSR000AAB", ranked
@@ -244,11 +244,11 @@ IGVF_E2G_SEARCH_RESPONSE = {
     "@graph": [
         {
             "accession": "IGVFDS0000AAA",
-            "summary": "element-gene links prediction using scE2G v1.2 in virtual Homo sapiens hepatocyte",
+            "summary": "element-gene links prediction using scE2G v1.2 in virtual Homo sapiens T cell",
             "file_set_type": "element-gene links",
             "assembly": "GRCh38",
             "samples": [
-                {"sample_terms": [{"term_name": "hepatocyte", "@id": "/sample-terms/CL_0000182/"}]}
+                {"sample_terms": [{"term_name": "t cell", "@id": "/sample-terms/CL_0000084/"}]}
             ],
             "files": [
                 {
@@ -269,8 +269,8 @@ def test_igvf_candidates_for_e2g_parses_biosample_and_file():
     candidate = candidates[0]
     assert candidate.dataset_accession == "IGVFDS0000AAA"
     assert candidate.file_accession == "IGVFFI0000AAA"
-    assert candidate.biosample_term_name == "hepatocyte"
-    assert candidate.ontology_id == "CL:0000182"
+    assert candidate.biosample_term_name == "t cell"
+    assert candidate.ontology_id == "CL:0000084"
     assert candidate.download_url.endswith("IGVFFI0000AAA.bedpe.gz")
 
 
@@ -280,7 +280,7 @@ ENCODE_E2G_SEARCH_RESPONSE = {
             "accession": "ENCSR270IBQ",
             "biosample_ontology": {
                 "term_name": "HepG2", "term_id": "EFO:0001187", "classification": "cell line",
-                "organ_slims": ["liver"], "cell_slims": ["epithelial cell"], "system_slims": [],
+                "organ_slims": ["thymus"], "cell_slims": ["lymphocyte"], "system_slims": [],
             },
             "date_released": "2023-01-01",
         }
@@ -406,7 +406,7 @@ def test_encode_candidates_for_motifs_includes_tf_chip_bpnet_when_flagged(tmp_pa
 
 def test_parse_chrombpnet_description_extracts_assay_and_experiment():
     assay, experiment = frr.parse_chrombpnet_description(
-        "ChromBPNet models trained on DNase-seq data in hepatocyte "
+        "ChromBPNet models trained on DNase-seq data in T cell "
         "(ENCSR000EOG)"
     )
     assert assay == "DNase-seq"

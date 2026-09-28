@@ -1,21 +1,55 @@
 {
   "description": "Example cell-type matching rules for find_regulatory_resources.py --synonyms. Copy this file and edit it for your cell type. 'synonyms': query alias (lowercased, matched as a substring of --cell-type) -> [term_name, ontology_id] pairs the IGVF/ENCODE portals use (ontology_id may be empty). 'tier_rules': optional sub-tiers inside the curated-synonym band, tried in order against the candidate's term_name and then its cell_slims; scores must stay between 50 and 90 and be >= 3 apart. 'tissue_rule': optional lower tier for tissue biosamples only. Tier rules apply only when the query matched a synonym alias.",
   "synonyms": {
-    "immortalized hepatocyte": [
-      ["hepatocyte", "CL:0000182"],
-      ["hepatoblast", "CL:0005026"],
-      ["epithelial cell", ""],
-      ["liver", "UBERON:0002107"]
+    "immortalized t cell": [
+      [
+        "t cell",
+        "CL:0000084"
+      ],
+      [
+        "thymocyte",
+        "CL:0000893"
+      ],
+      [
+        "lymphocyte",
+        ""
+      ],
+      [
+        "thymus",
+        "UBERON:0002370"
+      ]
     ],
-    "hepatocyte": [
-      ["hepatocyte", "CL:0000182"],
-      ["liver", "UBERON:0002107"]
+    "t cell": [
+      [
+        "t cell",
+        "CL:0000084"
+      ],
+      [
+        "thymus",
+        "UBERON:0002370"
+      ]
     ]
   },
   "tier_rules": [
-    {"pattern": "hepatocyte", "score": 89, "label": "hepatocyte"},
-    {"pattern": "hepatoblast|liver.*(progenitor|stem)", "score": 86, "label": "liver progenitor cell"},
-    {"pattern": "epithelial cell", "score": 80, "label": "generic epithelial cell"}
+    {
+      "pattern": "t cell",
+      "score": 89,
+      "label": "T cell"
+    },
+    {
+      "pattern": "thymocyte|t cell.*(progenitor|precursor)",
+      "score": 86,
+      "label": "T cell progenitor"
+    },
+    {
+      "pattern": "lymphocyte",
+      "score": 80,
+      "label": "generic lymphocyte"
+    }
   ],
-  "tissue_rule": {"pattern": "\\bliver\\b", "score": 65, "label": "liver tissue"}
+  "tissue_rule": {
+    "pattern": "\\bthymus\\b",
+    "score": 65,
+    "label": "thymus tissue"
+  }
 }

@@ -1,7 +1,7 @@
 """Find enhancer-gene link and motif-call files on the IGVF and ENCODE portals for a cell type.
 
 Given a free-text cell-type description and/or ontology ID (e.g. ``"<cell type>"``,
-``hepatocyte``, ``CL:0000182``), queries both portals for:
+``T cell``, ``CL:0000084``), queries both portals for:
 
   - enhancer-gene links   (ENCODE-rE2G, ABC, IGVF scE2G)
   - motif instance calls  (ChromBPNet / TF-MoDISco / Fi-NeMo hit calls; "sequence motifs instances")
@@ -799,7 +799,7 @@ def print_top_suggestions(manifest: "pd.DataFrame") -> None:
 
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--cell-type", default="", help="Free-text cell type description, e.g. \"hepatocyte\"")
+    parser.add_argument("--cell-type", default="", help="Free-text cell type description, e.g. \"T cell\"")
     parser.add_argument("--ontology-id", default="", help="Ontology ID, e.g. CL:0000182")
     parser.add_argument(
         "--synonyms", default=None,
