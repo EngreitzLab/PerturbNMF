@@ -15,6 +15,9 @@ QUALITY_LABEL_PHRASES = [
     "miscellaneous",
 ]
 QUALITY_SUMMARY_PHRASES = ["coheren", "incoherent", "heterogene", "grab bag", "grab-bag"]
+# Established biological names that contain a quality word; removed before the quality check.
+# "heterogeneous nuclear ribonucleoprotein" (hnRNP) is a protein family, not a comment on the program.
+QUALITY_WORD_FALSE_FRIENDS = re.compile(r"heterogeneous nuclear (ribonucleoprotein|rna)", re.IGNORECASE)
 PARENTHESISED_GENE = re.compile(r"\([A-Z][A-Z0-9-]{1,9}\)")
 VALID_STATUSES = {"primary_explanation", "contributing", "ruled_out", "cannot_assess"}
 MAX_LABEL_WORDS = 6
@@ -39,8 +42,9 @@ def label_problems(prefix: str, label: str, banned_words: Iterable[str]) -> List
     hit = lowered & set(banned_words)
     if hit:
         problems.append(f"{prefix}: label uses banned word(s) {sorted(hit)}: {label!r}")
+    label_text = QUALITY_WORD_FALSE_FRIENDS.sub("", label).lower()
     for phrase in QUALITY_LABEL_PHRASES:
-        if phrase in label.lower():
+        if phrase in label_text:
             problems.append(f"{prefix}: label uses quality word {phrase!r}: {label!r}")
     if PARENTHESISED_GENE.search(label):
         problems.append(f"{prefix}: label carries a parenthesised gene tag: {label!r}")
@@ -48,6 +52,6 @@ def label_problems(prefix: str, label: str, banned_words: Iterable[str]) -> List
 
 
 def summary_problems(prefix: str, summary: str) -> List[str]:
-    lowered = summary.lower()
+    lowered = QUALITY_WORD_FALSE_FRIENDS.sub("", summary).lower()
     return [f"{prefix}: brief_summary comments on coherence ({phrase!r})"
             for phrase in QUALITY_SUMMARY_PHRASES if phrase in lowered]
