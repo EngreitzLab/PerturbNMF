@@ -1,0 +1,24 @@
+# Allowlist for tools/check_no_lab_specific_content.py
+#
+# Each entry needs a comment explaining why it is allowed.
+#   path: <glob>     exempt an entire file (fnmatch glob, repo-relative)
+#   text: <literal>  ignore this literal string (case-insensitive) wherever it appears
+
+# Authorship / citation metadata (author contact + affiliation are intentional)
+path: CITATION.cff
+path: .zenodo.json
+path: CHANGELOG.md
+
+# The guard itself lists the forbidden patterns
+path: tools/check_no_lab_specific_content.py
+path: tools/lab_specific_allowlist.txt
+
+# Lock files (package hashes/URLs only)
+path: pixi.lock
+path: **/pixi.lock
+
+# TODO(owner): tests/data/mini_ccperturb.h5ad is a subsample of a study dataset that has
+# been tracked since the initial commit. Decide whether derived study data belongs in a
+# public repo; if not, replace it with a synthetic fixture and remove these two entries.
+path: tests/data/mini_ccperturb.h5ad
+text: mini_ccperturb

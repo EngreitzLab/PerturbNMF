@@ -10,9 +10,9 @@ This repo is **public**. Nothing project-specific may be checked in:
 
 - No dataset, cell-line, screen, or study names, and no dated run directories (e.g. `MMDDYY_<study>_...`).
 - No collaborator or personal names, emails, or usernames in runnable code or docs (authorship metadata in `CITATION.cff`, `.zenodo.json`, `CHANGELOG.md`, and README fork links is fine).
-- No lab- or cluster-specific paths (group storage mounts, `$SCRATCH`, home dirs) and no cluster-specific partitions/accounts. Use placeholders (`/path/to/...`, `<partition>`, `<your_email>`) or env vars (`PIPELINE_ROOT`, `SLURM_PARTITION`, `SLURM_MAIL_USER`).
+- No lab- or cluster-specific paths (group storage mounts, cluster scratch variables, home dirs) and no cluster-specific partitions/accounts. Use placeholders (`/path/to/...`, `<partition>`, `<your_email>`) or env vars (`PIPELINE_ROOT`, `SLURM_PARTITION`, `SLURM_MAIL_USER`).
 - Study analyses, worklogs, run reports, and generated outputs belong in a **private** repo, not here. Never commit `tasks/` or `.baton/` (both gitignored).
-- Before committing, run the guard: `bash tools/check_no_lab_specific_content.sh` (CI runs it on every push/PR). If a hit is legitimate, add it to `tools/lab_specific_allowlist.txt` with a comment explaining why.
+- Before committing, run the guard: `python3 tools/check_no_lab_specific_content.py` (CI runs it on every push/PR; `pre-commit install` runs it on staged changes). If a hit is legitimate, add it to `tools/lab_specific_allowlist.txt` with a comment explaining why.
 
 ## Pipeline Structure
 
