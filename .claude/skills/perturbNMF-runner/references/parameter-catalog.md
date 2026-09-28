@@ -575,7 +575,7 @@ Runs after Annotation to attach PubMed/PubTator evidence to each program.
 |-----------|------|---------|-------------|
 | `--programs` | str | all | Comma-separated program IDs (e.g. `2,6,33,34`) |
 | `--interactions` | str | (built-in 17-verb list) | Comma-separated interaction verbs for query formulation |
-| `--domain-keywords` | str | (built-in vascular set) | Comma-separated domain keywords for evidence scoring |
+| `--domain-keywords` | str | (built-in generic set) | Comma-separated domain keywords for evidence scoring |
 | `--max-papers` | int | `30` | Max papers per program |
 | `--max-pubtator-results` | int | `50` | Max results per PubTator query |
 | `--max-llm-queries` | int | `8` | Max LLM-generated queries per program |

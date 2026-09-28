@@ -70,7 +70,7 @@ Mines PubMed/PubTator for evidence supporting the program annotations produced b
 |-----------|---------|-------------|
 | `--programs` | all | Comma-separated program IDs (e.g. `2,6,33,34`) |
 | `--interactions` | (built-in 17-verb list) | Comma-separated interaction verbs used to formulate queries |
-| `--domain-keywords` | (built-in vascular set) | Comma-separated domain keywords for evidence scoring |
+| `--domain-keywords` | (built-in generic set) | Comma-separated domain keywords for evidence scoring |
 | `--max-papers` | `30` | Max papers per program |
 | `--max-pubtator-results` | `50` | Max results per PubTator query |
 | `--max-llm-queries` | `8` | Max LLM-generated queries per program |

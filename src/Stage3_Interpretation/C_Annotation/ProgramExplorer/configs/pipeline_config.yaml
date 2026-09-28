@@ -43,8 +43,9 @@ topics: null
 # Species for STRING-DB (10090 = mouse, 9606 = human)
 species: 9606
 
-# Literature search keyword (for PubMed queries)
-keyword: '(endothelial OR endothelium OR "vascular endothelial")'
+# Literature search keyword (for PubMed queries) restricting results to your
+# tissue/cell type, e.g. '("T cell" OR lymphocyte)'. Empty = no keyword filter.
+keyword: ''
 
 # LLM prompt context
 annotation_role: developmental biologist

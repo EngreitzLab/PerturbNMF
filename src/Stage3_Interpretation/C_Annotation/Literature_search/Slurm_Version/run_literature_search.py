@@ -6,7 +6,7 @@ Usage:
         --excel programs.xlsx \
         --output-dir ./output \
         --interactions "regulates,induces,promotes,inhibits" \
-        --domain-keywords "angiogenesis,proliferation,migration"
+        --domain-keywords "proliferation,migration,differentiation"
 """
 from __future__ import annotations
 
@@ -295,7 +295,7 @@ def main(argv=None):
                         default="regulates,induces,promotes,inhibits,suppresses,activates,binds,phosphorylates,modulates,mediates,targets,controls,decreases,increases,blocks,triggers,catalyzes",
                         help="Comma-separated interaction verbs for query formulation")
     parser.add_argument("--domain-keywords", type=str,
-                        default="angiogenesis,permeability,barrier,inflammation,proliferation,migration,sprouting,hypoxia,metabolism,junction,adhesion,leukocyte,shear,tip cell,stalk cell,arterial,venous,capillary,blood-brain barrier,bbb",
+                        default="inflammation,proliferation,migration,adhesion,metabolism,hypoxia,differentiation,apoptosis,cell cycle,signaling,stress response,development",
                         help="Comma-separated domain keywords for evidence scoring")
     parser.add_argument("--max-papers", type=int, default=30,
                         help="Max papers per program (default: 30)")

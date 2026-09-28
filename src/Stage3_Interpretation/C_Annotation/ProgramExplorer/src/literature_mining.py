@@ -74,10 +74,9 @@ def _ensure_global_uniqueness(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 DOMAIN_KEYWORDS = [
-    "angiogenesis", "permeability", "barrier", "inflammation", "proliferation",
-    "migration", "sprouting", "hypoxia", "metabolism", "junction", "adhesion",
-    "leukocyte", "shear", "tip cell", "stalk cell", "arterial", "venous",
-    "capillary", "blood-brain barrier", "bbb"
+    "inflammation", "proliferation", "migration", "adhesion", "metabolism",
+    "hypoxia", "differentiation", "apoptosis", "cell cycle", "signaling",
+    "stress response", "development"
 ]
 
 INTERACTION_VERBS = [
@@ -519,11 +518,11 @@ def validate_regulator_with_string(
 
 def validate_regulator_program(
     regulator: str, program_genes: List[str],
-    keyword: str = "endothelial OR vascular",
+    keyword: str = "",
     max_pmids: int = 50, min_relation_score: float = 0.5
 ) -> Dict[str, Any]:
     genes_or = " OR ".join(program_genes[:10])
-    query = f"({regulator}) AND ({genes_or}) AND ({keyword})"
+    query = f"({regulator}) AND ({genes_or})" + (f" AND ({keyword})" if keyword else "")
     logger.info(f"  Validating {regulator}: {query[:80]}...")
     time.sleep(PUBTATOR_RATE_LIMIT)
     search_results = search_pubtator(query, max_results=60)
@@ -600,7 +599,7 @@ def validate_regulator_program(
 
 def validate_program_regulators(
     program_id: int, regulator_data: Dict[int, pd.DataFrame],
-    program_genes: List[str], keyword: str = "endothelial OR vascular",
+    program_genes: List[str], keyword: str = "",
     top_n_regulators: int = 3, top_n_positive_regulators: Optional[int] = None,
     top_n_negative_regulators: Optional[int] = None,
     max_pmids_per_regulator: int = 50, use_string: bool = True,

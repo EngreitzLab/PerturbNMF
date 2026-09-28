@@ -16,10 +16,9 @@ PUBTATOR_API_BASE = "https://www.ncbi.nlm.nih.gov/research/pubtator3-api"
 EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 
 DEFAULT_DOMAIN_KEYWORDS = [
-    "angiogenesis", "permeability", "barrier", "inflammation", "proliferation",
-    "migration", "sprouting", "hypoxia", "metabolism", "junction", "adhesion",
-    "leukocyte", "shear", "tip cell", "stalk cell", "arterial", "venous",
-    "capillary", "blood-brain barrier", "bbb"
+    "inflammation", "proliferation", "migration", "adhesion", "metabolism",
+    "hypoxia", "differentiation", "apoptosis", "cell cycle", "signaling",
+    "stress response", "development"
 ]
 
 DEFAULT_INTERACTION_VERBS = [

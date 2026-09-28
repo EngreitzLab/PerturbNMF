@@ -396,7 +396,7 @@ def generate_celltype_summary(
     Output format:
         program,highly_cell_type_specific,moderately_enriched,weakly_enriched,depleted
         Program_1,,,,
-        Program_2,Large-artery,,BBB-high capillary,
+        Program_2,Cell_type_A,,Cell_type_B,
         ...
 
     Each cell contains pipe-separated cell type names for that category.

@@ -100,12 +100,9 @@ class PipelineConfig:
     # Optional settings with defaults
     topics: Optional[List[int]] = None  # None = all topics
     species: int = 10090  # Mouse by default
-    keyword: str = '(endothelial OR endothelium OR "vascular endothelial")'
-    annotation_role: str = "vascular-biology specialist"
-    annotation_context: str = (
-        "a gene program extracted from single-cell Perturb-seq of mouse brain "
-        "endothelial cells (ECs)"
-    )
+    keyword: str = ""  # PubMed keyword for your tissue/cell type; empty = no keyword filter
+    annotation_role: str = "molecular and cell biologist"
+    annotation_context: str = "a gene program extracted from single-cell Perturb-seq"
     n_top_genes: int = 300
     top_loading: int = 20
     top_unique: int = 10
@@ -122,7 +119,7 @@ class PipelineConfig:
     llm_wait: bool = False  # Default: do not wait; resume later
 
     # Vertex AI settings (only used if llm_backend="vertex")
-    vertex_bucket: str = "gs://perturbseq/batch"
+    vertex_bucket: str = os.environ.get("VERTEX_BUCKET", "")  # e.g. gs://<your-bucket>/batch
 
     # Gene summary options
     full_summaries: bool = False  # Use full HTML summaries (3x longer)
@@ -858,7 +855,7 @@ Examples:
   # Resume from parsing (provide GCS prefix from batch job)
   python run_pipeline.py --config configs/pipeline_config.yaml \\
     --start-from parse_results \\
-    --gcs-prefix gs://perturbseq/batch/prediction-model-2024...
+    --gcs-prefix gs://<your-bucket>/batch/prediction-model-2024...
 
 Steps:
   string_enrichment  Step 1: Extract genes + STRING enrichment + cell-type summary

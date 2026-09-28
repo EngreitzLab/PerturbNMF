@@ -66,7 +66,7 @@ python3 "$SLURM_DIR/run_literature_search.py" \
         --llm-model "claude-sonnet-4-5-20250929" \
         --max-papers 30 \
         --interactions "regulates,induces,promotes,inhibits,suppresses,activates,binds,modulates" \
-        --domain-keywords "angiogenesis,permeability,barrier,inflammation,proliferation,migration,sprouting,hypoxia,metabolism" \
+        --domain-keywords "inflammation,proliferation,migration,adhesion,metabolism,hypoxia,differentiation,apoptosis" \
         #--semantic-check \
         #--resume \
 
