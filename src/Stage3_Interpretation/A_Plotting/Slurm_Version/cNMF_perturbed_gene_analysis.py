@@ -21,7 +21,7 @@ from Stage3_Interpretation.A_Plotting.src import plot_umap_per_gene, plot_top_pr
                          compute_gene_correlation_matrix, compute_gene_waterfall_cor,perturbed_program_dotplot, \
                          plot_perturbation_vs_control, \
                          export_gene_html, write_gene_share_index, \
-                         check_normalized, ensure_umap
+                         check_normalized, ensure_umap, condition_labels_from_obs
 
 def main():
 
@@ -48,7 +48,7 @@ def main():
     parser.add_argument('--show', action="store_true", help='display plots interactively')
     parser.add_argument('--output_format', type=str, default='SVG', choices=['PDF', 'SVG', 'HTML'], help='output format: PDF (matplotlib + PyPDF2 merge), SVG (matplotlib + svglib merge), HTML (interactive Plotly share folder)')
     parser.add_argument('--n_processes', type=int, default=4, help='number of parallel processes for --parallel mode. Each worker holds a copy-on-write fork of mdata, so RAM scales with worker count: on large data (e.g. 1M cells x 30K genes), -1 (all cores) on a high-CPU node can hit 30-70 GB RSS. Default 4 keeps it bounded. Set -1 only when you know the per-worker RAM cost.')
-    parser.add_argument('--Conditions', nargs='*', type=str, default=['D0', 'sample_D1', 'sample_D2', 'sample_D3'], help='list of condition names')
+    parser.add_argument('--Conditions', nargs='*', type=str, default=None, help='list of condition names (values of --categorical_key). Default: all unique values in the h5mu')
     parser.add_argument('--umap_dot_size', type=int, default=10, help='dot size for UMAP plots')
     parser.add_argument('--expressed_only', action="store_true", help='only plot perturbed genes found in the gene expression matrix (default: plot all perturbed genes)')
     parser.add_argument('--gene_list_file', type=str, default=None, help='path to a file with one gene name per line to process (overrides automatic perturbed gene detection)')
@@ -95,6 +95,11 @@ def main():
 
     # compute UMAP/PCA from top-variance genes if missing
     ensure_umap(mdata, args.data_key, args.prog_key)
+
+    # condition labels default to the values of --categorical_key in the data
+    if args.Conditions is None:
+        args.Conditions = condition_labels_from_obs(mdata[args.data_key].obs, args.categorical_key)
+        print(f"--Conditions not given; using {args.categorical_key} values from the h5mu: {args.Conditions}")
 
 
     # found detected perturbed gene (use gene symbols from var column when var_names are Ensembl IDs)

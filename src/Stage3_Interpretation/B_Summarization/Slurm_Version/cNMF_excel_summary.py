@@ -14,7 +14,7 @@ Usage:
     --out_dir /path/to/output \
     --run_name my_run \
     --K 50 --sel_thresh 0.2 \
-    --Sample D0 D1 D2 D3
+    --Sample condA condB   # optional; default: all values of --categorical_key
 """
 
 import os
@@ -73,9 +73,9 @@ def main():
     parser.add_argument('--perturbation_file_name', type=str, default='perturbation_association_results',
         help='Perturbation result file stem (between "{K}_" and "_{Condition}.txt"). '
              'Default: perturbation_association_results')
-    parser.add_argument('--Sample', nargs='*', type=str,
-        default=['D0', 'sample_D1', 'sample_D2', 'sample_D3'],
-        help='List of condition / sample labels. Default: D0 sample_D1 sample_D2 sample_D3')
+    parser.add_argument('--Sample', nargs='*', type=str, default=None,
+        help='List of condition / sample labels (values of --categorical_key). '
+             'Default: all unique values in the h5mu')
     parser.add_argument('--effect_size', type=str, default='log2FC',
         help='Effect-size column in perturbation files. Default: log2FC')
     parser.add_argument('--control_target_name', type=str, default='non-targeting',
@@ -149,6 +149,14 @@ def main():
     # ── Load MuData ──
     print(f'Loading MuData: {args.mdata_path}')
     mdata = mu.read(args.mdata_path)
+
+    # condition labels default to the values of --categorical_key in the data
+    if args.Sample is None:
+        obs = mdata[args.data_key].obs
+        if args.categorical_key not in obs.columns:
+            raise KeyError(f"obs column '{args.categorical_key}' not found; pass --Sample explicitly")
+        args.Sample = [str(v) for v in obs[args.categorical_key].dropna().unique()]
+        print(f"--Sample not given; using {args.categorical_key} values from the h5mu: {args.Sample}")
 
     # ── Evaluation file paths ──
     GO_path = f'{eval_base}/{args.K}_GO_term_enrichment.txt'

@@ -49,7 +49,7 @@ Generates a multi-panel figure to guide K selection. Reads pre-computed Stage 2 
 | `--pval` | float | `0.05` | P-value threshold |
 | `--eval_folder_name` | str | **required** | Path to Stage 2 Evaluation results |
 | `--sel_threshs` | float list | `0.2 2.0` | Density thresholds |
-| `--Conditions` | str list | `D0 sample_D1 sample_D2 sample_D3` | Condition labels matching the categorical key used during evaluation |
+| `--Conditions` | str list | all unique values of the categorical key in the h5mu | Condition labels matching the categorical key used during evaluation (e.g. `condA condB`) |
 | `--selected_k` | int | `None` | K value to highlight with a red dashed line |
 | `--go_file` | str | `{k}_GO_term_enrichment.txt` | GO enrichment file name pattern (use `{k}` for the K value) |
 | `--geneset_file` | str | `{k}_geneset_enrichment.txt` | Geneset enrichment file name pattern |
@@ -104,7 +104,7 @@ Produces one comprehensive panel per cNMF program. Loops over all programs in th
 | `--figsize` | float list (2) | `35 35` | Figure size as `width height`. With `--square_plots`, only width is used (height auto-scales with condition count) |
 | `--show` | flag | off | Display plots interactively |
 | `--output_format` | str (choice) | `SVG` | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-program interactive Plotly pages directly under `save_path` |
-| `--Conditions` | str list | `D0 sample_D1 sample_D2 sample_D3` | List of condition names |
+| `--Conditions` | str list | all unique values of the categorical key in the h5mu | List of condition names (e.g. `condA condB`) |
 | `--programs` | int list | `None` (all) | Specific program numbers to plot (e.g. `4 5 6`). If omitted, every program in the h5mu is plotted |
 | `--subsample_frac` | float | `None` (all) | Fraction of cells to subsample for UMAP plots (e.g. `0.1` for 10%) |
 | `--corr_matrix_path` | str | `None` | Base path for precomputed waterfall correlation matrices. Files are expected as `<base>_<sample>.txt`. Falls back to computing if not found |
@@ -164,7 +164,7 @@ Produces one comprehensive panel per **perturbed gene** — counterpart to the p
 | `--show` | flag | off | Display plots interactively |
 | `--output_format` | str (choice) | `SVG` | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-gene interactive Plotly pages directly under `save_path` |
 | `--n_processes` | int | `-1` | Number of parallel processes (`-1` = all available cores) |
-| `--Conditions` | str list | `D0 sample_D1 sample_D2 sample_D3` | List of condition names |
+| `--Conditions` | str list | all unique values of the categorical key in the h5mu | List of condition names (e.g. `condA condB`) |
 | `--umap_dot_size` | int | `10` | Dot size for UMAP plots |
 | `--expressed_only` | flag | off | Only plot perturbed genes found in the gene expression matrix (default plots all perturbed genes) |
 | `--gene_list_file` | str | `None` | Path to a file with one gene name per line to process (overrides automatic perturbed gene detection) |

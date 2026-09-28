@@ -63,7 +63,6 @@ python3 "${PIPELINE_ROOT}/src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNM
         --save_path "$LOG_DIR" \
         --square_plots \
         --figsize 35 35 \
-        --Conditions D0 D1 D2 D3 \
         --output_format PDF \
         --n_processes 4 \
         --umap_dot_size 10 \
@@ -77,6 +76,8 @@ python3 "${PIPELINE_ROOT}/src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNM
         --subsample_frac 0.1 \
         --parallel
 
+        # Optional: condition labels (default: all values of --categorical_key in the h5mu):
+        #--Conditions condA condB
         # Note: --control_target_name (set above) marks the control in plots and is
         # excluded from the per-gene perturbation panels (it is not tested in the
         # perturbation-association results, so it has no data to plot).

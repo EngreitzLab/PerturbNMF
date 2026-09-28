@@ -58,7 +58,6 @@ python3 "${PIPELINE_ROOT}/src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNM
         --p_value 0.05 \
         --save_path "$LOG_DIR" \
         --output_format PDF \
-        --Conditions D0 D1 D2 D3 \
         --square_plots \
         --figsize 35 40 \
         --categorical_key "batch" \
@@ -73,6 +72,8 @@ python3 "${PIPELINE_ROOT}/src/Stage3_Interpretation/A_Plotting/Slurm_Version/cNM
         # still required, and --output_format HTML still requires --perturb_path_base.
 
         # Reference flags (uncomment + add to the python invocation above to enable):
+        # Optional: condition labels (default: all values of --categorical_key in the h5mu):
+        #--Conditions condA condB
         #--data_key "rna"
         #--prog_key "cNMF"
         #--gene_name_key "gene_names"

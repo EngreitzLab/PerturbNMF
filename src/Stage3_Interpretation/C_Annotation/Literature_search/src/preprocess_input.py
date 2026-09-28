@@ -7,7 +7,7 @@ Usage:
         --summary-excel /path/to/summary_table.xlsx \
         --output /path/to/lit_search_input.xlsx \
         --sheet-name "Summary" \
-        --Conditions "D0,sample_D1,sample_D2,sample_D3"
+        --Conditions "condA,condB"
 """
 from __future__ import annotations
 
@@ -85,7 +85,7 @@ def convert_summary_to_lit_input(
     summary_df : DataFrame
         Summary table with index = program_name.
     conditions : list of str
-        Sample/condition names (e.g. ["D0", "sample_D1", ...]).
+        Sample/condition names (e.g. ["condA", "condB"]).
     top_genes_col : str
         Column name for top loaded genes.
     num_genes : int or None
@@ -157,7 +157,7 @@ def main(argv=None):
     )
     parser.add_argument(
         "--Conditions", type=str, required=True,
-        help="Comma-separated condition/sample names (e.g. 'D0,sample_D1,sample_D2,sample_D3')"
+        help="Comma-separated condition/sample names (e.g. 'condA,condB')"
     )
     parser.add_argument(
         "--programs", type=str, default=None,

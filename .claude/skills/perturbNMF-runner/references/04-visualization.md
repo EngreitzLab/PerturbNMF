@@ -23,7 +23,7 @@
 |-----------|---------|-------------|
 | `--K` | `[30, 50, 70, 80, 100, 200, 300]` | K values |
 | `--sel_threshs` | `[0.2, 2.0]` | Density thresholds |
-| `--Conditions` | `['D0', 'sample_D1', 'sample_D2', 'sample_D3']` | Condition labels matching the categorical key used during evaluation |
+| `--Conditions` | all unique values of the categorical key in the h5mu | Condition labels matching the categorical key used during evaluation |
 | `--groupby` | `sample` | Grouping variable |
 | `--pval` | `0.05` | P-value threshold |
 | `--selected_k` | None | K value to highlight with a red dashed line |

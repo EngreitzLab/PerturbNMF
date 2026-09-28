@@ -56,7 +56,6 @@ python3 "${PIPELINE_ROOT}/src/Stage3_Interpretation/B_Summarization/Slurm_Versio
         --K 50 \
         --sel_thresh 0.2 \
         --num_gene 300 \
-        --Sample D0 D1 D2 D3 \
         --categorical_key "batch" \
         --perturbation_file_name "CRT" \
         --effect_size "approx_log2FC" \
@@ -67,6 +66,8 @@ python3 "${PIPELINE_ROOT}/src/Stage3_Interpretation/B_Summarization/Slurm_Versio
         --guide_targets_key "guide_targets" \
         --gene_names_key "symbol" \
         --adjusted_pval_key "Adjusted P-value"
+        # Optional: condition labels (default: all values of --categorical_key in the h5mu):
+        # --Sample condA condB \
         # Optional: override the auto-derived output directory:
         # --save_path "$LOG_DIR/Interpretation/Summary_table/50_0_2" \
         # Optional: override the auto-derived input h5mu path:

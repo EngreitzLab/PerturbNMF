@@ -115,7 +115,7 @@ other stage (no notebook required). Submit one job per K to cover multiple K val
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--sel_thresh` | `0.2` | Density threshold (`0.2` → `0_2`, `2.0` → `2_0`) |
-| `--Sample` | `D0 sample_D1 sample_D2 sample_D3` | Condition/sample labels (e.g. `D0 D1 D2 D3`, `WTC`) |
+| `--Sample` | all unique values of the categorical key in the h5mu | Condition/sample labels (e.g. `condA condB`) |
 | `--categorical_key` | `sample` | obs column for sample/condition grouping (e.g. `batch`, `timepoint`) |
 | `--perturbation_file_name` | `perturbation_association_results` | Perturbation file stem (e.g. `CRT`) |
 | `--effect_size` | `log2FC` | Effect-size column (e.g. `approx_log2FC`) |

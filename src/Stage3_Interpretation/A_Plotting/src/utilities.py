@@ -278,3 +278,35 @@ def check_normalized(adata, key):
             "    sc.pp.log1p(adata)\n"
             "and save the normalized matrix into mdata['rna'].X."
         )
+
+
+def condition_labels_from_obs(obs, categorical_key):
+    """Unique non-null values of obs[categorical_key], in order of appearance.
+
+    Used when --Conditions / --Sample is not given, so condition labels come from the
+    data (same order as the evaluation stage, which names its per-condition outputs
+    after these values).
+    """
+    if categorical_key not in obs.columns:
+        raise KeyError(
+            f"obs column '{categorical_key}' not found; pass the condition labels explicitly "
+            f"or set the categorical key to a column in obs ({list(obs.columns)[:10]}...)"
+        )
+    return [str(v) for v in pd.Series(obs[categorical_key]).dropna().unique()]
+
+
+def read_condition_labels_from_h5mu(h5mu_path, data_key, categorical_key):
+    """Like condition_labels_from_obs, but reads only mod/<data_key>/obs/<categorical_key>
+    from the .h5mu instead of loading the full MuData."""
+    import h5py
+    try:
+        from anndata.io import read_elem
+    except ImportError:
+        from anndata.experimental import read_elem
+    with h5py.File(h5mu_path, 'r') as f:
+        obs_path = f'mod/{data_key}/obs/{categorical_key}'
+        if obs_path not in f:
+            raise KeyError(
+                f"'{obs_path}' not found in {h5mu_path}; pass the condition labels explicitly")
+        column = read_elem(f[obs_path])
+    return [str(v) for v in pd.Series(column).dropna().unique()]
