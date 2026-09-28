@@ -1,6 +1,6 @@
 """Build a self-contained HTML viewer for a set of v3 gene-program annotations.
 
-Layout (after the GPI "Reading Desk" viewer): a sticky rail listing every program on the left,
+Layout (after Irene Fan's GPI "Reading Desk"): a sticky rail listing every program on the left,
 grouped by peak condition (multi-condition runs) or by label family (single condition), and one
 program at a time in the main pane, with full-text search, #program-N deep links, arrow-key
 navigation and dark mode. No CDN and no external files: everything is inline, so the HTML can be
