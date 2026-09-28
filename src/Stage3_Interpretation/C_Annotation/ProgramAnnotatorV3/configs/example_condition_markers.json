@@ -1,0 +1,7 @@
+{
+  "_note": "Example: iPSC-to-endothelial differentiation (illustrative). Canonical marker genes of the cells in each condition, keyed by condition label; used ONLY by the deterministic condition_composition screen (build_confounder_screens.py --condition-markers). Useful when conditions differ in which cells are present; replace with your own conditions.",
+  "D0": {"description": "hiPSC / pluripotent", "genes": ["POU5F1", "NANOG", "SOX2", "LIN28A", "DPPA4", "TDGF1", "L1TD1", "ZFP42", "DNMT3B", "PRDM14", "LEFTY1", "LEFTY2", "UTF1", "SALL4", "FOXD3", "DPPA2", "DPPA3", "TERF1"]},
+  "D1": {"description": "primitive streak", "genes": ["TBXT", "MIXL1", "EOMES", "GSC", "MESP1", "MESP2", "WNT3", "WNT8A", "FGF8", "FGF4", "CDX1", "CDX2", "EVX1", "SP5", "NODAL", "LHX1", "TBX6", "MSGN1"]},
+  "D2": {"description": "lateral mesoderm", "genes": ["HAND1", "HAND2", "FOXF1", "BMP4", "ISL1", "PDGFRA", "KDR", "APLNR", "MSX1", "MSX2", "GATA4", "ETV2", "TAL1", "LMO2", "GATA2", "SNAI2"]},
+  "D3": {"description": "arterial endothelial cell", "genes": ["CDH5", "PECAM1", "SOX17", "SOX7", "SOX18", "DLL4", "NOTCH1", "HEY1", "HEY2", "EFNB2", "GJA5", "GJA4", "CXCR4", "ERG", "FLI1", "ESAM", "CD34", "TIE1", "TEK", "NOS3", "UNC5B", "CLDN5", "KDR"]}
+}

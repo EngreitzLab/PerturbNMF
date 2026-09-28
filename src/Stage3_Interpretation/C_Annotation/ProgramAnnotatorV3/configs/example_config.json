@@ -1,12 +1,12 @@
 {
-  "_note": "Template for build_annotation_prompts.py and build_annotation_viewer.py. Paths are relative to data_dir. Drop conditions/regulators_by_condition/program_activity for a single-condition screen and use \"regulators\" instead.",
+  "_note": "Template for build_annotation_prompts.py and build_annotation_viewer.py. Paths are relative to data_dir. Drop conditions/regulators_by_condition/program_activity for a single-condition screen and use \"regulators\" instead. condition_design: \"unordered\" (default; stimuli, donors, cohorts) or \"ordered\" (timepoints, a dose series).",
   "data_dir": "path/to/annotation_inputs",
   "gene_loading": "gene_loading_top300_with_uniqueness.csv",
   "regulators_by_condition": "regulators_by_condition.csv",
   "program_activity": "program_activity_by_condition.csv",
   "conditions": [
-    {"label": "D0", "stage": "stage or condition description"},
-    {"label": "D1", "stage": "stage or condition description"}
+    {"label": "C1", "description": "what distinguishes this condition, e.g. day 1 / IFNG / donor A"},
+    {"label": "C2", "description": "what distinguishes this condition"}
   ],
   "enrichment": "string_enrichment_filtered.csv",
   "gene_coordinates": "gene_coordinates.tsv",
@@ -20,6 +20,8 @@
     "assay": "CRISPRi Perturb-seq (N targeted genes), 10x scRNA-seq",
     "k": 50,
     "significance_label": "how regulator significance was called, e.g. CRT adjusted p < 0.05 per condition",
-    "annotation_role": "the specialist the model should act as, e.g. vascular biologist"
+    "annotation_role": "the specialist the model should act as, e.g. vascular biologist",
+    "condition_variable": "what the conditions vary, e.g. timepoint, cytokine stimulus, donor, genotype",
+    "condition_design": "unordered"
   }
 }

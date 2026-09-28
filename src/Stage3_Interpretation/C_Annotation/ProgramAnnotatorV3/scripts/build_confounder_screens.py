@@ -16,12 +16,15 @@ Usage:
         --regulators regulators.csv \
         --output confounder_screens.json
 
-A differentiation time course adds one screen, `stage_composition`, enabled by passing both
---activity-by-condition and --stage-markers (see ../configs/example_stage_markers.json):
+A multi-condition screen whose conditions differ in which cells are present (e.g. timepoints of
+a differentiation) can add one screen, `condition_composition`, enabled by passing both
+--activity-by-condition and --condition-markers (see ../configs/example_condition_markers.json):
 
     python build_confounder_screens.py ... \
         --activity-by-condition program_activity_by_condition.csv \
-        --stage-markers ../configs/example_stage_markers.json
+        --condition-markers ../configs/example_condition_markers.json
+
+--stage-markers is a deprecated alias of --condition-markers.
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ import pandas as pd
 from scipy.stats import binomtest, hypergeom
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
+from conditions import warn_once  # noqa: E402
 from gene_coordinates import load_gene_coordinates  # noqa: E402
 
 TOP_N_GENES = 50
@@ -164,19 +168,20 @@ def score_gene_set_overlap(genes: List[str], gene_set: set, background: set) -> 
     }
 
 
-def score_stage_composition(
-    program_activity: pd.DataFrame, top_genes: List[str], stage_markers: Dict[str, dict],
+def score_condition_composition(
+    program_activity: pd.DataFrame, top_genes: List[str], condition_markers: Dict[str, dict],
     background: set,
 ) -> dict:
-    """Does this program just track which cells are present on a given day?
+    """Does this program just track which cells are present in a given condition?
 
-    In a differentiation time course a program can look like a coherent pathway when it is
-    really the transcriptome difference between two stages. Two deterministic signals of that:
-    activity that is close to a step function across days (nearly all of it on one day or one
-    contiguous block of days), and top genes that are the canonical markers of that stage.
-    Neither alone is decisive; both together point to composition rather than regulation.
+    When conditions differ in cell composition (e.g. timepoints of a differentiation), a program
+    can look like a coherent pathway when it is really the transcriptome difference between two
+    cell populations. Two deterministic signals of that: activity concentrated in one condition
+    (or, for ordered conditions, one contiguous block), and top genes that are the canonical
+    markers of that condition's cells. Neither alone is decisive; both together point to
+    composition rather than regulation.
     """
-    order = list(stage_markers)
+    order = list(condition_markers)
     by_condition = program_activity.set_index("condition")["mean_score"].reindex(order)
     total = float(by_condition.sum())
     peak = str(by_condition.idxmax())
@@ -185,8 +190,8 @@ def score_stage_composition(
     lowest = float(ranked.iloc[-1])
     markers = {
         condition: score_gene_set_overlap(top_genes, set(entry["genes"]), background)
-        | {"stage": entry["stage"]}
-        for condition, entry in stage_markers.items()
+        | {"description": entry["description"]}
+        for condition, entry in condition_markers.items()
     }
     return {
         "condition_order": order,
@@ -196,7 +201,7 @@ def score_stage_composition(
         "peak_share": round(float(by_condition.max()) / total, 3) if total else None,
         "peak_over_second": round(float(by_condition.max()) / second, 2) if second else None,
         "peak_over_lowest": round(float(by_condition.max()) / lowest, 2) if lowest else None,
-        "stage_marker_overlap": markers,
+        "marker_overlap": markers,
     }
 
 
@@ -206,7 +211,7 @@ def build_screens(
     screen_targets: set,
     regulators: pd.DataFrame,
     activity: pd.DataFrame | None = None,
-    stage_markers: Dict[str, dict] | None = None,
+    condition_markers: Dict[str, dict] | None = None,
 ) -> Dict[int, dict]:
     background_genes = set(gene_loading["Name"])
     background_chroms = Counter(
@@ -263,9 +268,9 @@ def build_screens(
                 "n_significant": int(len(significant)),
             },
         }
-        if activity is not None and stage_markers:
-            screens[int(program_id)]["stage_composition"] = score_stage_composition(
-                activity[activity["program_id"] == program_id], top_genes, stage_markers,
+        if activity is not None and condition_markers:
+            screens[int(program_id)]["condition_composition"] = score_condition_composition(
+                activity[activity["program_id"] == program_id], top_genes, condition_markers,
                 background_genes,
             )
     return screens
@@ -279,9 +284,10 @@ def main() -> int:
     parser.add_argument("--regulators", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--activity-by-condition", type=Path,
-                        help="program_id, condition, mean_score (time courses only)")
-    parser.add_argument("--stage-markers", type=Path,
-                        help="JSON {condition: {stage, genes}} in experimental order")
+                        help="program_id, condition, mean_score (multi-condition screens only)")
+    parser.add_argument("--condition-markers", "--stage-markers", dest="condition_markers", type=Path,
+                        help="JSON {condition: {description, genes}}: canonical marker genes of the "
+                             "cells in each condition (--stage-markers is a deprecated alias)")
     args = parser.parse_args()
 
     gene_loading = pd.read_csv(args.gene_loading)
@@ -299,14 +305,20 @@ def main() -> int:
     coordinates = load_gene_coordinates(args.gene_coordinates)
 
     activity = pd.read_csv(args.activity_by_condition) if args.activity_by_condition else None
-    stage_markers = None
-    if args.stage_markers:
-        stage_markers = {
-            k: v for k, v in json.loads(args.stage_markers.read_text()).items()
-            if not k.startswith("_")
-        }
+    if "--stage-markers" in sys.argv:
+        warn_once("--stage-markers is deprecated; use --condition-markers")
+    condition_markers = None
+    if args.condition_markers:
+        condition_markers = {}
+        for key, entry in json.loads(args.condition_markers.read_text()).items():
+            if key.startswith("_"):
+                continue
+            if "description" not in entry and "stage" in entry:
+                warn_once("marker-file key 'stage' is deprecated; rename it to 'description'")
+                entry["description"] = entry.pop("stage")
+            condition_markers[key] = entry
     screens = build_screens(
-        gene_loading, coordinates, screen_targets, regulators, activity, stage_markers
+        gene_loading, coordinates, screen_targets, regulators, activity, condition_markers
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(screens, indent=2), encoding="utf-8")

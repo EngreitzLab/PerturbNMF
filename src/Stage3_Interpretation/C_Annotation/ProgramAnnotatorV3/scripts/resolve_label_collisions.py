@@ -126,7 +126,7 @@ same family string rather than paraphrases of it, then distinguish within it:
      Cell cycle - G2M               Cell cycle - G1/S
 2. DISTINGUISH BY PROCESS, NOT BY GENE. The distinguisher must be a cell-process, pathway, \
 compartment, phase or state term. Use each program's upstream trigger, co-regulation mechanism, \
-cellular output, temporal window (time courses) and distinctive genes (all listed below) to find the process that sets it \
+cellular output, condition dependence (multi-condition screens) and distinctive genes (all listed below) to find the process that sets it \
 apart, then name the process. Do NOT use a bare gene symbol as the distinguisher and do NOT \
 append a gene in parentheses: a named sub-state needs no gene tag ("Cell cycle - G2M" beats \
 "Cell cycle - G2M mitotic exit (CDC20)"). The only exception is a gene that IS the accepted \
@@ -210,15 +210,11 @@ def cmd_detect(args: argparse.Namespace) -> int:
                 f"- upstream trigger: {slot_claim(entry, 'upstream_trigger')}\n"
                 f"- co-regulation mechanism: {slot_claim(entry, 'coregulation_mechanism')}\n"
                 f"- cellular output: {slot_claim(entry, 'cellular_output')}\n"
-                + (
-                    f"- temporal window: {slot_claim(entry, 'temporal_window')}\n"
-                    if (entry.get("interpretation") or {}).get("temporal_window")
-                    else ""
-                )
-                + (
-                    f"- group dependence: {slot_claim(entry, 'group_dependence')}\n"
-                    if (entry.get("interpretation") or {}).get("group_dependence")
-                    else ""
+                + "".join(
+                    f"- condition dependence: {slot_claim(entry, slot)}\n"
+                    # condition_dependence; temporal_window / group_dependence in older answers
+                    for slot in ("condition_dependence", "temporal_window", "group_dependence")
+                    if (entry.get("interpretation") or {}).get(slot)
                 )
                 + f"- top-loading genes: {', '.join(top)}\n"
                 f"- distinctive genes (high here, low elsewhere): {', '.join(distinctive) or '(none)'}\n"

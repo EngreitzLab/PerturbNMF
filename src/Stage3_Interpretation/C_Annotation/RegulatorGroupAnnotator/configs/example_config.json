@@ -1,10 +1,10 @@
 {
-  "_note": "Template for build_group_prompts.py and build_group_viewer.py. groups_dir holds the outputs of the deterministic steps (effect matrix, groups, promoter screen, evidence); paths are relative to this file unless absolute. Settings match the ProgramAnnotatorV3 config of the same screen. Drop `conditions` for a single-condition screen.",
+  "_note": "Template for build_group_prompts.py and build_group_viewer.py. groups_dir holds the outputs of the deterministic steps (effect matrix, groups, promoter screen, evidence); paths are relative to this file unless absolute. Settings match the ProgramAnnotatorV3 config of the same screen. Drop `conditions` for a single-condition screen. condition_design: \"unordered\" (default; stimuli, donors, cohorts) or \"ordered\" (timepoints, a dose series).",
   "groups_dir": "path/to/regulator_groups",
   "targets": "path/to/annotation_inputs/targets.tsv",
   "conditions": [
-    {"label": "D0", "stage": "stage or condition description"},
-    {"label": "D1", "stage": "stage or condition description"}
+    {"label": "C1", "description": "what distinguishes this condition, e.g. day 1 / IFNG / donor A"},
+    {"label": "C2", "description": "what distinguishes this condition"}
   ],
   "settings": {
     "dataset_name": "My screen (cNMF k=K, density threshold 0.2)",
@@ -13,6 +13,7 @@
     "k": 50,
     "significance_label": "how program effects were called, e.g. CRT adjusted p < 0.05 per condition",
     "annotation_role": "the specialist the model should act as, e.g. developmental biologist",
-    "condition_word": "differentiation"
+    "condition_variable": "what the conditions vary, e.g. timepoint, cytokine stimulus, donor, genotype",
+    "condition_design": "unordered"
   }
 }

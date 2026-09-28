@@ -11,10 +11,11 @@ Checks, per program:
   3. every PMID cited appears in the prompt's reference pool
   4. label is <= 6 words and free of the banned words
   5. >= 2 competing_readings, and every Step-1 confounder carries a status
-  6. time courses only (the prompt carries a stage_composition screen): stage_composition is
-     assessed, temporal_window is filled, and its peak day matches the prompt's. A regulator
-     timed to a day on which it was not significant is reported as a WARN, not a failure.
-     Cohort designs (the prompt says "Peak group:") get the same checks on group_dependence.
+  6. multi-condition screens only (the prompt says "Peak condition:"): condition_dependence is
+     filled and its peak condition matches the prompt's; condition_composition is assessed when
+     the prompt carries that screen. A regulator placed in a condition in which it was not
+     significant is reported as a WARN, not a failure. Answers to prompts built before the
+     rename (temporal_window / group_dependence, stage_composition) are checked the same way.
 
 Usage:
     python validate_annotation_answers.py --dispatch <annotation_dispatch> --arm v3 --programs 0-49
@@ -62,47 +63,52 @@ def genes_offered_in_prompt(prompt: str) -> set:
     )
 
 
-PEAK = {"day": re.compile(r"^Peak day: (\S+)", re.MULTILINE), "group": re.compile(r"^Peak group: (\S+)", re.MULTILINE)}
-CONDITION_SLOT = {"day": ("temporal_window", "regulator_timing"), "group": ("group_dependence", "regulator_pattern")}
-CROSS_DAY_ROW = re.compile(r"^- ([A-Za-z0-9.-]+): ((?:\S+ (?:[+-]\d+\.\d+\*?|n/a)\s*)+)", re.MULTILINE)
+PEAK = re.compile(r"^Peak (?:condition|day|group): (\S+)", re.MULTILINE)
+CROSS_PROFILE = re.compile(r"^### Cross-(?:condition|day|group) profile", re.MULTILINE)
+# condition_dependence; temporal_window / group_dependence in answers to older prompts
+CONDITION_SLOTS = ("condition_dependence", "temporal_window", "group_dependence")
+CROSS_CONDITION_ROW = re.compile(r"^- ([A-Za-z0-9.-]+): ((?:\S+ (?:[+-]\d+\.\d+\*?|n/a)\s*)+)", re.MULTILINE)
+COMPOSITION_SCREEN_HEADERS = ("condition composition (multi-condition)", "stage composition (time course)")
+CONFOUNDER_ALIASES = {"stage_composition": "condition_composition"}
 
 
-def significant_days_by_regulator(prompt: str, word: str = "day") -> dict:
+def significant_conditions_by_regulator(prompt: str) -> dict:
     """{regulator: {conditions it was significant in}} from the prompt's cross-condition profile."""
-    section = prompt.split(f"### Cross-{word} profile", 1)
+    section = CROSS_PROFILE.split(prompt, 1)
     if len(section) < 2:
         return {}
     body = section[1].split("\n## ", 1)[0]
-    days = {}
-    for gene, cells in CROSS_DAY_ROW.findall(body):
-        days[gene] = {day for day, value in re.findall(r"(\S+) ([+-]\d+\.\d+\*?|n/a)", cells) if value.endswith("*")}
-    return days
+    found = {}
+    for gene, cells in CROSS_CONDITION_ROW.findall(body):
+        found[gene] = {label for label, value in re.findall(r"(\S+) ([+-]\d+\.\d+\*?|n/a)", cells) if value.endswith("*")}
+    return found
 
 
-def validate_time_course(program_id: int, payload: dict, prompt: str, word: str = "day") -> Tuple[List[str], List[str]]:
+def validate_condition_dependence(program_id: int, payload: dict, prompt: str) -> Tuple[List[str], List[str]]:
     problems, warnings = [], []
-    slot, timing_key = CONDITION_SLOT[word]
-    window = (payload.get("interpretation") or {}).get(slot)
+    interpretation = payload.get("interpretation") or {}
+    slot = next((name for name in CONDITION_SLOTS if isinstance(interpretation.get(name), dict)), CONDITION_SLOTS[0])
+    window = interpretation.get(slot)
     if not isinstance(window, dict) or not str(window.get("claim", "")).strip():
         return [f"P{program_id}: {slot} not filled"], warnings
-    expected_peak = PEAK[word].search(prompt)
+    expected_peak = PEAK.search(prompt)
     claimed_peak = re.match(r"\s*([A-Za-z0-9_]+)", str(window.get("peak_condition", "")))
     if expected_peak and (not claimed_peak or claimed_peak.group(1) != expected_peak.group(1)):
         problems.append(
             f"P{program_id}: {slot}.peak_condition={window.get('peak_condition')!r}, "
             f"prompt says {expected_peak.group(1)}"
         )
-    significant_days = significant_days_by_regulator(prompt, word)
-    for entry in window.get(timing_key) or []:
+    significant = significant_conditions_by_regulator(prompt)
+    for entry in window.get("regulator_pattern") or window.get("regulator_timing") or []:
         symbol = str(entry.get("symbol", "")).strip()
-        if symbol not in significant_days:
-            warnings.append(f"P{program_id}: timed regulator {symbol!r} is not significant in any {word}")
+        if symbol not in significant:
+            warnings.append(f"P{program_id}: regulator {symbol!r} in {slot} is not significant in any condition")
             continue
-        unsupported = sorted(set(entry.get("conditions") or []) - significant_days[symbol])
+        unsupported = sorted(set(entry.get("conditions") or []) - significant[symbol])
         if unsupported:
             warnings.append(
-                f"P{program_id}: {symbol} timed to {unsupported}, significant only on "
-                f"{sorted(significant_days[symbol])}"
+                f"P{program_id}: {symbol} placed in {unsupported}, significant only in "
+                f"{sorted(significant[symbol])}"
             )
     return problems, warnings
 
@@ -171,9 +177,10 @@ def validate(program_id: int, directory: Path) -> Tuple[List[str], List[str]]:
     if len(readings) < 2:
         problems.append(f"P{program_id}: only {len(readings)} competing reading(s), need >= 2")
 
-    time_course = "stage composition (time course)" in prompt
-    required = REQUIRED_CONFOUNDERS | ({"stage_composition"} if time_course else set())
-    assessed = {c.get("confounder") for c in payload.get("confounder_assessment", [])}
+    has_composition = any(header in prompt for header in COMPOSITION_SCREEN_HEADERS)
+    required = REQUIRED_CONFOUNDERS | ({"condition_composition"} if has_composition else set())
+    assessed = {CONFOUNDER_ALIASES.get(c.get("confounder"), c.get("confounder"))
+                for c in payload.get("confounder_assessment", [])}
     missing = required - assessed
     if missing:
         problems.append(f"P{program_id}: confounders not assessed: {', '.join(sorted(missing))}")
@@ -186,12 +193,9 @@ def validate(program_id: int, directory: Path) -> Tuple[List[str], List[str]]:
         problems.append(f"P{program_id}: invalid status on {bad_status}")
 
     warnings: List[str] = []
-    if time_course:
-        timing_problems, warnings = validate_time_course(program_id, payload, prompt)
-        problems += timing_problems
-    elif PEAK["group"].search(prompt):
-        timing_problems, warnings = validate_time_course(program_id, payload, prompt, word="group")
-        problems += timing_problems
+    if PEAK.search(prompt):
+        condition_problems, warnings = validate_condition_dependence(program_id, payload, prompt)
+        problems += condition_problems
 
     return problems, warnings
 

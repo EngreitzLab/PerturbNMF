@@ -11,15 +11,13 @@ The prompt (system + user) asks for, in order:
 Evidence: top 30 genes in detail plus all program genes ranked, 30 distinctive genes, every
 significant regulator split by sign, STRING enrichment, screens, gene summaries.
 
-Time courses / multi-condition screens: when the config has `conditions`, each regulator is
-shown per condition (in experimental order) plus a cross-condition log2FC profile, per-condition
-program activity with the peak, a `temporal_window` interpretation slot and a
-`stage_composition` confounder (needs the stage-composition screen). Without `conditions` the
-single-condition prompt is produced.
-
-Cohort designs (settings.condition_design = "groups", e.g. young/aged x female/male animals): the
-same per-condition evidence, worded by group instead of by day, with a `group_dependence` slot in
-place of `temporal_window` and no stage_composition confounder (the groups are not a trajectory).
+Multi-condition screens (timepoints, stimuli, donors, genotypes, cohorts, ...): when the config
+has `conditions`, each regulator is shown per condition plus a cross-condition log2FC profile,
+with per-condition program activity and its peak, and a `condition_dependence` interpretation
+slot. settings.condition_variable names what the conditions vary (e.g. "timepoint");
+settings.condition_design = "ordered" (e.g. timepoints, a dose series) adds ordering language, the
+default "unordered" adds none. A `condition_composition` confounder is added when the screens were
+built with --condition-markers. Without `conditions` the single-condition prompt is produced.
 
 Config: see ../configs/example_config.json and ../README.md.
 
@@ -32,11 +30,15 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
+from conditions import normalise_conditions, read_condition_design, read_condition_variable  # noqa: E402
 
 MODEL = "claude-sonnet-4-5-20250929"
 MAX_TOKENS = 8192
@@ -319,88 +321,62 @@ def format_regulators(
     return "\n".join(lines)
 
 
-TIME_COURSE_SYSTEM_CONTEXT = """This is a DIFFERENTIATION TIME COURSE, read out by Perturb-seq \
-separately on every day:
-{stage_lines}
-Every regulator effect and every activity value in the evidence was measured on one specific \
-day. A program may track a stage on the intended trajectory, an alternative or off-target fate, \
-a cell-cycle phase, a signaling state, a housekeeping process or a technical artifact; and a \
-regulator may act on it at one stage only, or throughout.
+CONDITIONS_SYSTEM_CONTEXT = """This is a MULTI-CONDITION SCREEN, read out by Perturb-seq separately \
+in each condition. Condition variable: {variable}. Conditions{in_order}:
+{condition_lines}
+Every regulator effect and every activity value in the evidence was measured within one \
+condition. A program may be shared by all conditions or restricted to some; a regulator may act \
+on it in one condition only, in several, in all, or with opposite signs.{ordered_note}
 
 """
 
-TIME_COURSE_RULE = """8. TIME IS PART OF THE EVIDENCE. Never pool days. A regulator that moves the \
-program on D1 but not on D3 is a different claim from one that moves it on every day, so always \
-name the day(s). Missing significance on a day is not proof of no effect on that day: use the \
-cross-day log2FC profile to tell "no effect" from "same direction, below threshold".
+ORDERED_NOTE = """ The conditions are ordered, so a program can also track a position along \
+that order."""
+
+CONDITIONS_RULE = """8. CONDITION IS PART OF THE EVIDENCE. Never pool conditions. A regulator \
+that moves the program in one condition but not another is a different claim from one that moves \
+it in every condition, so always name the condition(s). Conditions can differ in power (cell \
+numbers, replicate spread), so missing significance in a condition is not proof of no effect \
+there: use the cross-condition log2FC profile to tell "no effect" from "same direction, below \
+threshold".
 
 9. Respond with ONLY"""
 
-TIME_COURSE_STAGE_COMPOSITION = """If any is the primary explanation, say so plainly and do NOT then build a pathway story on it.
-stage_composition (time course only): does the program simply read out WHICH CELLS ARE PRESENT
-on a day, rather than a regulated process within them? Decide it from the stage-composition
-screen in section E and the activity in section C2. It is primary only when all three hold:
-activity is concentrated on one day or one contiguous block of days; the top genes are that
-stage's canonical identity markers rather than a specific pathway; and nothing beyond "being
-that cell type" is visible in the genes. A stage-restricted activity profile on its own is
-expected for real stage-specific biology and does NOT make composition primary."""
+COMPOSITION_CONFOUNDER = """If any is the primary explanation, say so plainly and do NOT then build a pathway story on it.
+condition_composition (multi-condition only): does the program simply read out WHICH CELLS ARE
+PRESENT in a condition, rather than a regulated process within them? Decide it from the
+condition-composition screen in section E and the activity in section C2. It is primary only
+when all three hold: activity is concentrated in one condition{block}; the top genes are that
+condition's canonical identity markers rather than a specific pathway; and nothing beyond "being
+that cell type or state" is visible in the genes. Condition-restricted activity on its own is
+expected for real condition-specific biology and does NOT make composition primary."""
 
-TIME_COURSE_TEMPORAL_SLOT = """  - cellular_output: what the cells are doing as a result
-  - temporal_window: WHEN. The day the program peaks (section C2); the day(s) its regulators
-    act on it (section C); and, for each key regulator, whether its effect is stage-specific
-    (one day or one contiguous block of days), constitutive (same sign on most days), or
-    switches sign between days. Then say whether that ordering fits the mechanism you propose
-    — a regulator acting before or at the peak day can be a trigger; one acting only after the
-    peak cannot. Always fill this slot: every program has per-day data.
+CONDITION_DEPENDENCE_SLOT = """  - cellular_output: what the cells are doing as a result
+  - condition_dependence: WHERE. The condition(s) in which the program is most active (section
+    C2); the condition(s) in which its regulators act on it (section C); and, for each key
+    regulator, whether its effect is condition_specific (one condition{block}, or one level of a
+    factor), constitutive (same sign in most conditions), or sign_switch. Then say whether that
+    pattern fits the mechanism you propose.{ordering_check} Always fill this slot: every program
+    has per-condition data.
 A program can legitimately fill all four. That is one program described at four levels, not
 four competing hypotheses."""
 
-TIME_COURSE_STAGE_LABEL = """are useful.
+ORDERING_CHECK = """ The conditions are ordered, so also check the order: a
+    regulator acting before or at the peak condition can be a trigger; one acting only after the
+    peak cannot."""
 
-  STAGE-COMPOSITION PROGRAMS. If stage_composition is the primary explanation, label the stage
-  or cell identity the program reads out, in plain developmental terms.
+COMPOSITION_LABEL = """are useful.
+
+  COMPOSITION PROGRAMS. If condition_composition is the primary explanation, label the cell type
+  or state the program reads out, in plain terms.
 """
 
-TIME_COURSE_SCHEMA_SLOT = """                        "support_terms": [], "confidence": "high|medium|low", "pmids": []},
-    "temporal_window": {"claim": "", "peak_condition": "<day label only, e.g. D2>",
-                        "regulator_timing": [{"symbol": "", "conditions": [],
-                                              "pattern": "stage_specific|constitutive|sign_switch"}],
-                        "consistent_with_mechanism": <bool>, "confidence": "high|medium|low"}
-  },"""
-
-
-GROUPS_SYSTEM_CONTEXT = """This screen was read out by Perturb-seq SEPARATELY IN EACH GROUP of \
-animals:
-{group_lines}
-Every regulator effect and every activity value in the evidence was measured within one group. \
-The groups are cohorts, not stages of a trajectory. A program may be shared by all groups or \
-enriched in some; a regulator may act in every group, in some only, or with opposite signs.
-
-"""
-
-GROUPS_RULE = """8. GROUP IS PART OF THE EVIDENCE. Never pool groups. A regulator that moves the \
-program in one group but not another is a different claim from one that moves it in every group, \
-so always name the group(s). Groups differ in power (cell numbers, mouse-to-mouse spread), so \
-missing significance in a group is not proof of no effect there: use the cross-group log2FC \
-profile to tell "no effect" from "same direction, below threshold".
-
-9. Respond with ONLY"""
-
-GROUPS_SLOT = """  - cellular_output: what the cells are doing as a result
-  - group_dependence: WHERE. The group(s) in which the program is most active (section C2);
-    the group(s) in which its regulators act on it (section C); and, for each key regulator,
-    whether its effect is group_specific (one group or one factor level, e.g. aged only or
-    female only), constitutive (same sign in most groups), or sign_switch. Then say whether that
-    pattern fits the mechanism you propose. Always fill this slot: every program has per-group data.
-A program can legitimately fill all four. That is one program described at four levels, not
-four competing hypotheses."""
-
-GROUPS_SCHEMA_SLOT = """                        "support_terms": [], "confidence": "high|medium|low", "pmids": []},
-    "group_dependence": {"claim": "", "peak_condition": "<group label only, e.g. aged_F>",
-                         "regulator_pattern": [{"symbol": "", "conditions": [],
-                                                "pattern": "group_specific|constitutive|sign_switch"}],
-                         "consistent_with_mechanism": <bool>, "confidence": "high|medium|low"}
-  },"""
+CONDITION_DEPENDENCE_SCHEMA_SLOT = """                        "support_terms": [], "confidence": "high|medium|low", "pmids": []}},
+    "condition_dependence": {{"claim": "", "peak_condition": "<condition label only, e.g. {example}>",
+                             "regulator_pattern": [{{"symbol": "", "conditions": [],
+                                                    "pattern": "condition_specific|constitutive|sign_switch"}}],
+                             "consistent_with_mechanism": <bool>, "confidence": "high|medium|low"}}
+  }},"""
 
 
 def replace_once(text: str, old: str, new: str) -> str:
@@ -409,101 +385,81 @@ def replace_once(text: str, old: str, new: str) -> str:
     return text.replace(old, new)
 
 
-def adapt_templates_for_time_course(conditions: List[dict]) -> Tuple[str, str, str]:
-    """The v3 system prompt, user template and schema, adapted for a condition-keyed time course."""
-    stage_lines = "\n".join(f"- {c['label']}: {c['stage']}" for c in conditions)
-    system = replace_once(
-        SYSTEM_PROMPT, "RULES — each of these",
-        TIME_COURSE_SYSTEM_CONTEXT.format(stage_lines=stage_lines).replace("{", "{{").replace("}", "}}")
-        + "RULES — each of these",
-    )
-    system = replace_once(system, "8. Respond with ONLY", TIME_COURSE_RULE)
+def escape_braces(text: str) -> str:
+    """Literal text placed into a template that is later str.format()-ed."""
+    return text.replace("{", "{{").replace("}", "}}")
 
-    order = " -> ".join(f"{c['label']} ({c['stage']})" for c in conditions)
+
+def adapt_templates_for_conditions(
+    conditions: List[dict], design: str, variable: str, composition: bool
+) -> Tuple[str, str, str]:
+    """The v3 system prompt, user template and schema, adapted for a multi-condition screen.
+
+    `design` is "ordered" or "unordered"; only "ordered" adds ordering language. `composition`
+    adds the condition_composition confounder (the screen was built with --condition-markers).
+    """
+    ordered = design == "ordered"
+    condition_lines = "\n".join(f"- {c['label']}: {c['description']}" for c in conditions)
+    context = CONDITIONS_SYSTEM_CONTEXT.format(
+        variable=variable, in_order=", in order" if ordered else "", condition_lines=condition_lines,
+        ordered_note=ORDERED_NOTE if ordered else "",
+    )
+    system = replace_once(SYSTEM_PROMPT, "RULES — each of these", escape_braces(context) + "RULES — each of these")
+    system = replace_once(system, "8. Respond with ONLY", CONDITIONS_RULE)
+
+    separator = " -> " if ordered else "; "
+    listing = separator.join(f"{c['label']} ({c['description']})" for c in conditions)
     user = replace_once(
         USER_TEMPLATE, "- Regulator significance: {significance_label}\n",
         "- Regulator significance: {significance_label}\n"
-        f"- Time course: {order}; Perturb-seq read out on every day\n",
+        + escape_braces(
+            f"- Multi-condition screen — condition variable: {variable}; conditions"
+            f"{', in order' if ordered else ''}: {listing}; Perturb-seq read out separately in each condition\n"
+        ),
     )
     user = replace_once(
         user, "## C. Significant regulators (knockdown effect on program activity)\n{regulator_block}",
-        "## C. Significant regulators by day (knockdown effect on program activity, measured "
-        "separately on each day)\n{regulator_block}\n\n## C2. Program activity by day\n{activity_block}",
+        "## C. Significant regulators by condition (knockdown effect on program activity, measured "
+        "separately in each condition)\n{regulator_block}\n\n## C2. Program activity by condition\n{activity_block}",
     )
-    user = replace_once(
-        user, "  other_technical (anything else", "  stage_composition · other_technical (anything else"
-    )
-    user = replace_once(
-        user,
-        "If any is the primary explanation, say so plainly and do NOT then build a pathway story on it.",
-        TIME_COURSE_STAGE_COMPOSITION,
-    )
+    block = " or one contiguous block of conditions" if ordered else ""
+    if composition:
+        user = replace_once(
+            user, "  other_technical (anything else", "  condition_composition · other_technical (anything else"
+        )
+        user = replace_once(
+            user,
+            "If any is the primary explanation, say so plainly and do NOT then build a pathway story on it.",
+            COMPOSITION_CONFOUNDER.format(block=block),
+        )
+        user = replace_once(
+            user, "are useful.\n\n  DISTINGUISHABILITY", COMPOSITION_LABEL + "\n  DISTINGUISHABILITY"
+        )
     user = replace_once(user, "Fill whichever of these three\nslots", "Fill whichever of these four\nslots")
     user = replace_once(
         user,
         "  - cellular_output: what the cells are doing as a result\n"
         "A program can legitimately fill all three. That is one program described at three levels, not\n"
         "three competing hypotheses.",
-        TIME_COURSE_TEMPORAL_SLOT,
-    )
-    user = replace_once(
-        user, "are useful.\n\n  DISTINGUISHABILITY", TIME_COURSE_STAGE_LABEL + "\n  DISTINGUISHABILITY"
+        CONDITION_DEPENDENCE_SLOT.format(block=block, ordering_check=ORDERING_CHECK if ordered else ""),
     )
     schema = replace_once(
         OUTPUT_SCHEMA,
         """                        "support_terms": [], "confidence": "high|medium|low", "pmids": []}
   },""",
-        TIME_COURSE_SCHEMA_SLOT,
-    )
-    return system, user, schema
-
-
-def adapt_templates_for_groups(conditions: List[dict]) -> Tuple[str, str, str]:
-    """The v3 system prompt, user template and schema, adapted for a condition-keyed cohort design."""
-    group_lines = "\n".join(f"- {c['label']}: {c['stage']}" for c in conditions)
-    system = replace_once(
-        SYSTEM_PROMPT, "RULES — each of these",
-        GROUPS_SYSTEM_CONTEXT.format(group_lines=group_lines).replace("{", "{{").replace("}", "}}")
-        + "RULES — each of these",
-    )
-    system = replace_once(system, "8. Respond with ONLY", GROUPS_RULE)
-    order = ", ".join(f"{c['label']} ({c['stage']})" for c in conditions)
-    user = replace_once(
-        USER_TEMPLATE, "- Regulator significance: {significance_label}\n",
-        "- Regulator significance: {significance_label}\n"
-        f"- Groups: {order}; Perturb-seq read out separately in each group\n",
-    )
-    user = replace_once(
-        user, "## C. Significant regulators (knockdown effect on program activity)\n{regulator_block}",
-        "## C. Significant regulators by group (knockdown effect on program activity, measured "
-        "separately in each group)\n{regulator_block}\n\n## C2. Program activity by group\n{activity_block}",
-    )
-    user = replace_once(user, "Fill whichever of these three\nslots", "Fill whichever of these four\nslots")
-    user = replace_once(
-        user,
-        "  - cellular_output: what the cells are doing as a result\n"
-        "A program can legitimately fill all three. That is one program described at three levels, not\n"
-        "three competing hypotheses.",
-        GROUPS_SLOT,
-    )
-    schema = replace_once(
-        OUTPUT_SCHEMA,
-        """                        "support_terms": [], "confidence": "high|medium|low", "pmids": []}
-  },""",
-        GROUPS_SCHEMA_SLOT,
+        CONDITION_DEPENDENCE_SCHEMA_SLOT.format(example=conditions[-1]["label"]),
     )
     return system, user, schema
 
 
 def format_regulators_by_condition(
-    regulators: pd.DataFrame, conditions: List[dict], string_partners: Dict[str, List[str]], word: str = "day"
+    regulators: pd.DataFrame, conditions: List[dict], string_partners: Dict[str, List[str]]
 ) -> str:
-    """One labelled block per condition in experimental order, then each regulator's cross-condition
-    profile. `word` names the condition ("day" for a time course, "group" for cohorts)."""
+    """One labelled block per condition in config order, then each regulator's cross-condition profile."""
     significant = regulators[regulators["significant"]]
     if significant.empty:
         return (
-            f"No regulator reached significance for this program {IN_ANY[word]}. Do NOT read this as "
+            "No regulator reached significance for this program in any condition. Do NOT read this as "
             "evidence that the program has no upstream regulators — it means none of the tested "
             "knockdowns moved it measurably. Any regulator you propose must be labeled as "
             "inference with log2FC=N/A."
@@ -516,35 +472,34 @@ def format_regulators_by_condition(
         ] or ["- none"]
 
     lines = [
-        f"({len(significant)} significant (regulator, {word}) results; "
+        f"({len(significant)} significant (regulator, condition) results; "
         f"{significant['target_gene'].nunique()} distinct regulators. ALL significant results "
-        f"are listed, {word} by {word} in experimental order, ranked by effect size within each sign, "
-        "adjusted p shown.)",
+        "are listed, condition by condition, ranked by effect size within each sign, adjusted p shown.)",
     ]
     for condition in conditions:
-        day = regulators[regulators["condition"] == condition["label"]]  # one condition
-        day_significant = day[day["significant"]]
+        in_condition = regulators[regulators["condition"] == condition["label"]]
+        in_condition_significant = in_condition[in_condition["significant"]]
         lines += [
             "",
-            f"### {condition['label']} — {condition['stage']}: {len(day_significant)} of "
-            f"{len(day)} tested knockdowns significant",
+            f"### {condition['label']} — {condition['description']}: {len(in_condition_significant)} of "
+            f"{len(in_condition)} tested knockdowns significant",
             "Activators — knockdown LOWERS the program:",
         ]
-        lines += render(day_significant[day_significant["log2_fc"] < 0].sort_values("log2_fc"))
+        lines += render(in_condition_significant[in_condition_significant["log2_fc"] < 0].sort_values("log2_fc"))
         lines += ["Repressors — knockdown RAISES the program:"]
         lines += render(
-            day_significant[day_significant["log2_fc"] > 0].sort_values("log2_fc", ascending=False)
+            in_condition_significant[in_condition_significant["log2_fc"] > 0].sort_values("log2_fc", ascending=False)
         )
 
     labels = [c["label"] for c in conditions]
     profile = regulators[regulators["target_gene"].isin(significant["target_gene"])]
-    n_days = significant.groupby("target_gene").size()
+    n_conditions = significant.groupby("target_gene").size()
     best_p = significant.groupby("target_gene")["adj_pval"].min()
-    order = sorted(n_days.index, key=lambda g: (-n_days[g], best_p[g]))
+    order = sorted(n_conditions.index, key=lambda g: (-n_conditions[g], best_p[g]))
     lines += [
         "",
-        f"### Cross-{word} profile — every regulator significant {IN_AT_LEAST_ONE[word]}",
-        f"log2FC {IN_EACH[word]}, * = significant {THAT[word]}. Non-significant values are shown so that "
+        "### Cross-condition profile — every regulator significant in at least one condition",
+        "log2FC in each condition, * = significant in that condition. Non-significant values are shown so that "
         '"no effect" can be told apart from "same direction, below threshold".',
     ]
     for gene in order:
@@ -562,56 +517,60 @@ def format_regulators_by_condition(
     return "\n".join(lines)
 
 
-IN_ANY = {"day": "on any day", "group": "in any group"}
-IN_AT_LEAST_ONE = {"day": "on at least one day", "group": "in at least one group"}
-IN_EACH = {"day": "on each day", "group": "in each group"}
-THAT = {"day": "that day", "group": "in that group"}
-DESCRIPTION_HEADER = {"day": "stage", "group": "description"}
-
-
-def format_activity_by_condition(activity: pd.DataFrame, conditions: List[dict], word: str = "day") -> str:
+def format_activity_by_condition(activity: pd.DataFrame, conditions: List[dict]) -> str:
     by_condition = activity.set_index("condition")["mean_score"]
     total = float(sum(by_condition.get(c["label"], 0.0) for c in conditions))
-    width = max(len(c["stage"]) for c in conditions)
-    column = max(len(word) + 1, *(len(c["label"]) for c in conditions))
-    lines = [f"{word:<{column}} {DESCRIPTION_HEADER[word]:<{width}}  {'mean score':>10}  {'share':>5}  "
-             f"log2({word} / mean of other {word}s)"]
+    width = max(len("description"), *(len(c["description"]) for c in conditions))
+    column = max(len("condition"), *(len(c["label"]) for c in conditions))
+    lines = [f"{'condition':<{column}} {'description':<{width}}  {'mean score':>10}  {'share':>5}  "
+             "log2(condition / mean of other conditions)"]
     for condition in conditions:
         value = float(by_condition[condition["label"]])
         others = [float(by_condition[c["label"]]) for c in conditions if c is not condition]
         other_mean = sum(others) / len(others)
         ratio = np.log2(value / other_mean) if value > 0 and other_mean > 0 else float("nan")
         lines.append(
-            f"{condition['label']:<{column}} {condition['stage']:<{width}}  {value:>10.5f}  "
+            f"{condition['label']:<{column}} {condition['description']:<{width}}  {value:>10.5f}  "
             f"{value / total if total else 0:>5.2f}  {ratio:+.2f}"
         )
     peak = max(conditions, key=lambda c: float(by_condition[c["label"]]))
-    lines.append(f"Peak {word}: {peak['label']} ({peak['stage']})")
+    lines.append(f"Peak condition: {peak['label']} ({peak['description']})")
     return "\n".join(lines)
 
 
-def format_stage_composition_screen(screen: dict) -> str:
-    composition = screen["stage_composition"]
+def read_composition_screen(screen: dict) -> dict | None:
+    """The condition-composition screen, also read from screens built before the rename."""
+    composition = screen.get("condition_composition") or screen.get("stage_composition")
+    if composition is None:
+        return None
+    overlap = composition.get("marker_overlap") or composition.get("stage_marker_overlap") or {}
+    for hit in overlap.values():
+        if "description" not in hit:
+            hit["description"] = hit.get("stage", "")
+    return composition | {"marker_overlap": overlap}
+
+
+def format_composition_screen(composition: dict) -> str:
     shares = ", ".join(f"{c}={composition['share_of_total'][c]}" for c in composition["condition_order"])
     lines = [
         "",
-        "stage composition (time course):",
-        f"  - share of total activity by day: {shares}; peak {composition['peak_condition']} holds "
-        f"{composition['peak_share']:.0%}, {composition['peak_over_second']}x the second-highest day "
+        "condition composition (multi-condition):",
+        f"  - share of total activity by condition: {shares}; peak {composition['peak_condition']} holds "
+        f"{composition['peak_share']:.0%}, {composition['peak_over_second']}x the second-highest condition "
         f"and {composition['peak_over_lowest']}x the lowest",
-        "  - canonical stage-marker genes among the top genes (hypergeometric, this run's gene universe):",
+        "  - canonical marker genes of each condition among the top genes (hypergeometric, this run's gene universe):",
     ]
     for condition in composition["condition_order"]:
-        hit = composition["stage_marker_overlap"][condition]
+        hit = composition["marker_overlap"][condition]
         genes = ", ".join(hit["genes"]) or "none"
         p_value = f", p={hit['p_value']}" if hit["p_value"] else ""
         lines.append(
-            f"    {condition} {hit['stage']}: {hit['n_overlap']} observed vs {hit['expected']} "
+            f"    {condition} {hit['description']}: {hit['n_overlap']} observed vs {hit['expected']} "
             f"expected{p_value} — {genes}"
         )
     lines.append(
-        "  - READ THIS CAREFULLY: stage-restricted activity is expected of real stage-specific "
-        "biology. It points to composition only together with top genes that are the stage's "
+        "  - READ THIS CAREFULLY: condition-restricted activity is expected of real condition-specific "
+        "biology. It points to composition only together with top genes that are the condition's "
         "identity markers and nothing more specific."
     )
     return "\n".join(lines)
@@ -776,28 +735,21 @@ def build_prompt(program_id: int, resources: dict, settings: dict) -> dict:
     program_enrichment = enrichment[enrichment["program_id"] == program_id]
 
     conditions = resources.get("conditions")
-    time_course = {}
-    if conditions and settings.get("condition_design", "time_course") == "groups":
-        system_template, user_template, output_schema = adapt_templates_for_groups(conditions)
-        activity = resources["activity"]
-        time_course["activity_block"] = format_activity_by_condition(
-            activity[activity["program_id"] == program_id], conditions, word="group"
+    condition_blocks = {}
+    if conditions:
+        screen = resources["screens"][str(program_id)]
+        composition = read_composition_screen(screen)
+        system_template, user_template, output_schema = adapt_templates_for_conditions(
+            conditions, read_condition_design(settings), read_condition_variable(settings), composition is not None
         )
-        regulator_block = format_regulators_by_condition(program_regulators, conditions, string_partners, word="group")
-        screen_block = format_screens(resources["screens"][str(program_id)]).replace(
-            " tested", " tested (significant in at least one group)")
-    elif conditions:
-        system_template, user_template, output_schema = adapt_templates_for_time_course(conditions)
         activity = resources["activity"]
-        time_course["activity_block"] = format_activity_by_condition(
+        condition_blocks["activity_block"] = format_activity_by_condition(
             activity[activity["program_id"] == program_id], conditions
         )
         regulator_block = format_regulators_by_condition(program_regulators, conditions, string_partners)
-        screen = resources["screens"][str(program_id)]
-        screen_block = (
-            format_screens(screen).replace(" tested", " tested (significant on at least one day)")
-            + format_stage_composition_screen(screen)
-        )
+        screen_block = format_screens(screen).replace(" tested", " tested (significant in at least one condition)")
+        if composition is not None:
+            screen_block += format_composition_screen(composition)
     else:
         system_template, user_template, output_schema = SYSTEM_PROMPT, USER_TEMPLATE, OUTPUT_SCHEMA
         regulator_block = format_regulators(program_regulators, string_partners)
@@ -821,7 +773,7 @@ def build_prompt(program_id: int, resources: dict, settings: dict) -> dict:
         reference_block=format_reference_pool(context, allowed_genes, resources["excluded_pmids"]),
         gene_summary_block=format_gene_summaries(context, genes_by_priority),
         output_schema=output_schema,
-        **time_course,
+        **condition_blocks,
     )
 
     system = system_template.format(
@@ -852,7 +804,7 @@ def main() -> int:
     if "program_id" not in loading.columns:
         loading = loading.rename(columns={"RowID": "program_id"})
 
-    # A time course has one regulator table keyed by `condition`; a single condition has one flat table.
+    # A multi-condition screen has one regulator table keyed by `condition`; a single condition has one flat table.
     regulators = pd.read_csv(data / config.get("regulators_by_condition", config.get("regulators")))
     regulators["significant"] = (
         regulators["significant"].astype(str).str.strip().str.lower().isin({"true", "1", "yes"})
@@ -879,7 +831,7 @@ def main() -> int:
         excluded = json.loads((data / config["excluded_pmids"]).read_text())
         resources["excluded_pmids"] = frozenset(excluded["retracted"] + excluded["unresolved"])
     if config.get("conditions"):
-        resources["conditions"] = config["conditions"]
+        resources["conditions"] = normalise_conditions(config["conditions"])
         resources["activity"] = pd.read_csv(data / config["program_activity"])
 
     requests = [build_prompt(pid, resources, config["settings"]) for pid in config["programs"]]

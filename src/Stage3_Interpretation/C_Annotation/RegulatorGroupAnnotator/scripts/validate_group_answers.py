@@ -34,7 +34,8 @@ REQUIRED_KEYS = [
     "group_id", "label", "brief_summary", "confounder_assessment", "shared_function", "why_here",
     "regulators", "label_evidence", "competing_readings", "coherence", "citations",
 ]
-REQUIRED_CONFOUNDERS = {"generic_fitness_or_stress", "differentiation_delay", "promoter_neighbour", "weak_effect_noise"}
+REQUIRED_CONFOUNDERS = {"generic_fitness_or_stress", "shared_state_shift", "promoter_neighbour", "weak_effect_noise"}
+CONFOUNDER_ALIASES = {"differentiation_delay": "shared_state_shift"}  # the name in prompts built before the rename
 BANNED_LABEL_WORDS = {"group", "cluster", "module", "regulators", "program", "regulation"}
 ROLES = {"core_explained", "consistent", "unexplained"}
 CONFIDENCE = {"high", "medium", "low"}
@@ -130,7 +131,8 @@ def validate(group_id: int, directory: Path) -> Tuple[List[str], List[str]]:
                         f"regulate P<id>—<label> ...'")
     if len(payload.get("competing_readings", [])) < 2:
         problems.append(f"{tag}: only {len(payload.get('competing_readings', []))} competing reading(s), need >= 2")
-    assessed = {c.get("confounder") for c in payload.get("confounder_assessment", [])}
+    assessed = {CONFOUNDER_ALIASES.get(c.get("confounder"), c.get("confounder"))
+                for c in payload.get("confounder_assessment", [])}
     if REQUIRED_CONFOUNDERS - assessed:
         problems.append(f"{tag}: confounders not assessed: {', '.join(sorted(REQUIRED_CONFOUNDERS - assessed))}")
     bad = [c.get("confounder") for c in payload.get("confounder_assessment", []) if c.get("status") not in VALID_STATUSES]

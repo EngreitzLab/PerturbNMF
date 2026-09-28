@@ -4,7 +4,7 @@ groups of perturbed genes instead of gene programs).
 A group is a set of CRISPRi targets whose knockdowns shift the cell's gene programs in the same
 way (define_regulator_groups.py). The annotator is asked, in order:
   1. rule out the reasons unrelated genes co-cluster — a shared fitness / stress response,
-     a shared delay of differentiation, promoter neighbours (the deterministic screen already
+     a shared shift in cell state, promoter neighbours (the deterministic screen already
      excluded the clear cases; the flags are shown), noise at weak effects;
   2. the shared function: a complex, a pathway, a process the members have in common;
   3. why the group forms HERE — which programs it moves in this system, read through those
@@ -14,6 +14,12 @@ way (define_regulator_groups.py). The annotator is asked, in order:
      unexplained member, because an unexpected member of a coherent group is the finding;
   5. a plain label, citations selected from the reference pool only, competing readings.
 Members the promoter screen excluded are listed only as "do not interpret".
+
+Multi-condition screens (timepoints, stimuli, donors, ...) take `conditions`,
+settings.condition_variable and settings.condition_design as in ProgramAnnotatorV3; only an
+"ordered" design words the state-shift confounder as a delay along the order.
+settings.shared_state_shift_description overrides that confounder's wording
+(differentiation_delay_description is a deprecated alias).
 
 The answer uses the same keys as a v3 program answer where the meaning carries over (`label`,
 `label_family`, `label_distinguisher`, `label_evidence.regulators`, `regulators[]` with a
@@ -30,7 +36,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
+from conditions import (  # noqa: E402
+    normalise_conditions, read_condition_design, read_condition_variable, read_setting, warn_once,
+)
 
 SYSTEM_PROMPT = """You are a {annotation_role} annotating groups of perturbed genes from a \
 single-cell CRISPRi Perturb-seq screen in {cell_system}.
@@ -68,7 +80,7 @@ physical evidence, or a cited paper.
 from an unrelated cell type counts only if the biology is canonical and context-independent.
 
 7. DO NOT FORCE-FIT. Groups can be held together by a shared fitness defect or a shared \
-differentiation delay rather than by shared biology, and some groups combine two unrelated \
+shift in cell state rather than by shared biology, and some groups combine two unrelated \
 sets. Say so honestly through `coherence` and `confounder_assessment`, rather than telling a \
 single story the members do not support.
 
@@ -131,7 +143,7 @@ The programs the members move most, by the members' mean log2FC{label_note}.
 Step 1 — RULE OUT THE CONFOUNDERS. For each item give a status and the evidence that decided it:
   generic_fitness_or_stress (the members share a growth, viability or stress-response defect
     rather than a function: many unrelated essential genes moving proliferation / stress programs)
-  differentiation_delay ({differentiation_delay_description})
+  shared_state_shift ({shared_state_shift_description})
   promoter_neighbour (section B/C caveats; excluded members are already gone)
   weak_effect_noise (members with low reliability or weak effects held together loosely)
   other (another NON-biological or non-specific reason they co-cluster — name it; a shared
@@ -144,7 +156,7 @@ pathway, shared process, or none evident. Name the members, complexes, terms beh
 
 Step 3 — WHY HERE. Why does knocking down these genes produce THIS effect signature in
 {cell_system}? Read section D through the program labels: which programs, which direction,
-at which {condition_word}, and what that says about the shared function's role in this system.
+{in_which_condition}and what that says about the shared function's role in this system.
 
 Step 4 — ROLE OF EVERY MEMBER. List every member of section B exactly once in `regulators`:
   core_explained  its known function IS the shared function (a subunit of the complex, a
@@ -273,8 +285,14 @@ def format_pool(pool: list[dict]) -> str:
 
 
 def build_prompt(evidence: dict, settings: dict, conditions: list[dict], n_targets: int, labelled: bool) -> dict:
+    conditions = normalise_conditions(conditions)
     multi = len(conditions) > 1
-    conditions_block = ("- Conditions, in order: " + "; ".join(f"{c['label']} = {c['stage']}" for c in conditions) + "\n") if multi else ""
+    ordered = multi and read_condition_design(settings) == "ordered"
+    variable = read_condition_variable(settings)
+    conditions_block = (
+        f"- Multi-condition screen — condition variable: {variable}; conditions{', in order' if ordered else ''}: "
+        + "; ".join(f"{c['label']} = {c['description']}" for c in conditions) + "\n"
+    ) if multi else ""
     group_block = (f"{len(evidence['members'])} members after the promoter screen; stability {evidence['stability']:.2f} "
                    f"(mean bootstrap co-assignment of core members); mean correlation of effect profiles "
                    f"{evidence['mean_raw_r']:.2f} ({evidence['mean_corrected_r']:.2f} after correcting for noise); "
@@ -283,7 +301,14 @@ def build_prompt(evidence: dict, settings: dict, conditions: list[dict], n_targe
                    f"can be as coherent as a group of strong ones.")
     excluded_block = "\n".join(f"- {e['gene']}: {'; '.join(e['reasons'])}" for e in evidence["excluded"]) or "- none"
     summaries = "\n".join(f"- {m['gene']}: {m['summary'] or '(no summary)'}" for m in evidence["members"])
-    condition_word = settings.get("condition_word", "differentiation" if multi else "condition")
+    if "condition_word" in settings:
+        warn_once("setting 'condition_word' is no longer used; describe the conditions with 'condition_variable'")
+    if multi and ordered:
+        default_shift = ("the members all slow, block or advance progression through the ordered conditions,\n"
+                         "    which moves every condition-specific program at once")
+    else:
+        default_shift = ("the members all push the cells toward or away from one cell state (e.g. activation,\n"
+                         "    stress, a change of identity), which moves every state-dependent program at once")
     user = USER_TEMPLATE.format(
         group_id=evidence["group_id"], dataset_name=settings.get("dataset_name", ""),
         cell_system=settings["cell_system"], assay=settings.get("assay", ""), conditions_block=conditions_block,
@@ -298,11 +323,9 @@ def build_prompt(evidence: dict, settings: dict, conditions: list[dict], n_targe
         string_block=format_string(evidence["string_edges"], evidence["ppi_enrichment"]),
         n_targets=n_targets, enrichment_block=format_enrichment(evidence["enrichment"]),
         reference_block=format_pool(evidence["reference_pool"]), summary_block=summaries,
-        differentiation_delay_description=settings.get(
-            "differentiation_delay_description",
-            f"the members all slow or block the {condition_word} progression, which\n"
-            "    moves every stage program at once"),
-        condition_word=condition_word,
+        shared_state_shift_description=read_setting(
+            settings, "shared_state_shift_description", "differentiation_delay_description", default_shift),
+        in_which_condition="in which condition, " if multi else "",
         output_schema=OUTPUT_SCHEMA,
     )
     system = SYSTEM_PROMPT.format(annotation_role=settings.get("annotation_role", "cell biologist"),
@@ -327,7 +350,8 @@ def main() -> int:
     payload = json.loads((groups_dir / "group_evidence.json").read_text())
     n_targets = sum(1 for _ in open(Path(config["targets"]) if Path(config["targets"]).is_absolute()
                                     else args.config.parent / config["targets"])) - 1
-    conditions = config.get("conditions") or [{"label": "all", "stage": config["settings"]["cell_system"]}]
+    conditions = normalise_conditions(config.get("conditions")) or [
+        {"label": "all", "description": config["settings"]["cell_system"]}]
     requests = []
     for gid, evidence in sorted(payload["groups"].items(), key=lambda kv: int(kv[0])):
         if wanted and int(gid) not in wanted:

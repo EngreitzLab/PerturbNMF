@@ -28,7 +28,7 @@ GOOD = {
     "group_id": 7, "label": "Microprocessor", "label_family": "miRNA biogenesis", "label_distinguisher": "",
     "brief_summary": "This group of 3 regulators includes genes that form the Microprocessor. They most strongly regulate P29—Pluripotency.",
     "confounder_assessment": [{"confounder": c, "status": "ruled_out", "evidence": "x"} for c in
-                              ("generic_fitness_or_stress", "differentiation_delay", "promoter_neighbour", "weak_effect_noise")],
+                              ("generic_fitness_or_stress", "shared_state_shift", "promoter_neighbour", "weak_effect_noise")],
     "shared_function": {"claim": "Microprocessor", "support_members": ["DGCR8", "DROSHA"], "pmids": ["34319763"]},
     "why_here": {"claim": "x", "programs": [{"program_id": 29, "condition": "D0", "direction": "down"}], "pmids": []},
     "regulators": [
@@ -45,7 +45,7 @@ GOOD = {
 
 @pytest.fixture
 def run(tmp_path):
-    request = build_prompt(EVIDENCE, SETTINGS, [{"label": "D0", "stage": "hiPSC"}, {"label": "D1", "stage": "PS"}], 298, True)
+    request = build_prompt(EVIDENCE, SETTINGS, [{"label": "D0", "description": "hiPSC"}, {"label": "D1", "description": "PS"}], 298, True)
     directory = tmp_path / "rg_p7"
     directory.mkdir()
     (directory / "prompt.md").write_text(request["params"]["system"] + "\n\n" + request["params"]["messages"][0]["content"])
@@ -76,6 +76,13 @@ def test_bad_answers_fail(run, mutate, expected):
     mutate(answer)
     problems, _ = run(answer)
     assert any(expected in p for p in problems), problems
+
+
+def test_confounder_name_from_older_prompts_passes(run):
+    answer = copy.deepcopy(GOOD)
+    answer["confounder_assessment"][1]["confounder"] = "differentiation_delay"
+    problems, _ = run(answer)
+    assert problems == []
 
 
 def test_program_outside_signature_warns(run):

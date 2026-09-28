@@ -40,6 +40,7 @@ from scipy.spatial.distance import squareform
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "annotator_core"))
+from conditions import normalise_conditions  # noqa: E402
 from validate_group_answers import symbol, validate  # noqa: E402
 from viewer_common import VIEWER_CSS, bare_pmid, fetch_titles, load_answer, load_support, to_js  # noqa: E402
 
@@ -49,7 +50,8 @@ ENRICHMENT_SHOWN = 10
 # left out because annotators use it for the shared biology itself ("they are one complex").
 CONFOUNDER_GROUPS = {
     "generic_fitness_or_stress": "Fitness / stress",
-    "differentiation_delay": "Differentiation delay",
+    "shared_state_shift": "Shared state shift",
+    "differentiation_delay": "Shared state shift",  # the same confounder in answers to older prompts
     "promoter_neighbour": "Promoter neighbour",
     "weak_effect_noise": "Weak-effect noise",
 }
@@ -175,7 +177,8 @@ def load_from_config(args) -> tuple:
     groups_dir = Path(config["groups_dir"])
     if not groups_dir.is_absolute():
         groups_dir = args.config.parent / groups_dir
-    conditions = config.get("conditions") or [{"label": "all", "stage": config["settings"].get("cell_system", "")}]
+    conditions = normalise_conditions(config.get("conditions")) or [
+        {"label": "all", "description": config["settings"].get("cell_system", "")}]
     payload = json.loads((groups_dir / "group_evidence.json").read_text())
     groups_file = groups_dir / "regulator_groups.json"
     grouping = json.loads(groups_file.read_text()) if groups_file.exists() else {}
@@ -250,7 +253,7 @@ const GROUPS = __GROUPS__;
 const TITLES = __TITLES__;
 const META = __META__;
 const MULTI = META.conditions.length > 1;
-const STAGES = Object.fromEntries(META.conditions.map(c => [c.label, c.stage]));
+const DESCRIPTIONS = Object.fromEntries(META.conditions.map(c => [c.label, c.description]));
 document.getElementById("brand").innerHTML = `${META.title}<small>${META.subtitle}</small>`;
 const IDS = Object.keys(GROUPS).map(Number).sort((a,b)=>a-b);
 let currentId = null;
@@ -373,7 +376,7 @@ function effectHeatmap(g) {
   const roles = roleOf(g);
   const all = g.rows.flatMap(m => (g.effects[m.gene] || []).filter(c => c).map(c => Math.abs(c[0])));
   const scale = Math.min(3, Math.max(1, ...all));
-  const head = `<tr><th>Member</th><th class="ann">Clustering</th><th class="ann">Annotated</th><th class="ann" data-tip="Bootstrap co-assignment with the rest of the group">Stab.</th><th class="ann" data-tip="Share of the member's effect profile that is signal, not noise">Rel.</th>${g.signature.map(s => `<th data-tip="${esc(`P${s.program_id}${s.program_label ? " — " + s.program_label : ""}${MULTI ? " · " + s.condition + " · " + (STAGES[s.condition] || "") : ""}: mean log2FC ${s.mean_log2fc > 0 ? "+" : ""}${s.mean_log2fc.toFixed(2)}, ${s.members_significant_same_direction} of ${s.members} members significant in this direction`)}">
+  const head = `<tr><th>Member</th><th class="ann">Clustering</th><th class="ann">Annotated</th><th class="ann" data-tip="Bootstrap co-assignment with the rest of the group">Stab.</th><th class="ann" data-tip="Share of the member's effect profile that is signal, not noise">Rel.</th>${g.signature.map(s => `<th data-tip="${esc(`P${s.program_id}${s.program_label ? " — " + s.program_label : ""}${MULTI ? " · " + s.condition + " · " + (DESCRIPTIONS[s.condition] || "") : ""}: mean log2FC ${s.mean_log2fc > 0 ? "+" : ""}${s.mean_log2fc.toFixed(2)}, ${s.members_significant_same_direction} of ${s.members} members significant in this direction`)}">
       ${programRef(s.program_id)}${MULTI ? `<br><span class="muted">${esc(s.condition)}</span>` : ""}<br><span class="muted">${s.members_significant_same_direction}/${s.members}</span></th>`).join("")}</tr>`;
   const body = g.rows.map(m => `<tr${m.excluded ? ' class="excl"' : ""}>${rowHead(g, m, roles)}` + (g.effects[m.gene] || g.signature.map(() => null)).map((c, i) => {
       const s = g.signature[i];
@@ -612,7 +615,7 @@ def main() -> int:
         confounder = next((c for c in group["primary_confounders"] if c in CONFOUNDER_GROUPS), None)
         group["rail"] = CONFOUNDER_GROUPS[confounder] if confounder else (group["family"] or "Several unrelated sets")
         group["tag"] = CONFOUNDER_GROUPS[confounder].split(" ")[0].lower() if confounder else ""
-    confounder_rails = tuple(CONFOUNDER_GROUPS.values())
+    confounder_rails = tuple(dict.fromkeys(CONFOUNDER_GROUPS.values()))
     counts = {}
     for group in groups.values():
         counts[group["rail"]] = counts.get(group["rail"], 0) + 1
