@@ -18,7 +18,7 @@ The input `.h5ad` file for inference should contain:
 Required columns:
 | Key | Description | Example Values |
 |-----|-------------|----------------|
-| `sample` or `batch` | Categorical variable for cell grouping (controlled by `--categorical_key`) | `condA`, `condB` |
+| `sample` or `batch` | Each cell's condition label, e.g. timepoint, stimulus, donor (column set by `--categorical_key`) | `condA`, `condB` |
 
 ### uns (Unstructured Metadata)
 | Key | Type | Description |

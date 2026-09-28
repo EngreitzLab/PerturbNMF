@@ -40,7 +40,7 @@ Key parameters (always ask):
 |-----------|---------|-------------|
 | `--K` | `[30, 50, 70, 80, 100, 200, 300]` | K values to test (formerly named `--components`) |
 | `--sel_threshs` | `[0.2, 2.0]` | Density thresholds |
-| `--categorical_key` | `sample` | Key to split cells into conditions for per-condition CRT |
+| `--categorical_key` | `sample` | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); CRT runs per condition |
 | `--guide_annotation_key` | `non-targeting` | Label for non-targeting/control guides (see Step B) |
 | `--number_permutations` | `1024` | CRT permutations (recommend `5000` for production) |
 | `--number_guide` | `6` | Guides per gene (see Step B) |

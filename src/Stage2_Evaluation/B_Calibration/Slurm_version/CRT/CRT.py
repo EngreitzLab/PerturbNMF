@@ -430,7 +430,7 @@ def main():
     parser.add_argument('--sel_threshs', nargs='*', type=float, help="list of density threshold values for consensus selection", default=[0.2, 2.0])
 
     # keys
-    parser.add_argument('--categorical_key', help='Key in .obs to access cell condition/sample labels (default: sample)', type=str, default="sample")
+    parser.add_argument('--categorical_key', help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample", type=str, default="sample")
 
     # Covariates
     parser.add_argument('--covariates', nargs='*', type=str, help='Covariate keys in .obs to include as-is (e.g., any continues value, categorical values)', default=None)

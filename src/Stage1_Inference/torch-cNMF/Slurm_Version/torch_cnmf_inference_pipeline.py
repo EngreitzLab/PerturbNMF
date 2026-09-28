@@ -140,7 +140,8 @@ def main():
     # --- Metadata keys ---
     parser.add_argument('--data_key', type=str, default='rna')
     parser.add_argument('--prog_key', type=str, default='cNMF')
-    parser.add_argument('--categorical_key', type=str, default='sample')
+    parser.add_argument('--categorical_key', type=str, default='sample',
+                        help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample")
     parser.add_argument('--guide_names_key', type=str, default='guide_names')
     parser.add_argument('--guide_targets_key', type=str, default='guide_targets')
     parser.add_argument('--guide_assignment_key', type=str, default='guide_assignment')

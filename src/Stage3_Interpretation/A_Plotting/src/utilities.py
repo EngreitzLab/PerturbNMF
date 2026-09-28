@@ -283,7 +283,7 @@ def check_normalized(adata, key):
 def condition_labels_from_obs(obs, categorical_key):
     """Unique non-null values of obs[categorical_key], in order of appearance.
 
-    Used when --Conditions / --Sample is not given, so condition labels come from the
+    Used when --Conditions is not given, so condition labels come from the
     data (same order as the evaluation stage, which names its per-condition outputs
     after these values).
     """

@@ -31,7 +31,7 @@ This Python pipeline performs Mann-Whitney U-test on program scores to identify 
 |-----------|------|---------|-------------|
 | data_key | str | "rna" | Gene expression access key |
 | prog_key | str | "cNMF" | cNMF program access key |
-| categorical_key | str | "sample" | Cell condition key |
+| categorical_key | str | "sample" | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor) |
 | guide_names_key | str | "guide_names" | Guide names key |
 | guide_targets_key | str | "guide_targets" | Guide targets key |
 | guide_assignment_key | str | "guide_assignment" | Guide assignment key |

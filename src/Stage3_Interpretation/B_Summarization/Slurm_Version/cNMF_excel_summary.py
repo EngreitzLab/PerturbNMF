@@ -14,7 +14,7 @@ Usage:
     --out_dir /path/to/output \
     --run_name my_run \
     --K 50 --sel_thresh 0.2 \
-    --Sample condA condB   # optional; default: all values of --categorical_key
+    --Conditions condA condB   # optional; default: all labels found in the data
 """
 
 import os
@@ -73,9 +73,8 @@ def main():
     parser.add_argument('--perturbation_file_name', type=str, default='perturbation_association_results',
         help='Perturbation result file stem (between "{K}_" and "_{Condition}.txt"). '
              'Default: perturbation_association_results')
-    parser.add_argument('--Sample', nargs='*', type=str, default=None,
-        help='List of condition / sample labels (values of --categorical_key). '
-             'Default: all unique values in the h5mu')
+    parser.add_argument('--Conditions', '--Sample', dest='Conditions', nargs='*', type=str, default=None,
+        help='Condition labels (values of obs[categorical_key]); default: all labels found in the data. (--Sample is a deprecated alias.)')
     parser.add_argument('--effect_size', type=str, default='log2FC',
         help='Effect-size column in perturbation files. Default: log2FC')
     parser.add_argument('--control_target_name', type=str, default='non-targeting',
@@ -84,7 +83,7 @@ def main():
 
     # keys
     parser.add_argument('--categorical_key', type=str, default='sample',
-        help='obs column holding condition/sample labels. Default: sample')
+        help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample")
     parser.add_argument('--prog_key', type=str, default='cNMF',
         help='Modality key for cNMF programs in the MuData. Default: cNMF')
     parser.add_argument('--data_key', type=str, default='rna',
@@ -109,6 +108,8 @@ def main():
         help='Sample-label column in perturbation results. Default: Sample')
 
     args = parser.parse_args()
+    if any(a == '--Sample' or a.startswith('--Sample=') for a in sys.argv[1:]):
+        print('Note: --Sample is deprecated; use --Conditions (same meaning).')
 
     # Resolve derived defaults
     thresh_str = str(args.sel_thresh).replace('.', '_')
@@ -151,12 +152,12 @@ def main():
     mdata = mu.read(args.mdata_path)
 
     # condition labels default to the values of --categorical_key in the data
-    if args.Sample is None:
+    if args.Conditions is None:
         obs = mdata[args.data_key].obs
         if args.categorical_key not in obs.columns:
-            raise KeyError(f"obs column '{args.categorical_key}' not found; pass --Sample explicitly")
-        args.Sample = [str(v) for v in obs[args.categorical_key].dropna().unique()]
-        print(f"--Sample not given; using {args.categorical_key} values from the h5mu: {args.Sample}")
+            raise KeyError(f"obs column '{args.categorical_key}' not found; pass --Conditions explicitly")
+        args.Conditions = [str(v) for v in obs[args.categorical_key].dropna().unique()]
+        print(f"--Conditions not given; using {args.categorical_key} values from the h5mu: {args.Conditions}")
 
     # ── Evaluation file paths ──
     GO_path = f'{eval_base}/{args.K}_GO_term_enrichment.txt'
@@ -178,9 +179,9 @@ def main():
     df_Trait = Compile_Trait_sheet(Trait_path, gene_num=args.num_gene, term_key=args.Trait_Term_key, genes_key=args.Trait_Genes_key) if os.path.exists(Trait_path) else None
 
     # ── Perturbation ──
-    perturbation_files = [f'{Perturbation_path_base}_{samp}.txt' for samp in args.Sample]
+    perturbation_files = [f'{Perturbation_path_base}_{samp}.txt' for samp in args.Conditions]
     if any(os.path.exists(f) for f in perturbation_files):
-        df_Perturbation = Compile_Perturbation_sheet(Perturbation_path_base, Sample=args.Sample, sample_key=args.Perturbation_Sample_key)
+        df_Perturbation = Compile_Perturbation_sheet(Perturbation_path_base, Sample=args.Conditions, sample_key=args.Perturbation_Sample_key)
     else:
         print(f'No perturbation files found for: {Perturbation_path_base}')
         df_Perturbation = None
@@ -198,7 +199,7 @@ def main():
     # ── Target Summary (writes specificity / correlation / KD-efficiency sidecars to save_path) ──
     df_Target_Summary = Compile_Target_Summary_sheet(
         mdata, Perturbation_path_base,
-        Sample=args.Sample, categorical_key=args.categorical_key,
+        Sample=args.Conditions, categorical_key=args.categorical_key,
         prog_key=args.prog_key, data_key=args.data_key,
         guide_targets_key=args.guide_targets_key,
         save_path=args.save_path, effect_size=args.effect_size,
@@ -209,7 +210,7 @@ def main():
     # ── Program Summary ──
     df_Summary = Compile_Summary_sheet(
         mdata, df_GO, df_Geneset, df_Perturbation, df_Program_loading_flat, df_Explained_Variance,
-        Sample=args.Sample, specicicity_path=args.save_path,
+        Sample=args.Conditions, specicicity_path=args.save_path,
         categorical_key=args.categorical_key, non_tagerting_key=args.non_targeting_key,
         effect_size=args.effect_size, adjusted_pval_key=args.adjusted_pval_key,
     )
@@ -236,7 +237,7 @@ def main():
             # add_specificity_scores_file returns (full_merged, significant_merged);
             # both carry the specificity_scores column.
             combined_full, combined_sig = [], []
-            for samp in args.Sample:
+            for samp in args.Conditions:
                 df_full_, df_sig_ = add_specificity_scores_file(args.save_path, Perturbation_path_base, samp)
                 df_full_[args.Perturbation_Sample_key] = samp
                 df_sig_[args.Perturbation_Sample_key] = samp

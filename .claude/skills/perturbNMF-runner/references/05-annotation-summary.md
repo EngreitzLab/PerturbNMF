@@ -115,8 +115,8 @@ other stage (no notebook required). Submit one job per K to cover multiple K val
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--sel_thresh` | `0.2` | Density threshold (`0.2` → `0_2`, `2.0` → `2_0`) |
-| `--Sample` | all unique values of the categorical key in the h5mu | Condition/sample labels (e.g. `condA condB`) |
-| `--categorical_key` | `sample` | obs column for sample/condition grouping (e.g. `batch`, `timepoint`) |
+| `--Conditions` | all labels found in the data | Condition labels (values of obs[categorical_key]), e.g. `condA condB`. `--Sample` is a deprecated alias |
+| `--categorical_key` | `sample` | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor) |
 | `--perturbation_file_name` | `perturbation_association_results` | Perturbation file stem (e.g. `CRT`) |
 | `--effect_size` | `log2FC` | Effect-size column (e.g. `approx_log2FC`) |
 | `--gene_names_key` | `symbol` | var column with gene symbols |
@@ -134,7 +134,7 @@ Reads the per-K evaluation outputs at (paths derived from `--out_dir`/`--run_nam
 ├── {K}_GO_term_enrichment.txt
 ├── {K}_geneset_enrichment.txt
 ├── {K}_trait_enrichment.txt
-├── {K}_{perturbation_file_name}_{Sample}.txt   (one per sample)
+├── {K}_{perturbation_file_name}_{Condition}.txt   (one per condition)
 ├── {K}_categorical_association_results.txt
 └── {K}_Explained_Variance.txt
 ```
@@ -150,7 +150,7 @@ explicitly and keep eval files under `Evaluation/` or symlink them.)
 Per job, written to `--save_path` (default `{out_dir}/{run_name}/Interpretation/Summary_table/{K}_{thresh}/`):
 - `cNMF_{K}_{thresh}.xlsx` — main multi-sheet workbook
 - `Summary_{K}_{thresh}.tsv`, `Program_Loadings_{K}_{thresh}.tsv`, `Targets_Summary_{K}_{thresh}.tsv`
-- Sidecars: `specificity_score_{Sample}.txt`, `corr_gene_matrix_{Sample}.txt(.gz)`, `kd_efficiency.txt`, `perturbation_merged_{Sample}(.._significant).txt`
+- Sidecars: `specificity_score_{Condition}.txt`, `corr_gene_matrix_{Condition}.txt(.gz)`, `kd_efficiency.txt`, `perturbation_merged_{Condition}(.._significant).txt`
 - `config_{SLURM_JOB_ID}.yml`
 
 ### Output sheets

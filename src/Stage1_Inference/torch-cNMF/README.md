@@ -100,7 +100,7 @@
 |-----------|------|---------|-------------|
 | data_key | str | "rna" | Key to access gene expression data in MuData object |
 | prog_key | str | "cNMF" | Key to access cNMF programs in MuData object |
-| categorical_key | str | "sample" | Key to access cell condition information in obs |
+| categorical_key | str | "sample" | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor) |
 | guide_names_key | str | "guide_names" | Key to access guide names in uns |
 | guide_targets_key | str | "guide_targets" | Key to access guide targets in uns |
 | guide_assignment_key | str | "guide_assignment" | Key to access guide assignments in obsm |

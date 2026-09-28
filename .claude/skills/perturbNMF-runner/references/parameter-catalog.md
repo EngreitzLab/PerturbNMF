@@ -65,7 +65,7 @@ Complete parameter reference for all pipeline stages, extracted from argparse de
 |-----------|---------|-------------|
 | `--data_key` | `rna` | RNA modality key in MuData |
 | `--prog_key` | `cNMF` | cNMF modality key in MuData |
-| `--categorical_key` | `sample` | Categorical variable key in obs |
+| `--categorical_key` | `sample` | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor) |
 | `--guide_names_key` | `guide_names` | Guide names key in uns |
 | `--guide_targets_key` | `guide_targets` | Guide targets key in uns |
 | `--guide_assignment_key` | `guide_assignment` | Guide assignment key in obsm (fixed 2026-07-31; previously defaulted to the literal string `"guide_assignment_key"`, which silently skipped copying the matrix into the prog modality and broke Stage 2 perturbation association) |
@@ -232,7 +232,7 @@ Same as sk-cNMF except:
 |-----------|---------|-------------|
 | `--data_key` | `rna` | RNA modality key |
 | `--prog_key` | `cNMF` | cNMF modality key |
-| `--categorical_key` | `sample` | Categorical variable key |
+| `--categorical_key` | `sample` | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor) |
 | `--guide_names_key` | `guide_names` | Guide names key |
 | `--guide_targets_key` | `guide_targets` | Guide targets key |
 | `--guide_assignment_key` | `guide_assignment` | Guide assignment key |
@@ -435,7 +435,7 @@ CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['gu
 |-----------|------|---------|-------------|
 | `--K` | int (nargs=\*) | `[30, 50, 70, 80, 100, 200, 300]` | K values (formerly named `--components`) |
 | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds |
-| `--categorical_key` | str | `sample` | Sample/condition key |
+| `--categorical_key` | str | `sample` | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor) |
 | `--covariates` | str (nargs=\*) | None | Covariate keys in obs (used as-is) |
 | `--log_covariates` | str (nargs=\*) | None | Covariate keys to log1p-transform |
 | `--number_guide` | int | `6` | Fake targeting guides per iteration |
@@ -613,7 +613,7 @@ cover multiple K values.
 | `--mdata_path` | str | `{out_dir}/{run_name}/Inference/adata/cNMF_{K}_{thresh}.h5mu` | Input MuData |
 | `--num_gene` | int | `300` | Top genes per program / per enriched term to keep |
 | `--perturbation_file_name` | str | `perturbation_association_results` | Perturbation result file stem (between `{K}_` and `_{Condition}.txt`); e.g. `CRT` |
-| `--Sample` | str (nargs=\*) | all unique values of the categorical key in the h5mu | Condition/sample labels |
+| `--Conditions` | str (nargs=\*) | all labels found in the data | Condition labels (values of obs[categorical_key]); `--Sample` is a deprecated alias |
 | `--effect_size` | str | `log2FC` | Effect-size column in perturbation files (e.g. `approx_log2FC`) |
 | `--control_target_name` | str | `non-targeting` | Control target name for KD efficiency |
 | `--non_targeting_key` | str (nargs=\*) | `['non-targeting']` | Control target label(s) for the program summary sheet |

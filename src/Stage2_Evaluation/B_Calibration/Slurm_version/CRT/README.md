@@ -134,7 +134,7 @@ The p-values from step 5 are exactly the **NTC null p-values** written to `{K}_C
 |-----------|------|---------|-------------|
 | K | list of int | [30, 50, 70, 80, 100, 200, 300] | K values (number of components) to test |
 | sel_threshs | list of float | [0.2, 2.0] | Density threshold values for consensus selection |
-| categorical_key | str | "sample" | Key in .obs for cell condition/sample labels |
+| categorical_key | str | "sample" | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor) |
 
 ### Covariate Parameters
 

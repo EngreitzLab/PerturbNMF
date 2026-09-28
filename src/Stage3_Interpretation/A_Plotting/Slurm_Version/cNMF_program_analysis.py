@@ -45,7 +45,7 @@ def main():
     parser.add_argument('--figsize', type=float, nargs=2, default=(35, 35), help='figure size as width height')
     parser.add_argument('--show', action="store_true", help='display plots interactively')
     parser.add_argument('--output_format', type=str, default='SVG', choices=['PDF', 'SVG', 'HTML'], help='output format: PDF (matplotlib + PyPDF2 merge), SVG (matplotlib + svglib merge), HTML (interactive Plotly share folder)')
-    parser.add_argument('--Conditions', nargs='*', type=str, default=None, help='list of condition names (values of --categorical_key). Default: all unique values in the h5mu')
+    parser.add_argument('--Conditions', nargs='*', type=str, default=None, help='Condition labels (values of obs[categorical_key]); default: all labels found in the data')
     parser.add_argument('--programs', nargs='+', type=int, default=None, help='specific program numbers to plot (e.g. 4 5 6 ... 100). If omitted, all programs are plotted.')
     parser.add_argument('--subsample_frac', type=float, default=None, help='fraction of cells to subsample for UMAP plots (e.g. 0.1 for 10%%). Default: None (plot all cells)')
     parser.add_argument('--corr_matrix_path', type=str, default=None, help='base path for precomputed waterfall correlation matrices (e.g. /path/to/corr_matrix). Files are expected as <base>_<sample>.txt. Falls back to computing if not found.')
@@ -55,7 +55,7 @@ def main():
     parser.add_argument('--data_key', type=str, default="rna", help='key to access gene expression data in MuData')
     parser.add_argument('--prog_key', type=str, default="cNMF", help='key to access cNMF programs in MuData')
     parser.add_argument('--gene_name_key', type=str, default="gene_names", help='key to access gene names in var')
-    parser.add_argument('--categorical_key', type=str, default="sample", help='key to access sample/condition labels in obs')
+    parser.add_argument('--categorical_key', type=str, default="sample", help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample")
 
 
 

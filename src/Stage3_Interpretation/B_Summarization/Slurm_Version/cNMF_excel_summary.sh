@@ -67,7 +67,7 @@ python3 "${PIPELINE_ROOT}/src/Stage3_Interpretation/B_Summarization/Slurm_Versio
         --gene_names_key "symbol" \
         --adjusted_pval_key "Adjusted P-value"
         # Optional: condition labels (default: all values of --categorical_key in the h5mu):
-        # --Sample condA condB \
+        # --Conditions condA condB \
         # Optional: override the auto-derived output directory:
         # --save_path "$LOG_DIR/Interpretation/Summary_table/50_0_2" \
         # Optional: override the auto-derived input h5mu path:

@@ -22,13 +22,14 @@ def main():
 
     parser.add_argument('--output_directory', type=str, required=True)
     parser.add_argument('--run_name', type=str, required=True)
-    parser.add_argument('--groupby', type=str, default="sample")
+    parser.add_argument('--groupby', type=str, default="sample",
+                        help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample")
     parser.add_argument('--K', nargs='*', type=int, default=[30, 50, 70, 80, 100, 200, 300], help='list of K values (number of components)')
     parser.add_argument('--save_folder_name',  type=str, required=True)
     parser.add_argument('--pval',  type=float, default=0.05)
     parser.add_argument('--eval_folder_name',  type=str, required=True)
     parser.add_argument('--sel_threshs', nargs='*', type=float, default=[0.2, 2.0], help='list of density thresholds')
-    parser.add_argument('--Conditions', nargs='*', type=str, default=None, help='list of condition labels (values of --groupby). Default: all unique values in the first cNMF_{K}_{thresh}.h5mu')
+    parser.add_argument('--Conditions', nargs='*', type=str, default=None, help='Condition labels (values of obs[groupby]); default: all labels found in the data (first cNMF_{K}_{thresh}.h5mu)')
     parser.add_argument('--selected_k', type=int, default=None)
 
     # Enrichment file name and column name arguments
