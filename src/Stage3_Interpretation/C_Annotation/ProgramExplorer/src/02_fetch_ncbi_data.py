@@ -29,6 +29,7 @@ python pipeline/02_fetch_ncbi_data.py \
     --api-key "$NCBI_API_KEY"
 """
 
+import os
 import re
 import argparse
 import json
@@ -766,7 +767,7 @@ def get_top_regulators(
 def validate_regulator_with_string(
     regulator: str,
     program_genes: List[str],
-    species: int = 10090,  # mouse
+    species: int = 9606,  # human; main() passes --species
     required_score: int = 400
 ) -> Dict[str, Any]:
     """Validate regulator-program relationship via STRING-DB.
@@ -778,7 +779,7 @@ def validate_regulator_with_string(
     Args:
         regulator: Gene symbol of the regulator
         program_genes: List of program's gene symbols
-        species: NCBI taxon ID (10090 for mouse)
+        species: NCBI taxon ID (9606 human, 10090 mouse)
         required_score: Minimum STRING combined score (0-1000)
     
     Returns: {
@@ -1131,7 +1132,8 @@ def validate_program_regulators(
     use_all_significant: bool = False,
     max_regulators: int = 20,
     use_batch: bool = True,
-    min_score: int = 400
+    min_score: int = 400,
+    species: int = 9606
 ) -> Dict[str, Any]:
     """Validate all top regulators for a program.
     
@@ -1143,6 +1145,7 @@ def validate_program_regulators(
         max_regulators: Maximum regulators per category when using all significant
         use_batch: If True, use single batch STRING query (faster)
         min_score: Minimum STRING combined score (0-1000, 400=medium confidence)
+        species: NCBI taxon ID for the STRING network (9606 human, 10090 mouse)
     
     Returns: {
         'positive_regulators': [validation_result, ...],
@@ -1171,6 +1174,7 @@ def validate_program_regulators(
         batch_results = batch_validate_regulators(
             regulator_genes=all_regulator_genes,
             program_genes=program_genes,
+            species=species,
             required_score=min_score
         )
         
@@ -1204,7 +1208,8 @@ def validate_program_regulators(
             logger.info(f"  Validating activator {reg_info['gene']} with STRING...")
             validation = validate_regulator_with_string(
                 regulator=reg_info['gene'],
-                program_genes=program_genes
+                program_genes=program_genes,
+                species=species
             )
         else:
             validation = validate_regulator_program(
@@ -1221,7 +1226,8 @@ def validate_program_regulators(
             logger.info(f"  Validating repressor {reg_info['gene']} with STRING...")
             validation = validate_regulator_with_string(
                 regulator=reg_info['gene'],
-                program_genes=program_genes
+                program_genes=program_genes,
+                species=species
             )
         else:
             validation = validate_regulator_program(
@@ -1276,6 +1282,7 @@ def main():
     parser.add_argument("--regulator-pmids", type=int, default=50, help="Number of PMIDs to fetch per regulator (default 50)")
     parser.add_argument("--all-significant", action="store_true", help="Validate ALL significant regulators (not just top N). Fast with STRING.")
     parser.add_argument("--max-regulators", type=int, default=20, help="Maximum regulators per category when using --all-significant (default 20)")
+    parser.add_argument("--species", type=int, default=int(os.environ.get("ANNOTATOR_SPECIES", "9606")), help="NCBI taxon ID for the STRING regulator check: 9606 human, 10090 mouse (default: $ANNOTATOR_SPECIES, else 9606)")
     
     args = parser.parse_args()
     config = load_config(args.config)
@@ -1507,7 +1514,8 @@ def main():
                 top_n_negative_regulators=args.top_negative_regulators,
                 max_pmids_per_regulator=args.regulator_pmids,
                 use_all_significant=args.all_significant,
-                max_regulators=args.max_regulators
+                max_regulators=args.max_regulators,
+                species=args.species
             )
             
             # Add to final context
