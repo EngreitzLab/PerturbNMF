@@ -114,7 +114,7 @@ python3 "${PIPELINE_ROOT}/src/Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_eva
         #--guide_targets_key "guide_targets"
         #--guide_assignment_key "guide_assignment"
         #--guide_annotation_key "non-targeting"
-        #--Perform_motif
+        #--Perform_motif                              # + motif options, see cNMF_evaluation_pipeline.sh / run_motif_enrichment.py
         #--reassign_name
 
 
