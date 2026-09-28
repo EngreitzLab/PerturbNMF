@@ -23,6 +23,7 @@ from species import TAXON
 
 STRING_API = "https://version-12-0.string-db.org/api/json"
 CALLER = "PerturbNMF-annotator"
+PPI_BACKGROUND_LIMIT = 2000  # STRING computes PPI enrichment only for backgrounds up to this size
 
 
 class StringClient:
@@ -92,7 +93,16 @@ class StringClient:
         if len(symbols) < 2:
             return None
         fields = {"identifiers": "\r".join(symbols), "required_score": required_score}
-        if background_ids:
+        background = "the screened genes"
+        if background_ids and len(background_ids) > PPI_BACKGROUND_LIMIT:
+            # STRING refuses PPI enrichment on backgrounds above 2,000 proteins (it answers with an
+            # error record, not an HTTP error). A screen that large is close to genome-wide, so the
+            # genome is the nearest background STRING will use; the result says which was used.
+            background = (f"the genome (the {len(background_ids):,} screened genes exceed STRING's "
+                          f"{PPI_BACKGROUND_LIMIT:,}-protein background limit)")
+        elif background_ids:
             fields["background_string_identifiers"] = "\r".join(background_ids)
         rows = self.call("ppi_enrichment", fields) or []
-        return rows[0] if rows else None
+        if not rows or not isinstance(rows[0], dict) or "error" in rows[0]:
+            return None
+        return {**rows[0], "background": background}

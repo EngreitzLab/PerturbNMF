@@ -463,7 +463,7 @@ function evidenceCard(g) {
       <td>${chips(c.members_in_group)}</td><td>${(c.members_perturbed || []).length} of ${c.size}${outside.length ? `<br><span class="small muted">perturbed, not in group: ${esc(outside.join(", "))}</span>` : ""}</td></tr>`; }).join("");
   const terms = g.enrichment.map(t => `<tr><td>${esc(t.category)}</td><td>${esc(t.description)} <span class="small muted">${esc(t.term)}</span></td>
       <td>${Number(t.fdr).toExponential(1)}</td><td>${t.number_of_genes} / ${t.number_of_genes_in_background}</td><td>${chips(t.genes)}</td></tr>`).join("");
-  const ppi = g.ppi ? `PPI enrichment vs the screened genes: ${esc(g.ppi.number_of_edges)} edges observed, ${esc(g.ppi.expected_number_of_edges)} expected, p = ${Number(g.ppi.p_value).toExponential(1)}` : "PPI enrichment not available";
+  const ppi = g.ppi ? `PPI enrichment vs ${esc(g.ppi.background || "the screened genes")}: ${esc(g.ppi.number_of_edges)} edges observed, ${esc(g.ppi.expected_number_of_edges)} expected, p = ${Number(g.ppi.p_value).toExponential(1)}` : "PPI enrichment not available";
   const edges = g.edges.map(e => `<tr><td style="font-family:var(--mono)">${esc(e.a)} – ${esc(e.b)}</td><td>${e.score.toFixed(2)}</td><td>${e.physical_score ? e.physical_score.toFixed(2) : "—"}</td></tr>`).join("");
   return `<div class="card"><h3>Curated complexes with ≥ 2 members (${g.complexes.length})</h3>
       ${cx ? `<table><tr><th>Complex</th><th>Members here</th><th>Subunits perturbed / size</th></tr>${cx}</table>` : '<p class="muted small">None.</p>'}</div>

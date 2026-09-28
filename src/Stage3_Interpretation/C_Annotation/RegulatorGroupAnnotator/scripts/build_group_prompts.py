@@ -262,7 +262,7 @@ def format_complexes(complexes: list[dict]) -> str:
 def format_string(edges: list[dict], ppi: dict | None) -> str:
     lines = []
     if ppi:
-        lines.append(f"PPI enrichment vs the screened genes: {ppi.get('number_of_edges')} edges observed, "
+        lines.append(f"PPI enrichment vs {ppi.get('background', 'the screened genes')}: {ppi.get('number_of_edges')} edges observed, "
                      f"{ppi.get('expected_number_of_edges')} expected, p = {ppi.get('p_value')}")
     lines += [f"- {e['a']} – {e['b']}: combined {e['score']:.2f}"
               + (f", physical {e['physical_score']:.2f}" if e["physical_score"] else "") for e in edges[:40]]
