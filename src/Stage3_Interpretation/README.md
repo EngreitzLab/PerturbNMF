@@ -36,7 +36,7 @@ Stage3_Interpretation/
 
 ## How to run
 
-Each sub-stage ships SLURM templates in a `Slurm_Version/` folder (and, for A_Plotting and B_Summarization, parallel interactive notebooks in `JupterNote_Version/`). Submit the matching `.sh` from Sherlock or copy the equivalent `python …` command for an interactive run. For per-flag detail, see the sub-READMEs linked in the table above.
+Each sub-stage ships SLURM templates in a `Slurm_Version/` folder (and, for A_Plotting and B_Summarization, parallel interactive notebooks in `JupterNote_Version/`). Submit the matching `.sh` on a SLURM cluster (after setting `PIPELINE_ROOT` and the placeholders) or copy the equivalent `python …` command for an interactive run. For per-flag detail, see the sub-READMEs linked in the table above.
 
 ## Recommended workflow
 

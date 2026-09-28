@@ -2,7 +2,17 @@
 
 ## Overview
 
-This pipeline runs consensus Non-negative Matrix Factorization (cNMF) on single-cell perturbation data (CRISPR screens), then evaluates, calibrates, and visualizes the resulting gene programs. It runs on a single machine; the SLURM runner scripts in this repo are optional and are set up for Stanford's Sherlock cluster.
+This pipeline runs consensus Non-negative Matrix Factorization (cNMF) on single-cell perturbation data (CRISPR screens), then evaluates, calibrates, and visualizes the resulting gene programs. It runs on a single machine; the SLURM runner scripts in this repo are optional examples for an HPC cluster and must be configured for yours.
+
+## Public repository — no project-specific content
+
+This repo is **public**. Nothing project-specific may be checked in:
+
+- No dataset, cell-line, screen, or study names, and no dated run directories (e.g. `MMDDYY_<study>_...`).
+- No collaborator or personal names, emails, or usernames in runnable code or docs (authorship metadata in `CITATION.cff`, `.zenodo.json`, `CHANGELOG.md`, and README fork links is fine).
+- No lab- or cluster-specific paths (group storage mounts, `$SCRATCH`, home dirs) and no cluster-specific partitions/accounts. Use placeholders (`/path/to/...`, `<partition>`, `<your_email>`) or env vars (`PIPELINE_ROOT`, `SLURM_PARTITION`, `SLURM_MAIL_USER`).
+- Study analyses, worklogs, run reports, and generated outputs belong in a **private** repo, not here. Never commit `tasks/` or `.baton/` (both gitignored).
+- Before committing, run the guard: `bash tools/check_no_lab_specific_content.sh` (CI runs it on every push/PR). If a hit is legitimate, add it to `tools/lab_specific_allowlist.txt` with a comment explaining why.
 
 ## Pipeline Structure
 
@@ -26,13 +36,13 @@ flowchart TD
     P["Reference GTF (optional)"] -.-> B
 ```
 
-## HPC Environment
+## HPC Environment (optional)
 
-- **Cluster**: Stanford Sherlock
-- **Partitions**: `engreitz`, `owners`, `bigmem`
-- **User email**: `ymo@stanford.edu`
-- **Pipeline root**: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF`
-- **Conda base**: `/oak/stanford/groups/engreitz/Users/ymo/miniforge3`
+Site-specific settings are supplied by the user, never hardcoded:
+
+- **Pipeline root**: `export PIPELINE_ROOT=/path/to/PerturbNMF` (required by the SLURM runner scripts)
+- **Partition / email**: edit the `<partition>` / `<your_email>` placeholders in the `.sh` runners, or pass `--partition` / `--email` (or set `SLURM_PARTITION` / `SLURM_MAIL_USER`) to the runner skill's `generate_slurm.py`
+- **Conda**: activate via `eval "$(conda shell.bash hook)"` (no hardcoded conda base)
 
 ## Conda Environments
 
@@ -52,14 +62,16 @@ eval "$(conda shell.bash hook)" && conda activate <env_name> && <command>
 
 ## Key Resource Paths
 
-- **GWAS data**: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz`
-- **Reference GTF (IGVF)**: `/oak/stanford/groups/engreitz/Users/opushkar/genome/IGVFFI9573KOZR.gtf.gz`
-- **Motif file**: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/hocomoco_meme.meme`
-- **Genome sequence**: `/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/hg38.fa`
+Reference data lives in `src/Stage2_Evaluation/Resources/` (not tracked; populate it with `setup_resources.sh`):
+
+- **GWAS data**: `Resources/OpenTargets_L2G_Filtered.csv.gz`
+- **Motif file**: `Resources/hocomoco_meme.meme`
+- **Genome sequence**: `Resources/hg38.fa`
+- **Reference GTF (optional)**: user-supplied (e.g. a GENCODE `.gtf.gz`), passed via `--gtf_path` / `--reference_gtf_path`
 
 ## Conventions
 
-- **Run naming**: `MMDDYY_<description>` (e.g., `030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50`)
+- **Run naming**: `MMDDYY_<description>` (e.g., `010125_100k_cells_torch_halsvar_K50`)
 - **Output structure**: `<out_dir>/<run_name>/` with stage subdirectories: `Inference/` (cnmf_tmp/, adata/, loading/, prog_data/, Annotation/), `Evaluation/` (per-K results)
 - **Log directories**: `<out_dir>/<run_name>/Inference/logs/` for inference, `<out_dir>/<run_name>/Evaluation/logs/` for evaluation, `<out_dir>/<run_name>/Plots/logs/` for interpretation
 - **Config saving**: Each job saves its config to `config_<SLURM_JOB_ID>.yml`

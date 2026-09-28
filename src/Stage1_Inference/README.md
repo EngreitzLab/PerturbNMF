@@ -54,7 +54,7 @@ Stage1_Inference/
 
 Each pipeline ships in two forms:
 
-- **Slurm version** (`Slurm_Version/*.sh`) — what to submit on Sherlock. Three SLURM templates are shipped: `*_batch.sh` (one job, all K values, batch mode), `*_online.sh` (torch only — minibatch mode), and `*_parallel.sh` (one job per K via SLURM `--array`).
+- **Slurm version** (`Slurm_Version/*.sh`) — what to submit on a SLURM cluster (set `PIPELINE_ROOT` and fill in the `<partition>` / `<your_email>` placeholders first). Three SLURM templates are shipped: `*_batch.sh` (one job, all K values, batch mode), `*_online.sh` (torch only — minibatch mode), and `*_parallel.sh` (one job per K via SLURM `--array`).
 - **Jupyter version** (`JupterNote_Version/*.ipynb`) — interactive walkthrough with the same 13 numbered steps (parameters → load → optional non-coding filter → prepare → factorize → combine → K selection → consensus → MuData → annotation → diagnostic plots → merge parallel K). Useful for debugging or running on small data.
 
 For details on individual CLI flags, see the per-pipeline READMEs linked above.
