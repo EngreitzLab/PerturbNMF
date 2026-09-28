@@ -30,6 +30,7 @@ from Stage3_Interpretation.A_Plotting.src.Perturbed_gene_QC_plots import (
     plot_perturbation_vs_control,
     plot_perturbation_vs_control_by_condition,
 )
+from Stage3_Interpretation.A_Plotting.src._lazy_corr import LazyGeneCorr, LazyPerturbCorr
 
 
 class TestPlotTopProgramPerGene:
@@ -51,6 +52,7 @@ class TestPlotTopProgramPerGene:
             Target_Gene=gene,
             top_n_programs=3,
             save_path=gene_output_dir,
+            gene_name_key='symbol',
             save_name="test_top_program_per_gene",
         )
         plt.close('all')
@@ -81,6 +83,7 @@ class TestPlotTopProgramPerGene:
                 Target_Gene=dups[0],
                 top_n_programs=3,
                 save_path=gene_output_dir,
+                gene_name_key='symbol',
                 save_name="test_top_program_dup",
             )
 
@@ -94,6 +97,7 @@ class TestPlotTopProgramPerGene:
                 Target_Gene=gene,
                 top_n_programs=n_programs + 5,
                 save_path=gene_output_dir,
+                gene_name_key='symbol',
                 save_name="test_top_program_too_many",
             )
 
@@ -149,13 +153,23 @@ class TestPlotVolcano:
 
 class TestComputeGeneCorrelationMatrix:
 
-    def test_returns_symmetric_dataframe(self, test_mdata):
-        """compute_gene_correlation_matrix returns a symmetric DataFrame."""
+    def test_returns_symmetric_lazy_matrix(self, test_mdata):
+        """compute_gene_correlation_matrix returns a square, symmetric LazyGeneCorr."""
         result = compute_gene_correlation_matrix(test_mdata)
-        assert isinstance(result, pd.DataFrame)
-        assert result.shape[0] == result.shape[1]
+        assert isinstance(result, LazyGeneCorr)
         n_genes = test_mdata['rna'].n_vars
-        assert result.shape[0] == n_genes
+        assert result.shape == (n_genes, n_genes)
+        dense = result.to_dense()
+        assert np.allclose(dense.values, dense.values.T, atol=1e-5)
+
+    def test_rows_match_pearson_of_loadings(self, test_mdata):
+        """Each lazy row equals the Pearson correlation of cNMF loading vectors."""
+        result = compute_gene_correlation_matrix(test_mdata)
+        loadings = pd.DataFrame(test_mdata['cNMF'].varm['loadings'], columns=result.columns)
+        genes = loadings.columns[loadings.std() > 0][:5]
+        expected = loadings[genes].corr()
+        for gene in genes:
+            np.testing.assert_allclose(result.loc[gene][genes].values, expected[gene].values, atol=1e-4)
 
 
 class TestAnalyzeCorrelations:
@@ -197,17 +211,28 @@ class TestAnalyzeCorrelations:
 class TestComputeGeneWaterfallCor:
 
     def test_returns_correlation_matrix(self, synthetic_gene_perturbation_tsv, gene_output_dir):
-        """compute_gene_waterfall_cor returns a DataFrame with NaN diagonal."""
-        save_path = os.path.join(gene_output_dir, "test_gene_waterfall_corr.tsv")
+        """compute_gene_waterfall_cor returns a square LazyPerturbCorr with NaN diagonal."""
+        save_path = os.path.join(gene_output_dir, "test_gene_waterfall_corr.npz")
         result = compute_gene_waterfall_cor(
             synthetic_gene_perturbation_tsv,
             save_path=save_path,
         )
-        assert isinstance(result, pd.DataFrame)
+        assert isinstance(result, LazyPerturbCorr)
         assert result.shape[0] == result.shape[1]
         # Diagonal should be NaN
-        assert all(np.isnan(np.diag(result.values)))
+        assert all(np.isnan(result.loc[target][target]) for target in result.index)
         assert os.path.isfile(save_path)
+
+    def test_rows_match_dense_target_correlation(self, synthetic_gene_perturbation_tsv):
+        """Each lazy row equals the legacy dense pivot_df.T.corr() row."""
+        result = compute_gene_waterfall_cor(synthetic_gene_perturbation_tsv)
+        df = pd.read_csv(synthetic_gene_perturbation_tsv, sep='\t', index_col=0)
+        expected = df.pivot_table(index='target_name', columns='program_name', values='log2FC').T.corr()
+        np.fill_diagonal(expected.values, np.nan)
+        for target in expected.index:
+            np.testing.assert_allclose(
+                result.loc[target][expected.columns].values, expected.loc[target].values, atol=1e-4,
+            )
 
 
 class TestCreateGeneCorrelationWaterfall:
