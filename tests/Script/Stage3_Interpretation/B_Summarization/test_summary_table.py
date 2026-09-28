@@ -267,6 +267,15 @@ class TestSignificantPrograms:
         for samp in sample_list:
             assert f"# programs {samp}" in df.columns
 
+    def test_df_empty_when_nothing_significant(self, perturbation_dir, sample_list):
+        # adj_pval in the fixture is >= 0, so a threshold of 0 selects nothing
+        df = get_significant_programs_df(perturbation_dir, Sample=sample_list, adj_pval_threshold=0)
+        assert df.empty
+        assert df.index.name == "target_name"
+        for samp in sample_list:
+            assert f"significant programs {samp}" in df.columns
+            assert f"# programs {samp}" in df.columns
+
 
 # ==========================================================================
 # Test: MuData helper functions

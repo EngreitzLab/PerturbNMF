@@ -673,7 +673,9 @@ def get_significant_programs_df(Perturbation_path, Sample = ["D0", "sample_D1","
             row[f'significant programs {samp}'] = ', '.join(map(str, programs)) if programs else ''
         sig_prog_data.append(row)
 
-    df_significant_programs = pd.DataFrame(sig_prog_data)
+    # Explicit columns keep the schema when no program is significant (empty table)
+    columns = ['target_name'] + [f'significant programs {samp}' for samp in Sample]
+    df_significant_programs = pd.DataFrame(sig_prog_data, columns=columns)
     df_significant_programs = df_significant_programs.set_index('target_name')
 
     for samp in Sample:

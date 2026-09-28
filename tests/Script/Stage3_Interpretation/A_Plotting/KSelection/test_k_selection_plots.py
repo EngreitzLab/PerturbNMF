@@ -122,17 +122,17 @@ class TestLoadEnrichment:
 class TestLoadPerturbation:
 
     def test_returns_valid_dataframe(self, real_perturbation_df):
-        """load_perturbation_data returns DataFrame with sample and K columns."""
+        """load_perturbation_data returns DataFrame with condition and K columns."""
         df = real_perturbation_df
         assert isinstance(df, pd.DataFrame)
-        assert 'sample' in df.columns
+        assert 'condition' in df.columns
         assert 'K' in df.columns
         assert len(df) > 0
 
-    def test_contains_expected_samples(self, real_perturbation_df):
-        """Loaded data should contain at least some of the expected samples."""
-        samples = set(real_perturbation_df['sample'].unique())
-        assert len(samples) > 0
+    def test_contains_expected_conditions(self, real_perturbation_df):
+        """Loaded data should contain at least some of the expected conditions."""
+        conditions = set(real_perturbation_df['condition'].unique())
+        assert len(conditions) > 0
 
 
 class TestLoadExplainedVariance:
@@ -199,7 +199,7 @@ class TestPlotEnrichment:
 class TestPlotPerturbation:
 
     def test_saves_files_and_returns_df(self, real_perturbation_df, kselection_output_dir):
-        """plot_perturbation saves per-sample and aggregated plots, returns DataFrame."""
+        """plot_perturbation saves per-condition and aggregated plots, returns DataFrame."""
         result = plot_perturbation(
             real_perturbation_df,
             pval=0.05,
@@ -209,8 +209,8 @@ class TestPlotPerturbation:
         )
         plt.close('all')
         assert isinstance(result, pd.DataFrame)
-        assert os.path.isfile(os.path.join(kselection_output_dir, "test_perturbation_per_sample.png"))
-        assert os.path.isfile(os.path.join(kselection_output_dir, "test_perturbation_all_samples.png"))
+        assert os.path.isfile(os.path.join(kselection_output_dir, "test_perturbation_per_condition.png"))
+        assert os.path.isfile(os.path.join(kselection_output_dir, "test_perturbation_all_conditions.png"))
 
 
 class TestPlotExplainedVariance:

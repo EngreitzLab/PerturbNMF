@@ -51,6 +51,7 @@ class TestPlotTopProgramPerGene:
             Target_Gene=gene,
             top_n_programs=3,
             save_path=gene_output_dir,
+            gene_name_key='symbol',
             save_name="test_top_program_per_gene",
         )
         plt.close('all')
@@ -81,6 +82,7 @@ class TestPlotTopProgramPerGene:
                 Target_Gene=dups[0],
                 top_n_programs=3,
                 save_path=gene_output_dir,
+                gene_name_key='symbol',
                 save_name="test_top_program_dup",
             )
 
@@ -94,6 +96,7 @@ class TestPlotTopProgramPerGene:
                 Target_Gene=gene,
                 top_n_programs=n_programs + 5,
                 save_path=gene_output_dir,
+                gene_name_key='symbol',
                 save_name="test_top_program_too_many",
             )
 

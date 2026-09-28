@@ -210,8 +210,8 @@ class TestSkCNMFInference:
                     # Compiled outputs
                     f"adata/cNMF_{k}_{ts}.h5mu",
                     f"prog_data/NMF_{k}_{ts}.h5ad",
-                    f"loading/cNMF_scores_{k}_{thresh}.txt",
-                    f"loading/cNMF_loadings_{k}_{thresh}.txt",
+                    f"loading/cNMF_scores_{k}_{ts}.txt",
+                    f"loading/cNMF_loadings_{k}_{ts}.txt",
                     # Diagnostic plots
                     f"diagnosis_plots/elbow_curves_k{k}_dt{ts}.pdf",
                     f"diagnosis_plots/usage_heatmap_k{k}_dt{ts}.pdf",

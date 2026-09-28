@@ -24,7 +24,7 @@ PLOT_OUTPUT = BATCH_OUTPUT / "Interpretation" / "Plotting" / "K-Selection"
 
 COMPONENTS = [5, 10, 15]
 SEL_THRESH = 2.0
-SAMPLES = ["D0", "D1", "D2", "D3"]
+CONDITIONS = ["D0", "D1", "D2", "D3"]
 
 
 @pytest.fixture(scope="session")
@@ -90,8 +90,8 @@ def real_perturbation_df(eval_dir):
     sel_str = str(SEL_THRESH).replace('.', '_')
     for k in COMPONENTS:
         k_folder = EVAL_DIR / f"{k}_{sel_str}"
-        for samp in SAMPLES:
-            fpath = k_folder / f"{k}_perturbation_association_results_{samp}.txt"
+        for cond in CONDITIONS:
+            fpath = k_folder / f"{k}_perturbation_association_results_{cond}.txt"
             if not fpath.exists():
                 pytest.skip(f"Missing perturbation file: {fpath}")
     from Stage3_Interpretation.A_Plotting.src.k_selection_plots import load_perturbation_data
@@ -99,7 +99,7 @@ def real_perturbation_df(eval_dir):
         folder=str(EVAL_DIR),
         components=COMPONENTS,
         sel_thresh=SEL_THRESH,
-        samples=SAMPLES,
+        conditions=CONDITIONS,
     )
 
 
@@ -164,10 +164,10 @@ def synthetic_test_stats_df():
     rng = np.random.default_rng(42)
     rows = []
     for k in [5, 10, 15, 20, 30]:
-        for samp in ['D0', 'sample_D1', 'sample_D2']:
+        for cond in ['D0', 'D1', 'D2']:
             for target in [f'gene_{i}' for i in range(5)]:
                 rows.append({
-                    'K': k, 'sample': samp, 'target_name': target,
+                    'K': k, 'condition': cond, 'target_name': target,
                     'adj_pval': rng.uniform(0.0001, 0.1),
                     'log2FC': rng.normal(0, 0.5),
                 })
