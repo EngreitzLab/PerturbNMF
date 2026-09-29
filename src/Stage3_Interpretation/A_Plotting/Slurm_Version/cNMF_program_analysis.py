@@ -10,9 +10,9 @@ from pathlib import Path
 
 
 # Change path to wherever you have repo locally
-sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
+sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
 
-from Stage3_Interpretation.A_Plotting.src import merge_pdfs_in_folder, merge_svgs_to_pdf, ensure_umap
+from Stage3_Interpretation.A_Plotting.src import merge_pdfs_in_folder, merge_svgs_to_pdf, ensure_umap, condition_labels_from_obs
 
 from Stage3_Interpretation.A_Plotting.src import plot_umap_per_program, plot_top_gene_per_program, top_GO_per_program, compute_program_correlation_matrix,\
                               analyze_program_correlations, plot_violin, plot_program_log2FC, plot_program_heatmap, plot_program_volcano, \
@@ -45,7 +45,7 @@ def main():
     parser.add_argument('--figsize', type=float, nargs=2, default=(35, 35), help='figure size as width height')
     parser.add_argument('--show', action="store_true", help='display plots interactively')
     parser.add_argument('--output_format', type=str, default='SVG', choices=['PDF', 'SVG', 'HTML'], help='output format: PDF (matplotlib + PyPDF2 merge), SVG (matplotlib + svglib merge), HTML (interactive Plotly share folder)')
-    parser.add_argument('--Conditions', nargs='*', type=str, default=['D0', 'sample_D1', 'sample_D2', 'sample_D3'], help='list of condition names')
+    parser.add_argument('--Conditions', nargs='*', type=str, default=None, help='Condition labels (values of obs[categorical_key]); default: all labels found in the data')
     parser.add_argument('--programs', nargs='+', type=int, default=None, help='specific program numbers to plot (e.g. 4 5 6 ... 100). If omitted, all programs are plotted.')
     parser.add_argument('--subsample_frac', type=float, default=None, help='fraction of cells to subsample for UMAP plots (e.g. 0.1 for 10%%). Default: None (plot all cells)')
     parser.add_argument('--corr_matrix_path', type=str, default=None, help='base path for precomputed waterfall correlation matrices (e.g. /path/to/corr_matrix). Files are expected as <base>_<sample>.txt. Falls back to computing if not found.')
@@ -55,7 +55,7 @@ def main():
     parser.add_argument('--data_key', type=str, default="rna", help='key to access gene expression data in MuData')
     parser.add_argument('--prog_key', type=str, default="cNMF", help='key to access cNMF programs in MuData')
     parser.add_argument('--gene_name_key', type=str, default="gene_names", help='key to access gene names in var')
-    parser.add_argument('--categorical_key', type=str, default="sample", help='key to access sample/condition labels in obs')
+    parser.add_argument('--categorical_key', type=str, default="sample", help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample")
 
 
 
@@ -82,6 +82,11 @@ def main():
 
     # compute UMAP/PCA from top-variance genes if missing
     ensure_umap(mdata, args.data_key, args.prog_key)
+
+    # condition labels default to the values of --categorical_key in the data
+    if args.Conditions is None:
+        args.Conditions = condition_labels_from_obs(mdata[args.data_key].obs, args.categorical_key)
+        print(f"--Conditions not given; using {args.categorical_key} values from the h5mu: {args.Conditions}")
 
     program_len = len(mdata[args.prog_key].var) # find out list of programs to process
     print(f"there are {program_len} Program found")

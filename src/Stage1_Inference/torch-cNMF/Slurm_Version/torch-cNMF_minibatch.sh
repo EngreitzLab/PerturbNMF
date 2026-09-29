@@ -1,11 +1,10 @@
 #!/bin/bash
-set -euo pipefail
 
 # SLURM job configuration
-#SBATCH --job-name=102325_100K_cells_20iter_torch_halsvar_minibatch_e7_RTX_0_2    # Job name
-#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Results/torch-cNMF_evaluation/minibatch/0_2/102325_100K_cells_20iter_torch_halsvar_minibatch_e7_RTX_0_2/Inference/logs/%j.out      # Output file (%j = job ID)
-#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Results/torch-cNMF_evaluation/minibatch/0_2/102325_100K_cells_20iter_torch_halsvar_minibatch_e7_RTX_0_2/Inference/logs/%j.err       # Error file
-#SBATCH --partition=gpu                # partition name
+#SBATCH --job-name=torch-cNMF_minibatch    # Job name
+#SBATCH --output=/path/to/logs/%j.out   # edit: SLURM does not expand variables here
+#SBATCH --error=/path/to/logs/%j.err   # edit: SLURM does not expand variables here
+#SBATCH --partition=<partition>                # partition name
 #SBATCH --time=02:00:00                # Time limit 
 #SBATCH --nodes=1                      # Number of nodes
 #SBATCH --ntasks=1                     # Number of tasks
@@ -13,13 +12,18 @@ set -euo pipefail
 #SBATCH --mem=128G                     # Memory per node
 #SBATCH --gres=gpu:1                   # Request 1 GPU (for future use)
 ##SBATCH --constraint="GPU_MEM:32GB|GPU_MEM:48GB|GPU_MEM:80GB"  # Request specific GPU type if available
-#SBATCH -C GPU_SKU:V100S_PCIE
+##SBATCH -C <gpu_constraint>        # optional, cluster-specific GPU type
 
 
 # Email notifications
 #SBATCH --mail-type=BEGIN,END,FAIL      # Send email at start, end, and on failure
-#SBATCH --mail-user=ymo@stanford.edu    # Email address
+#SBATCH --mail-user=<your_email>    # Email address
 
+
+
+set -euo pipefail
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
 
 START_TIME=$(date +%s)
 
@@ -32,8 +36,8 @@ echo "Working directory: $(pwd)"
 
 
 # Configuration - Set your log directory here
-OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Results/torch-cNMF_evaluation/minibatch/0_2"
-RUN_NAME="102325_100K_cells_20iter_torch_halsvar_minibatch_e7_RTX_0_2"
+OUT_DIR="/path/to/output_dir"
+RUN_NAME="example_run"
 LOG_DIR="$OUT_DIR/$RUN_NAME/Inference/logs"
 
 # Create logs directory if it doesn't exist
@@ -49,7 +53,7 @@ echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 echo "Activating conda base environment..."
 eval "$(conda shell.bash hook)"
 conda activate torch-nmf-dl
-export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
+export PYTHONPATH="${PIPELINE_ROOT}/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
 echo "Python version: $(python --version)"
@@ -91,8 +95,8 @@ nvidia-smi 2>/dev/null || echo "GPU monitoring not available"
 
 # Run the Python script
 echo "Running Python script..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py \
-        --counts_fn "/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Cell_data/shuffled_100K_250genes.h5ad" \
+python3 "${PIPELINE_ROOT}/src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py" \
+        --counts_fn "/path/to/counts.h5ad" \
         --output_directory "$OUT_DIR" \
         --run_name "$RUN_NAME" \
         --algo "halsvar" \
@@ -135,7 +139,7 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         #--num_gene 300
         #--remove_noncoding
         #--ensembl_prefix "ENSG"
-        #--gtf_path "/oak/stanford/groups/engreitz/Users/ymo/Tools/AGeneTic/refs/gencode.v43.annotation.gtf.gz"
+        #--gtf_path "/path/to/annotation.gtf.gz"
         #--gene_id_key "gene_id"
         #--add_gene_names_from_gtf
         #--gene_names_key "symbol"

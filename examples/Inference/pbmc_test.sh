@@ -2,25 +2,28 @@
 
 # SLURM job configuration
 #SBATCH --job-name=pbmc_test
-#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/examples/example_output/pbmc_test/Inference/logs/%j.out
-#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/examples/example_output/pbmc_test/Inference/logs/%j.err
-#SBATCH --partition=gpu,owners
+#SBATCH --output=examples/example_output/pbmc_test/Inference/logs/%j.out   # relative to the submit dir (repo root)
+#SBATCH --error=examples/example_output/pbmc_test/Inference/logs/%j.err   # relative to the submit dir (repo root)
+#SBATCH --partition=<partition>
 #SBATCH --time=01:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=64G
 #SBATCH --gres=gpu:1
-#SBATCH -C GPU_SKU:RTX_2080Ti
+##SBATCH -C <gpu_constraint>        # optional, cluster-specific GPU type
 
 # Email notifications
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --mail-user=ymo@stanford.edu
+#SBATCH --mail-user=<your_email>
 
 # Configuration
-OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/examples/example_output"
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
+
+OUT_DIR="${PIPELINE_ROOT}/examples/example_output"
 RUN_NAME="pbmc_test"
-LOG_DIR="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/examples/example_output/pbmc_test/Inference/logs"
+LOG_DIR="${PIPELINE_ROOT}/examples/example_output/pbmc_test/Inference/logs"
 
 # Store start time
 START_TIME=$(date +%s)
@@ -63,9 +66,9 @@ echo "Python: $(python --version)"
 
 # Run pipeline
 echo "Running: inference-torch"
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py \
-        --counts_fn /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/examples/example_output/pbmc3k.h5ad \
-        --output_directory /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/examples/example_output \
+python3 "${PIPELINE_ROOT}/src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cnmf_inference_pipeline.py" \
+        --counts_fn "${PIPELINE_ROOT}/examples/example_output/pbmc3k.h5ad" \
+        --output_directory "${PIPELINE_ROOT}/examples/example_output" \
         --run_name pbmc_test \
         --species human \
         --K 5 7 10 \
@@ -94,10 +97,10 @@ nvidia-smi 2>/dev/null || echo "GPU not available"
 
 # Generate h5mu structure summary files
 if [ $EXIT_CODE -eq 0 ]; then
-    ADATA_DIR="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/examples/example_output/pbmc_test/Inference/adata"
+    ADATA_DIR="${PIPELINE_ROOT}/examples/example_output/pbmc_test/Inference/adata"
     if [ -d "$ADATA_DIR" ]; then
         echo "Generating h5mu structure files..."
-        python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/perturbNMF-runner/scripts/generate_h5mu_structure.py dummy --adata_dir "$ADATA_DIR"
+        python3 "${PIPELINE_ROOT}/.claude/skills/perturbNMF-runner/scripts/generate_h5mu_structure.py" dummy --adata_dir "$ADATA_DIR"
         echo "h5mu structure generation complete"
     else
         echo "WARNING: adata directory not found at $ADATA_DIR, skipping structure generation"

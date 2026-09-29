@@ -2,9 +2,9 @@
 
 # SLURM job configuration
 #SBATCH --job-name=consolidated_iterations          # Job name
-#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/020426_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/consolidated_iterations/logs/%j.out      # Output file (%j = job ID)
-#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/020426_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/consolidated_iterations/logs/%j.err       # Error file
-#SBATCH --partition=engreitz,owners,bigmem           # partition name
+#SBATCH --output=/path/to/logs/%j.out   # edit: SLURM does not expand variables here
+#SBATCH --error=/path/to/logs/%j.err   # edit: SLURM does not expand variables here
+#SBATCH --partition=<partition>           # partition name
 #SBATCH --time=14:00:00                # Time limit (5 minutes)
 #SBATCH --nodes=1                      # Number of nodes
 #SBATCH --ntasks=1                     # Number of tasks
@@ -13,10 +13,13 @@
 
 # Email notifications
 #SBATCH --mail-type=BEGIN,END,FAIL      # Send email at start, end, and on failure
-#SBATCH --mail-user=ymo@stanford.edu    # Email address
+#SBATCH --mail-user=<your_email>    # Email address
 
 # Define the cNMF case
-OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/020426_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50"
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
+
+OUT_DIR="/path/to/output_dir"
 RUN_NAME="consolidated_iterations"
 LOG_DIR="$OUT_DIR/$RUN_NAME/Inference/logs"
 
@@ -41,7 +44,7 @@ mkdir -p "$LOG_DIR"
 echo "Activating conda base environment..."
 eval "$(conda shell.bash hook)"
 conda activate sk-cNMF
-export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
+export PYTHONPATH="${PIPELINE_ROOT}/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
 echo "Python version: $(python --version)"
@@ -50,8 +53,8 @@ echo "Python path: $(which python)"
 
 # Run the Python script
 echo "Running Python script..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py\
-        --counts_fn  "/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Data/raw.h5ad"\
+python3 "${PIPELINE_ROOT}/src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py"\
+        --counts_fn  "/path/to/counts.h5ad"\
         --output_directory "$OUT_DIR" \
         --init "random" \
         --run_name "$RUN_NAME" \
@@ -76,7 +79,7 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         #--skip_existing
         #--remove_noncoding
         #--ensembl_prefix "ENSG"
-        #--gtf_path "/oak/stanford/groups/engreitz/Users/ymo/Tools/AGeneTic/refs/gencode.v43.annotation.gtf.gz"
+        #--gtf_path "/path/to/annotation.gtf.gz"
         #--gene_id_key "gene_id"
         #--add_gene_names_from_gtf
         #--data_key "rna"

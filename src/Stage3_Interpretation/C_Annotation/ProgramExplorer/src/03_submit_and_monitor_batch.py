@@ -82,12 +82,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 MODEL = "claude-sonnet-4-5-20250929"  # Anthropic model name
-DEFAULT_ANNOTATION_ROLE = "vascular-biology specialist"
-DEFAULT_ANNOTATION_CONTEXT = (
-    "a gene program extracted from single-cell Perturb-seq of mouse brain "
-    "endothelial cells (ECs)"
-)
-DEFAULT_SEARCH_KEYWORD = '(endothelial OR endothelium OR "vascular endothelial")'
+DEFAULT_ANNOTATION_ROLE = "molecular and cell biologist"
+DEFAULT_ANNOTATION_CONTEXT = "a gene program extracted from single-cell Perturb-seq"
+DEFAULT_SEARCH_KEYWORD = "(none specified)"  # set --search-keyword to your cell type / tissue
 
 """
 @description
@@ -259,9 +256,10 @@ def ensure_global_uniqueness(
     return add_global_uniqueness_scores(df)
 
 # Vertex AI Configuration
-VERTEX_PROJECT_ID = "hs-vascular-development"
-VERTEX_LOCATION = "us-east5"
-VERTEX_BUCKET = "gs://perturbseq/batch"
+# Set these for your own Google Cloud project; there are no built-in defaults.
+VERTEX_PROJECT_ID = os.environ.get("VERTEX_PROJECT_ID") or os.environ.get("GOOGLE_CLOUD_PROJECT")
+VERTEX_LOCATION = os.environ.get("VERTEX_LOCATION") or os.environ.get("GOOGLE_CLOUD_LOCATION", "us-east5")
+VERTEX_BUCKET = os.environ.get("VERTEX_BUCKET")  # e.g. gs://<your-bucket>/batch
 
 VERTEX_MODEL_MAP = {
     "claude-opus-4-5": "publishers/anthropic/models/claude-opus-4-5",
@@ -1037,6 +1035,9 @@ def cmd_submit_vertex(args: argparse.Namespace) -> int:
     
     # Upload to GCS
     bucket = args.bucket or VERTEX_BUCKET
+    if not bucket:
+        logger.error("No GCS bucket: pass --bucket gs://<your-bucket>/batch or set VERTEX_BUCKET.")
+        return 1
     gcs_input_uri = f"{bucket}/inputs/{base_name}_{timestamp}.jsonl"
     if not upload_to_gcs(jsonl_path, gcs_input_uri):
         return 2

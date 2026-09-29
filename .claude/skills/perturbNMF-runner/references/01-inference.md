@@ -101,7 +101,7 @@ See "Minibatch / Dataloader parameters" section above for the full table with re
 
 ### GPU Selection (torch-cNMF only)
 
-**Check available GPUs**: `sinfo -p gpu,owners -o "%P %G %f %a" | grep GPU_SKU | sort -u`
+**Check available GPUs**: `sinfo -p <gpu_partition> -o "%P %G %f %a" | sort -u` (node features show which GPU constraint names your cluster uses, if any)
 
 **Estimate VRAM**: `(cells x genes x 8 x 3) x 1.5` (data + W + H + 50% overhead)
 
@@ -122,6 +122,6 @@ Present recommendation with VRAM estimate, confirm with user, pass `--gpu_min_me
 
 ### CPUs & Partitions
 
-- sk-cNMF: 1-10 CPUs, partition `engreitz,owners`
-- torch-cNMF: 1 CPU (GPU-bound), partition `gpu,owners`
+- sk-cNMF: 1-10 CPUs, standard CPU partition (ask the user)
+- torch-cNMF: 1 CPU (GPU-bound), GPU partition (ask the user)
 - Memory >256G: add `bigmem`

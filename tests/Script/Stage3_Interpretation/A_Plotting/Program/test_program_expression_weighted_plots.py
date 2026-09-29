@@ -5,7 +5,7 @@ Tests use real MuData and synthetic perturbation files.
 
 Usage:
     eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking
-    cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
+    cd <repo root>
     python -m pytest tests/Script/Stage3_Interpretation/A_Plotting/Program/test_program_expression_weighted_plots.py -v
 """
 

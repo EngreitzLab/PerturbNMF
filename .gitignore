@@ -30,3 +30,11 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Private working notes / session handoffs (never commit to this public repo)
+tasks/
+.baton/
+
+# Claude skill eval/workspace artifacts (study-specific; keep in a private repo)
+.claude/skills/*-workspace/
+.claude/skills/*_output/

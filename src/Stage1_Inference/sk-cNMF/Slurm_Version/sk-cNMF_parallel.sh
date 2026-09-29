@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # SLURM job configuration
-#SBATCH --job-name=100525_100k_10iter_1000batiter_sk_cd_e7_seed42          # Job name
-#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Results/sk-cNMF_evaluation/100525_100k_10iter_1000batiter_sk_cd_e7_seed42/logs/%A_%a.out      # Output file (%j = job ID)
-#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Results/sk-cNMF_evaluation/100525_100k_10iter_1000batiter_sk_cd_e7_seed42/logs/%A_%a.err       # Error file
-#SBATCH --partition=engreitz           # partition name
+#SBATCH --job-name=sk-cNMF_parallel          # Job name
+#SBATCH --output=/path/to/logs/%A_%a.out   # edit: SLURM does not expand variables here
+#SBATCH --error=/path/to/logs/%A_%a.err   # edit: SLURM does not expand variables here
+#SBATCH --partition=<partition>           # partition name
 #SBATCH --array=1                    # Run parallel jobs (array indices 1-#)
 #SBATCH --time=100:00:00                # Time limit
 #SBATCH --nodes=1                      # Number of nodes
@@ -14,11 +14,14 @@
 
 # Email notifications
 #SBATCH --mail-type=BEGIN,END,FAIL      # Send email at start, end, and on failure
-#SBATCH --mail-user=ymo@stanford.edu    # Email address
+#SBATCH --mail-user=<your_email>    # Email address
 
 # Define the cNMF case
-OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Results/sk-cNMF_evaluation/100525_100k_10iter_1000batiter_sk_cd_e7_seed42"
-RUN_NAME="100525_100k_10iter_1000batiter_sk_cd_e7_seed42"
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
+
+OUT_DIR="/path/to/output_dir"
+RUN_NAME="example_run"
 LOG_DIR="$OUT_DIR/$RUN_NAME/Inference/logs"
 
 # Store start time
@@ -49,7 +52,7 @@ mkdir -p "$LOG_DIR"
 echo "Activating conda base environment..."
 eval "$(conda shell.bash hook)"
 conda activate sk-cNMF
-export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
+export PYTHONPATH="${PIPELINE_ROOT}/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
 echo "Python version: $(python --version)"
@@ -58,8 +61,8 @@ echo "Python path: $(which python)"
 
 # Run the Python script
 echo "Running Python script..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py \
-        --counts_fn "/oak/stanford/groups/engreitz/Users/ymo/NMF_re-inplementing/Cell_data/100k_250genes_withguide.h5ad" \
+python3 "${PIPELINE_ROOT}/src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_batch_inference_pipeline.py" \
+        --counts_fn "/path/to/counts.h5ad" \
         --output_directory "$OUT_DIR/$RUN_NAME" \
         --run_name "${RUN_NAME}_${K}" \
         --init "random" \
@@ -75,7 +78,7 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         --run_refit \
         --run_complie_annotation \
         --run_factorize \
-        --nmf_seeds_path "/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Data/10_seeds_14_${K}.npy"
+        --nmf_seeds_path "/path/to/seeds.npy"
 
         # Reference flags (uncomment + add to the python invocation above to enable):
         #--loss "frobenius"
@@ -85,7 +88,7 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage1_Infe
         #--skip_existing
         #--remove_noncoding
         #--ensembl_prefix "ENSG"
-        #--gtf_path "/oak/stanford/groups/engreitz/Users/ymo/Tools/AGeneTic/refs/gencode.v43.annotation.gtf.gz"
+        #--gtf_path "/path/to/annotation.gtf.gz"
         #--gene_id_key "gene_id"
         #--add_gene_names_from_gtf
         #--data_key "rna"

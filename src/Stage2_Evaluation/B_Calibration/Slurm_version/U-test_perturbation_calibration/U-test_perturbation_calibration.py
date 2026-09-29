@@ -15,10 +15,11 @@ import argparse
 import pandas as pd
 
 # Change path to wherever you have repo locally
-sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[5] / 'src'))
 
 # Point at B_Calibration/src so the U_test package (src/U_test/) is importable.
-sys.path.insert(0, '/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/B_Calibration/src')
+sys.path.insert(0, str(Path(__file__).resolve().parents[5] / 'src/Stage2_Evaluation/B_Calibration/src'))
 
 from U_test import (
     compute_real_perturbation_tests,
@@ -51,7 +52,7 @@ def main():
     # keys
     parser.add_argument('--data_key', help='Key to access gene expression data in MuData object (default: rna)', type=str, default="rna")
     parser.add_argument('--prog_key', help='Key to access cNMF programs in MuData object (default: cNMF)', type=str, default="cNMF")
-    parser.add_argument('--categorical_key', help='Key in .obs to access cell condition/sample labels (default: sample)', type=str, default="sample")
+    parser.add_argument('--categorical_key', help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample", type=str, default="sample")
     parser.add_argument('--guide_names_key', help='Key in .uns to access guide names (default: guide_names)', type=str, default="guide_names")
     parser.add_argument('--guide_targets_key', help='Key in .uns to access guide target genes (default: guide_targets)', type=str, default="guide_targets")
     parser.add_argument('--guide_assignment_key', help='Key in .obsm to access guide assignment matrix (default: guide_assignment)', type=str, default="guide_assignment")

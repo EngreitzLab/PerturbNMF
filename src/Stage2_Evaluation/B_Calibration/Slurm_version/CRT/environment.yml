@@ -170,4 +170,3 @@ dependencies:
       - urllib3==1.25.11
       - wheel==0.45.1
       - zarr==3.1.5
-prefix: /oak/stanford/groups/engreitz/Users/ymo/miniforge3/envs/programDE

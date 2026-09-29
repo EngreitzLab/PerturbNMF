@@ -5,12 +5,14 @@ import yaml
 import os
 
 # Change path to wherever you have repo locally
-sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
 
 from Stage3_Interpretation.A_Plotting.src import (load_stablity_error_data, plot_stablity_error,\
                          load_enrichment_data, plot_enrichment,\
                          load_perturbation_data, plot_perturbation,\
-                         load_explained_variance_data,plot_explained_variance, programs_dotplots,plot_k_selection_panel
+                         load_explained_variance_data,plot_explained_variance, programs_dotplots,plot_k_selection_panel,\
+                         read_condition_labels_from_h5mu
                           )
 
 
@@ -20,13 +22,14 @@ def main():
 
     parser.add_argument('--output_directory', type=str, required=True)
     parser.add_argument('--run_name', type=str, required=True)
-    parser.add_argument('--groupby', type=str, default="sample")
+    parser.add_argument('--groupby', type=str, default="sample",
+                        help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample")
     parser.add_argument('--K', nargs='*', type=int, default=[30, 50, 70, 80, 100, 200, 300], help='list of K values (number of components)')
     parser.add_argument('--save_folder_name',  type=str, required=True)
     parser.add_argument('--pval',  type=float, default=0.05)
     parser.add_argument('--eval_folder_name',  type=str, required=True)
     parser.add_argument('--sel_threshs', nargs='*', type=float, default=[0.2, 2.0], help='list of density thresholds')
-    parser.add_argument('--Conditions', nargs='*', type=str, default=['D0', 'sample_D1', 'sample_D2', 'sample_D3'], help='list of condition labels')
+    parser.add_argument('--Conditions', nargs='*', type=str, default=None, help='Condition labels (values of obs[groupby]); default: all labels found in the data (first cNMF_{K}_{thresh}.h5mu)')
     parser.add_argument('--selected_k', type=int, default=None)
 
     # Enrichment file name and column name arguments
@@ -69,6 +72,13 @@ def main():
     os.makedirs(f'{args.save_folder_name}', exist_ok=True)
     with open(f'{args.save_folder_name}/config_{job_id}.yml', 'w') as f:
         yaml.dump(args_dict, f, default_flow_style=False, width=1000)
+
+    # ---- Condition labels: default to the values of --groupby in the inference h5mu ----
+    if args.Conditions is None:
+        first_h5mu = (f"{args.output_directory}/{args.run_name}/Inference/adata/"
+                      f"cNMF_{args.K[0]}_{str(args.sel_threshs[0]).replace('.', '_')}.h5mu")
+        args.Conditions = read_condition_labels_from_h5mu(first_h5mu, 'rna', args.groupby)
+        print(f"--Conditions not given; using {args.groupby} values from {first_h5mu}: {args.Conditions}")
 
     # ---- Pre-flight check: verify all required evaluation files exist ----
     _go_pat = args.go_file or '{k}_GO_term_enrichment.txt'

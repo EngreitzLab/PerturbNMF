@@ -44,7 +44,7 @@ The config YAML specifies: input spectra file, output directory, LLM model, STRI
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`
+- Partition: standard CPU partition (ask the user)
 - CPUs: 4
 - Memory: 32G
 - Time: 1-2h (depends on number of programs and LLM response time)
@@ -70,7 +70,7 @@ Mines PubMed/PubTator for evidence supporting the program annotations produced b
 |-----------|---------|-------------|
 | `--programs` | all | Comma-separated program IDs (e.g. `2,6,33,34`) |
 | `--interactions` | (built-in 17-verb list) | Comma-separated interaction verbs used to formulate queries |
-| `--domain-keywords` | (built-in vascular set) | Comma-separated domain keywords for evidence scoring |
+| `--domain-keywords` | (built-in generic set) | Comma-separated domain keywords for evidence scoring |
 | `--max-papers` | `30` | Max papers per program |
 | `--max-pubtator-results` | `50` | Max results per PubTator query |
 | `--max-llm-queries` | `8` | Max LLM-generated queries per program |
@@ -82,7 +82,7 @@ Mines PubMed/PubTator for evidence supporting the program annotations produced b
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`
+- Partition: standard CPU partition (ask the user)
 - CPUs: 4
 - Memory: 32G
 - Time: 1-3h (depends on `--max-papers` and LLM throughput)
@@ -115,8 +115,8 @@ other stage (no notebook required). Submit one job per K to cover multiple K val
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--sel_thresh` | `0.2` | Density threshold (`0.2` → `0_2`, `2.0` → `2_0`) |
-| `--Sample` | `D0 sample_D1 sample_D2 sample_D3` | Condition/sample labels (e.g. `D0 D1 D2 D3`, `WTC`) |
-| `--categorical_key` | `sample` | obs column for sample/condition grouping (e.g. `batch`, `timepoint`) |
+| `--Conditions` | all labels found in the data | Condition labels (values of obs[categorical_key]), e.g. `condA condB`. `--Sample` is a deprecated alias |
+| `--categorical_key` | `sample` | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor) |
 | `--perturbation_file_name` | `perturbation_association_results` | Perturbation file stem (e.g. `CRT`) |
 | `--effect_size` | `log2FC` | Effect-size column (e.g. `approx_log2FC`) |
 | `--gene_names_key` | `symbol` | var column with gene symbols |
@@ -134,7 +134,7 @@ Reads the per-K evaluation outputs at (paths derived from `--out_dir`/`--run_nam
 ├── {K}_GO_term_enrichment.txt
 ├── {K}_geneset_enrichment.txt
 ├── {K}_trait_enrichment.txt
-├── {K}_{perturbation_file_name}_{Sample}.txt   (one per sample)
+├── {K}_{perturbation_file_name}_{Condition}.txt   (one per condition)
 ├── {K}_categorical_association_results.txt
 └── {K}_Explained_Variance.txt
 ```
@@ -150,7 +150,7 @@ explicitly and keep eval files under `Evaluation/` or symlink them.)
 Per job, written to `--save_path` (default `{out_dir}/{run_name}/Interpretation/Summary_table/{K}_{thresh}/`):
 - `cNMF_{K}_{thresh}.xlsx` — main multi-sheet workbook
 - `Summary_{K}_{thresh}.tsv`, `Program_Loadings_{K}_{thresh}.tsv`, `Targets_Summary_{K}_{thresh}.tsv`
-- Sidecars: `specificity_score_{Sample}.txt`, `corr_gene_matrix_{Sample}.txt(.gz)`, `kd_efficiency.txt`, `perturbation_merged_{Sample}(.._significant).txt`
+- Sidecars: `specificity_score_{Condition}.txt`, `corr_gene_matrix_{Condition}.txt(.gz)`, `kd_efficiency.txt`, `perturbation_merged_{Condition}(.._significant).txt`
 - `config_{SLURM_JOB_ID}.yml`
 
 ### Output sheets
@@ -169,7 +169,7 @@ Per job, written to `--save_path` (default `{out_dir}/{run_name}/Interpretation/
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`
+- Partition: standard CPU partition (ask the user)
 - CPUs: 4
 - Memory: 64G
 - Time: 2h (MyGene API queries for gene annotations are the bottleneck)

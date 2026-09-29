@@ -37,7 +37,7 @@ Consumers checked:
 ## How to invoke
 
 ```bash
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/pipeline-drift-check/scripts/check-pipeline-drift.py
+python3 .claude/skills/pipeline-drift-check/scripts/check-pipeline-drift.py   # from the repo root (or set PIPELINE_ROOT)
 ```
 
 Exit code is always 0. Output is the drift report (or a "no drift detected" line).
@@ -54,5 +54,4 @@ Skip Jupyter notebooks and `tests/` content unless the user explicitly asks.
 
 ## Related
 
-- There is a global SessionStart hook at `/home/users/ymo/.claude/scripts/check-pipeline-drift.py` that runs the same logic automatically at the start of every session. This skill is for **on-demand** invocation mid-session (e.g., right after editing argparse, README, or skill references).
-- Last verification snapshot: `.claude/skills/perturbNMF-runner-workspace/iteration-1/summary.md`.
+- A SessionStart hook can run the same script automatically at the start of every session. This skill is for **on-demand** invocation mid-session (e.g., right after editing argparse, README, or skill references).

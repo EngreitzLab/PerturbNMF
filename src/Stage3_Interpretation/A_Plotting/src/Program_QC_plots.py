@@ -40,7 +40,7 @@ plt.rcParams.update({
 
 import sys
 # Change path to wherever you have repo locally
-sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
+sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
 
 from .utilities import convert_adata_with_mygene, convert_with_mygene, rename_list_gene_dictionary, rename_adata_gene_dictionary
 from .Program_expression_weighted_plots import plot_program_heatmap_weighted

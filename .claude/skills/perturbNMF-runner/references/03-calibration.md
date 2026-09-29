@@ -40,7 +40,7 @@ Key parameters (always ask):
 |-----------|---------|-------------|
 | `--K` | `[30, 50, 70, 80, 100, 200, 300]` | K values to test (formerly named `--components`) |
 | `--sel_threshs` | `[0.2, 2.0]` | Density thresholds |
-| `--categorical_key` | `sample` | Key to split cells into conditions for per-condition CRT |
+| `--categorical_key` | `sample` | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); CRT runs per condition |
 | `--guide_annotation_key` | `non-targeting` | Label for non-targeting/control guides (see Step B) |
 | `--number_permutations` | `1024` | CRT permutations (recommend `5000` for production) |
 | `--number_guide` | `6` | Guides per gene (see Step B) |
@@ -85,7 +85,7 @@ Present available continuous covariates from the h5mu obs columns. Common covari
 | CPUs | `40` (CRT parallelizes permutations across cores) |
 | Memory | `256G` for >100k cells, `128G` for <100k |
 | Time | ~2h per K x sel_thresh x categorical condition. E.g., 1 K x 1 sel_thresh x 17 timepoints = 4-8h |
-| Partition | `owners,engreitz,bigmem` |
+| Partition | a partition that allows high-memory jobs (ask the user) |
 
 ### Step F: Generate SLURM script
 
@@ -96,7 +96,7 @@ python3 SKILL_DIR/scripts/generate_slurm.py \
   --output_dir <out_dir> \
   --run_name <run_name> \
   --cpus 40 --mem 256G --time 04:00:00 \
-  --partition owners,engreitz,bigmem \
+  --partition <PARTITION> \
   --script_output_path <project_root>/Script/<run_name>_crt.sh \
   -- \
   --out_dir <out_dir> \
@@ -147,7 +147,7 @@ U-test reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns[
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`
+- Partition: standard CPU partition (ask the user)
 - CPUs: 10-20, Memory: 128-256G, Time: 3-5h
 
 ---
@@ -185,5 +185,5 @@ See `references/parameter-catalog.md` for the full parameter list including gene
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`
+- Partition: standard CPU partition (ask the user)
 - CPUs: 10-20, Memory: 128-256G, Time: 2-6h

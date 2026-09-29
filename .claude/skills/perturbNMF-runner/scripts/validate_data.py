@@ -244,7 +244,7 @@ def validate_adata(adata, args):
 
     # Check categorical key
     if args.categorical_key not in adata.obs:
-        issues.append(f"Missing obs['{args.categorical_key}'] (categorical/sample key)")
+        issues.append(f"Missing obs['{args.categorical_key}'] (condition key, --categorical_key)")
     else:
         n_cats = adata.obs[args.categorical_key].nunique()
         print(f"\n  obs['{args.categorical_key}']: {n_cats} unique values")
@@ -345,7 +345,7 @@ def main():
     )
     parser.add_argument(
         '--categorical_key', type=str, default='sample',
-        help='Key in .obs for categorical/sample variable (default: sample)'
+        help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample"
     )
     parser.add_argument(
         '--guide_names_key', type=str, default='guide_names',
@@ -448,7 +448,7 @@ def main():
     print(f"  Cells: {n_cells:,} | Genes: {n_genes:,}")
     print(f"  sk-cNMF:    mem={mem_rec}, time={time_rec_sk} (numiter=10, 8 K values)")
     print(f"  torch-cNMF: mem={'64G' if n_cells < 100000 else '128G' if n_cells < 300000 else '256G'}, time={time_rec_torch}")
-    partition = "engreitz,owners" if n_cells < 200000 else "engreitz,owners,bigmem"
+    partition = "standard CPU partition" if n_cells < 200000 else "large-memory partition (if your cluster has one)"
     print(f"  Partition:  {partition}")
 
     # Report

@@ -25,12 +25,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 MODEL = "claude-sonnet-4-5-20250929"  # Anthropic model name
-DEFAULT_ANNOTATION_ROLE = "vascular-biology specialist"
-DEFAULT_ANNOTATION_CONTEXT = (
-    "a gene program extracted from single-cell Perturb-seq of mouse brain "
-    "endothelial cells (ECs)"
-)
-DEFAULT_SEARCH_KEYWORD = '(endothelial OR endothelium OR "vascular endothelial")'
+DEFAULT_ANNOTATION_ROLE = "molecular and cell biologist"
+DEFAULT_ANNOTATION_CONTEXT = "a gene program extracted from single-cell Perturb-seq"
+DEFAULT_SEARCH_KEYWORD = "(none specified)"  # set --search-keyword to your cell type / tissue
 
 PROMPT_TEMPLATE = """
 ## Edited prompt (evidence-first, low-speculation)

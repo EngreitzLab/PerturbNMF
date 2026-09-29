@@ -7,7 +7,7 @@ papers connecting gene programs to specific diseases/functions.
 Process:
 1. INPUT: Loading Matrix (Genes/Scores per Program)
 2. SEARCH: Query Pubtator 3 with "Driver Genes" (Top 5-10) + Keyword.
-   Query = `(Driver1 OR ... OR DriverN) AND (endothelial OR ...)`
+   Query = `(Driver1 OR ... OR DriverN) AND (<keyword>)` (keyword optional)
 3. FETCH: Retrieve BioC-JSON annotations for found PMIDs (with caching).
 4. VERIFY: Score papers by checking mentions of "Member Genes" (Top 50).
    Score = Unique Member Genes mentioned in Abstract.
@@ -23,7 +23,7 @@ Process:
 @examples
 python pipeline/02_fetch_ncbi_data.py \
     --input input/genes/FB_moi15_seq2_loading_gene_k100_top300.csv \
-    --keyword "endothelial OR endothelium" \
+    --keyword "<cell type OR tissue>" \
     --csv-out results/output/ncbi_context.csv \
     --json-out results/output/ncbi_context.json \
     --api-key "$NCBI_API_KEY"
@@ -222,10 +222,9 @@ def ensure_global_uniqueness(
 
 # Domain Constants for Programmatic Scoring
 DOMAIN_KEYWORDS = [
-    "angiogenesis", "permeability", "barrier", "inflammation", "proliferation", 
-    "migration", "sprouting", "hypoxia", "metabolism", "junction", "adhesion",
-    "leukocyte", "shear", "tip cell", "stalk cell", "arterial", "venous",
-    "capillary", "blood-brain barrier", "bbb"
+    "inflammation", "proliferation", "migration", "adhesion", "metabolism",
+    "hypoxia", "differentiation", "apoptosis", "cell cycle", "signaling",
+    "stress response", "development"
 ]
 
 INTERACTION_VERBS = [
@@ -940,7 +939,7 @@ def fetch_bioc_relations_with_text(pmids: List[int]) -> Dict[int, Dict[str, Any]
 def validate_regulator_program(
     regulator: str,
     program_genes: List[str],
-    keyword: str = "endothelial OR vascular",
+    keyword: str = "",
     max_pmids: int = 50,
     min_relation_score: float = 0.5
 ) -> Dict[str, Any]:
@@ -952,7 +951,7 @@ def validate_regulator_program(
     Args:
         regulator: Gene symbol of the regulator
         program_genes: List of program's top genes
-        keyword: Keyword terms for search
+        keyword: Optional keyword terms (tissue/cell type) to restrict the search; empty = no filter
         max_pmids: Number of PMIDs to fetch for relation extraction (default 50)
         min_relation_score: Minimum score for relations
     
@@ -975,9 +974,9 @@ def validate_regulator_program(
     }
     """
     # Build query: regulator AND (gene1 OR gene2 OR ...) AND keyword
-    # Search for regulator with program genes in endothelial keyword
+    # Optionally restricted to a tissue/cell-type keyword
     genes_or = " OR ".join(program_genes[:10])  # Use top 10 program genes
-    query = f"({regulator}) AND ({genes_or}) AND ({keyword})"
+    query = f"({regulator}) AND ({genes_or})" + (f" AND ({keyword})" if keyword else "")
     
     logger.info(f"  Validating {regulator}: {query[:80]}...")
     
@@ -1122,7 +1121,7 @@ def validate_program_regulators(
     program_id: int,
     regulator_data: Dict[int, pd.DataFrame],
     program_genes: List[str],
-    keyword: str = "endothelial OR vascular",
+    keyword: str = "",
     top_n_regulators: int = 3,
     top_n_positive_regulators: Optional[int] = None,
     top_n_negative_regulators: Optional[int] = None,
@@ -1247,8 +1246,9 @@ def main():
     parser.add_argument("--json-out", help="Full JSON context output")
     parser.add_argument(
         "--keyword",
-        default='(endothelial OR endothelium OR "vascular endothelial")',
-        help="Keyword query string for PubMed search",
+        default="",
+        help='Optional keyword query restricting the PubMed search to your tissue/cell type, '
+             'e.g. \'("T cell" OR lymphocyte)\' (default: no keyword filter)',
     )
     parser.add_argument("--api-key", help="NCBI API Key")
     parser.add_argument(
@@ -1325,7 +1325,7 @@ def main():
         # Construct Query
         # (Gene1 OR Gene2 ...) AND Keyword
         genes_or = " OR ".join(drivers)
-        query = f"({genes_or}) AND {args.keyword}"
+        query = f"({genes_or})" + (f" AND {args.keyword}" if args.keyword else "")
         
         logger.info(f"[Program {pid}] Searching: {query}")
         pmids = client.search_literature(query, size=25)

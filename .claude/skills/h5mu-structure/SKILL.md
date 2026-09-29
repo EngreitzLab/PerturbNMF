@@ -65,7 +65,7 @@ values after `e.g.` are the first 3 **unique** values in order of appearance
 ## Requirements
 
 - Python 3 with `muon`, `anndata`, `numpy`, `scipy` installed
-- The environment on Stanford Sherlock HPC already has these available
+- The pipeline conda environments (e.g. `sk-cNMF`, `NMF_Benchmarking`) already include these
 
 ## Example output
 
@@ -84,7 +84,7 @@ Shape: (91866 cells, 9397 variables)
 ├── X (sparse csr_matrix, shape=(91866, 9397), dtype=float32)
 ├── obs/ (91866 observations)
 │   ├── obs_names: e.g. CGTTCTGCAGCGATCC_0, ATAACGCCATGCCTTC_0, GACACGCTCGTCCGTT_0
-│   ├── batch — categorical[26 unique]: e.g. 'IGVFDS6990PWDJ', 'IGVFDS7696ONVJ', 'IGVFDS3512ABCD'
+│   ├── batch — categorical[26 unique]: e.g. 'batch_01', 'batch_02', 'batch_03'
 │   ├── n_counts — int32 [45213 unique]: e.g. 2713, 1773, 5421
 │   └── ...
 ├── var/ (9397 variables)

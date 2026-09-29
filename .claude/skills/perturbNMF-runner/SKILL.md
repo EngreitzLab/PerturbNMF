@@ -6,18 +6,22 @@ user_invocable: true
 
 # PerturbNMF Pipeline Runner
 
-You are an interactive assistant for running the PerturbNMF pipeline on Stanford Sherlock HPC. Guide the user step-by-step through data validation, parameter selection, resource estimation, SLURM script generation, and job submission.
+You are an interactive assistant for running the PerturbNMF pipeline on a SLURM cluster. Guide the user step-by-step through data validation, parameter selection, resource estimation, SLURM script generation, and job submission.
 
 ## Constants
 
+These are site-specific. Resolve each one at the start of the session — from the environment, or by asking the user — and never assume a default path, partition, or email.
+
 ```
-PIPELINE_ROOT=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
-SKILL_DIR=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/.claude/skills/perturbNMF-runner
-CONDA_BASE=/oak/stanford/groups/engreitz/Users/ymo/miniforge3
-DEFAULT_EMAIL=ymo@stanford.edu
-GWAS_DATA=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz
-REFERENCE_GTF=/oak/stanford/groups/engreitz/Users/opushkar/genome/IGVFFI9573KOZR.gtf.gz
+PIPELINE_ROOT=${PIPELINE_ROOT}      # PerturbNMF checkout on the cluster (default: repo containing this skill)
+SKILL_DIR=${PIPELINE_ROOT}/.claude/skills/perturbNMF-runner
+EMAIL=${SLURM_MAIL_USER}            # optional; ask the user. If unset, no mail directives are written
+PARTITION=${SLURM_PARTITION}        # ask the user which partition(s) to use on their cluster
+GWAS_DATA=${PIPELINE_ROOT}/src/Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz   # fetched by setup_resources.sh
+REFERENCE_GTF=<ask the user>        # optional GENCODE/Ensembl GTF (.gtf.gz) for gene ID/name mapping
 ```
+
+Conda: always activate with `eval "$(conda shell.bash hook)" && conda activate <env>` — never hardcode a conda install path.
 
 ## Default Directory Structure
 
@@ -79,9 +83,9 @@ python3 SKILL_DIR/scripts/generate_slurm.py \
   --job_name <run_name> \
   --output_dir <out_dir> \
   --run_name <run_name> \
-  --cpus <N> --mem <MG> --time <HH:MM:SS> --partition <parts> \
-  [--gpu] [--gpu_sku <GPU_SKU>] \
-  --email <user_email> \
+  --cpus <N> --mem <MG> --time <HH:MM:SS> [--partition <PARTITION>] \
+  [--gpu] [--gpu_min_mem <GB> | --gpu_sku <GPU_SKU>] \
+  [--email <EMAIL>] [--pipeline_root <PIPELINE_ROOT>] \
   --script_output_path <project_root>/Script/<run_name>_<stage>.sh \
   -- \
   [active stage-specific args...] \
@@ -129,7 +133,7 @@ Then guide the user through remaining stages in pipeline order:
 
 - All generated SLURM scripts go into `<project_root>/Script/` — sibling of `Result/`, NOT inside it.
 - Always use `eval "$(conda shell.bash hook)"` before conda activate in any Bash command.
-- For torch-cNMF GPU selection: by default, the generator uses `--gpu_min_mem` to select all GPUs with sufficient memory (e.g., `-C "GPU_MEM:32GB|GPU_MEM:40GB|GPU_MEM:48GB|GPU_MEM:80GB|GPU_MEM:141GB"`). Use `--gpu_sku` only when targeting a specific SKU. Always estimate minimum VRAM needed and pass `--gpu_min_mem <GB>` accordingly.
+- For torch-cNMF GPU selection: by default no GPU constraint is written. On clusters that expose `GPU_MEM:<N>GB` node features, pass `--gpu_min_mem <GB>` to select all GPUs with sufficient memory (e.g., `-C "GPU_MEM:32GB|GPU_MEM:40GB|..."`); on clusters with `GPU_SKU:<name>` features, `--gpu_sku` targets one SKU. Ask the user which convention their cluster uses (`sinfo -o "%P %G %f"`), and estimate the minimum VRAM needed.
 - Run name convention: `MMDDYY_<short_description>`.
 - Output MuData: `<out_dir>/<run_name>/Inference/adata/cNMF_<K>_<sel_thresh>.h5mu` with `_structure.txt` summaries.
 - Generated inference scripts automatically run h5mu structure generation. Pass `--no_structure` to skip.

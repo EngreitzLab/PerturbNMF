@@ -12,17 +12,21 @@ Output to stdout = drift report. Exit 0 always (informational, not a gate).
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path("/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF")
+# Repo root: $PIPELINE_ROOT if set, else derived from this file's location
+# (<repo>/.claude/skills/pipeline-drift-check/scripts/check-pipeline-drift.py).
+ROOT = Path(os.environ.get("PIPELINE_ROOT") or Path(__file__).resolve().parents[4])
 
 if not (ROOT / ".git").exists():
     sys.exit(0)
 
-ARG_RE = re.compile(r"add_argument\(\s*['\"]--([a-zA-Z][a-zA-Z0-9_-]+)['\"]")
+# Primary flag plus one optional alias, e.g. add_argument('--Conditions', '--Sample', ...)
+ARG_RE = re.compile(r"add_argument\(\s*['\"]--([a-zA-Z][a-zA-Z0-9_-]+)['\"](?:\s*,\s*['\"]--([a-zA-Z][a-zA-Z0-9_-]+)['\"])?")
 R_ARG_RE = re.compile(r"make_option\(\s*['\"]--([a-zA-Z][a-zA-Z0-9_-]+)['\"]")
 PYTEST_ARG_RE = re.compile(r"addoption\(\s*['\"]--([a-zA-Z][a-zA-Z0-9_-]+)['\"]")
 DASH_RE = re.compile(r"--([a-zA-Z][a-zA-Z0-9_-]+)")
@@ -51,7 +55,7 @@ def skip(p: Path) -> bool:
 
 def py_args(py: Path) -> set[str]:
     try:
-        return set(ARG_RE.findall(py.read_text(errors="ignore")))
+        return {name for pair in ARG_RE.findall(py.read_text(errors="ignore")) for name in pair if name}
     except OSError:
         return set()
 

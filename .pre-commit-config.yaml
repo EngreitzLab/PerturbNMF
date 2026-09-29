@@ -1,0 +1,11 @@
+# Enable with: pre-commit install   (https://pre-commit.com)
+# Blocks commits that add lab/project-specific content to this public repo.
+repos:
+  - repo: local
+    hooks:
+      - id: check-no-lab-specific-content
+        name: check for lab/project-specific content
+        entry: python3 tools/check_no_lab_specific_content.py --staged
+        language: system
+        pass_filenames: false
+        always_run: true

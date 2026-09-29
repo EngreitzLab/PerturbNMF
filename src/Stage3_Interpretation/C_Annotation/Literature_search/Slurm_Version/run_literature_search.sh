@@ -1,11 +1,10 @@
 #!/bin/bash
-set -euo pipefail
 
 # SLURM job configuration
 #SBATCH --job-name=lit_search
 #SBATCH --output=logs/%j.out
 #SBATCH --error=logs/%j.err
-#SBATCH --partition=engreitz
+#SBATCH --partition=<partition>
 #SBATCH --time=2:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -14,7 +13,12 @@ set -euo pipefail
 
 # Email notifications
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --mail-user=ymo@stanford.edu
+#SBATCH --mail-user=<your_email>
+
+
+set -euo pipefail
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
 
 START_TIME=$(date +%s)
 
@@ -26,7 +30,7 @@ echo "Working directory: $(pwd)"
 # Configuration
 SLURM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIT_SEARCH_DIR="$(cd "$SLURM_DIR/.." && pwd)"
-OUTPUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/lit_search_output"
+OUTPUT_DIR="/path/to/output_dir"
 LOG_DIR="$OUTPUT_DIR/logs"
 
 # Create logs directory if it doesn't exist
@@ -55,14 +59,14 @@ free -h
 # Run the Python script
 echo "Running Literature Search pipeline..."
 python3 "$SLURM_DIR/run_literature_search.py" \
-        --excel "/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/tests/Script/Stage3_Interpretation/C_Annotation/Data/test_programs.xlsx" \
+        --excel "${PIPELINE_ROOT}/tests/Script/Stage3_Interpretation/C_Annotation/Data/test_programs.xlsx" \
         --output-dir "$OUTPUT_DIR" \
         --programs "2,6,33,34" \
         --llm-provider "anthropic" \
         --llm-model "claude-sonnet-4-5-20250929" \
         --max-papers 30 \
         --interactions "regulates,induces,promotes,inhibits,suppresses,activates,binds,modulates" \
-        --domain-keywords "angiogenesis,permeability,barrier,inflammation,proliferation,migration,sprouting,hypoxia,metabolism" \
+        --domain-keywords "inflammation,proliferation,migration,adhesion,metabolism,hypoxia,differentiation,apoptosis" \
         #--semantic-check \
         #--resume \
 

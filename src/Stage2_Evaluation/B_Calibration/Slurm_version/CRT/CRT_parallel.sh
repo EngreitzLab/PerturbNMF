@@ -1,11 +1,10 @@
 #!/bin/bash
-set -euo pipefail
 
 # SLURM job configuration
 #SBATCH --job-name=CRT_calibration_parallel   # Job name
-#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/Evaluation/50_0_2/CRT_other_covariates/total_counts_guides_per_cell_pct_counts_mt/logs/%A_%a.out      # Output file (%A=array job id, %a=array task id)
-#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/Evaluation/50_0_2/CRT_other_covariates/total_counts_guides_per_cell_pct_counts_mt/logs/%A_%a.err       # Error file
-#SBATCH --partition=owners,engreitz,bigmem            # partition name
+#SBATCH --output=/path/to/logs/%A_%a.out   # edit: SLURM does not expand variables here
+#SBATCH --error=/path/to/logs/%A_%a.err   # edit: SLURM does not expand variables here
+#SBATCH --partition=<partition>            # partition name
 #SBATCH --array=1-7                     # Run parallel jobs (array indices 1-#K)
 #SBATCH --time=02:00:00                 # Time limit per K
 #SBATCH --nodes=1                       # Number of nodes
@@ -15,7 +14,12 @@ set -euo pipefail
 
 # Email notifications
 #SBATCH --mail-type=BEGIN,END,FAIL      # Send email at start, end, and on failure
-#SBATCH --mail-user=ymo@stanford.edu    # Email address
+#SBATCH --mail-user=<your_email>    # Email address
+
+
+set -euo pipefail
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
 
 START_TIME=$(date +%s)
 
@@ -26,8 +30,8 @@ K_VALUES=(30 50 70 80 100 200 300)
 K=${K_VALUES[$((SLURM_ARRAY_TASK_ID-1))]}
 
 # Define the cNMF case
-OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result"
-RUN_NAME="030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50"
+OUT_DIR="/path/to/output_dir"
+RUN_NAME="example_run"
 LOG_DIR="$OUT_DIR/$RUN_NAME"
 
 # Print job and system information for debugging
@@ -49,7 +53,7 @@ mkdir -p "$LOG_DIR/Evaluation/logs"
 echo "Activating conda environment..."
 eval "$(conda shell.bash hook)"
 conda activate NMF_Benchmarking
-export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
+export PYTHONPATH="${PIPELINE_ROOT}/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
 echo "Python version: $(python --version)"
@@ -82,7 +86,7 @@ free -h
 
 # Run the Python script for a single K
 echo "Running Python script with (K=$K)..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/CRT.py \
+python3 "${PIPELINE_ROOT}/src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/CRT.py" \
         --out_dir "$OUT_DIR" \
         --run_name "$RUN_NAME" \
         --guide_annotation_key "non-targeting" \
@@ -94,7 +98,7 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Eval
         --log_covariates total_counts guides_per_cell \
         --covariates pct_counts_mt \
         --FDR_method 'StoreyQ' \
-        --save_dir '/oak/stanford/groups/engreitz/Users/ymo/IGVF_ccperturbseq/Result/030526_100k_cells_100iter_allHVG_torch_halsvar_batch_e7_50/Evaluation/50_0_2/'
+        --save_dir "$OUT_DIR/$RUN_NAME/Evaluation/K_thresh/"
 
         # Reference: all CRT.py flags shown above are required for this invocation.
         # Defaults if removed:

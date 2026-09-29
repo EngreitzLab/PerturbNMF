@@ -23,7 +23,7 @@
 |-----------|---------|-------------|
 | `--K` | `[30, 50, 70, 80, 100, 200, 300]` | K values |
 | `--sel_threshs` | `[0.2, 2.0]` | Density thresholds |
-| `--Conditions` | `['D0', 'sample_D1', 'sample_D2', 'sample_D3']` | Condition labels matching the categorical key used during evaluation |
+| `--Conditions` | all unique values of the categorical key in the h5mu | Condition labels matching the categorical key used during evaluation |
 | `--groupby` | `sample` | Grouping variable |
 | `--pval` | `0.05` | P-value threshold |
 | `--selected_k` | None | K value to highlight with a red dashed line |
@@ -34,7 +34,7 @@ Enrichment file patterns use `{k}` placeholder (and `{sample}` for perturbation)
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`, CPUs: 4, Memory: 32-64G, Time: 1h
+- Partition: standard CPU partition (ask the user), CPUs: 4, Memory: 32-64G, Time: 1h
 
 ---
 
@@ -69,7 +69,7 @@ See `references/parameter-catalog.md` Section 5 for all optional params.
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`, CPUs: 4-8, Memory: 64-128G, Time: 2-4h
+- Partition: standard CPU partition (ask the user), CPUs: 4-8, Memory: 64-128G, Time: 2-4h
 
 ---
 
@@ -108,4 +108,4 @@ See `references/parameter-catalog.md` Section 6 for all optional params.
 
 ### SLURM resources
 
-- Partition: `engreitz,owners`, CPUs: 4-10, Memory: 64-128G, Time: 2-6h
+- Partition: standard CPU partition (ask the user), CPUs: 4-10, Memory: 64-128G, Time: 2-6h

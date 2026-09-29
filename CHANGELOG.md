@@ -9,6 +9,24 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
 
 ## [Unreleased]
 
+### Changed
+- The pipeline now uses the term "condition" throughout. In the Excel summary,
+  `--Sample` is renamed `--Conditions` (`--Sample` still works as a deprecated
+  alias). `--categorical_key` help text now describes it as the `.obs` column
+  holding each cell's condition label.
+- Condition labels no longer default to one study's values: when `--Conditions`
+  is omitted (plotting, K-selection, Excel summary), labels are read from
+  `obs[categorical_key]` in the h5mu.
+- SLURM runner scripts are templates: set `PIPELINE_ROOT` and fill in the
+  `<partition>` / `<your_email>` placeholders. Python entry points resolve the
+  repo from their own location instead of a hardcoded checkout path.
+- Annotation defaults are cell-type neutral; the PubMed keyword is optional, and
+  Vertex AI project/bucket come from env vars (`VERTEX_PROJECT_ID`, `VERTEX_BUCKET`).
+
+### Added
+- `tools/check_no_lab_specific_content.py` guard (CI + pre-commit) that blocks
+  lab/project-specific content in this public repo.
+
 ## [0.1.1] - 2026-08-10
 
 ### Added

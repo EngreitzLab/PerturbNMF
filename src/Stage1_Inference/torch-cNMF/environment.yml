@@ -154,4 +154,3 @@ dependencies:
       - tomli==2.4.1
       - torch-cnmf==1.7.0
       - xlrd==1.2.0
-prefix: /oak/stanford/groups/engreitz/Users/ymo/miniforge3/envs/torch-nmf-dl

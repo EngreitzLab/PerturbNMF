@@ -22,7 +22,8 @@ import pandas as pd
 import numpy as np
 
 # Change path to wherever you have repo locally
-sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
 
 from torch_cnmf import cNMF
 
@@ -139,7 +140,8 @@ def main():
     # --- Metadata keys ---
     parser.add_argument('--data_key', type=str, default='rna')
     parser.add_argument('--prog_key', type=str, default='cNMF')
-    parser.add_argument('--categorical_key', type=str, default='sample')
+    parser.add_argument('--categorical_key', type=str, default='sample',
+                        help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample")
     parser.add_argument('--guide_names_key', type=str, default='guide_names')
     parser.add_argument('--guide_targets_key', type=str, default='guide_targets')
     parser.add_argument('--guide_assignment_key', type=str, default='guide_assignment')

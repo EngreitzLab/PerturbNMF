@@ -4,7 +4,7 @@
 #SBATCH --job-name=annotation_pipeline
 #SBATCH --output=logs/%j.out
 #SBATCH --error=logs/%j.err
-#SBATCH --partition=engreitz
+#SBATCH --partition=<partition>
 #SBATCH --time=1:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -13,7 +13,7 @@
 
 # Email notifications
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --mail-user=ymo@stanford.edu
+#SBATCH --mail-user=<your_email>
 
 set -euo pipefail
 

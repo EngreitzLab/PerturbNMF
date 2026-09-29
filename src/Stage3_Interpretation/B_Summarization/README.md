@@ -75,7 +75,7 @@ mdata = mu.read_h5mu(f"{out_dir}/{run_name}/Inference/adata/cNMF_{k}_{thresh_str
  df_Perturbation, df_Association, df_ExpVar) = load_simple_sheets(
     mdata, out_dir=out_dir, run_name=run_name,
     k=k, sel_thresh=sel_thresh, num_gene=300,
-    Sample=Conditions,                       # e.g. ['D0', 'sample_D1', 'sample_D2', 'sample_D3']
+    Sample=Conditions,                       # e.g. ['condA', 'condB']
     perturbation_file_name="perturbation_association_results",
 )
 

@@ -10,12 +10,16 @@ import argparse
 import os
 import sys
 import textwrap
+from pathlib import Path
 
-PIPELINE_ROOT = "/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF"
-SKILL_SCRIPTS = os.path.join(PIPELINE_ROOT, ".claude/skills/perturbNMF-runner/scripts")
-DEFAULT_EMAIL = "ymo@stanford.edu"
+# Repo root: $PIPELINE_ROOT if set, else derived from this file's location
+# (<repo>/.claude/skills/perturbNMF-runner/scripts/generate_slurm.py).
+DEFAULT_PIPELINE_ROOT = os.environ.get(
+    "PIPELINE_ROOT", str(Path(__file__).resolve().parents[4])
+)
 
-# Available GPU memory sizes on Sherlock (GB), sorted ascending
+# GPU memory sizes (GB) exposed as `GPU_MEM:<N>GB` node features on clusters that
+# use that convention. Only used when --gpu_min_mem is given; adjust for your cluster.
 AVAILABLE_GPU_MEMS_GB = [11, 12, 16, 24, 32, 40, 48, 80, 141]
 
 
@@ -90,7 +94,9 @@ STAGES = {
 def generate_script(args, passthrough_args):
     """Generate the complete SLURM shell script."""
     stage_info = STAGES[args.stage]
-    script_path = os.path.join(PIPELINE_ROOT, stage_info["script"])
+    pipeline_root = args.pipeline_root
+    skill_scripts = os.path.join(pipeline_root, ".claude/skills/perturbNMF-runner/scripts")
+    script_path = os.path.join(pipeline_root, stage_info["script"])
     conda_env = stage_info["conda_env"]
     needs_gpu = stage_info["gpu"] or args.gpu
 
@@ -161,30 +167,36 @@ def generate_script(args, passthrough_args):
         f'#SBATCH --job-name={args.job_name}',
         f'#SBATCH --output={log_dir}/%j.out',
         f'#SBATCH --error={log_dir}/%j.err',
-        f'#SBATCH --partition={args.partition}',
+    ]
+    if args.partition:
+        lines.append(f'#SBATCH --partition={args.partition}')
+    lines.extend([
         f'#SBATCH --time={args.time}',
         '#SBATCH --nodes=1',
         '#SBATCH --ntasks=1',
         f'#SBATCH --cpus-per-task={args.cpus}',
         f'#SBATCH --mem={args.mem}',
-    ]
+    ])
 
     if needs_gpu:
         lines.append('#SBATCH --gres=gpu:1')
         if args.gpu_sku:
-            # Explicit single-SKU override
+            # Explicit single-SKU override (cluster-specific GPU_SKU feature)
             lines.append(f'#SBATCH -C GPU_SKU:{args.gpu_sku}')
-        else:
-            # Default: select all GPUs with sufficient memory
-            min_mem = args.gpu_min_mem if args.gpu_min_mem else 32
-            constraint = get_gpu_mem_constraint(min_mem)
+        elif args.gpu_min_mem:
+            # Select all GPUs with sufficient memory (cluster-specific GPU_MEM feature)
+            constraint = get_gpu_mem_constraint(args.gpu_min_mem)
             lines.append(f'#SBATCH -C "{constraint}"')
 
+    if args.email:
+        lines.extend([
+            '',
+            '# Email notifications',
+            '#SBATCH --mail-type=BEGIN,END,FAIL',
+            f'#SBATCH --mail-user={args.email}',
+        ])
+
     lines.extend([
-        '',
-        '# Email notifications',
-        '#SBATCH --mail-type=BEGIN,END,FAIL',
-        f'#SBATCH --mail-user={args.email}',
         '',
         '# Configuration',
         f'OUT_DIR="{args.output_dir}"',
@@ -270,7 +282,7 @@ def generate_script(args, passthrough_args):
 
     # For inference stages, generate h5mu structure files after pipeline completes
     if args.stage.startswith("inference") and not args.no_structure:
-        h5mu_script = os.path.join(SKILL_SCRIPTS, "generate_h5mu_structure.py")
+        h5mu_script = os.path.join(skill_scripts, "generate_h5mu_structure.py")
         lines.extend([
             '',
             '# Generate h5mu structure summary files',
@@ -343,8 +355,9 @@ def main():
         help='Time limit HH:MM:SS (default: 10:00:00)'
     )
     parser.add_argument(
-        '--partition', type=str, default='engreitz,owners',
-        help='SLURM partition(s) (default: engreitz,owners)'
+        '--partition', type=str, default=os.environ.get('SLURM_PARTITION'),
+        help='SLURM partition(s), e.g. "normal" or "p1,p2" (default: $SLURM_PARTITION; '
+             'if unset, no --partition line is written and the cluster default is used)'
     )
     parser.add_argument(
         '--gpu', action='store_true',
@@ -352,17 +365,25 @@ def main():
     )
     parser.add_argument(
         '--gpu_sku', type=str, default=None,
-        help='Explicit single GPU SKU constraint (e.g., H100_SXM5). '
-             'Overrides --gpu_min_mem. If neither is set, defaults to --gpu_min_mem 32.'
+        help='Explicit single GPU SKU constraint, written as `-C GPU_SKU:<value>` '
+             '(e.g., H100_SXM5; requires a cluster that defines GPU_SKU features). '
+             'Overrides --gpu_min_mem. If neither is set, no GPU constraint is written.'
     )
     parser.add_argument(
         '--gpu_min_mem', type=int, default=None,
-        help='Minimum GPU memory in GB. Selects all available GPUs with >= this memory '
-             '(e.g., 48 selects L40S/H100/H200). Default: 32 if --gpu_sku not set.'
+        help='Minimum GPU memory in GB, written as `-C "GPU_MEM:<N>GB|..."` for all '
+             'sizes >= this value (requires a cluster that defines GPU_MEM features). '
+             'Default: no GPU constraint.'
     )
     parser.add_argument(
-        '--email', type=str, default=DEFAULT_EMAIL,
-        help=f'Email for SLURM notifications (default: {DEFAULT_EMAIL})'
+        '--email', type=str, default=os.environ.get('SLURM_MAIL_USER'),
+        help='Email for SLURM notifications (default: $SLURM_MAIL_USER; '
+             'if unset, no mail directives are written)'
+    )
+    parser.add_argument(
+        '--pipeline_root', type=str, default=DEFAULT_PIPELINE_ROOT,
+        help='Path to the PerturbNMF repo on the machine that runs the job '
+             '(default: $PIPELINE_ROOT, else the repo containing this script)'
     )
     parser.add_argument(
         '--log_dir', type=str, default=None,

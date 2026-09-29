@@ -33,7 +33,7 @@ Reconstruction error and stability are computed automatically.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--gwas_data_path` | None | Path to GWAS data (use GWAS_DATA constant) |
+| `--gwas_data_path` | None | Path to GWAS data (use GWAS_DATA constant; fetched by setup_resources.sh) |
 | `--guide_annotation_path` | None | TSV with a `targeting` column to identify non-targeting controls (alternative to `--guide_annotation_key`) |
 | `--gene_names_key` | `symbol` | Column in data_guide["rna"].var with gene names |
 | `--FDR_method` | `StoreyQ` | FDR correction: `StoreyQ` or `BH` |
@@ -46,7 +46,7 @@ Reconstruction error and stability are computed automatically.
 
 ## SLURM Resources
 
-- Partition: `engreitz,owners,bigmem`
+- Partition: a partition that allows high-memory jobs (ask the user)
 - CPUs: 10-20
 - Memory: 64-256G
 - Time: 3-5h

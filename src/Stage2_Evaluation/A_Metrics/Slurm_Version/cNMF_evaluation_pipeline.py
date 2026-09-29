@@ -47,8 +47,11 @@ def _read_samples_from_h5mu(h5mu_path, data_key, categorical_key):
         return None
 
 
-# Change path to wherever you have repo locally
-sys.path.append('/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src')
+# Make the repo's src/ importable regardless of the current working directory
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
+# Reference data populated by setup_resources.sh
+RESOURCES_DIR = Path(__file__).resolve().parents[2] / 'Resources'
 
 from Stage2_Evaluation.A_Metrics.src import (
     compute_categorical_association,
@@ -91,7 +94,7 @@ def main():
     # keys
     parser.add_argument('--data_key', help='Key to access gene expression data in MuData object (default: rna)', type=str, default="rna")
     parser.add_argument('--prog_key', help='Key to access cNMF programs in MuData object (default: cNMF)', type=str, default="cNMF")
-    parser.add_argument('--categorical_key', help='Key in .obs to access cell condition/sample labels for categorical association (default: sample)', type=str, default="sample")
+    parser.add_argument('--categorical_key', help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample", type=str, default="sample")
     parser.add_argument('--gene_names_key', type=str, help='Column in data_guide["rna"].var containing gene names (default: symbol)', default='symbol')
     parser.add_argument('--guide_names_key', help='Key in .uns to access guide names (default: guide_names)', type=str, default="guide_names")
     parser.add_argument('--guide_targets_key', help='Key in .uns to access guide target genes (default: guide_targets)', type=str, default="guide_targets")
@@ -302,13 +305,13 @@ def main():
                     for class_, thresh in [('enhancer', fimo_thresh_enhancer),
                                         ('promoter', fimo_thresh_promoter)]:
 
-                        loci_file = '/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/scE2G_links/EnhancerPredictionsAllPutative.ForVariantOverlap.shrunk150bp_{}_{}.tsv'.format(samp, class_)
+                        loci_file = str(RESOURCES_DIR / 'scE2G_links' / 'EnhancerPredictionsAllPutative.ForVariantOverlap.shrunk150bp_{}_{}.tsv'.format(samp, class_))
                         motif_match_df, motif_count_df, motif_enrichment_df = compute_motif_enrichment(
                             mdata,
                             prog_key='cNMF',
                             data_key='rna',
-                            motif_file='/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/hocomoco_meme.meme',
-                            seq_file='/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/hg38.fa',
+                            motif_file=str(RESOURCES_DIR / 'hocomoco_meme.meme'),
+                            seq_file=str(RESOURCES_DIR / 'hg38.fa'),
                             loci_file=loci_file,
                             window=1000,
                             sig=thresh,

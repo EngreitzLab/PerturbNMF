@@ -65,7 +65,7 @@ Complete parameter reference for all pipeline stages, extracted from argparse de
 |-----------|---------|-------------|
 | `--data_key` | `rna` | RNA modality key in MuData |
 | `--prog_key` | `cNMF` | cNMF modality key in MuData |
-| `--categorical_key` | `sample` | Categorical variable key in obs |
+| `--categorical_key` | `sample` | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor) |
 | `--guide_names_key` | `guide_names` | Guide names key in uns |
 | `--guide_targets_key` | `guide_targets` | Guide targets key in uns |
 | `--guide_assignment_key` | `guide_assignment` | Guide assignment key in obsm (fixed 2026-07-31; previously defaulted to the literal string `"guide_assignment_key"`, which silently skipped copying the matrix into the prog modality and broke Stage 2 perturbation association) |
@@ -232,7 +232,7 @@ Same as sk-cNMF except:
 |-----------|---------|-------------|
 | `--data_key` | `rna` | RNA modality key |
 | `--prog_key` | `cNMF` | cNMF modality key |
-| `--categorical_key` | `sample` | Categorical variable key |
+| `--categorical_key` | `sample` | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor) |
 | `--guide_names_key` | `guide_names` | Guide names key |
 | `--guide_targets_key` | `guide_targets` | Guide targets key |
 | `--guide_assignment_key` | `guide_assignment` | Guide assignment key |
@@ -254,7 +254,7 @@ Same as sk-cNMF except:
 | `--sel_threshs` | float (nargs=\*) | (from data) | No | Density thresholds |
 | `--groupby` | str | `sample` | No | Grouping variable |
 | `--pval` | float | `0.05` | No | P-value threshold |
-| `--Conditions` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | No | Condition labels (formerly `--samples`); matches the categorical key used during evaluation |
+| `--Conditions` | str (nargs=\*) | all unique values of the categorical key in the h5mu | No | Condition labels (formerly `--samples`); matches the categorical key used during evaluation |
 | `--selected_k` | int | None | No | K value to highlight |
 | `--go_file` | str | None | No | GO enrichment file pattern (use `{k}` placeholder) |
 | `--geneset_file` | str | None | No | Geneset enrichment file pattern (use `{k}` placeholder) |
@@ -298,7 +298,7 @@ Same as sk-cNMF except:
 | `--output_format` | str | `SVG` | No | One of `PDF` / `SVG` / `HTML`. `HTML` writes per-program interactive Plotly pages directly under `save_path` |
 | `--skip_existing` | flag | | No | Turn OFF skipping; re-process every program (default is to skip programs whose output already exists) |
 | `--square_plots` | flag | | No | Auto-scale figure height to condition count (`num_rows × 8 in`) so panels stay ~square; recommended for many conditions |
-| `--Conditions` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | No | Condition names (formerly `--sample`) |
+| `--Conditions` | str (nargs=\*) | all unique values of the categorical key in the h5mu | No | Condition names (formerly `--sample`) |
 | `--programs` | int (nargs=+) | None | No | Specific program numbers to plot (e.g. `4 5 6`). If omitted, all programs plotted |
 | `--subsample_frac` | float | None | No | Fraction of cells to subsample for UMAP (e.g. `0.1` for 10%) |
 | `--corr_matrix_path` | str | None | No | Base path for precomputed waterfall correlation matrices |
@@ -349,7 +349,7 @@ Same as sk-cNMF except:
 | `--n_processes` | int | `-1` | No | Parallel processes |
 | `--umap_dot_size` | int | `10` | No | UMAP dot size |
 | `--expressed_only` | flag | | No | Only plot expressed perturbed genes |
-| `--Conditions` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | No | Condition names (formerly `--sample`) |
+| `--Conditions` | str (nargs=\*) | all unique values of the categorical key in the h5mu | No | Condition names (formerly `--sample`) |
 | `--gene_list_file` | str | None | No | File with gene names to process (one per line, overrides auto-detection) |
 | `--subsample_frac` | float | None | No | Fraction of cells to subsample for UMAP |
 | `--parallel` | flag | | No | Use fork-based multiprocessing (Linux only) |
@@ -435,7 +435,7 @@ CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['gu
 |-----------|------|---------|-------------|
 | `--K` | int (nargs=\*) | `[30, 50, 70, 80, 100, 200, 300]` | K values (formerly named `--components`) |
 | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds |
-| `--categorical_key` | str | `sample` | Sample/condition key |
+| `--categorical_key` | str | `sample` | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor) |
 | `--covariates` | str (nargs=\*) | None | Covariate keys in obs (used as-is) |
 | `--log_covariates` | str (nargs=\*) | None | Covariate keys to log1p-transform |
 | `--number_guide` | int | `6` | Fake targeting guides per iteration |
@@ -575,7 +575,7 @@ Runs after Annotation to attach PubMed/PubTator evidence to each program.
 |-----------|------|---------|-------------|
 | `--programs` | str | all | Comma-separated program IDs (e.g. `2,6,33,34`) |
 | `--interactions` | str | (built-in 17-verb list) | Comma-separated interaction verbs for query formulation |
-| `--domain-keywords` | str | (built-in vascular set) | Comma-separated domain keywords for evidence scoring |
+| `--domain-keywords` | str | (built-in generic set) | Comma-separated domain keywords for evidence scoring |
 | `--max-papers` | int | `30` | Max papers per program |
 | `--max-pubtator-results` | int | `50` | Max results per PubTator query |
 | `--max-llm-queries` | int | `8` | Max LLM-generated queries per program |
@@ -613,7 +613,7 @@ cover multiple K values.
 | `--mdata_path` | str | `{out_dir}/{run_name}/Inference/adata/cNMF_{K}_{thresh}.h5mu` | Input MuData |
 | `--num_gene` | int | `300` | Top genes per program / per enriched term to keep |
 | `--perturbation_file_name` | str | `perturbation_association_results` | Perturbation result file stem (between `{K}_` and `_{Condition}.txt`); e.g. `CRT` |
-| `--Sample` | str (nargs=\*) | `['D0','sample_D1','sample_D2','sample_D3']` | Condition/sample labels |
+| `--Conditions` | str (nargs=\*) | all labels found in the data | Condition labels (values of obs[categorical_key]); `--Sample` is a deprecated alias |
 | `--effect_size` | str | `log2FC` | Effect-size column in perturbation files (e.g. `approx_log2FC`) |
 | `--control_target_name` | str | `non-targeting` | Control target name for KD efficiency |
 | `--non_targeting_key` | str (nargs=\*) | `['non-targeting']` | Control target label(s) for the program summary sheet |

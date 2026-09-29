@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # SLURM job configuration
-#SBATCH --job-name=111025_D0_IGVF_10iter_torch_halsvar_batch_e7_v100s_test           # Job name
-#SBATCH --output=/oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Results/111025_D0_IGVF_10iter_torch_halsvar_batch_e7_v100s_test/Evaluation/logs/%j.out      # Output file (%j = job ID)
-#SBATCH --error=/oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Results/111025_D0_IGVF_10iter_torch_halsvar_batch_e7_v100s_test/Evaluation/logs/%j.err       # Error file
-#SBATCH --partition=engreitz            # partition name
+#SBATCH --job-name=cNMF_evaluation_pipeline           # Job name
+#SBATCH --output=/path/to/logs/%j.out   # edit: SLURM does not expand variables here
+#SBATCH --error=/path/to/logs/%j.err   # edit: SLURM does not expand variables here
+#SBATCH --partition=<partition>            # partition name
 #SBATCH --time=05:00:00                 # Time limit 
 #SBATCH --nodes=1                       # Number of nodes
 #SBATCH --ntasks=1                      # Number of tasks
@@ -13,11 +13,14 @@
 
 # Email notifications
 #SBATCH --mail-type=BEGIN,END,FAIL      # Send email at start, end, and on failure
-#SBATCH --mail-user=ymo@stanford.edu    # Email address
+#SBATCH --mail-user=<your_email>    # Email address
 
 # Define the cNMF case
-OUT_DIR="/oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Results"
-RUN_NAME="111025_D0_IGVF_10iter_torch_halsvar_batch_e7_v100s_test"
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
+
+OUT_DIR="/path/to/output_dir"
+RUN_NAME="example_run"
 LOG_DIR="$OUT_DIR/$RUN_NAME"
 
 # Store start time
@@ -40,7 +43,7 @@ mkdir -p "$LOG_DIR/Evaluation/logs"
 echo "Activating conda environment..."
 eval "$(conda shell.bash hook)"
 conda activate Evaluation_metric
-export PYTHONPATH="/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src:${PYTHONPATH:-}"
+export PYTHONPATH="${PIPELINE_ROOT}/src:${PYTHONPATH:-}"
 
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
@@ -50,7 +53,7 @@ echo "Python path: $(which python)"
 
 # Run the Python script
 echo "Running Python script..."
-python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py \
+python3 "${PIPELINE_ROOT}/src/Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_evaluation_pipeline.py" \
         --out_dir "$OUT_DIR" \
         --run_name "$RUN_NAME" \
         --X_normalized_path "$LOG_DIR/cnmf_tmp/$RUN_NAME.norm_counts.h5ad" \
@@ -64,8 +67,8 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Eval
         --categorical_key 'batch' \
         --organism 'human' \
         --gene_names_key "symbol" \
-        --guide_annotation_path "/oak/stanford/groups/engreitz/Users/ymo/cc-perturb-seq/Data/guide/guide_metadata_v43.tsv" \
-        --gwas_data_path '/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz' \
+        --guide_annotation_path "/path/to/guide_annotation.tsv" \
+        --gwas_data_path "${PIPELINE_ROOT}/src/Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz" \
         --sel_threshs 0.4 0.8 2.0 \
         --K 30 50 60 80 100 200 \
         --FDR_method "StoreyQ" \
