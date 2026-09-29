@@ -107,7 +107,7 @@ Produces one comprehensive panel per cNMF program. Loops over all programs in th
 | `--Conditions` | str list | all labels found in the data | Condition labels (values of obs[categorical_key]), e.g. `condA condB` |
 | `--programs` | int list | `None` (all) | Specific program numbers to plot (e.g. `4 5 6`). If omitted, every program in the h5mu is plotted |
 | `--subsample_frac` | float | `None` (all) | Fraction of cells to subsample for UMAP plots (e.g. `0.1` for 10%) |
-| `--corr_matrix_path` | str | `None` | Base path for precomputed waterfall correlation matrices. Files are expected as `<base>_<sample>.txt`. Falls back to computing if not found |
+| `--corr_matrix_path` | str | `None` | Directory for the full program × program correlation matrices written every run: `<dir>/program_corr.npz` (usage correlation) and `<dir>/program_waterfall_corr_<sample>.npz` (perturbation-effect correlation). Defaults to `--save_path`. See [Full correlation matrices](#full-correlation-matrices) |
 | `--skip_existing` | flag | on (default) | Default behavior **skips** programs whose output already exists. Passing `--skip_existing` turns OFF skipping and re-processes every program from scratch (handy for resuming preempted jobs) |
 | `--data_key` | str | `rna` | Key to access gene expression data in MuData |
 | `--prog_key` | str | `cNMF` | Key to access cNMF programs in MuData |
@@ -170,7 +170,9 @@ Produces one comprehensive panel per **perturbed gene** — counterpart to the p
 | `--gene_list_file` | str | `None` | Path to a file with one gene name per line to process (overrides automatic perturbed gene detection) |
 | `--subsample_frac` | float | `None` (all) | Fraction of cells to subsample for UMAP plots (e.g. `0.1` for 10%) |
 | `--parallel` | flag | off | Use fork-based multiprocessing to plot genes in parallel (Linux only) |
-| `--corr_matrix_path` | str | `None` | Directory for precomputed gene waterfall correlation matrices. Files are expected as `<dir>/corr_gene_matrix_<sample>.txt`. Falls back to computing if not found |
+| `--corr_matrix_path` | str | `None` | Directory for the full correlation matrices written every run: regulator × regulator `<dir>/regulator_corr_<sample>.npz` and gene × gene `<dir>/gene_loading_corr.npz`. Defaults to `--save_path` |
+| `--no_save_regulator_corr` | flag | off | Do not write `regulator_corr_<sample>.npz` (~1.6 GB per sample at 20k regulators). Plots are unaffected |
+| `--no_save_gene_corr` | flag | off | Do not write `gene_loading_corr.npz` (~0.4 GB at 10k genes, ~3.6 GB at 30k). Plots are unaffected |
 | `--skip_existing` | flag | on (default) | Default behavior **skips** genes whose output already exists. Passing `--skip_existing` turns OFF skipping and re-processes every gene from scratch |
 | `--data_key` | str | `rna` | Key to access gene expression data in MuData |
 | `--prog_key` | str | `cNMF` | Key to access cNMF programs in MuData |
@@ -189,6 +191,26 @@ Produces one comprehensive panel per **perturbed gene** — counterpart to the p
 - Combined panel → one page in the PDF (or HTML page)
 
 Supports parallel processing via `--n_processes` and `--parallel` (Linux fork-based multiprocessing). Use `--gene_list_file` to restrict to a subset of genes, or `--expressed_only` to skip perturbed-but-unexpressed genes.
+
+### Full correlation matrices
+
+Both reports write their full correlation matrices to `--corr_matrix_path` every run as uncompressed `.npz` (code: `src/efficient_corr.py`). The gene and regulator matrices can be 20k+ × 20k+, so plots compute one row at a time (memory N × K); only saving builds the full matrix, once, in RAM (N² × 4 bytes: 1.6 GB at 20k, 3.6 GB at 30k; skip with `--no_save_regulator_corr` / `--no_save_gene_corr`). The program matrices are only K × K; the usage correlation is streamed over cells instead of copying the cells × K matrix.
+
+| Report | File | Rows / columns | Correlates | Names key |
+|---|---|---|---|---|
+| perturbed gene | `regulator_corr_<sample>.npz` (one per condition) | perturbed regulators | per-program log2FC profiles (waterfall panel) | `regulator` |
+| perturbed gene | `gene_loading_corr.npz` | genes | cNMF loading profiles (gene-loading correlation panel) | `gene` |
+| program | `program_corr.npz` | programs | cNMF usages across cells (program correlation panel) | `program` |
+| program | `program_waterfall_corr_<sample>.npz` (one per condition) | programs | log2FC profiles across regulators (waterfall panel) | `program` |
+
+Each file is a plain `np.savez` with `corr` (float32 Pearson; NaN for an item with a constant profile) and the names key (plain strings, so no `allow_pickle` needed). The regulator × regulator matrix needs a log2FC for every regulator × program pair; a missing value raises an error. The two program matrices are only K × K: the waterfall one is plain pandas `.corr()`. The gene rows used by the plots are returned as computed (NaN kept); only the program-usage panel fills NaN with 0 (legacy `.fillna(0)`); the saved files keep NaN.
+
+```python
+import numpy as np
+with np.load("regulator_corr_D0.npz") as f:
+    names = list(f["regulator"])
+    sox2 = f["corr"][names.index("SOX2")]      # loads the full matrix, then takes one row
+```
 
 ### Running without perturbation results
 

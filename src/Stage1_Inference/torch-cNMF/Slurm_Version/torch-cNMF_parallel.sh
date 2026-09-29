@@ -60,6 +60,8 @@ echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 echo "Activating conda base environment..."
 eval "$(conda shell.bash hook)"
 conda activate torch-nmf-dl
+# Resolve imports against the env only, never ~/.local (user site).
+export PYTHONNOUSERSITE=1
 export PYTHONPATH="${PIPELINE_ROOT}/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"

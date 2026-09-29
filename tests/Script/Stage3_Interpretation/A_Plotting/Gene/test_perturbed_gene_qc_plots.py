@@ -149,13 +149,18 @@ class TestPlotVolcano:
 
 class TestComputeGeneCorrelationMatrix:
 
-    def test_returns_symmetric_dataframe(self, test_mdata):
-        """compute_gene_correlation_matrix returns a symmetric DataFrame."""
-        result = compute_gene_correlation_matrix(test_mdata)
-        assert isinstance(result, pd.DataFrame)
-        assert result.shape[0] == result.shape[1]
+    def test_returns_square_gene_corr(self, test_mdata, gene_output_dir):
+        """compute_gene_correlation_matrix returns a G x G row-on-demand corr and writes the .npz."""
+        save_path = os.path.join(gene_output_dir, "test_gene_loading_corr.npz")
+        result = compute_gene_correlation_matrix(test_mdata, save_path=save_path)
         n_genes = test_mdata['rna'].n_vars
-        assert result.shape[0] == n_genes
+        assert result.shape == (n_genes, n_genes)
+        g = result.columns[0]
+        row = result.loc[g]
+        assert isinstance(row, pd.Series) and len(row) == n_genes
+        with np.load(save_path) as f:
+            assert f["corr"].shape == (n_genes, n_genes)
+            assert list(f["gene"]) == list(result.columns)
 
 
 class TestAnalyzeCorrelations:
@@ -197,17 +202,22 @@ class TestAnalyzeCorrelations:
 class TestComputeGeneWaterfallCor:
 
     def test_returns_correlation_matrix(self, synthetic_gene_perturbation_tsv, gene_output_dir):
-        """compute_gene_waterfall_cor returns a DataFrame with NaN diagonal."""
-        save_path = os.path.join(gene_output_dir, "test_gene_waterfall_corr.tsv")
+        """compute_gene_waterfall_cor returns a T x T corr (self = 1 per row) and writes the .npz."""
+        save_path = os.path.join(gene_output_dir, "test_regulator_corr.npz")
         result = compute_gene_waterfall_cor(
             synthetic_gene_perturbation_tsv,
             save_path=save_path,
         )
-        assert isinstance(result, pd.DataFrame)
         assert result.shape[0] == result.shape[1]
-        # Diagonal should be NaN
-        assert all(np.isnan(np.diag(result.values)))
-        assert os.path.isfile(save_path)
+        # Self-correlation is kept (1) in every row; the waterfall plots drop it
+        assert all(np.isclose(result.loc[t][t], 1.0) for t in result.index)
+        with np.load(save_path) as f:
+            full = f["corr"]
+            assert list(f["regulator"]) == list(result.index)
+        assert full.shape == result.shape
+        # Published matrix: diagonal 1, symmetric
+        assert np.allclose(np.diag(full), 1.0)
+        assert np.allclose(full, full.T, atol=1e-6)
 
 
 class TestCreateGeneCorrelationWaterfall:

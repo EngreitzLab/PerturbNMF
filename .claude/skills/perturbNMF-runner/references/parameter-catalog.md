@@ -41,7 +41,8 @@ Complete parameter reference for all pipeline stages, extracted from argparse de
 |------|-------------|
 | `--run_factorize` | Run the NMF factorization step |
 | `--run_refit` | Run combine, k_selection_plot, and consensus steps |
-| `--run_complie_annotation` | Compile results and generate gene annotations (**note typo**: use as-is) |
+| `--run_complie_annotation` | Compile results into `Inference/adata/cNMF_{K}_{dt}.h5mu` (**note typo**: use as-is) |
+| `--run_gene_annotation` | Run MyGene annotation into `Inference/Annotation/{K}_{dt}.xlsx`. Independent of `--run_complie_annotation`; omit it to get the h5mu without the mygene.info network call |
 | `--parallel_running` | Enable parallel processing for multiple K values |
 | `--run_diagnostic_plots` | Generate diagnostic plots (elbow curves, usage heatmaps, loading violins) after inference |
 | `--skip_existing` | Skip NMF replicates already completed on disk (pause/resume mode); default re-runs from scratch |
@@ -112,7 +113,8 @@ Same as sk-cNMF: `--counts_fn`, `--output_directory`, `--run_name`, `--species`
 |------|-------------|
 | `--run_factorize` | Run the factorization step |
 | `--run_refit` | Run combine + k_selection + consensus |
-| `--run_compile_annotation` | Compile results and gene annotation (**fixed spelling**, not `complie`) |
+| `--run_compile_annotation` | Compile results into `Inference/adata/cNMF_{K}_{dt}.h5mu` (**fixed spelling**, not `complie`) |
+| `--run_gene_annotation` | Run MyGene annotation into `Inference/Annotation/{K}_{dt}.xlsx`. Independent of `--run_compile_annotation`; omit it to get the h5mu without the mygene.info network call |
 | `--parallel_running` | Enable parallel processing for multiple K values |
 | `--run_diagnostic_plots` | Generate diagnostic plots (elbow curves, usage heatmaps, loading violins) after inference |
 | `--skip_existing` | Skip NMF replicates already completed on disk (pause/resume mode); default re-runs from scratch |
@@ -301,7 +303,7 @@ Same as sk-cNMF except:
 | `--Conditions` | str (nargs=\*) | all unique values of the categorical key in the h5mu | No | Condition names (formerly `--sample`) |
 | `--programs` | int (nargs=+) | None | No | Specific program numbers to plot (e.g. `4 5 6`). If omitted, all programs plotted |
 | `--subsample_frac` | float | None | No | Fraction of cells to subsample for UMAP (e.g. `0.1` for 10%) |
-| `--corr_matrix_path` | str | None | No | Base path for precomputed waterfall correlation matrices |
+| `--corr_matrix_path` | str | None | No | Directory for `program_corr.npz` and `program_waterfall_corr_<sample>.npz` (full K × K matrices); defaults to `--save_path` |
 
 ### Keys
 
@@ -353,7 +355,9 @@ Same as sk-cNMF except:
 | `--gene_list_file` | str | None | No | File with gene names to process (one per line, overrides auto-detection) |
 | `--subsample_frac` | float | None | No | Fraction of cells to subsample for UMAP |
 | `--parallel` | flag | | No | Use fork-based multiprocessing (Linux only) |
-| `--corr_matrix_path` | str | None | No | Directory for precomputed correlation matrices |
+| `--corr_matrix_path` | str | None | No | Directory for `regulator_corr_<sample>.npz` and `gene_loading_corr.npz` (full matrices); defaults to `--save_path` |
+| `--no_save_regulator_corr` | flag | | No | Skip writing `regulator_corr_<sample>.npz` |
+| `--no_save_gene_corr` | flag | | No | Skip writing `gene_loading_corr.npz` |
 | `--control_target_name` | str (nargs='+') | `non-targeting` | No | One or more control labels in guide_targets (e.g. `WT WT111 WT4`); a cell is a control if it matches any. Use multiple for background-specific controls. Excluded from the per-gene perturbation panels (no association results to plot) |
 | `--guide_targets_key` | str | `guide_targets` | No | Key in `.uns` to access guide target genes |
 | `--guide_assignment_key` | str | `guide_assignment` | No | Key in `.obsm` to access the guide-assignment matrix |
@@ -517,7 +521,7 @@ This is an R-based calibration method using propensity score matching with OLS r
 
 ## 10. Annotation (ProgramExplorer orchestrator)
 
-**Script**: `src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/run_pipeline.py`
+**Script**: `src/Stage3_Interpretation/C_Annotation/ProgramExplorer/Slurm_Version/run_annotation.py` (wrapper that puts `ProgramExplorer/src/` on `sys.path` and calls `run_pipeline.py`'s `main`; same flags)
 **Conda**: `progexplorer`
 
 Driven by a YAML config (`--config`); any YAML key can be overridden on the command line. Internal numbered step scripts (`01_*.py` … `05_*.py`) are called by the orchestrator and aren't user-facing CLIs.

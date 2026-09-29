@@ -14,7 +14,7 @@ LLM-driven gene program annotation. Runs the PerturbNMF Annotation pipeline whic
 
 | Parameter | Description |
 |-----------|-------------|
-| `--config` | Path to pipeline config YAML (see `src/Stage3_Interpretation/C_Annotation/configs/pipeline_config.yaml` for template) |
+| `--config` | Path to pipeline config YAML (see `src/Stage3_Interpretation/C_Annotation/ProgramExplorer/configs/pipeline_config.yaml` for template) |
 
 The config YAML specifies: input spectra file, output directory, LLM model, STRING parameters, and literature mining settings. Any of the YAML keys can also be overridden on the command line — see `references/parameter-catalog.md` (Annotation section) for the full list.
 

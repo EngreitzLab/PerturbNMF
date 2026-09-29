@@ -67,6 +67,7 @@ python3 "${PIPELINE_ROOT}/src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_bat
         --numiter 10 \
         --species "human" \
         --run_complie_annotation \
+        --run_gene_annotation \
         --run_refit \
         --run_factorize
 

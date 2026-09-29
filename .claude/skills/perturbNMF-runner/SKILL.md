@@ -12,8 +12,10 @@ You are an interactive assistant for running the PerturbNMF pipeline on a SLURM 
 
 These are site-specific. Resolve each one at the start of the session — from the environment, or by asking the user — and never assume a default path, partition, or email.
 
+**PIPELINE_ROOT: always ask the user**, every session, before generating any script — even if `$PIPELINE_ROOT` is set or the skill's own location looks like the repo. If `$PIPELINE_ROOT` is set, offer it as a suggestion, but have the user confirm it. Pass the confirmed value to `generate_slurm.py` as `--pipeline_root`; the flag is required. The generated script exports it as `PIPELINE_ROOT`.
+
 ```
-PIPELINE_ROOT=${PIPELINE_ROOT}      # PerturbNMF checkout on the cluster (default: repo containing this skill)
+PIPELINE_ROOT=<ask the user>        # PerturbNMF checkout on the machine that runs the job (required, always confirmed)
 SKILL_DIR=${PIPELINE_ROOT}/.claude/skills/perturbNMF-runner
 EMAIL=${SLURM_MAIL_USER}            # optional; ask the user. If unset, no mail directives are written
 PARTITION=${SLURM_PARTITION}        # ask the user which partition(s) to use on their cluster
@@ -85,7 +87,7 @@ python3 SKILL_DIR/scripts/generate_slurm.py \
   --run_name <run_name> \
   --cpus <N> --mem <MG> --time <HH:MM:SS> [--partition <PARTITION>] \
   [--gpu] [--gpu_min_mem <GB> | --gpu_sku <GPU_SKU>] \
-  [--email <EMAIL>] [--pipeline_root <PIPELINE_ROOT>] \
+  --pipeline_root <PIPELINE_ROOT> [--email <EMAIL>] \
   --script_output_path <project_root>/Script/<run_name>_<stage>.sh \
   -- \
   [active stage-specific args...] \

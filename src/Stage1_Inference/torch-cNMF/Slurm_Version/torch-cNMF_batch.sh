@@ -52,6 +52,8 @@ echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 echo "Activating conda base environment..."
 eval "$(conda shell.bash hook)"
 conda activate torch-nmf-dl
+# Resolve imports against the env only, never ~/.local (user site).
+export PYTHONNOUSERSITE=1
 export PYTHONPATH="${PIPELINE_ROOT}/src:${PYTHONPATH:-}"
 
 echo "Active conda environment: $CONDA_DEFAULT_ENV"
@@ -111,6 +113,7 @@ python3 "${PIPELINE_ROOT}/src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cn
         --run_factorize \
         --run_refit \
         --run_compile_annotation \
+        --run_gene_annotation \
         --sel_threshs 0.2 2.0 \
         --numhvgenes 17538 \
         --K 50

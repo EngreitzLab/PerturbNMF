@@ -36,7 +36,8 @@
 | parallel_running | flag | False | Combine per-K spectra files from a parallel run into `{RUN_NAME}_all/Inference/cnmf_tmp/`. **Only use when the parallel jobs were submitted via `Slurm_Version/sk-cNMF_parallel.sh`** — it expects the nested layout `{OUT_DIR}/{RUN_NAME}/{RUN_NAME}_{K}/Inference/cnmf_tmp/`. Do not pass this flag for normal single-job runs; the merge will not find any files. |
 | num_gene | int | 300 | Number of top genes to use for program annotation |
 | run_refit | flag | False | Run the combine and consensus steps after factorization |
-| run_complie_annotation | flag | False | Compile results and generate gene annotations for all K values |
+| run_complie_annotation | flag | False | Compile results into `Inference/adata/cNMF_{K}_{dt}.h5mu` for all K values |
+| run_gene_annotation | flag | False | Run MyGene annotation into `Inference/Annotation/{K}_{dt}.xlsx`. Separate from `run_complie_annotation`, so the h5mu can be produced without the mygene.info network call |
 | run_factorize | flag | False | Run the NMF factorization step |
 | run_diagnostic_plots | flag | False | Generate diagnostic plots (elbow curves, usage heatmaps, loading violins) after inference |
 | skip_existing | flag | False | If set, skip NMF replicates already completed on disk (pause/resume mode). Default re-runs all replicates from scratch |

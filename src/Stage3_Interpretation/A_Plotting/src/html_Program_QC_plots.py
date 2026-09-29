@@ -154,7 +154,7 @@ def _build_go_terms(GO_path, target_program, num_term, p_value_name, term_col):
 def _build_correlations(program_correlation, target_program, num_program):
     if str(target_program) not in program_correlation.columns:
         return {"programs": [], "r": [], "direction": []}
-    s = program_correlation.loc[str(target_program)].drop(str(target_program)).sort_values(ascending=False)
+    s = program_correlation.loc[str(target_program)].drop(str(target_program), errors="ignore").sort_values(ascending=False)
     top = s[s > 0].head(num_program)
     bottom = s[s < 0].tail(num_program)
     combined = pd.concat([bottom, top])
@@ -289,6 +289,7 @@ def _build_waterfall(corr_matrix, target_program, top_num):
     if str(target_program) not in corr_matrix.index:
         return {"programs": [], "r": [], "labeled": []}
     s = corr_matrix.loc[str(target_program)].dropna().sort_values(ascending=False)
+    s = s.drop(str(target_program), errors="ignore")  # self-correlation
     labeled = set(s.head(top_num).index.tolist() + s.tail(top_num).index.tolist())
     return {
         "programs": [str(p) for p in s.index],
@@ -894,6 +895,23 @@ def export_program_html(
     prog_key="cNMF",
 ):
     """Write program_{N}/ subtree under html_share_path."""
+    if GO_path is None:
+        raise ValueError("GO_path is required.")
+    if program_correlation is None:
+        raise ValueError(
+            "program_correlation is required; build it with compute_program_correlation_matrix()."
+        )
+
+    # Perturbation-derived panels are optional: without the per-sample association
+    # files there is nothing to plot for Log2FC / Volcano / Regulator Dotplot /
+    # Waterfall, and the regulator heatmap has no data to read either.
+    plot_perturbation = perturb_path_base is not None
+    if plot_perturbation and waterfall_correlation is None:
+        raise ValueError(
+            "waterfall_correlation is required when perturb_path_base is given; "
+            "build it with compute_program_waterfall_cor() per sample."
+        )
+
     share_root = Path(html_share_path)
     pid = str(Target_Program)
     prog_dir = share_root / f"program_{pid}"
@@ -922,7 +940,7 @@ def export_program_html(
 
     # ---- per-sample panels ----
     sample_blocks = []
-    for samp in sample:
+    for samp in (sample if plot_perturbation else []):
         skey = _safe_sample_key(samp)
         perturb_path = f"{perturb_path_base}_{samp}.txt"
 
@@ -947,11 +965,14 @@ def export_program_html(
         ))
 
     # ---- heatmap ----
-    heatmap_d = _build_heatmap(perturb_path_base, mdata, Target_Program, sample,
-                                tagert_col_name, plot_col_name, log2fc_col, p_value, groupby,
-                                data_key=data_key, prog_key=prog_key)
-    _write_json(prog_dir / "data" / "heatmap.json", heatmap_d)
-    heatmap_fig = _make_heatmap_fig(heatmap_d)
+    if plot_perturbation:
+        heatmap_d = _build_heatmap(perturb_path_base, mdata, Target_Program, sample,
+                                    tagert_col_name, plot_col_name, log2fc_col, p_value, groupby,
+                                    data_key=data_key, prog_key=prog_key)
+        _write_json(prog_dir / "data" / "heatmap.json", heatmap_d)
+        heatmap_fig = _make_heatmap_fig(heatmap_d)
+    else:
+        heatmap_fig = _empty_fig("No perturbation files provided")
 
     # ---- nav strings ----
     position = ""
@@ -988,7 +1009,7 @@ def export_program_html(
     # ---- metadata.json ----
     n_sig_total = 0
     top_go_term = go_d["terms"][0] if go_d["terms"] else None
-    for samp in sample:
+    for samp in (sample if plot_perturbation else []):
         skey = _safe_sample_key(samp)
         with open(prog_dir / "data" / f"volcano_{skey}.json") as f:
             v = json.load(f)

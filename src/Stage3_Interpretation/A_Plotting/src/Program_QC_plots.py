@@ -44,6 +44,7 @@ sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
 
 from .utilities import convert_adata_with_mygene, convert_with_mygene, rename_list_gene_dictionary, rename_adata_gene_dictionary
 from .Program_expression_weighted_plots import plot_program_heatmap_weighted
+from .efficient_corr import column_pearson_streaming
 
 
 
@@ -307,18 +308,36 @@ def top_GO_per_program(GO_path, Target_Program, num_term = 5, p_value_name = "Ad
 
 
 # helper method to compute corr for analyze_correlations
-def compute_program_correlation_matrix(mdata, prog_key='cNMF'):
+def compute_program_correlation_matrix(mdata, prog_key='cNMF', save_path=None):
+    """Program x program Pearson correlation of cNMF usages across cells.
 
+    Same values as ``pd.DataFrame(mdata[prog_key].X).corr().fillna(0)``, but
+    computed by streaming over cells, so the cells x K matrix is never copied.
+
+    Parameters
+    ----------
+    mdata : muon.MuData
+        MuData with cells x programs usages in ``mdata[prog_key].X``.
+    prog_key : str
+        Modality holding the cNMF usages.
+    save_path : str or None
+        If set, also write the K x K matrix to this ``.npz`` file (keys
+        ``corr`` and ``program``; NaN for a constant program, not filled).
+
+    Returns
+    -------
+    pandas.DataFrame
+        K x K correlation indexed by program name (NaN filled with 0).
+    """
     X = mdata[prog_key].X
-    if hasattr(X, 'toarray'):
-        X = X.toarray()
-    df =  pd.DataFrame(data=X, index=mdata[prog_key].obs_names, columns=mdata[prog_key].var_names)
+    names = [str(p) for p in mdata[prog_key].var_names]
+    R = column_pearson_streaming(X)
 
-    program_correlation = df.corr()
-    program_correlation = program_correlation.fillna(0)
+    if save_path is not None:
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+        np.savez(save_path, corr=R.astype(np.float32), program=np.asarray(names, dtype=str))
 
-
-    return program_correlation
+    return pd.DataFrame(R, index=names, columns=names).fillna(0)
 
 # find most and least simliar programs
 def analyze_program_correlations(program_correlation, Target_Program , num_program = 5, 
@@ -341,7 +360,7 @@ save_path=None, save_name = None, figsize = (5, 4),show=False, ax=None):
 
     # Get correlations with the target program
     target_correlations = program_correlation.loc[str(Target_Program)]
-    target_correlations = target_correlations.drop(str(Target_Program)) # Remove self-correlation
+    target_correlations = target_correlations.drop(str(Target_Program), errors="ignore")  # Remove self-correlation
     
     # Sort correlations
     sorted_correlations = target_correlations.sort_values(ascending=False)
@@ -834,29 +853,43 @@ def perturbed_program_dotplot(mdata, Target_Program, groupby="sample", gene_list
 
 
 # helper method for computing waterfall corr
-def compute_program_waterfall_cor(perturb_path, precomputed_path=None, save_path=None, log2fc_col='log2FC'):
+def compute_program_waterfall_cor(perturb_path, save_path=None, log2fc_col='log2FC'):
+    """Program x program correlation of perturbation effects across regulators.
 
-    # Check if a pre-computed correlation matrix exists
-    if precomputed_path is not None and Path(precomputed_path).exists():
-        corr_matrix = pd.read_csv(precomputed_path, sep='\t', index_col=0)
-        return corr_matrix
+    Pivots the perturbation results to a (program x target) log2FC table and
+    correlates every pair of programs across targets with ``pivot_df.T.corr()``
+    (pairwise-complete if some log2FC are missing). The output is only K x K,
+    so plain pandas is fine here.
 
+    Parameters
+    ----------
+    perturb_path : str
+        Tab-separated perturbation-association results for one sample.
+    save_path : str or None
+        If set, also write the K x K matrix to this ``.npz`` file (keys
+        ``corr`` and ``program``).
+    log2fc_col : str
+        Column holding the effect size to correlate.
+
+    Returns
+    -------
+    pandas.DataFrame
+        K x K correlation indexed by program name (diagonal 1; the waterfall
+        plots drop the program itself).
+    """
     df = pd.read_csv(perturb_path, sep='\t', index_col=0)
     df['program_name'] = df['program_name'].astype(str)
 
-
-    # Pre-process: create matrix with genes as rows, programs as columns
-    pivot_df = df.pivot_table(index='program_name', columns='target_name', values=log2fc_col) # shape (K, genes)  
-
-    # Compute correlation matrix using numpy - much faster
-    corr_matrix = pivot_df.T.corr()  # column-wise corr on (genes, K)  →  (K, K)  
-    np.fill_diagonal(corr_matrix.values, np.nan)
+    # programs as rows, perturbed targets as columns: (K, targets)
+    pivot_df = df.pivot_table(index='program_name', columns='target_name', values=log2fc_col)
+    names = pivot_df.index.astype(str).tolist()
+    R = pivot_df.T.corr().to_numpy()  # column-wise corr on (targets, K) -> (K, K)
 
     if save_path is not None:
-        corr_matrix.index = corr_matrix.index.astype(str)
-        corr_matrix.columns = corr_matrix.columns.astype(str)
-        corr_matrix.to_csv(save_path, sep='\t')
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+        np.savez(save_path, corr=R.astype(np.float32), program=np.asarray(names, dtype=str))
 
+    corr_matrix = pd.DataFrame(R, index=names, columns=names)
     return corr_matrix
 
 
@@ -871,6 +904,7 @@ def create_program_correlation_waterfall(corr_matrix, Target_Program, top_num=5,
     corr_matrix.index = corr_matrix.index.astype(str) # convert type
     gene_correlations = corr_matrix.loc[str(Target_Program)].dropna()
     corr_df = (gene_correlations).sort_values(ascending = False) 
+    corr_df = corr_df.drop(str(Target_Program), errors="ignore")  # drop self corr (already gone if NaN)
     
     # Get top N positive and bottom N negative correlations for labeling
     top_positive = corr_df.head(top_num)

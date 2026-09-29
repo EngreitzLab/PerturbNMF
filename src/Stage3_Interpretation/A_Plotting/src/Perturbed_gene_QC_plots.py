@@ -53,7 +53,7 @@ import sys
 sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
 
 from .utilities import convert_adata_with_mygene, convert_with_mygene, rename_list_gene_dictionary, rename_adata_gene_dictionary
-from ._lazy_corr import LazyGeneCorr, LazyPerturbCorr
+from .efficient_corr import RowCorr
 
 
 def _blank_ax(ax, gene, message=None):
@@ -988,13 +988,13 @@ def programs_dotplot(mdata, Target, dotplot_groupby="sample", program_list=None,
  
 
 def compute_gene_correlation_matrix(mdata, ensembl_to_symbol_file=None, gene_name_key='gene_names',
-                                    precomputed_path=None, save_path=None, data_key='rna', prog_key='cNMF'):
-    """Build a rank-K factored stand-in for the gene-by-gene loading correlation.
+                                    save_path=None, data_key='rna', prog_key='cNMF'):
+    """Gene x gene Pearson correlation of cNMF gene loadings across programs.
 
-    Equivalent to the Pearson correlation of cNMF gene-loading vectors but
-    returned as a ``LazyGeneCorr`` shim that exposes the same ``.loc[gene]``
-    / ``corr[gene]`` / ``.columns`` API as the legacy DataFrame, without
-    materializing the dense G x G matrix.
+    Same values as ``pd.DataFrame(loadings).corr()``, but
+    returned as a ``RowCorr`` that computes one gene's row on demand
+    (``.loc[gene]`` / ``corr[gene]`` / ``.columns``), without materializing
+    the dense G x G matrix.
 
     Parameters
     ----------
@@ -1006,22 +1006,18 @@ def compute_gene_correlation_matrix(mdata, ensembl_to_symbol_file=None, gene_nam
         are used.
     gene_name_key : str
         Column of ``mdata['rna'].var`` to use when no mapping file is given.
-    precomputed_path : str or None
-        If set and the file exists, load the factor from this ``.npz`` and
-        skip recomputation.
     save_path : str or None
-        If set, write the computed factor to this ``.npz`` for future runs.
+        If set, also write the full G x G matrix to this ``.npz`` file
+        (keys ``corr`` and ``gene``; builds the full matrix in memory once).
 
     Returns
     -------
-    LazyGeneCorr
-        Drop-in shim with ``.loc[gene]`` / ``.columns`` / ``corr[gene]``.
+    RowCorr
+        ``.loc[gene]`` gives that gene's correlation with every gene (self = 1;
+        NaN for a gene with constant loadings).
     """
 
-    if precomputed_path is not None and Path(precomputed_path).exists():
-        return LazyGeneCorr.load_npz(precomputed_path)
-
-    X = mdata[prog_key].varm["loadings"]
+    X = np.asarray(mdata[prog_key].varm["loadings"])  # programs x genes
 
     if ensembl_to_symbol_file is None:
         if gene_name_key is not None and gene_name_key in mdata[data_key].var.columns:
@@ -1031,11 +1027,12 @@ def compute_gene_correlation_matrix(mdata, ensembl_to_symbol_file=None, gene_nam
     else:
         col_names = list(rename_list_gene_dictionary(mdata[data_key].var_names, ensembl_to_symbol_file))
 
-    corr = LazyGeneCorr.from_loadings(X, gene_names=col_names)
+    # genes as rows, correlated across programs; plots expect NaN filled with 0
+    corr = RowCorr(X.T, col_names, row_label="genes", col_label="programs")
 
     if save_path is not None:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-        corr.save_npz(save_path)
+        np.savez(save_path, corr=corr.full(), gene=np.asarray(corr.index, dtype=str))
 
     return corr
 
@@ -1094,7 +1091,7 @@ def analyze_correlations(gene_loading_corr_matrix, Target, top_corr_genes=5, sav
 
     # Get correlations with the target program
     target_correlations = gene_loading_corr_matrix[Target]
-    target_correlations = target_correlations.drop(Target)  # Remove self-correlation
+    target_correlations = target_correlations.drop(Target, errors="ignore")  # Remove self-correlation
     
     # Sort correlations
     sorted_correlations = target_correlations.sort_values(ascending=False)
@@ -1160,49 +1157,42 @@ def analyze_correlations(gene_loading_corr_matrix, Target, top_corr_genes=5, sav
 
 
 
-def compute_gene_waterfall_cor(perturb_path, perturb_log2fc_col='log2FC',
-                               precomputed_path=None, save_path=None):
-    """Build a rank-K factored stand-in for the per-sample target x target correlation.
+def compute_gene_waterfall_cor(perturb_path, perturb_log2fc_col='log2FC', save_path=None):
+    """Regulator x regulator (target x target) correlation of per-program log2FC.
 
-    Equivalent to ``pivot_df.T.corr()`` over a (target x program) pivot of
-    log2FC values, but returned as a ``LazyPerturbCorr`` shim that
-    preserves the pairwise-complete NaN semantics and exposes the
-    ``.loc[gene]`` / ``.index`` / ``.copy()`` API used by callers without
-    materializing the dense T x T matrix.
+    Pivots the perturbation results to a (target x program) table and
+    correlates every pair of targets across programs (Pearson). Rows are
+    computed on demand, so memory stays O(T x K) even at 20k targets.
 
     Parameters
     ----------
     perturb_path : str
-        TSV with columns ``target_name``, ``program_name``, and the log2FC
-        column.
+        Tab-separated perturbation-association results for one sample
+        (columns ``target_name``, ``program_name`` and ``perturb_log2fc_col``).
     perturb_log2fc_col : str
-        Column name for log2 fold-change values used to build the pivot.
-    precomputed_path : str or None
-        If set and the file exists, load the factor from this ``.npz`` and
-        skip recomputation.
+        Column holding the effect size to correlate.
     save_path : str or None
-        If set, write the computed factor to this ``.npz`` for future runs.
+        If set, also write the full T x T matrix to this ``.npz`` file
+        (keys ``corr`` and ``regulator``; builds the full matrix in memory once).
 
     Returns
     -------
-    LazyPerturbCorr
-        Drop-in shim with ``.loc[gene]`` returning a correlation row.
+    RowCorr
+        ``.loc[target]`` gives that target's correlation with every target
+        (self = 1; the waterfall plots drop it).
     """
-
-    if precomputed_path is not None and Path(precomputed_path).exists():
-        return LazyPerturbCorr.load_npz(precomputed_path)
 
     df = pd.read_csv(perturb_path, sep='\t', index_col=0)
     pivot_df = df.pivot_table(index='target_name', columns='program_name',
                               values=perturb_log2fc_col)
-    del df
 
-    corr = LazyPerturbCorr.from_pivot(pivot_df)
-    del pivot_df
+    # targets as rows, correlated across programs; the waterfall plots drop self
+    corr = RowCorr(pivot_df.to_numpy(dtype=np.float64), pivot_df.index,
+                   row_label="targets", col_label="programs")
 
     if save_path is not None:
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
-        corr.save_npz(save_path)
+        np.savez(save_path, corr=corr.full(), regulator=np.asarray(corr.index, dtype=str))
 
     return corr
 
@@ -1219,9 +1209,10 @@ def create_gene_correlation_waterfall(corr_matrix, Target_Gene, top_corr_genes=5
 
     Parameters
     ----------
-    corr_matrix : pandas.DataFrame
-        Target-gene × target-gene correlation matrix (output of
-        ``compute_gene_waterfall_cor`` for a single sample).
+    corr_matrix : RowCorr
+        Target-gene × target-gene correlation (output of
+        ``compute_gene_waterfall_cor`` for a single sample); rows are
+        computed on demand via ``.loc[gene]``.
     Target_Gene : str
         Gene to extract correlations for (row in ``corr_matrix``).
     top_corr_genes : int
@@ -1284,7 +1275,8 @@ def create_gene_correlation_waterfall(corr_matrix, Target_Gene, top_corr_genes=5
     # Convert to DataFrame and sort
     gene_corrs = corr_matrix.loc[Target_Gene].dropna()
     corr_df = (gene_corrs).sort_values(ascending = False)
-    
+    corr_df = corr_df.drop(str(Target_Gene), errors="ignore")  # drop self corr (already gone if NaN)
+
     # Get top N positive and bottom N negative correlations for labeling
     top_positive = corr_df.head(top_corr_genes)
     top_negative = corr_df.tail(top_corr_genes)
@@ -1800,9 +1792,9 @@ def create_comprehensive_plot(
         Precomputed gene × gene correlation matrix from
         ``compute_gene_correlation_matrix``. Passed to ``analyze_correlations``.
         Required.
-    perturb_corr_by_sample : dict[str, pandas.DataFrame] or None
-        Dict mapping sample names to precomputed target-gene × target-gene
-        correlation matrices from ``compute_gene_waterfall_cor``. Passed to
+    perturb_corr_by_sample : dict[str, RowCorr] or None
+        Dict mapping sample names to target-gene × target-gene
+        correlations from ``compute_gene_waterfall_cor``. Passed to
         ``create_gene_correlation_waterfall``. Required when
         ``perturb_path_base`` is given; ignored when it is None.
     top_n_programs : int

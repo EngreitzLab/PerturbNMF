@@ -77,6 +77,7 @@ python3 "${PIPELINE_ROOT}/src/Stage1_Inference/sk-cNMF/Slurm_Version/sk-cNMF_bat
         --sel_threshs 0.2 2.0 \
         --run_refit \
         --run_complie_annotation \
+        --run_gene_annotation \
         --run_factorize \
         --nmf_seeds_path "/path/to/seeds.npy"
 

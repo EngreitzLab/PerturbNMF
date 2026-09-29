@@ -10,13 +10,6 @@ import argparse
 import os
 import sys
 import textwrap
-from pathlib import Path
-
-# Repo root: $PIPELINE_ROOT if set, else derived from this file's location
-# (<repo>/.claude/skills/perturbNMF-runner/scripts/generate_slurm.py).
-DEFAULT_PIPELINE_ROOT = os.environ.get(
-    "PIPELINE_ROOT", str(Path(__file__).resolve().parents[4])
-)
 
 # GPU memory sizes (GB) exposed as `GPU_MEM:<N>GB` node features on clusters that
 # use that convention. Only used when --gpu_min_mem is given; adjust for your cluster.
@@ -63,7 +56,7 @@ STAGES = {
         "gpu": False,
     },
     "annotation": {
-        "script": "src/Stage3_Interpretation/C_Annotation/Slurm_Version/run_annotation.py",
+        "script": "src/Stage3_Interpretation/C_Annotation/ProgramExplorer/Slurm_Version/run_annotation.py",
         "conda_env": "progexplorer",
         "gpu": False,
     },
@@ -199,6 +192,7 @@ def generate_script(args, passthrough_args):
     lines.extend([
         '',
         '# Configuration',
+        f'export PIPELINE_ROOT="{pipeline_root}"',
         f'OUT_DIR="{args.output_dir}"',
         f'RUN_NAME="{args.run_name}"',
         f'LOG_DIR="{log_dir}"',
@@ -245,6 +239,19 @@ def generate_script(args, passthrough_args):
         f'echo "Activating conda environment: {conda_env}"',
         'eval "$(conda shell.bash hook)"',
         f'conda activate {conda_env}',
+    ])
+
+    # torch-nmf-dl is self-contained (see Tools/PerturbNMF/env/). Pin resolution
+    # to the env so a stale ~/.local/lib/python3.9/site-packages can never shadow
+    # or silently supply its packages. Other envs still rely on user-site.
+    if conda_env == 'torch-nmf-dl':
+        lines.extend([
+            '',
+            '# Resolve imports against the env only, never ~/.local (user site)',
+            'export PYTHONNOUSERSITE=1',
+        ])
+
+    lines.extend([
         '',
         'echo "Active env: $CONDA_DEFAULT_ENV"',
         'echo "Python: $(python --version)"',
@@ -381,9 +388,9 @@ def main():
              'if unset, no mail directives are written)'
     )
     parser.add_argument(
-        '--pipeline_root', type=str, default=DEFAULT_PIPELINE_ROOT,
-        help='Path to the PerturbNMF repo on the machine that runs the job '
-             '(default: $PIPELINE_ROOT, else the repo containing this script)'
+        '--pipeline_root', type=str, required=True,
+        help='Path to the PerturbNMF repo on the machine that runs the job (required; '
+             'always ask the user — no default is assumed)'
     )
     parser.add_argument(
         '--log_dir', type=str, default=None,

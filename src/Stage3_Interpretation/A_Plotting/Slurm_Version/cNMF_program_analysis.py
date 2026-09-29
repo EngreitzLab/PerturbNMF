@@ -48,7 +48,7 @@ def main():
     parser.add_argument('--Conditions', nargs='*', type=str, default=None, help='Condition labels (values of obs[categorical_key]); default: all labels found in the data')
     parser.add_argument('--programs', nargs='+', type=int, default=None, help='specific program numbers to plot (e.g. 4 5 6 ... 100). If omitted, all programs are plotted.')
     parser.add_argument('--subsample_frac', type=float, default=None, help='fraction of cells to subsample for UMAP plots (e.g. 0.1 for 10%%). Default: None (plot all cells)')
-    parser.add_argument('--corr_matrix_path', type=str, default=None, help='base path for precomputed waterfall correlation matrices (e.g. /path/to/corr_matrix). Files are expected as <base>_<sample>.txt. Falls back to computing if not found.')
+    parser.add_argument('--corr_matrix_path', type=str, default=None, help='directory for the full program x program correlation matrices written every run: <dir>/program_corr.npz (usage correlation) and <dir>/program_waterfall_corr_<sample>.npz (perturbation-effect correlation). Defaults to --save_path.')
     parser.add_argument('--skip_existing', action='store_false', help='[default on] skip programs whose output already exists. Pass --skip_existing to force re-process all.')
 
     # keys
@@ -103,7 +103,9 @@ def main():
 
 
 
-    # compute correlations
+    # compute correlations (both K x K; full matrices written to corr_dir every run)
+    corr_dir = args.corr_matrix_path or args.save_path
+
     # The waterfall correlation is built from the perturbation files; without them
     # the per-condition rows and the heatmap are skipped and nothing needs computing.
     if args.perturb_path_base is None:
@@ -113,12 +115,15 @@ def main():
     else:
         waterfall_correlation = {}
         for samp in args.Conditions:
-            precomputed = f"{args.corr_matrix_path}/corr_program_matrix_{samp}.txt" if args.corr_matrix_path else None
-            save = f"{args.corr_matrix_path}/corr_program_matrix_{samp}.txt" if args.corr_matrix_path else None
-            df = compute_program_waterfall_cor(f"{args.perturb_path_base}_{samp}.txt", precomputed_path=precomputed, save_path=save, log2fc_col=args.log2fc_col)
-            waterfall_correlation[samp] = (df)
+            save = f"{corr_dir}/program_waterfall_corr_{samp}.npz"
+            waterfall_correlation[samp] = compute_program_waterfall_cor(
+                f"{args.perturb_path_base}_{samp}.txt", save_path=save, log2fc_col=args.log2fc_col)
+            print(f"Wrote program x program perturbation correlation: {save}")
 
-    program_correlation = compute_program_correlation_matrix(mdata, prog_key=args.prog_key)
+    program_corr_path = f"{corr_dir}/program_corr.npz"
+    program_correlation = compute_program_correlation_matrix(
+        mdata, prog_key=args.prog_key, save_path=program_corr_path)
+    print(f"Wrote program x program usage correlation: {program_corr_path}")
         
     
     programs_to_plot = args.programs if args.programs is not None else list(mdata[args.prog_key].var_names)

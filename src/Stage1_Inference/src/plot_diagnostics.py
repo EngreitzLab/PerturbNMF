@@ -90,7 +90,9 @@ def plot_k_selection(run_dir, run_name, output_path):
     cnmf_plot = os.path.join(run_dir, run_name, f"{run_name}.k_selection.png")
     if os.path.exists(cnmf_plot):
         import shutil
-        shutil.copy2(cnmf_plot, output_path)
+        # copyfile, not copy2: copy2 preserves mtime via os.utime(), which fails
+        # with EPERM when overwriting a file owned by another user (shared group dirs)
+        shutil.copyfile(cnmf_plot, output_path)
         logger.info(f"Copied k-selection plot: {output_path}")
     else:
         logger.warning(f"k-selection plot not found at {cnmf_plot}, skipping")
@@ -318,7 +320,7 @@ def collect_clustering_plots(run_dir, run_name, K_list, sel_thresh_list, output_
             )
             if os.path.exists(src):
                 dst = os.path.join(output_dir, f"clustering_k{k}_dt{thresh_str}.png")
-                shutil.copy2(src, dst)
+                shutil.copyfile(src, dst)
                 logger.info(f"Copied: {dst}")
 
 

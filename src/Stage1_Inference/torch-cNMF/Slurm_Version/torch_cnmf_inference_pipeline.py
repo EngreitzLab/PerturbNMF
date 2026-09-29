@@ -153,6 +153,8 @@ def main():
                         help="Run combine + k_selection + consensus")
     parser.add_argument('--run_compile_annotation', action='store_true',
                         help="Run result compilation and gene annotation")
+    parser.add_argument('--run_gene_annotation', action='store_true',
+                        help="Run MyGene annotation (needs network)")
     parser.add_argument('--run_diagnostic_plots', action='store_true',
                         help="Generate diagnostic plots (elbow curves, usage heatmaps, loading violins)")
     parser.add_argument('--skip_existing', action='store_true',
@@ -289,7 +291,7 @@ def main():
             except Exception as e:
                 print(f"WARNING: density_filtering_plot failed for k={k}: {e}")
 
-    # --- Compile results & annotate ---
+    # --- Compile results ---
     if args.run_compile_annotation:
         compile_results(run_dir, 'Inference',
                         components=args.K, sel_threshs=args.sel_threshs,
@@ -298,7 +300,9 @@ def main():
                         categorical_key=args.categorical_key,
                         guide_assignment_key=args.guide_assignment_key,
                         gene_names_key=args.gene_names_key)
-
+    #---annotate ----
+    if args.run_gene_annotation:
+        print("Annotating top genes per program via MyGene...")
         os.makedirs(f'{inference_dir}/Annotation', exist_ok=True)
         for i in args.sel_threshs:
             for k in args.K:

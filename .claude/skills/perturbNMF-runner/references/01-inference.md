@@ -50,10 +50,15 @@ For **sk-cNMF**, also ask: `--algo` (default `mu`), `--init` (default `random`),
 ### Workflow flags
 
 For a first run, include all:
-- `--run_factorize --run_refit --run_compile_annotation --run_diagnostic_plots` (torch-cNMF)
-- `--run_factorize --run_refit --run_complie_annotation --run_diagnostic_plots` (sk-cNMF — note typo)
+- `--run_factorize --run_refit --run_compile_annotation --run_gene_annotation --run_diagnostic_plots` (torch-cNMF)
+- `--run_factorize --run_refit --run_complie_annotation --run_gene_annotation --run_diagnostic_plots` (sk-cNMF — note typo)
 
-For a rerun after factorization: `--run_refit --run_compile_annotation --run_diagnostic_plots`
+For a rerun after factorization: `--run_refit --run_compile_annotation --run_gene_annotation --run_diagnostic_plots`
+
+`--run_gene_annotation` is a separate opt-in step: the compile flag writes the h5mu, and
+annotation (a mygene.info network call writing `Inference/Annotation/{K}_{dt}.xlsx`) only
+runs when this flag is set. Omit it when you only need the h5mu, or on a node with no
+outbound network access.
 
 For pause/resume after a preempted factorize job: add `--skip_existing` (default off; with the flag, NMF replicates already completed on disk are skipped instead of recomputed).
 

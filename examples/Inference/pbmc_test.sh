@@ -82,6 +82,7 @@ python3 "${PIPELINE_ROOT}/src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cn
         --run_factorize \
         --run_refit \
         --run_compile_annotation \
+        --run_gene_annotation \
         --run_diagnostic_plots
 
 # Capture exit code

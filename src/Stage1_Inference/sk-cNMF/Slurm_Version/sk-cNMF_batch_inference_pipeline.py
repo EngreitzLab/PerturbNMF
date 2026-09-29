@@ -64,6 +64,7 @@ def main():
     parser.add_argument('--num_gene', type = int, default = 300, help='Number of top genes to use for program annotation (default: 300)')
     parser.add_argument('--run_refit', action="store_true", help='If set, run the combine and consensus steps after factorization')
     parser.add_argument('--run_complie_annotation', action="store_true", help='If set, compile results and generate gene annotations for all K values')
+    parser.add_argument('--run_gene_annotation', action="store_true", help='If set, run MyGene annotation (needs network)')
     parser.add_argument('--run_factorize', action="store_true", help='If set, run the NMF factorization step')
     parser.add_argument('--run_diagnostic_plots', action="store_true", help='Generate diagnostic plots (elbow curves, usage heatmaps, loading violins)')
     parser.add_argument('--skip_existing', action="store_true", help='If set, skip NMF replicates already completed on disk (pause/resume mode). Default: re-run all replicates from scratch.')
@@ -190,7 +191,9 @@ def main():
         guide_names_key = args.guide_names_key, guide_targets_key = args.guide_targets_key, categorical_key= args.categorical_key,
         guide_assignment_key = args.guide_assignment_key, gene_names_key = args.gene_names_key )
 
-        # annotation for all K
+    #---annotate ----
+    if args.run_gene_annotation:
+        print("Annotating top genes per program via MyGene...")
         os.makedirs(f'{inference_dir}/Annotation', exist_ok=True)
 
         # annotation for all K

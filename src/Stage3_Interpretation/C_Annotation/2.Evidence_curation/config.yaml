@@ -1,0 +1,9 @@
+# paper-qa settings for 2.Evidence_curation (read by qa.build_settings).
+# OpenAI backend: OPENAI_API_KEY in AGeneTic/.env. Throttled for a low rate limit.
+qa:
+  llm: "gpt-4o"
+  summary_llm: "gpt-4o"
+  embedding: "text-embedding-3-small"
+  temperature: 0.0
+  max_concurrent_requests: 1
+  evidence_k: 5

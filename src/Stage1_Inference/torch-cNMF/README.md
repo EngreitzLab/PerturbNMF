@@ -90,7 +90,8 @@
 | num_gene | int | 300 | Number of top genes to include in annotation |
 | run_factorize | flag | False | Run the NMF factorization step |
 | run_refit | flag | False | Run the refit step (combine, k_selection_plot, consensus, and density_filtering_plot). The density_filtering_plot step emits one PNG **per `K`** at `<OUT_DIR>/<RUN_NAME>/Inference/Inference.density_filtering.k_<K>.png`, each sweeping the local-density threshold to show how many program replicates survive at that k. Failures here are logged as warnings and do not abort the run. |
-| run_compile_annotation | flag | False | Run the compilation and annotation step |
+| run_compile_annotation | flag | False | Compile results into `Inference/adata/cNMF_{K}_{dt}.h5mu` for all K values |
+| run_gene_annotation | flag | False | Run MyGene annotation into `Inference/Annotation/{K}_{dt}.xlsx`. Separate from `run_compile_annotation`, so the h5mu can be produced without the mygene.info network call |
 | run_diagnostic_plots | flag | False | Generate diagnostic plots (elbow curves, usage heatmaps, loading violins) after inference |
 | skip_existing | flag | False | If set, skip NMF replicates already completed on disk (pause/resume mode). Default re-runs all replicates from scratch |
 

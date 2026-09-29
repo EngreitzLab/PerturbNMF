@@ -34,15 +34,24 @@ from Stage3_Interpretation.A_Plotting.src.Program_QC_plots import (
 
 class TestComputeProgramCorrelation:
 
-    def test_returns_symmetric_dataframe(self, test_mdata):
-        """compute_program_correlation_matrix returns a symmetric DataFrame."""
-        result = compute_program_correlation_matrix(test_mdata)
+    def test_returns_symmetric_dataframe(self, test_mdata, program_output_dir):
+        """compute_program_correlation_matrix returns a symmetric DataFrame equal to pandas .corr()."""
+        save_path = os.path.join(program_output_dir, "test_program_corr.npz")
+        result = compute_program_correlation_matrix(test_mdata, save_path=save_path)
         assert isinstance(result, pd.DataFrame)
         assert result.shape[0] == result.shape[1]
         n_programs = test_mdata['cNMF'].n_vars
         assert result.shape[0] == n_programs
         # Check symmetry
         np.testing.assert_allclose(result.values, result.values.T, atol=1e-10)
+        # Same values as the legacy pandas path
+        X = test_mdata['cNMF'].X
+        X = X.toarray() if hasattr(X, 'toarray') else X
+        expected = pd.DataFrame(X).corr().fillna(0).values
+        np.testing.assert_allclose(result.values, expected, atol=1e-8)
+        with np.load(save_path) as f:
+            assert f["corr"].shape == (n_programs, n_programs)
+            assert list(f["program"]) == list(result.columns)
 
 
 class TestAnalyzeProgramCorrelations:
@@ -188,24 +197,31 @@ class TestPlotProgramVolcano:
 class TestComputeProgramWaterfallCor:
 
     def test_returns_correlation_matrix(self, synthetic_perturbation_tsv, program_output_dir):
-        """compute_program_waterfall_cor returns a DataFrame with NaN diagonal."""
-        save_path = os.path.join(program_output_dir, "test_waterfall_corr.tsv")
+        """compute_program_waterfall_cor returns a DataFrame with diagonal 1 and writes the .npz."""
+        save_path = os.path.join(program_output_dir, "test_program_waterfall_corr.npz")
         result = compute_program_waterfall_cor(
             synthetic_perturbation_tsv,
             save_path=save_path,
         )
         assert isinstance(result, pd.DataFrame)
         assert result.shape[0] == result.shape[1]
-        assert os.path.isfile(save_path)
+        d = np.diag(result.values)
+        assert np.allclose(d[np.isfinite(d)], 1.0)  # self kept; the waterfall plots drop it
+        with np.load(save_path) as f:
+            full = f["corr"]
+            assert list(f["program"]) == list(result.index)
+        # Saved matrix: diagonal 1 (NaN only for a constant program), symmetric
+        finite = np.isfinite(np.diag(full))
+        assert np.allclose(np.diag(full)[finite], 1.0)
+        assert np.allclose(full, full.T, atol=1e-6, equal_nan=True)
 
 
 class TestCreateProgramCorrelationWaterfall:
 
     def test_returns_axes_and_texts(self, synthetic_program_correlation, program_output_dir):
-        """create_program_correlation_waterfall returns (Axes, list of texts)."""
-        # Need NaN diagonal like compute_program_waterfall_cor produces
+        """create_program_correlation_waterfall returns (Axes, list of texts) and skips self."""
+        # Diagonal 1, as compute_program_waterfall_cor produces; the plot drops self
         corr = synthetic_program_correlation.copy()
-        np.fill_diagonal(corr.values, np.nan)
         fig, ax = plt.subplots()
         result_ax, texts = create_program_correlation_waterfall(
             corr,
@@ -217,6 +233,7 @@ class TestCreateProgramCorrelationWaterfall:
         plt.close('all')
         assert result_ax is not None
         assert isinstance(texts, list)
+        assert "0" not in [t.get_text() for t in texts]  # the program itself is not labeled
         assert os.path.isfile(os.path.join(program_output_dir, "test_program_waterfall.png"))
 
 

@@ -214,6 +214,7 @@ def _build_gene_waterfall(corr_matrix, target_gene, top_num):
     if target_gene not in corr_matrix.index:
         return {"programs": [], "r": [], "labeled": []}
     s = corr_matrix.loc[target_gene].dropna().sort_values(ascending=False)
+    s = s.drop(target_gene, errors="ignore")  # self-correlation
     labeled = set(s.head(top_num).index.tolist() + s.tail(top_num).index.tolist())
     return {
         "programs": [str(p) for p in s.index],
@@ -593,6 +594,23 @@ def export_gene_html(
     guide_assignment_key="guide_assignment",
 ):
     """Write gene_{SYMBOL}/ subtree under html_share_path."""
+    if Target_Gene is None:
+        raise ValueError("Target_Gene is required.")
+    if gene_loading_corr_matrix is None:
+        raise ValueError(
+            "gene_loading_corr_matrix is required; build it with compute_gene_correlation_matrix()."
+        )
+
+    # Perturbation-derived panels are optional: without the per-condition
+    # association files there is nothing to plot for Log2FC / Volcano /
+    # Program Dotplot / Waterfall.
+    plot_perturbation = perturb_path_base is not None
+    if plot_perturbation and perturb_corr_by_sample is None:
+        raise ValueError(
+            "perturb_corr_by_sample is required when perturb_path_base is given; "
+            "build it with compute_gene_waterfall_cor() per sample."
+        )
+
     share_root = Path(html_share_path)
     # Target_Gene may contain path-unsafe characters (e.g. "TET1/2/3" for a
     # multi-gene KO target). Keep Target_Gene intact for data lookups/display,
@@ -634,7 +652,7 @@ def export_gene_html(
     # ---- per-sample panels ----
     sample_blocks = []
     sig_per_sample = {}
-    for samp in sample:
+    for samp in (sample if plot_perturbation else []):
         skey = _safe_sample_key(samp)
         perturb_path = f"{perturb_path_base}_{samp}.txt"
 

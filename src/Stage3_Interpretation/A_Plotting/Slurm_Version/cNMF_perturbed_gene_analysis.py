@@ -54,7 +54,9 @@ def main():
     parser.add_argument('--gene_list_file', type=str, default=None, help='path to a file with one gene name per line to process (overrides automatic perturbed gene detection)')
     parser.add_argument('--subsample_frac', type=float, default=None, help='fraction of cells to subsample for UMAP plots (e.g. 0.1 for 10%%). Default: None (plot all cells)')
     parser.add_argument('--parallel', action="store_true", help='use fork-based multiprocessing to plot genes in parallel (Linux only)')
-    parser.add_argument('--corr_matrix_path', type=str, default=None, help='directory for precomputed gene waterfall correlation matrices. Files are expected as <dir>/corr_gene_matrix_<sample>.txt. Falls back to computing if not found.')
+    parser.add_argument('--corr_matrix_path', type=str, default=None, help='directory for the full correlation matrices written every run: regulator x regulator <dir>/regulator_corr_<sample>.npz and gene x gene <dir>/gene_loading_corr.npz. Defaults to --save_path.')
+    parser.add_argument('--no_save_regulator_corr', dest='save_regulator_corr', action='store_false', help='do not write <corr_matrix_path>/regulator_corr_<sample>.npz (~1.6 GB per sample at 20k regulators; the full matrix is built in RAM once to save it). Plots are unaffected.')
+    parser.add_argument('--no_save_gene_corr', dest='save_gene_corr', action='store_false', help='do not write <corr_matrix_path>/gene_loading_corr.npz (~0.4 GB at 10k genes, ~3.6 GB at 30k; the full matrix is built in RAM once to save it). Plots are unaffected.')
     parser.add_argument('--skip_existing', action='store_false', help='[default on] skip genes whose output already exists. Pass --skip_existing to force re-process all.')
 
     # keys
@@ -156,9 +158,8 @@ def main():
         process_set = set(genes_to_plot)
 
 
-    # compute corr once (cached as .npz factors under corr_dir; reused on subsequent runs)
-    corr_dir = args.corr_matrix_path or os.path.join(args.save_path, "_corr_cache")
-    os.makedirs(corr_dir, exist_ok=True)
+
+    corr_dir = args.corr_matrix_path or args.save_path
 
     # The waterfall correlation is built from the perturbation files; without them
     # the per-condition rows are skipped and nothing needs to be computed.
@@ -169,22 +170,26 @@ def main():
     else:
         waterfall_correlation = {}
         for samp in args.Conditions:
-            path = f"{corr_dir}/waterfall_factor_{samp}.npz"
+            save = f"{corr_dir}/regulator_corr_{samp}.npz" if args.save_regulator_corr else None
             waterfall_correlation[samp] = compute_gene_waterfall_cor(
                 f"{args.perturb_path_base}_{samp}.txt",
                 perturb_log2fc_col=args.perturb_log2fc_col,
-                precomputed_path=path,
-                save_path=path,
+                save_path=save,
             )
+            if save is not None:
+                print(f"Wrote regulator x regulator correlation ({len(waterfall_correlation[samp].index)} regulators): {save}")
 
+    loading_corr = f"{corr_dir}/gene_loading_corr.npz" if args.save_gene_corr else None
     correlation_matrix = compute_gene_correlation_matrix(
         mdata,
         ensembl_to_symbol_file=args.ensembl_to_symbol_file,
-        precomputed_path=f"{corr_dir}/gene_loading_factor.npz",
-        save_path=f"{corr_dir}/gene_loading_factor.npz",
+        gene_name_key=args.gene_name_key,
+        save_path=loading_corr,
         data_key=args.data_key,
         prog_key=args.prog_key,
     )
+    if loading_corr is not None:
+        print(f"Wrote gene x gene loading correlation ({len(correlation_matrix.columns)} genes): {loading_corr}")
     
 
     # Graph all genes

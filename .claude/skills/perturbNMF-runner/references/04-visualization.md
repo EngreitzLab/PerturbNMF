@@ -61,7 +61,7 @@ Enrichment file patterns use `{k}` placeholder (and `{sample}` for perturbation)
 | `--programs` | None | Specific program numbers (e.g. `4 5 6`); if omitted, all plotted |
 | `--subsample_frac` | None | Fraction of cells to subsample for UMAP |
 | `--output_format` | `SVG` | One of `PDF` / `SVG` / `HTML` |
-| `--corr_matrix_path` | None | Base path for precomputed waterfall correlation matrices (`<base>_<sample>.txt`); falls back to computing |
+| `--corr_matrix_path` | None | Directory for the full program × program matrices written every run: `program_corr.npz` and `program_waterfall_corr_<sample>.npz`; defaults to `--save_path` |
 | `--skip_existing` | on (default) | Default skips programs whose output already exists. Pass `--skip_existing` to force re-process all (inverted flag) |
 | `--tagert_col_name` | `program_name` | Column name for target programs in perturbation results (**note typo**: use as-is) |
 
@@ -100,7 +100,9 @@ See `references/parameter-catalog.md` Section 5 for all optional params.
 | `--guide_targets_key` | `guide_targets` | Key in `.uns` to access guide target genes |
 | `--guide_assignment_key` | `guide_assignment` | Key in `.obsm` to access the guide-assignment matrix |
 | `--control_target_name` | `non-targeting` | One or more control labels in `guide_targets` (e.g. `non-targeting`, or `WT WT111 WT4`); a cell is a control if it matches any. Use multiple labels for background-specific controls. Excluded from the per-gene perturbation panels (no association results to plot) |
-| `--corr_matrix_path` | None | Directory for precomputed gene waterfall correlation matrices (`corr_gene_matrix_<sample>.txt`); falls back to computing |
+| `--corr_matrix_path` | None | Directory for the full matrices written every run: regulator × regulator `regulator_corr_<sample>.npz` and gene × gene `gene_loading_corr.npz`; defaults to `--save_path` |
+| `--no_save_regulator_corr` | off | Skip writing `regulator_corr_<sample>.npz` (~1.6 GB per sample at 20k regulators); plots unaffected |
+| `--no_save_gene_corr` | off | Skip writing `gene_loading_corr.npz` (~3.6 GB at 30k genes); plots unaffected |
 | `--skip_existing` | on (default) | Default skips genes whose output already exists. Pass `--skip_existing` to force re-process all (inverted flag) |
 | `--output_format` | `SVG` | One of `PDF` / `SVG` / `HTML` |
 

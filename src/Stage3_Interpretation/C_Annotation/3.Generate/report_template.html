@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGeneTic — Gene Program Report</title>
+    __CYTOSCAPE_TAG__
+    <style>
+        /* palette and layout ported from gene-program-interpreter (gpi/html_report.py, design A) */
+        :root {
+            --bg: #f6f7f8; --surface: #ffffff; --surface-soft: #f3f5f5; --surface-sunk: #eef1f1;
+            --text: #14201d; --text-soft: #43504c; --muted: #6b7672;
+            --border: #e4e7e6; --border-strong: #d2d7d5; --shadow-soft: 0 1px 2px rgba(16,32,28,.05);
+            --accent: #0d9488; --accent-strong: #0f766e; --accent-soft: #e6f6f3; --accent-text: #0b6b61;
+            --up: #b8615a; --up-soft: #f4ebe9; --down: #3d7d9e; --down-soft: #e8eff2;
+            --ok: #15803d; --ok-soft: #e7f6ec; --warn: #b45309; --warn-soft: #fbf1e3;
+            --bad: #b91c1c; --bad-soft: #fbeaea;
+            --graph-bg: #fbfcfc;
+            --radius: 12px; --radius-sm: 8px; --maxw: 1240px;
+        }
+        html[data-theme="dark"] {
+            --bg: #0c0f0e; --surface: #141917; --surface-soft: #1a201e; --surface-sunk: #0f1413;
+            --text: #e8ecea; --text-soft: #b7c0bc; --muted: #8a938f;
+            --border: #262d2a; --border-strong: #333b37; --shadow-soft: none;
+            --accent-soft: #0e2a27; --accent-text: #5eead4;
+            --up: #d98e86; --up-soft: #271815; --down: #7fb0c9; --down-soft: #13222a;
+            --ok: #4ade80; --ok-soft: #10281a; --warn: #fbbf24; --warn-soft: #2a2110;
+            --bad: #f87171; --bad-soft: #2a1414;
+            --graph-bg: #101513;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+            background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: var(--accent-text); }
+        .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+        .topbar { position: sticky; top: 0; z-index: 60; display: flex; align-items: center; gap: 14px; padding: 10px 20px;
+            background: color-mix(in srgb, var(--surface) 88%, transparent);
+            backdrop-filter: saturate(1.4) blur(8px); border-bottom: 1px solid var(--border); }
+        .brand { display: flex; align-items: baseline; gap: 8px; font-weight: 700; letter-spacing: -.01em; }
+        .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); display: inline-block; }
+        .brand .sub { font-weight: 500; font-size: 12px; color: var(--muted); }
+        .topbar .spacer { flex: 1; }
+        .search-input { font: inherit; font-size: 12.5px; padding: 6px 11px; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--surface); color: var(--text); width: min(260px, 38vw); }
+        .search-input:focus { outline: none; border-color: var(--accent); }
+        .metacount { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .iconbtn { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+        .iconbtn:hover { border-color: var(--border-strong); }
+        .iconbtn.on { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent); }
+
+        .shell { display: grid; grid-template-columns: 250px minmax(0, 1fr); }
+        .rail { position: sticky; top: 53px; align-self: start; height: calc(100vh - 53px); overflow-y: auto;
+            border-right: 1px solid var(--border); padding: 18px 12px 32px 18px; background: var(--bg); }
+        .rail h2 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 4px 6px 10px; }
+        .rail a { display: block; padding: 7px 10px; border-radius: 8px; text-decoration: none; color: var(--text-soft);
+            font-size: 12.5px; margin-bottom: 2px; line-height: 1.35; cursor: pointer; }
+        .rail a .num { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 8px; font-weight: 700; }
+        .rail a:hover { background: var(--surface-soft); color: var(--text); }
+        .rail a.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 650; }
+        .rail a.active .num { color: var(--accent-text); }
+
+        .canvas { padding: 28px clamp(18px, 3vw, 40px) 80px; }
+        .wrap { max-width: var(--maxw); margin: 0 auto; }
+        .hero { margin-bottom: 22px; }
+        .kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700;
+            letter-spacing: .07em; text-transform: uppercase; color: var(--accent-text); margin-bottom: 12px; }
+        .kicker .pid { background: var(--accent); color: #fff; padding: 2px 9px; border-radius: 999px; letter-spacing: .02em; }
+        .kicker .crumb { color: var(--muted); font-weight: 600; }
+        h1.title { font-size: clamp(26px, 3.3vw, 37px); line-height: 1.13; letter-spacing: -.018em; font-weight: 760; margin-bottom: 14px; }
+        h1.title small { display: block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+        .lead { font-size: 16.5px; line-height: 1.62; color: var(--text-soft); }
+        .lead b { color: var(--text); font-weight: 680; }
+        .ctx { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+        .ctx .chip { font-size: 12.5px; font-weight: 600; padding: 5px 11px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); }
+
+        .glance { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border);
+            border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin: 24px 0 30px; box-shadow: var(--shadow-soft); }
+        .glance .cell { background: var(--surface); padding: 14px 16px; }
+        .glance .cell .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; margin-bottom: 7px; }
+        .glance .cell .v { font-size: 15px; font-weight: 650; line-height: 1.35; }
+        .glance .cell .v small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; margin-top: 3px; }
+        .reglist { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+        .reglist .rg { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px; font-weight: 700; white-space: nowrap; }
+
+        .genes { display: flex; flex-wrap: wrap; gap: 5px; }
+        .gene { font-size: 11.5px; font-weight: 550; font-family: ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: -.01em;
+            padding: 1.5px 6px; border-radius: 5px; background: var(--surface-soft); border: 1px solid var(--border); color: var(--text-soft); cursor: pointer; }
+        .gene:hover { border-color: var(--accent); }
+        .gene.uniq { background: var(--accent-soft); border-color: transparent; color: var(--accent-text); font-weight: 600; }
+        .gene.plain { cursor: default; }
+        .gene.plain:hover { border-color: var(--border); }
+
+        .section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+            margin-bottom: 16px; box-shadow: var(--shadow-soft); overflow: hidden; }
+        .section > .head { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+            padding: 16px 20px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+        .section > .head .htitle { font-size: 16.5px; font-weight: 700; letter-spacing: -.01em; }
+        .section > .head .hmeta { font-size: 12.5px; color: var(--muted); font-weight: 500; }
+        .section > .head .chev { margin-left: auto; color: var(--muted); transition: transform .18s ease; }
+        .section.open > .head .chev { transform: rotate(90deg); }
+        .section > .body { padding: 0 20px 20px; }
+        .section.collapsed > .body { display: none; }
+        .kkey { font-weight: 700; }
+        .kkey.rep { color: var(--up); }
+        .kkey.act { color: var(--down); }
+
+        details { margin: 8px 0; }
+        details > summary { cursor: pointer; list-style: none; font-size: 12.5px; font-weight: 650; color: var(--accent-text);
+            display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; }
+        details > summary::-webkit-details-marker { display: none; }
+        details > summary::before { content: "\25b8"; font-size: 10px; transition: transform .15s; }
+        details[open] > summary::before { transform: rotate(90deg); }
+        .pmidrow { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-top: 10px; }
+        .pmidlabel { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; flex: none; }
+        .pmids { display: flex; flex-wrap: wrap; gap: 5px; }
+        .pmids a { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; text-decoration: none;
+            padding: 1.5px 7px; border-radius: 5px; background: var(--surface-soft); border: 1px solid var(--border); color: var(--accent-text); }
+        .pmids a:hover { border-color: var(--accent); }
+        .note { font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+        .src { font-size: 9.5px; font-weight: 800; letter-spacing: .04em; padding: 1px 5px; border-radius: 4px;
+            background: var(--surface-sunk); color: var(--muted); text-transform: uppercase; white-space: nowrap; }
+
+        /* interaction graph + inspector (GeneProgramExplorer-style) */
+        .gwrap { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; }
+        .gtool { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+        .gtool .gcount { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .gbox { position: relative; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--graph-bg); }
+        #cy { width: 100%; height: 560px; }
+        .gempty { position: absolute; inset: auto 0 14px 0; text-align: center; font-size: 12px; color: var(--muted); pointer-events: none; }
+        .legend { position: absolute; top: 10px; left: 10px; background: color-mix(in srgb, var(--surface) 92%, transparent);
+            border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 11px; color: var(--text-soft);
+            display: grid; gap: 4px; cursor: move; user-select: none; }
+        .legend .lrow { display: flex; align-items: center; gap: 7px; }
+        .legend .sw { width: 22px; height: 0; border-top: 2.5px solid; }
+        .legend .sw.dash { border-top-style: dashed; }
+        .legend .nd { width: 16px; height: 11px; border-radius: 3px; border: 1.5px solid #1a1a1a; }
+        .legend .nd.reg { border-radius: 50%; border-width: 2.5px; }
+        .legend .grad { width: 44px; height: 8px; border-radius: 4px; }
+        .tip { position: fixed; z-index: 90; pointer-events: none; max-width: 300px; background: var(--surface); color: var(--text);
+            border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 12px;
+            box-shadow: 0 4px 16px rgba(15,23,42,.14); display: none; line-height: 1.45; }
+        .tip b { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+        .tip .tm { color: var(--muted); }
+        .inspector { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 14px 10px;
+            height: 604px; overflow-y: auto; background: var(--surface); }
+        .inspector .empty { color: var(--muted); font-size: 13px; }
+        .inspector h3 { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 18px; font-weight: 750; }
+        .inspector .role { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
+
+        .card .cname { font-size: 13.5px; font-weight: 650; color: var(--text); margin: 2px 0 4px; }
+        .card .alias { font-size: 11.5px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; margin-bottom: 8px; }
+        .card .desc { font-size: 13px; color: var(--text-soft); line-height: 1.6; }
+        .card .desc.clamped { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+        .card .more { font: inherit; font-size: 12px; font-weight: 650; color: var(--accent-text); background: none; border: 0; cursor: pointer; padding: 2px 0; }
+        .card .field { margin-top: 10px; }
+        .card .flabel { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; margin-bottom: 3px; }
+        .card .fval { font-size: 12.5px; color: var(--text-soft); line-height: 1.55; }
+        .gochips { display: flex; flex-wrap: wrap; gap: 4px; }
+        .gochips span { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--surface-sunk); color: var(--text-soft); }
+        .srcs { display: flex; gap: 4px; margin-top: 10px; }
+        .stat { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 12.5px; margin: 8px 0; }
+        .stat .sk { color: var(--muted); font-weight: 600; }
+        .stat .sv { font-variant-numeric: tabular-nums; }
+        .inter { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; margin-top: 8px; font-size: 12.5px; }
+        .inter .itop { display: flex; gap: 7px; align-items: baseline; flex-wrap: wrap; font-weight: 650; }
+        .sign { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 1px 7px; border-radius: 999px; }
+        .sign.activation { color: var(--ok); background: var(--ok-soft); }
+        .sign.inhibition { color: var(--bad); background: var(--bad-soft); }
+        .sign.mixed, .sign.both, .sign.unknown { color: var(--muted); background: var(--surface-sunk); }
+        .sign.literature { color: var(--warn); background: var(--warn-soft); }
+        .inter .ires { color: var(--muted); font-size: 11.5px; margin-top: 4px; }
+
+        .gcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 10px; }
+        .gcard { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 12px; }
+        .gcard > summary { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px; color: var(--text); width: 100%; }
+        .gcard > summary .gk { margin-left: auto; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+        .gcard > summary .gn { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 500; font-size: 12px; color: var(--muted);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+        .gcard[open] { padding-bottom: 10px; }
+
+        .reg { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 7px; }
+        .reg .rhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 14px; }
+        .reg .rgene { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 15px; font-weight: 700; cursor: pointer; }
+        .reg .rgene.rep { color: var(--up); }
+        .reg .rgene.act { color: var(--down); }
+        .reg .fc { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .reg .fc b { color: var(--text-soft); }
+        .conf { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent-text); }
+        .condh { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 12px 0 6px; }
+
+        .pw { padding: 8px 0; border-bottom: 1px solid var(--border); }
+        .pw:last-child { border-bottom: 0; }
+        .pw .pwtop { display: flex; align-items: baseline; gap: 9px; margin-bottom: 6px; }
+        .pw .pwname { font-size: 13.5px; font-weight: 650; }
+        .pw .pwfdr { margin-left: auto; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .pw .track { height: 6px; border-radius: 999px; background: var(--surface-sunk); overflow: hidden; margin-bottom: 4px; }
+        .pw .fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-strong)); }
+        .golist { display: grid; gap: 2px; counter-reset: go; }
+        .golist div { font-size: 13.5px; padding: 5px 0; border-bottom: 1px solid var(--border); counter-increment: go; }
+        .golist div::before { content: counter(go); display: inline-block; width: 26px; color: var(--muted); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+        .litrow { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+        .litrow:last-child { border-bottom: 0; }
+        .litrow .ltop { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+        .litrow .lpair { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 700; }
+        .litrow .lstat { margin-left: auto; font-size: 11px; color: var(--muted); }
+        .litrow p { color: var(--text-soft); margin-top: 4px; font-style: italic; }
+
+        @media (max-width: 1000px) { .gwrap { grid-template-columns: 1fr; } .inspector { height: auto; max-height: 520px; } }
+        @media (max-width: 880px) {
+            .shell { grid-template-columns: 1fr; } .rail { display: none; }
+            .glance { grid-template-columns: 1fr; } .topbar { flex-wrap: wrap; } .search-input { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand"><span class="dot"></span>AGeneTic<span class="sub">__DATASET_SUB__</span></div>
+        <input type="text" class="search-input" id="search" placeholder="Search programs, genes, regulators&hellip;" oninput="filterRail()">
+        <div class="spacer"></div>
+        <span class="metacount">__NUM_PROGRAMS__ programs &middot; __GENERATED_ON__</span>
+        <button class="iconbtn" onclick="prev()" title="Previous program (&larr;)">&larr;</button>
+        <button class="iconbtn" onclick="next()" title="Next program (&rarr;)">&rarr;</button>
+        <button class="iconbtn" id="themebtn" onclick="toggleTheme()">Dark</button>
+    </header>
+
+    <div class="shell">
+        <aside class="rail"><h2>__NUM_PROGRAMS__ programs</h2><nav id="rail"></nav></aside>
+        <main class="canvas"><div class="wrap" id="main"></div></main>
+    </div>
+    <div class="tip" id="tip"></div>
+
+    <script>
+    window.PROGRAMS = __PROGRAMS_JSON__;
+    var PROGRAM_LIST = __PROGRAM_LIST_JSON__;
+    var DATASET = __DATASET_JSON__;
+    var TOP_REGULATOR = __TOP_REGULATOR__, TOP_GENE = __TOP_GENE__;
+    </script>
+    <script>
+    const esc = s => String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    const fcCls = fc => (Number(fc) > 0 ? "rep" : "act");   // + log2FC on knockdown = program up = regulator represses
+    const fmtFC = fc => fc==null ? "—" : (Number(fc) > 0 ? "+" : "") + Number(fc).toFixed(2);
+    const fmtP = v => { const n = Number(v); return v==null || !isFinite(n) ? "—" : (n < 0.001 ? n.toExponential(1) : n.toFixed(3)); };
+    const pmidLinks = ids => (ids||[]).length ? `<div class="pmidrow"><span class="pmidlabel">PMID</span><div class="pmids">${ids.map(x =>
+        `<a href="https://pubmed.ncbi.nlm.nih.gov/${esc(x)}/" target="_blank" rel="noopener">${esc(x)}</a>`).join("")}</div></div>` : "";
+
+    const IDS = PROGRAM_LIST.map(x => x[0]);
+    let currentId = null, cy = null, hideIsolated = false;
+
+    // lowercased search text per program
+    const SEARCH_INDEX = {};
+    IDS.forEach(id => {
+        const p = PROGRAMS[id] || {};
+        const regs = Object.values(p.regulators_by_condition||{}).flat().map(r => r.gene);
+        const alias = Object.values(p.genes||{}).flatMap(g => [g.symbol, ...(g.aliases||[])]);
+        SEARCH_INDEX[id] = [p.label, p.title, ...(p.go||[]), ...(p.program_genes||[]), ...(p.distinctive_genes||[]), ...regs, ...alias]
+            .filter(Boolean).join(" ").toLowerCase();
+    });
+
+    function buildRail(){
+        document.getElementById("rail").innerHTML = PROGRAM_LIST.map(([n, label, title]) =>
+            `<a data-id="${n}" onclick="render(${n});return false;"><span class="num">${esc(label)}</span>${esc(title)}</a>`).join("");
+        filterRail();
+    }
+    function filterRail(){
+        const q = (document.getElementById("search").value || "").toLowerCase().trim();
+        document.querySelectorAll(".rail a").forEach(a => {
+            a.style.display = (!q || (SEARCH_INDEX[a.dataset.id]||"").includes(q)) ? "" : "none";
+        });
+    }
+
+    // --- gene information card (inspector + gene section) -------------------------------------
+    function geneCard(g, opts){
+        opts = opts || {};
+        if(!g) return `<p class="empty">No gene information (run the search_gene scripts).</p>`;
+        const long = (g.summary||"").length > 320;
+        const cid = "d_" + Math.random().toString(36).slice(2);
+        const loc = (g.location||[]).join(", ");
+        return `<div class="card">
+            ${g.name ? `<div class="cname">${esc(g.name)}</div>` : ""}
+            ${(g.aliases||[]).length ? `<div class="alias">aka ${g.aliases.map(esc).join(", ")}</div>` : ""}
+            ${g.summary ? `<p class="desc ${long && !opts.full ? "clamped" : ""}" id="${cid}">${esc(g.summary)}</p>
+                ${long && !opts.full ? `<button class="more" onclick="const d=document.getElementById('${cid}');d.classList.toggle('clamped');this.textContent=d.classList.contains('clamped')?'Show more':'Show less'">Show more</button>` : ""}`
+                : `<p class="desc" style="color:var(--muted)">No functional summary available.</p>`}
+            ${g.function && g.function !== g.summary ? `<div class="field"><div class="flabel">UniProt function</div><div class="fval">${esc(g.function)}</div></div>` : ""}
+            ${(g.go_bp||[]).length ? `<div class="field"><div class="flabel">GO biological process</div><div class="gochips">${g.go_bp.map(t => `<span>${esc(t)}</span>`).join("")}</div></div>` : ""}
+            ${loc ? `<div class="field"><div class="flabel">Subcellular location</div><div class="fval">${esc(loc)}</div></div>` : ""}
+            <div class="field"><div class="flabel">Identifiers</div><div class="fval">
+                ${g.entrez ? `Entrez <a href="https://www.ncbi.nlm.nih.gov/gene/${esc(g.entrez)}" target="_blank" rel="noopener">${esc(g.entrez)}</a>` : ""}
+                ${g.uniprot ? ` &middot; UniProt <a href="https://www.uniprot.org/uniprotkb/${esc(g.uniprot)}" target="_blank" rel="noopener">${esc(g.uniprot)}</a>` : ""}
+                ${g.map_location ? ` &middot; ${esc(g.map_location)}` : ""}
+                ${!g.entrez && !g.uniprot && !g.map_location ? "—" : ""}</div></div>
+            ${pmidLinks(g.pmids)}
+            <div class="srcs">${(g.sources||[]).map(s => `<span class="src">${esc(s)}</span>`).join("")}</div>
+        </div>`;
+    }
+
+    // --- inspector ----------------------------------------------------------------------------
+    function inspectNode(p, n){
+        const g = p.genes[n.label];
+        let head;
+        if(n.kind === "regulator"){
+            const conds = Object.entries(n.per_condition||{}).map(([c, s]) =>
+                `<span class="sk">${esc(c)}</span><span class="sv">log₂FC <b class="kkey ${fcCls(s.log2fc)}">${fmtFC(s.log2fc)}</b> &middot; adj p ${fmtP(s.adj_pval)}</span>`).join("");
+            head = `<div class="role">Perturbed regulator${n.in_program ? " &middot; also a program gene" : ""}</div>
+                <div class="stat">${conds}</div>`;
+        } else {
+            head = `<div class="role">Program gene &middot; loading rank ${n.rank}</div>`;
+        }
+        const nb = cy.getElementById(n.id).connectedEdges().length;
+        return `<h3>${esc(n.label)}</h3>${head}
+            <div class="note" style="margin:0 0 8px">${nb} interaction${nb===1?"":"s"} in this graph</div>${geneCard(g, {full: true})}`;
+    }
+    function inspectEdge(e){
+        const title = `<h3>${esc(e.regulator)} &ndash; ${esc(e.gene)}</h3>`;
+        if(e.kind === "literature"){
+            const c = e.citation || {};
+            const href = c.url || (c.doi ? `https://doi.org/${c.doi}` : null);
+            return `${title}<div class="role">Literature (paper-qa over ${esc(e.n_pdfs)} PDF${e.n_pdfs===1?"":"s"})</div>
+                <div class="inter"><div class="itop"><span class="sign literature">${esc(String(e.category||"").replace(/_/g," "))}</span></div>
+                ${e.short_excerpt ? `<p style="margin-top:6px;font-style:italic;color:var(--text-soft)">${esc(e.short_excerpt)}</p>` : ""}
+                ${c.title ? `<div class="ires">${href ? `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(c.title)}</a>` : esc(c.title)}${c.year ? ` (${esc(c.year)})` : ""}</div>` : ""}
+                ${pmidLinks(c.pmids)}</div>`;
+        }
+        const inter = (e.interactions||[]).map(i => `<div class="inter">
+                <div class="itop"><span>${esc(i.source)} → ${esc(i.target)}</span><span class="sign ${esc(i.sign)}">${esc(i.sign)}</span>
+                    <span class="src">${esc(String(i.type||"").replace(/_/g," "))}</span></div>
+                ${(i.mechanisms||[]).length ? `<div class="ires">mechanism: ${i.mechanisms.map(esc).join(", ")}</div>` : ""}
+                <div class="ires">${esc(i.direction)} &middot; curation effort ${esc(i.curation_effort)}${(i.dorothea_level||[]).length ? ` &middot; DoRothEA ${i.dorothea_level.map(esc).join("")}` : ""}</div>
+                <div class="ires">${(i.resources||[]).map(esc).join(", ")}</div>
+                ${pmidLinks(i.pmids)}</div>`).join("");
+        return `${title}<div class="role">OmniPath &middot; ${esc(e.n_references)} reference${e.n_references===1?"":"s"} &middot; ${(e.resources||[]).length} resources</div>
+            <div class="stat"><span class="sk">Sign</span><span class="sv"><span class="sign ${esc(e.sign)}">${esc(e.sign)}</span></span>
+                <span class="sk">Direction</span><span class="sv">${(e.directions||[]).map(esc).join(", ")}</span>
+                <span class="sk">Type</span><span class="sv">${(e.categories||[]).map(c => esc(String(c).replace(/_/g," "))).join(", ")}</span></div>
+            ${inter}`;
+    }
+    const INSPECT_EMPTY = `<p class="empty">Click a gene or an interaction to see its details. Drag nodes to rearrange; scroll to zoom.</p>`;
+
+    // --- graph --------------------------------------------------------------------------------
+    function cssv(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+    function graphStyle(){
+        return [
+            { selector: "node", style: {
+                "label": "data(label)", "shape": "round-rectangle", "width": "data(w)", "height": 24,
+                "background-color": "data(fill)", "color": "data(fg)", "border-width": 1.5, "border-color": "#1a1a1a",
+                "font-size": 11.5, "font-family": "ui-monospace, SF Mono, Menlo, monospace", "font-weight": 600,
+                "text-valign": "center", "text-halign": "center" } },
+            { selector: "node[kind = 'regulator']", style: {
+                "shape": "ellipse", "height": 36, "border-width": 3, "font-weight": 800, "font-size": 12.5 } },
+            { selector: "node:selected", style: { "overlay-color": "#0d9488", "overlay-opacity": 0.16, "overlay-padding": 6 } },
+            { selector: "edge", style: {
+                "curve-style": "bezier", "width": "data(width)", "line-color": "data(color)", "line-style": "data(lstyle)",
+                "target-arrow-shape": "data(tarrow)", "source-arrow-shape": "data(sarrow)",
+                "target-arrow-color": "data(color)", "source-arrow-color": "data(color)", "arrow-scale": 1.1, "opacity": 0.85 } },
+            { selector: "edge:selected", style: { "width": 5, "opacity": 1, "z-index": 99 } },
+            { selector: ".faded", style: { "opacity": 0.12 } },
+            { selector: ".hidden", style: { "display": "none" } },
+        ];
+    }
+    function layoutGraph(randomize){
+        if(!cy) return;
+        cy.layout({ name: "cose", animate: !!randomize, animationDuration: 450, randomize: !!randomize, padding: 50,
+                    nodeRepulsion: () => 9000, idealEdgeLength: () => 110, gravity: 0.35, fit: true }).run();
+    }
+    function initialPositions(nodes){
+        // regulators on an inner ring, genes on an outer ring; cose then relaxes from here
+        const regs = nodes.filter(n => n.kind === "regulator"), genes = nodes.filter(n => n.kind !== "regulator");
+        const pos = {};
+        regs.forEach((n, i) => { const a = 2*Math.PI*i/Math.max(regs.length,1); pos[n.id] = {x: 90*Math.cos(a), y: 90*Math.sin(a)}; });
+        genes.forEach((n, i) => { const a = 2*Math.PI*i/Math.max(genes.length,1); pos[n.id] = {x: 300*Math.cos(a), y: 230*Math.sin(a)}; });
+        return pos;
+    }
+    function drawGraph(p){
+        if(typeof cytoscape === "undefined"){
+            document.getElementById("cy").innerHTML = `<p class="note" style="padding:40px;text-align:center">Cytoscape.js did not load (rebuild without --cdn to inline it).</p>`;
+            return;
+        }
+        if(cy){ cy.destroy(); cy = null; }
+        const g = p.graph, pos = initialPositions(g.nodes);
+        cy = cytoscape({
+            container: document.getElementById("cy"),
+            elements: [
+                ...g.nodes.map(n => ({ group: "nodes", data: n, position: pos[n.id] })),
+                ...g.edges.map(e => ({ group: "edges", data: e })),
+            ],
+            style: graphStyle(), minZoom: 0.3, maxZoom: 3,
+            layout: { name: "preset" },
+        });
+        layoutGraph(false);
+        applyIsolated();
+        const tip = document.getElementById("tip");
+        const showTip = (html, ev) => { tip.innerHTML = html; tip.style.display = "block"; moveTip(ev); };
+        const moveTip = ev => { const o = ev.originalEvent; if(!o) return; tip.style.left = (o.clientX + 14) + "px"; tip.style.top = (o.clientY + 14) + "px"; };
+        cy.on("mouseover", "node", ev => {
+            const n = ev.target.data(), gi = p.genes[n.label] || {};
+            const extra = n.kind === "regulator" ? `log₂FC ${fmtFC(n.log2fc)} &middot; adj p ${fmtP(n.adj_pval)} (${esc(n.condition)})` : `program gene &middot; rank ${n.rank}`;
+            showTip(`<b>${esc(n.label)}</b>${gi.name ? `<br>${esc(gi.name)}` : ""}<br><span class="tm">${extra}</span>`, ev);
+        });
+        cy.on("mouseover", "edge", ev => {
+            const e = ev.target.data();
+            const what = e.kind === "literature" ? `literature: ${esc(String(e.category).replace(/_/g," "))}`
+                : `${esc(e.sign)} &middot; ${(e.categories||[]).map(c => esc(String(c).replace(/_/g," "))).join(", ")} &middot; ${esc(e.n_references)} refs`;
+            showTip(`<b>${esc(e.regulator)}</b> &ndash; <b>${esc(e.gene)}</b><br><span class="tm">${what}</span>`, ev);
+        });
+        cy.on("mousemove", "node, edge", moveTip);
+        cy.on("mouseout", "node, edge", () => { tip.style.display = "none"; });
+        cy.on("tap", "node", ev => focusNode(ev.target));
+        cy.on("tap", "edge", ev => {
+            cy.elements().removeClass("faded");
+            const e = ev.target;
+            cy.elements().not(e.union(e.connectedNodes())).addClass("faded");
+            document.getElementById("inspector").innerHTML = inspectEdge(e.data());
+        });
+        cy.on("tap", ev => { if(ev.target === cy){ cy.elements().removeClass("faded"); document.getElementById("inspector").innerHTML = INSPECT_EMPTY; } });
+        document.getElementById("gcount").textContent =
+            `${g.nodes.filter(n => n.kind==="regulator").length} regulators · ${g.nodes.filter(n => n.kind!=="regulator").length} genes · ${g.edges.length} interactions`;
+    }
+    function focusNode(node){
+        cy.elements().removeClass("faded");
+        const hood = node.closedNeighborhood();
+        if(node.connectedEdges().length) cy.elements().not(hood).addClass("faded");
+        cy.elements().unselect(); node.select();
+        document.getElementById("inspector").innerHTML = inspectNode(PROGRAMS[currentId], node.data());
+    }
+    function selectGene(sym){
+        if(!cy) return;
+        const node = cy.getElementById("n_" + sym);
+        const sec = document.getElementById("sec-graph");
+        if(sec.classList.contains("collapsed")) toggleSection("sec-graph");
+        sec.scrollIntoView({behavior: "smooth", block: "start"});
+        if(node && node.length){ focusNode(node); cy.animate({center: {eles: node}, duration: 300}); }
+        else document.getElementById("inspector").innerHTML =
+            `<h3>${esc(sym)}</h3><div class="role">Not in this graph (outside the top ${TOP_REGULATOR} regulators × top ${TOP_GENE} genes)</div>${geneCard(PROGRAMS[currentId].genes[sym], {full: true})}`;
+    }
+    function applyIsolated(){
+        if(!cy) return;
+        cy.nodes().forEach(n => n.toggleClass("hidden", hideIsolated && n.connectedEdges().length === 0));
+        const btn = document.getElementById("isobtn");
+        if(btn) btn.classList.toggle("on", hideIsolated);
+    }
+    function toggleIsolated(){ hideIsolated = !hideIsolated; applyIsolated(); if(cy) cy.fit(cy.elements(":visible"), 50); }
+    function exportPNG(){
+        if(!cy) return;
+        const a = document.createElement("a");
+        a.href = cy.png({ full: true, scale: 2, bg: cssv("--graph-bg") || "#ffffff" });
+        a.download = `${PROGRAMS[currentId].label}_interactions.png`;
+        a.click();
+    }
+    function dragLegend(el){
+        let sx, sy, ox, oy;
+        el.onmousedown = e => {
+            e.preventDefault(); sx = e.clientX; sy = e.clientY; ox = el.offsetLeft; oy = el.offsetTop;
+            document.onmousemove = m => { el.style.left = (ox + m.clientX - sx) + "px"; el.style.top = (oy + m.clientY - sy) + "px"; };
+            document.onmouseup = () => { document.onmousemove = null; document.onmouseup = null; };
+        };
+    }
+
+    // --- page ---------------------------------------------------------------------------------
+    function section(id, title, meta, body, collapsed){
+        return `<section class="section ${collapsed ? "collapsed" : "open"}" id="${id}">
+            <button class="head" onclick="toggleSection('${id}')"><span class="htitle">${title}</span>
+                <span class="hmeta">${meta}</span><span class="chev">›</span></button>
+            <div class="body">${body}</div></section>`;
+    }
+    function render(id){
+        id = +id;
+        const p = PROGRAMS[id];
+        if(!p) return;
+        currentId = id;
+        document.querySelectorAll(".rail a").forEach(a => a.classList.toggle("active", +a.dataset.id === id));
+        history.replaceState(null, "", "#program-" + id);
+        window.scrollTo(0, 0);
+
+        const g = p.graph, op = p.omnipath, lit = p.literature;
+        const regsAll = p.regulators_by_condition || {};
+        const conds = Object.keys(regsAll);
+        const topRegs = g.nodes.filter(n => n.kind === "regulator");
+        const spec = (p.specificity||{}).per_condition || {};
+        const specTop = (p.specificity||{}).top_condition;
+
+        const regGlance = topRegs.length ? topRegs.map(n => `<span class="rg" style="color:var(--${Number(n.log2fc)>0?"up":"down"})">${esc(n.label)}</span>`).join("")
+            : `<span class="rg" style="color:var(--muted)">—</span>`;
+        const opGlance = op ? `${op.n_found} / ${op.n_tested}<small>gene–regulator pairs with an OmniPath interaction</small>`
+            : `<span style="color:var(--muted)">Not searched</span><small>run OmniPath.py</small>`;
+        const legend = `<div class="legend" id="legend" title="drag to move">
+            <div class="lrow"><span class="nd reg" style="background:rgb(178,24,43)"></span>regulator (fill = log₂FC)</div>
+            <div class="lrow"><span class="grad" style="background:linear-gradient(90deg,rgb(33,102,172),rgb(247,247,247),rgb(178,24,43))"></span>− log₂FC +</div>
+            <div class="lrow"><span class="nd" style="background:rgb(122,114,217)"></span>program gene (darker = higher loading)</div>
+            <div class="lrow"><span class="sw" style="border-color:#16a34a"></span>activation</div>
+            <div class="lrow"><span class="sw" style="border-color:#dc2626"></span>inhibition</div>
+            <div class="lrow"><span class="sw" style="border-color:#64748b"></span>mixed / unknown sign</div>
+            ${g.has_literature ? `<div class="lrow"><span class="sw dash" style="border-color:#d97706"></span>literature (paper-qa)</div>` : ""}
+        </div>`;
+        const graphBody = `
+            <div class="gtool">
+                <button class="iconbtn" onclick="layoutGraph(true)">Re-layout</button>
+                <button class="iconbtn" onclick="cy && cy.fit(cy.elements(':visible'), 50)">Fit</button>
+                <button class="iconbtn" id="isobtn" onclick="toggleIsolated()">Hide genes without interactions</button>
+                <button class="iconbtn" onclick="exportPNG()">PNG</button>
+                <span class="gcount" id="gcount"></span>
+            </div>
+            <div class="gwrap">
+                <div class="gbox"><div id="cy"></div>${legend}
+                    ${!g.has_omnipath ? `<div class="gempty">No OmniPath results for this program — run search_gene_interaction/OmniPath.py.</div>`
+                      : !g.edges.length ? `<div class="gempty">No OmniPath interaction between these regulators and genes.</div>` : ""}</div>
+                <div class="inspector" id="inspector">${INSPECT_EMPTY}</div>
+            </div>
+            <p class="note">Top ${TOP_REGULATOR} regulators (best adjusted p over conditions) × top ${TOP_GENE} program genes by loading.
+                Edges are OmniPath interactions between them (arrow = direction, width = number of references)${g.has_literature ? "; dashed edges are paper-qa relations from the downloaded literature" : ""}.
+                Pairs without an edge were tested and not found.</p>`;
+
+        const allGenes = [...p.program_genes, ...p.distinctive_genes.filter(x => !p.program_genes.includes(x))];
+        const regGenes = [...new Set(Object.values(regsAll).flat().map(r => r.gene))].filter(x => !allGenes.includes(x));
+        const kindOf = s => p.program_genes.includes(s) ? "program" : (p.distinctive_genes.includes(s) ? "distinctive" : "regulator");
+        const cards = [...allGenes, ...regGenes].map(s => { const gi = p.genes[s] || {};
+            return `<details class="gcard"><summary><span>${esc(s)}</span><span class="gn">${esc(gi.name||"")}</span><span class="gk">${kindOf(s)}</span></summary>${geneCard(gi)}
+                <button class="more" onclick="selectGene('${esc(s)}')">Show in graph →</button></details>`; }).join("");
+
+        const regBody = conds.length ? conds.map(c => `<div class="condh">${esc(c)}</div>` + regsAll[c].map(r => `
+            <div class="reg"><div class="rhead">
+                <span class="rgene ${fcCls(r.log2fc)}" onclick="selectGene('${esc(r.gene)}')">${esc(r.gene)}</span>
+                ${(p.top_regulators||[]).includes(r.gene) ? `<span class="conf">in graph</span>` : ""}
+                <span class="fc">log₂FC <b>${fmtFC(r.log2fc)}</b> &middot; adj p <b>${fmtP(r.adj_pval)}</b></span>
+            </div></div>`).join("")).join("")
+            : `<p class="note">No significant regulator for this program.</p>`;
+
+        const maxUse = Math.max(...Object.values(spec).map(s => s.mean_usage || 0), 1e-12);
+        const specBody = Object.keys(spec).length ? Object.entries(spec).map(([c, s]) => `
+            <div class="pw"><div class="pwtop"><span class="pwname">${esc(c)}</span>${c===specTop ? `<span class="conf">highest usage</span>` : ""}
+                <span class="pwfdr">${esc(s.pct_cells_expressed)}% cells &middot; mean usage ${esc(s.mean_usage)}</span></div>
+                <div class="track"><div class="fill" style="width:${(100*(s.mean_usage||0)/maxUse).toFixed(1)}%"></div></div></div>`).join("")
+            : `<p class="note">No usage statistics.</p>`;
+
+        const litBody = lit ? (lit.rows.length ? lit.rows.map(r => { const c = r.citation || {};
+            const href = c.url || (c.doi ? `https://doi.org/${c.doi}` : null);
+            return `<div class="litrow"><div class="ltop"><span class="lpair">${esc(r.regulator)} &ndash; ${esc(r.gene)}</span>
+                ${r.category ? `<span class="sign literature">${esc(String(r.category).replace(/_/g," "))}</span>` : ""}
+                <span class="lstat">${esc(String(r.status).replace(/_/g," "))}${r.n_pdfs!=null ? ` &middot; ${esc(r.n_pdfs)} PDF${r.n_pdfs===1?"":"s"}` : ""}</span></div>
+                ${r.short_excerpt ? `<p>${esc(r.short_excerpt)}</p>` : ""}
+                ${c.title ? `<div class="note" style="margin-top:3px">${href ? `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(c.title)}</a>` : esc(c.title)}${c.year ? ` (${esc(c.year)})` : ""}</div>` : ""}</div>`; }).join("")
+            : `<p class="note">Every tested pair was found in OmniPath.</p>`) : "";
+        const litMeta = lit ? Object.entries(lit.n_by_status).map(([k, v]) => `${v} ${esc(k.replace(/_/g," "))}`).join(" &middot; ") : "";
+
+        document.getElementById("main").innerHTML = `
+        <header class="hero">
+            <div class="kicker"><span class="pid">Program ${esc(p.label)}</span><span class="crumb">${esc([DATASET, p.cell_type].filter(Boolean).join(" · "))}</span></div>
+            <h1 class="title"><small>Top GO term</small>${esc(p.title)}</h1>
+            <p class="lead">${p.lead_html}</p>
+            <div class="ctx">${(p.conditions||[]).map(c => `<span class="chip">${esc(c)}</span>`).join("")}
+                ${p.organism ? `<span class="chip">${esc(p.organism)}</span>` : ""}</div>
+        </header>
+        <section class="glance" aria-label="At a glance">
+            <div class="cell"><div class="k">Top regulators</div><div class="v"><div class="reglist">${regGlance}</div>
+                <small><span class="kkey rep">program up on knockdown</span> &middot; <span class="kkey act">program down</span></small></div></div>
+            <div class="cell"><div class="k">OmniPath support</div><div class="v">${opGlance}</div></div>
+            <div class="cell"><div class="k">Top GO term</div><div class="v">${p.go.length ? `${esc(p.go[0])}<small>${p.go.length} significant term${p.go.length===1?"":"s"}</small>` : `<span style="color:var(--muted)">No enrichment</span>`}</div></div>
+        </section>
+        ${section("sec-graph", "Regulator – gene interactions", `top ${TOP_REGULATOR} regulators × top ${TOP_GENE} genes &middot; OmniPath${g.has_literature ? " + literature" : ""}`, graphBody, false)}
+        ${section("sec-genes", "Marker genes", `${p.program_genes.length} top-loading &middot; ${p.distinctive_genes.length} program-unique (highlighted) &middot; click to find in graph`,
+            `<div class="genes">${p.program_genes.map(s => `<span class="gene" onclick="selectGene('${esc(s)}')">${esc(s)}</span>`).join("")}
+             ${p.distinctive_genes.map(s => `<span class="gene uniq" onclick="selectGene('${esc(s)}')">${esc(s)}</span>`).join("")}</div>`, false)}
+        ${section("sec-info", "Gene information", "MyGene &middot; NCBI &middot; UniProt", `<div class="gcards">${cards}</div>`, true)}
+        ${section("sec-regs", "Perturbation regulators", `significant per condition &middot; <span class="kkey rep">+log₂FC</span> / <span class="kkey act">−log₂FC</span>`, regBody, false)}
+        ${section("sec-go", "GO enrichment", `${p.go.length} significant term${p.go.length===1?"":"s"}`,
+            p.go.length ? `<div class="golist">${p.go.map(t => `<div>${esc(t)}</div>`).join("")}</div>` : `<p class="note">No GO term passed the FDR cutoff.</p>`, true)}
+        ${section("sec-spec", "Program specificity", "% of cells using the program and mean usage, per condition", specBody, true)}
+        ${lit ? section("sec-lit", "Literature evidence", litMeta || "paper-qa", litBody, false) : ""}`;
+
+        drawGraph(p);
+        dragLegend(document.getElementById("legend"));
+        document.querySelector(".rail a.active") && document.querySelector(".rail a.active").scrollIntoView({block: "nearest"});
+    }
+
+    function toggleSection(id){
+        const s = document.getElementById(id);
+        s.classList.toggle("collapsed"); s.classList.toggle("open");
+        if(id === "sec-graph" && s.classList.contains("open") && cy) setTimeout(() => { cy.resize(); cy.fit(cy.elements(":visible"), 50); }, 30);
+    }
+    function toggleTheme(){
+        const d = document.documentElement.dataset.theme === "dark";
+        document.documentElement.dataset.theme = d ? "light" : "dark";
+        document.getElementById("themebtn").textContent = d ? "Dark" : "Light";
+    }
+    function prev(){ const i = IDS.indexOf(currentId); if(i > 0) render(IDS[i-1]); }
+    function next(){ const i = IDS.indexOf(currentId); if(i >= 0 && i < IDS.length-1) render(IDS[i+1]); }
+    document.addEventListener("keydown", e => {
+        if(e.target && /input|textarea|select/i.test(e.target.tagName)) return;
+        if(e.key === "ArrowLeft") prev();
+        if(e.key === "ArrowRight") next();
+    });
+    window.addEventListener("hashchange", () => {
+        const m = (location.hash.match(/program-(\d+)/) || [])[1];
+        if(m && PROGRAMS[+m] && +m !== currentId) render(+m);
+    });
+    buildRail();
+    (function(){
+        const m = (location.hash.match(/program-(\d+)/) || [])[1];
+        render((m && PROGRAMS[+m]) ? +m : IDS[0]);
+    })();
+    </script>
+</body>
+</html>
