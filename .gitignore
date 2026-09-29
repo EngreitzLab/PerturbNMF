@@ -34,3 +34,6 @@ __pycache__/
 # Local worklogs / handoffs
 tasks/
 .baton/
+
+# ProgramExplorer API response cache (local, regenerated on demand)
+src/Stage3_Interpretation/C_Annotation/ProgramExplorer/src/data/cache/
