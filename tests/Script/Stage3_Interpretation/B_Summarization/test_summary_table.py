@@ -111,18 +111,18 @@ class TestEnrichmentSheets:
 
 class TestPerturbationSheet:
     def test_concatenates_samples(self, perturbation_dir, sample_list):
-        df = Compile_Perturbation_sheet(perturbation_dir, Sample=sample_list)
+        df = Compile_Perturbation_sheet(perturbation_dir, conditions=sample_list)
         assert isinstance(df, pd.DataFrame)
         assert "Sample" in df.columns
         assert set(df["Sample"].unique()) == set(sample_list)
 
     def test_has_required_columns(self, perturbation_dir, sample_list):
-        df = Compile_Perturbation_sheet(perturbation_dir, Sample=sample_list)
+        df = Compile_Perturbation_sheet(perturbation_dir, conditions=sample_list)
         for col in ["target_name", "program_name", "log2FC", "adj_pval"]:
             assert col in df.columns
 
     def test_row_count(self, perturbation_dir, sample_list):
-        df = Compile_Perturbation_sheet(perturbation_dir, Sample=sample_list)
+        df = Compile_Perturbation_sheet(perturbation_dir, conditions=sample_list)
         # 5 targets x 3 programs x 3 samples = 45
         assert len(df) == 45
 
@@ -242,11 +242,11 @@ class TestSpecificityHelpers:
 
 class TestGetSpecificityProgram:
     def test_returns_dataframe(self, perturbation_dir, sample_list):
-        df = get_specificity_program(perturbation_dir, Sample=sample_list, T=0.5)
+        df = get_specificity_program(perturbation_dir, conditions=sample_list, T=0.5)
         assert isinstance(df, pd.DataFrame)
 
     def test_columns_per_sample(self, perturbation_dir, sample_list):
-        df = get_specificity_program(perturbation_dir, Sample=sample_list, T=0.5)
+        df = get_specificity_program(perturbation_dir, conditions=sample_list, T=0.5)
         for samp in sample_list:
             assert f"top 5 specific programs (FDR < 0.1) {samp}" in df.columns
             assert f"top 5 specificity scores (FDR < 0.1) {samp}" in df.columns
@@ -258,18 +258,22 @@ class TestGetSpecificityProgram:
 
 class TestSignificantPrograms:
     def test_returns_dict(self, perturbation_dir, sample_list):
-        result = get_significant_programs(perturbation_dir, Sample=sample_list)
+        result = get_significant_programs(perturbation_dir, conditions=sample_list)
         assert isinstance(result, dict)
 
     def test_df_has_count_columns(self, perturbation_dir, sample_list):
-        df = get_significant_programs_df(perturbation_dir, Sample=sample_list)
+        df = get_significant_programs_df(perturbation_dir, conditions=sample_list)
         assert isinstance(df, pd.DataFrame)
         for samp in sample_list:
             assert f"# programs {samp}" in df.columns
+            counts = df[f"# programs {samp}"]
+            assert pd.api.types.is_integer_dtype(counts)
+            expected = df[f"significant programs {samp}"].map(lambda x: len(x.split(',')) if x else 0)
+            assert (counts == expected).all()
 
     def test_df_empty_when_nothing_significant(self, perturbation_dir, sample_list):
         # adj_pval in the fixture is >= 0, so a threshold of 0 selects nothing
-        df = get_significant_programs_df(perturbation_dir, Sample=sample_list, adj_pval_threshold=0)
+        df = get_significant_programs_df(perturbation_dir, conditions=sample_list, adj_pval_threshold=0)
         assert df.empty
         assert df.index.name == "target_name"
         for samp in sample_list:
@@ -355,7 +359,7 @@ class TestCompileSummarySheet:
         synthetic_program_loading_flat, synthetic_explained_variance_df,
         perturbation_dir, sample_list,
     ):
-        df_perturbation = Compile_Perturbation_sheet(perturbation_dir, Sample=sample_list)
+        df_perturbation = Compile_Perturbation_sheet(perturbation_dir, conditions=sample_list)
         df = Compile_Summary_sheet(
             mdata=synthetic_mdata,
             df_GO=synthetic_go_df,
@@ -363,7 +367,7 @@ class TestCompileSummarySheet:
             df_Perturbation=df_perturbation,
             df_Program_loading=synthetic_program_loading_flat,
             df_Explained_Variance=synthetic_explained_variance_df,
-            Sample=sample_list,
+            conditions=sample_list,
             categorical_key="sample",
         )
         assert isinstance(df, pd.DataFrame)
@@ -375,7 +379,7 @@ class TestCompileSummarySheet:
         synthetic_program_loading_flat, synthetic_explained_variance_df,
         perturbation_dir, sample_list,
     ):
-        df_perturbation = Compile_Perturbation_sheet(perturbation_dir, Sample=sample_list)
+        df_perturbation = Compile_Perturbation_sheet(perturbation_dir, conditions=sample_list)
         df = Compile_Summary_sheet(
             mdata=synthetic_mdata,
             df_GO=synthetic_go_df,
@@ -383,7 +387,7 @@ class TestCompileSummarySheet:
             df_Perturbation=df_perturbation,
             df_Program_loading=synthetic_program_loading_flat,
             df_Explained_Variance=synthetic_explained_variance_df,
-            Sample=sample_list,
+            conditions=sample_list,
             categorical_key="sample",
         )
         for col in ["manual_annotation_label", "manual_timepoint", "Notes", "Automatic Timepoint"]:
@@ -393,7 +397,7 @@ class TestCompileSummarySheet:
         self, synthetic_mdata, synthetic_program_loading_flat,
         synthetic_explained_variance_df, perturbation_dir, sample_list,
     ):
-        df_perturbation = Compile_Perturbation_sheet(perturbation_dir, Sample=sample_list)
+        df_perturbation = Compile_Perturbation_sheet(perturbation_dir, conditions=sample_list)
         df = Compile_Summary_sheet(
             mdata=synthetic_mdata,
             df_GO=None,
@@ -401,7 +405,7 @@ class TestCompileSummarySheet:
             df_Perturbation=df_perturbation,
             df_Program_loading=synthetic_program_loading_flat,
             df_Explained_Variance=synthetic_explained_variance_df,
-            Sample=sample_list,
+            conditions=sample_list,
             categorical_key="sample",
         )
         assert isinstance(df, pd.DataFrame)
