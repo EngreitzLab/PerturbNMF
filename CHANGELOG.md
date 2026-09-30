@@ -24,6 +24,12 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
   `--resampling fixed_count`.
 - CRT `--matched_ntc_null`: cell-count-matched NTC pseudo-targets as a calibration
   diagnostic for few-cell targets (`{K}_CRT_matched_null_*.txt`).
+- CRT `--ntc_replace` (`replace=True` in `make_ntc_groups_matched_by_freq` /
+  `make_ntc_groups_ensemble`): NTC null groups are drawn with replacement across
+  groups (never twice in one group; identical groups rejected), following SCEPTRE's
+  negative-control group construction. Without it the NTC pool runs out after about
+  n_ntc / `--number_guide` groups. `--max_ntc_groups` caps groups per ensemble.
+  Default stays without replacement.
 - CRT NTC null now also carries the skew-normal p-value (`p-value`, `adj_pval` in
   `{K}_CRT_fake_*.txt`), plus a `_skew.png` QQ plot and a `_skew` NTC-significance
   summary on that scale.
