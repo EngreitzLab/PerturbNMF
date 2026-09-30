@@ -181,7 +181,7 @@ def main():
     # ── Perturbation ──
     perturbation_files = [f'{Perturbation_path_base}_{samp}.txt' for samp in args.Conditions]
     if any(os.path.exists(f) for f in perturbation_files):
-        df_Perturbation = Compile_Perturbation_sheet(Perturbation_path_base, Sample=args.Conditions, sample_key=args.Perturbation_Sample_key)
+        df_Perturbation = Compile_Perturbation_sheet(Perturbation_path_base, conditions=args.Conditions, sample_key=args.Perturbation_Sample_key)
     else:
         print(f'No perturbation files found for: {Perturbation_path_base}')
         df_Perturbation = None
@@ -199,7 +199,7 @@ def main():
     # ── Target Summary (writes specificity / correlation / KD-efficiency sidecars to save_path) ──
     df_Target_Summary = Compile_Target_Summary_sheet(
         mdata, Perturbation_path_base,
-        Sample=args.Conditions, categorical_key=args.categorical_key,
+        conditions=args.Conditions, categorical_key=args.categorical_key,
         prog_key=args.prog_key, data_key=args.data_key,
         guide_targets_key=args.guide_targets_key,
         save_path=args.save_path, effect_size=args.effect_size,
@@ -210,7 +210,7 @@ def main():
     # ── Program Summary ──
     df_Summary = Compile_Summary_sheet(
         mdata, df_GO, df_Geneset, df_Perturbation, df_Program_loading_flat, df_Explained_Variance,
-        Sample=args.Conditions, specicicity_path=args.save_path,
+        conditions=args.Conditions, specicicity_path=args.save_path,
         categorical_key=args.categorical_key, non_tagerting_key=args.non_targeting_key,
         effect_size=args.effect_size, adjusted_pval_key=args.adjusted_pval_key,
     )

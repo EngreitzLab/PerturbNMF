@@ -44,29 +44,22 @@ def _load_utest_module():
     return mod
 
 
-def _make_utest_args(inference_path, components, categorical_key="batch",
-                     sel_thresh=None, number_run=1, number_guide=3):
-    """Create a mock args namespace for the U-test module."""
-    from types import SimpleNamespace
-    out_dir = os.path.dirname(os.path.dirname(inference_path))
-    run_name = os.path.basename(os.path.dirname(inference_path))
-    return SimpleNamespace(
-        out_dir=out_dir,
-        run_name=run_name,
-        components=components,
-        sel_thresh=sel_thresh if sel_thresh is not None else [2.0],
-        guide_annotation_path=None,
-        guide_annotation_key=["non-targeting"],
-        data_key="rna",
-        prog_key="cNMF",
-        categorical_key=categorical_key,
-        guide_names_key="guide_names",
-        guide_targets_key="guide_targets",
-        guide_assignment_key="guide_assignment",
-        FDR_method="BH",
-        mdata_guide_path=None,
-        number_run=number_run,
-        number_guide=number_guide,
+UTEST_CATEGORICAL_KEY = "batch"
+UTEST_OPTIONS = dict(
+    categorical_key=UTEST_CATEGORICAL_KEY,
+    guide_annotation_key=["non-targeting"],
+    FDR_method="BH",
+)
+FAKE_UTEST_OPTIONS = dict(UTEST_OPTIONS, number_run=1, number_guide=3)
+
+
+def _make_utest_run(inference_path, components):
+    """Run location args (out_dir, run_name, K, sel_threshs) shared by the U_test functions."""
+    return dict(
+        out_dir=os.path.dirname(os.path.dirname(inference_path)),
+        run_name=os.path.basename(os.path.dirname(inference_path)),
+        K=components,
+        sel_threshs=[2.0],
     )
 
 
@@ -91,10 +84,9 @@ class TestPerturbationAssociation:
         utest_mod = _load_utest_module()
         k = mdata_copy_per_k.uns["test_k"]
 
-        utest_mod.args = _make_utest_args(inference_path, components=[k])
-        utest_mod.mdata_guide = None
+        run = _make_utest_run(inference_path, components=[k])
 
-        result_df = utest_mod.compute_real_perturbation_tests()
+        result_df = utest_mod.compute_real_perturbation_tests(**run, **UTEST_OPTIONS)
 
         assert isinstance(result_df, pd.DataFrame)
         assert len(result_df) > 0
@@ -102,7 +94,7 @@ class TestPerturbationAssociation:
         assert "adj_pval" in result_df.columns
         assert result_df["sample"].nunique() > 1
         assert set(result_df["K"].unique()) == {k}
-        assert set(result_df["sel_thresh"].unique()) == set(utest_mod.args.sel_thresh)
+        assert set(result_df["sel_thresh"].unique()) == set(run["sel_threshs"])
         assert all(result_df["real"] == True)
 
         # Per-(K, sample) text files in Evaluation/{K}_{thresh}/
@@ -114,7 +106,7 @@ class TestPerturbationAssociation:
             assert os.path.exists(expected_txt), f"Missing per-(K, sample) file: {expected_txt}"
 
         # Violin plot via original function (saves per-(K, sel_thresh) folder)
-        utest_mod.plot_calibration_comparison(result_df)
+        utest_mod.plot_calibration_comparison(result_df, **run)
         expected_png = os.path.join(eval_output_dir_per_k, "U_test_perturbation_association_calibration.png")
         assert os.path.exists(expected_png), f"Missing per-folder calibration plot: {expected_png}"
 
@@ -128,22 +120,19 @@ class TestPerturbationAssociation:
         utest_mod = _load_utest_module()
         k = mdata_copy_per_k.uns["test_k"]
 
-        utest_mod.args = _make_utest_args(
-            inference_path, components=[k], number_run=1, number_guide=3,
-        )
-        utest_mod.mdata_guide = None
+        run = _make_utest_run(inference_path, components=[k])
 
-        result_df = utest_mod.compute_fake_perturbation_tests()
+        result_df = utest_mod.compute_fake_perturbation_tests(**run, **FAKE_UTEST_OPTIONS)
 
         assert isinstance(result_df, pd.DataFrame)
         assert len(result_df) > 0
         assert all(result_df["pval"].between(0, 1))
         assert all(result_df["real"] == False)
         assert set(result_df["K"].unique()) == {k}
-        assert set(result_df["sel_thresh"].unique()) == set(utest_mod.args.sel_thresh)
+        assert set(result_df["sel_thresh"].unique()) == set(run["sel_threshs"])
 
         # Per-(K, sample) fake text files in Evaluation/{K}_{thresh}/
-        cat_key = utest_mod.args.categorical_key
+        cat_key = UTEST_CATEGORICAL_KEY
         for samp in result_df[cat_key].unique():
             expected_txt = os.path.join(
                 eval_output_dir_per_k,
@@ -167,18 +156,15 @@ class TestPerturbationAssociation:
         utest_mod = _load_utest_module()
         k = mdata_copy_per_k.uns["test_k"]
 
-        utest_mod.args = _make_utest_args(
-            inference_path, components=[k], number_run=1, number_guide=3,
-        )
-        utest_mod.mdata_guide = None
+        run = _make_utest_run(inference_path, components=[k])
 
-        real_df = utest_mod.compute_real_perturbation_tests()
-        fake_df = utest_mod.compute_fake_perturbation_tests()
+        real_df = utest_mod.compute_real_perturbation_tests(**run, **UTEST_OPTIONS)
+        fake_df = utest_mod.compute_fake_perturbation_tests(**run, **FAKE_UTEST_OPTIONS)
 
         # Normalize fake_df:
         # - QQ filter expects target_name == 'targeting'
         # - violin plot expects an x='sample' column; fake uses the categorical_key
-        cat_key = utest_mod.args.categorical_key
+        cat_key = UTEST_CATEGORICAL_KEY
         fake_df = fake_df.copy()
         if "target_name" not in fake_df.columns:
             fake_df["target_name"] = "targeting"
@@ -192,8 +178,8 @@ class TestPerturbationAssociation:
         assert (sub["real"] == True).any(), "Combined frame missing real==True rows"
         assert (sub["real"] == False).any(), "Combined frame missing real==False rows"
 
-        utest_mod.plot_qq_comparison(combined)
-        utest_mod.plot_calibration_comparison(combined)
+        utest_mod.plot_qq_comparison(combined, **run)
+        utest_mod.plot_calibration_comparison(combined, **run)
 
         qq_png = os.path.join(eval_output_dir_per_k, "U_test_perturbation_association_qqplot.png")
         cal_png = os.path.join(eval_output_dir_per_k, "U_test_perturbation_association_calibration.png")
@@ -464,7 +450,6 @@ class TestCalibrationVisualization:
         """plot_qq_comparison saves one valid PNG per (K, sel_thresh) into Evaluation/{K}_{thresh}/."""
         import matplotlib
         matplotlib.use("Agg")
-        from types import SimpleNamespace
 
         utest_mod = _load_utest_module()
 
@@ -472,12 +457,7 @@ class TestCalibrationVisualization:
         sel_thresh_list = [0.2, 2.0]
         run_name = "test_run"
 
-        utest_mod.args = SimpleNamespace(
-            out_dir=str(tmp_path),
-            run_name=run_name,
-            components=components,
-            sel_thresh=sel_thresh_list,
-        )
+        run = dict(out_dir=str(tmp_path), run_name=run_name, K=components, sel_threshs=sel_thresh_list)
 
         rng = np.random.default_rng(0)
         rows = []
@@ -489,7 +469,7 @@ class TestCalibrationVisualization:
                     rows.append({"K": k, "sel_thresh": st, "real": False, "target_name": "targeting", "pval": p})
         test_stats_dfs = pd.DataFrame(rows)
 
-        utest_mod.plot_qq_comparison(test_stats_dfs)
+        utest_mod.plot_qq_comparison(test_stats_dfs, **run)
 
         # Assert every (K, sel_thresh) QQ plot exists, is non-empty, and is a valid PNG.
         produced_paths = []
@@ -513,7 +493,6 @@ class TestCalibrationVisualization:
         """plot_calibration_comparison saves one valid PNG per (K, sel_thresh) into Evaluation/{K}_{thresh}/."""
         import matplotlib
         matplotlib.use("Agg")
-        from types import SimpleNamespace
 
         utest_mod = _load_utest_module()
 
@@ -521,12 +500,7 @@ class TestCalibrationVisualization:
         sel_thresh_list = [0.2, 2.0]
         run_name = "test_run"
 
-        utest_mod.args = SimpleNamespace(
-            out_dir=str(tmp_path),
-            run_name=run_name,
-            components=components,
-            sel_thresh=sel_thresh_list,
-        )
+        run = dict(out_dir=str(tmp_path), run_name=run_name, K=components, sel_threshs=sel_thresh_list)
 
         rng = np.random.default_rng(0)
         rows = []
@@ -539,7 +513,7 @@ class TestCalibrationVisualization:
                         rows.append({"K": k, "sel_thresh": st, "real": False, "sample": samp, "pval": p})
         test_stats_dfs = pd.DataFrame(rows)
 
-        utest_mod.plot_calibration_comparison(test_stats_dfs)
+        utest_mod.plot_calibration_comparison(test_stats_dfs, **run)
 
         # Assert every (K, sel_thresh) calibration density plot exists, is non-empty, and is a valid PNG.
         produced_paths = []
@@ -561,7 +535,6 @@ class TestCalibrationVisualization:
         """plot_qq_comparison should skip (no file) for K values with no data, but write plots for the rest."""
         import matplotlib
         matplotlib.use("Agg")
-        from types import SimpleNamespace
 
         utest_mod = _load_utest_module()
 
@@ -569,12 +542,7 @@ class TestCalibrationVisualization:
         sel_thresh_list = [2.0]
         run_name = "test_run_skip"
 
-        utest_mod.args = SimpleNamespace(
-            out_dir=str(tmp_path),
-            run_name=run_name,
-            components=components,
-            sel_thresh=sel_thresh_list,
-        )
+        run = dict(out_dir=str(tmp_path), run_name=run_name, K=components, sel_threshs=sel_thresh_list)
 
         # Only provide data for K=5 and K=15; K=10 is intentionally missing.
         rng = np.random.default_rng(1)
@@ -587,7 +555,7 @@ class TestCalibrationVisualization:
                     rows.append({"K": k, "sel_thresh": st, "real": False, "target_name": "targeting", "pval": p})
         test_stats_dfs = pd.DataFrame(rows)
 
-        utest_mod.plot_qq_comparison(test_stats_dfs)
+        utest_mod.plot_qq_comparison(test_stats_dfs, **run)
 
         for k in [5, 15]:
             for st in sel_thresh_list:
@@ -604,7 +572,6 @@ class TestCalibrationVisualization:
         """plot_calibration_comparison should skip K values with no data."""
         import matplotlib
         matplotlib.use("Agg")
-        from types import SimpleNamespace
 
         utest_mod = _load_utest_module()
 
@@ -612,12 +579,7 @@ class TestCalibrationVisualization:
         sel_thresh_list = [2.0]
         run_name = "test_run_skip_cal"
 
-        utest_mod.args = SimpleNamespace(
-            out_dir=str(tmp_path),
-            run_name=run_name,
-            components=components,
-            sel_thresh=sel_thresh_list,
-        )
+        run = dict(out_dir=str(tmp_path), run_name=run_name, K=components, sel_threshs=sel_thresh_list)
 
         rng = np.random.default_rng(2)
         rows = []
@@ -630,7 +592,7 @@ class TestCalibrationVisualization:
                         rows.append({"K": k, "sel_thresh": st, "real": False, "sample": samp, "pval": p})
         test_stats_dfs = pd.DataFrame(rows)
 
-        utest_mod.plot_calibration_comparison(test_stats_dfs)
+        utest_mod.plot_calibration_comparison(test_stats_dfs, **run)
 
         for k in [5, 15]:
             for st in sel_thresh_list:
@@ -676,7 +638,6 @@ class TestLoadFunctions:
 
     def test_load_real_perturbation_tests(self, tmp_path):
         """load_real_perturbation_tests discovers samples and stacks per-(K, thresh, sample)."""
-        from types import SimpleNamespace
         utest_mod = _load_utest_module()
 
         run_name = "test_run"
@@ -689,14 +650,9 @@ class TestLoadFunctions:
             tmp_path, run_name, components, sel_thresh_list, samples, fake=False, n_rows=n_rows,
         )
 
-        utest_mod.args = SimpleNamespace(
-            out_dir=str(tmp_path),
-            run_name=run_name,
-            components=components,
-            sel_thresh=sel_thresh_list,
-        )
+        run = dict(out_dir=str(tmp_path), run_name=run_name, K=components, sel_threshs=sel_thresh_list)
 
-        df = utest_mod.load_real_perturbation_tests()
+        df = utest_mod.load_real_perturbation_tests(**run)
 
         assert isinstance(df, pd.DataFrame)
         assert set(df["sample"].unique()) == set(samples)
@@ -708,7 +664,6 @@ class TestLoadFunctions:
 
     def test_load_fake_perturbation_tests(self, tmp_path):
         """load_fake_perturbation_tests discovers samples and stacks per-(K, thresh, sample)."""
-        from types import SimpleNamespace
         utest_mod = _load_utest_module()
 
         run_name = "test_run"
@@ -721,14 +676,9 @@ class TestLoadFunctions:
             tmp_path, run_name, components, sel_thresh_list, samples, fake=True, n_rows=n_rows,
         )
 
-        utest_mod.args = SimpleNamespace(
-            out_dir=str(tmp_path),
-            run_name=run_name,
-            components=components,
-            sel_thresh=sel_thresh_list,
-        )
+        run = dict(out_dir=str(tmp_path), run_name=run_name, K=components, sel_threshs=sel_thresh_list)
 
-        df = utest_mod.load_fake_perturbation_tests()
+        df = utest_mod.load_fake_perturbation_tests(**run)
 
         assert isinstance(df, pd.DataFrame)
         assert all(df["real"] == False)

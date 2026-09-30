@@ -2,7 +2,7 @@
 End-to-end smoke test for parallel K inference mode (torch-cNMF).
 
 In parallel mode, each K value runs as a separate cNMF job, producing
-its own Inference_{K}/ directory. After all K jobs finish, rename_all_NMF
+its own Inference_{K}/Inference/ directory. After all K jobs finish, rename_all_NMF
 combines their spectra files into a single Inference_all/cnmf_tmp/ directory.
 
 This test validates:
@@ -51,9 +51,10 @@ class TestTorchCNMFParallel:
         os.makedirs(OUTPUT_DIR, exist_ok=True)
 
         for k in TEST_K:
-            run_name = f"Inference_{k}"
+            # Same layout as the *_parallel.sh array jobs: {run}_{K}/Inference/cnmf_tmp/
+            k_dir = os.path.join(OUTPUT_DIR, f"Inference_{k}")
 
-            cnmf_obj = cNMF(output_dir=OUTPUT_DIR, name=run_name)
+            cnmf_obj = cNMF(output_dir=k_dir, name="Inference")
             cnmf_obj.prepare(
                 counts_fn=mini_h5ad_path,
                 components=[k],
@@ -78,12 +79,11 @@ class TestTorchCNMFParallel:
             )
             cnmf_obj.factorize(skip_completed_runs=True)
 
-            k_dir = os.path.join(OUTPUT_DIR, run_name)
-            cnmf_tmp = os.path.join(k_dir, "cnmf_tmp")
+            cnmf_tmp = os.path.join(k_dir, "Inference", "cnmf_tmp")
             assert os.path.isdir(cnmf_tmp), f"cnmf_tmp not found for K={k}"
 
             for i in range(TEST_NUMITER):
-                spectra = os.path.join(cnmf_tmp, f"{run_name}.spectra.k_{k}.iter_{i}.df.npz")
+                spectra = os.path.join(cnmf_tmp, f"Inference.spectra.k_{k}.iter_{i}.df.npz")
                 assert os.path.exists(spectra), f"Missing spectra K={k} iter={i}: {spectra}"
 
             state.per_k_dirs[k] = k_dir

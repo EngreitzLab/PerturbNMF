@@ -50,7 +50,7 @@ Exported by `src/__init__.py`:
 | `compile_Program_loading_score_sheet_long(mdata, num_gene)` | Top-N genes per program with `mygene` summary annotations (long form). |
 | `compile_Program_loading_score_sheet_flat(mdata, num_gene)` | Top-N genes per program as a flat rank table. |
 | `Compile_GO_sheet`, `Compile_Geneset_sheet`, `Compile_Trait_sheet` | Read and truncate the per-K enrichment files (top-N genes per term). |
-| `Compile_Perturbation_sheet(base, Sample, sample_key)` | Concatenate per-condition perturbation result files. |
+| `Compile_Perturbation_sheet(base, conditions, sample_key)` | Concatenate per-condition perturbation result files. |
 | `Compile_Association_sheet`, `Compile_Explained_variance` | Read the per-K categorical association and explained-variance files. |
 | `Compile_Target_Summary_sheet(mdata, perturbation_path, ...)` | Per-target summary: mean expression / cell counts / significant programs / specificity (PMI) / gene-gene correlation / KD efficiency. |
 | `Compile_Summary_sheet(mdata, df_GO, df_Geneset, df_Perturbation, df_Program_loading, df_Explained_Variance, ...)` | Per-program summary: GO/geneset top terms, regulator counts, top-loaded genes, mean program score per condition, variance explained, specificity-based top regulators. |
@@ -75,19 +75,19 @@ mdata = mu.read_h5mu(f"{out_dir}/{run_name}/Inference/adata/cNMF_{k}_{thresh_str
  df_Perturbation, df_Association, df_ExpVar) = load_simple_sheets(
     mdata, out_dir=out_dir, run_name=run_name,
     k=k, sel_thresh=sel_thresh, num_gene=300,
-    Sample=Conditions,                       # e.g. ['condA', 'condB']
+    conditions=Conditions,                       # e.g. ['condA', 'condB']
     perturbation_file_name="perturbation_association_results",
 )
 
 df_target_summary = Compile_Target_Summary_sheet(
     mdata,
     perturbation_path=f"{out_dir}/{run_name}/Evaluation/{k}_{thresh_str}/{k}_perturbation_association_results",
-    Sample=Conditions, save_path=save_path,
+    conditions=Conditions, save_path=save_path,
 )
 
 df_program_summary = Compile_Summary_sheet(
     mdata, df_GO, df_Geneset, df_Perturbation, df_loading_flat, df_ExpVar,
-    specicicity_path=save_path, Sample=Conditions,
+    specicicity_path=save_path, conditions=Conditions,
     non_tagerting_key=['non-targeting'],
 )
 

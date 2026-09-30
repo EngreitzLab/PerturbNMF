@@ -218,13 +218,13 @@ def Compile_Trait_sheet(Trait_path, gene_num = 5, term_key = "Term", genes_key =
 
     return df
 
-def Compile_Perturbation_sheet(Perturbation_path, Sample = ["D0", "sample_D1","sample_D2","sample_D3" ], sample_key = "Sample"):
+def Compile_Perturbation_sheet(Perturbation_path, conditions = ["D0", "sample_D1","sample_D2","sample_D3" ], sample_key = "Sample"):
 
     print('Load perturbation data')
 
 
     combined_conditions = []
-    for samp in Sample:
+    for samp in conditions:
         df = pd.read_csv(f"{Perturbation_path}_{samp}.txt", sep = "\t")
         df[sample_key] = samp
         combined_conditions.append(df)
@@ -255,7 +255,7 @@ def Compile_Explained_variance(Explained_Variance_path):
 #-------------- helper methods for loading sheets--------------
 
 # combine methods for simple sheets
-def load_simple_sheets(mdata, out_dir, run_name, k, sel_thresh, num_gene = 300, perturbation_file_name = "perturbation_association_results", Sample = ['1', '2', '3'],
+def load_simple_sheets(mdata, out_dir, run_name, k, sel_thresh, num_gene = 300, perturbation_file_name = "perturbation_association_results", conditions = ['1', '2', '3'],
                        GO_Term_key = "Term", GO_Genes_key = "Genes",
                        Geneset_Term_key = "Term", Geneset_Genes_key = "Genes",
                        Trait_Term_key = "Term", Trait_Genes_key = "Genes",
@@ -296,9 +296,9 @@ def load_simple_sheets(mdata, out_dir, run_name, k, sel_thresh, num_gene = 300, 
         df_Trait = None
 
     # compile perturbation
-    perturbation_files = [f"{Perturbation_path_base}_{samp}.txt" for samp in Sample]
+    perturbation_files = [f"{Perturbation_path_base}_{samp}.txt" for samp in conditions]
     if any(os.path.exists(f) for f in perturbation_files):
-        df_Perturbation = Compile_Perturbation_sheet(Perturbation_path_base, Sample = Sample, sample_key = Perturbation_Sample_key)
+        df_Perturbation = Compile_Perturbation_sheet(Perturbation_path_base, conditions = conditions, sample_key = Perturbation_Sample_key)
     else:
         print(f'No perturbation files found for base: {Perturbation_path_base}')
         df_Perturbation = None
@@ -412,14 +412,14 @@ def compute_pointwise_mutual_information(P_tp, P_t, P_p):
 #-------------- helper methods specicicity scores--------------
 
 # get specific programs and scores 
-def get_specificity_program(Perturbation_path, Sample = ["D0", "sample_D1", "sample_D2", "sample_D3"], T=0.5, save_path = 
+def get_specificity_program(Perturbation_path, conditions = ["D0", "sample_D1", "sample_D2", "sample_D3"], T=0.5, save_path = 
   None, effect_size='log2FC'):                                                                                                  
                   
       print("Calculate specificity scores for program")                                                                         
                   
       all_specificity = []
 
-      for samp in Sample:
+      for samp in conditions:
           df = pd.read_csv(f"{Perturbation_path}_{samp}.txt", sep="\t")
           df['program_name'] = df['program_name'].astype(str)
 
@@ -462,7 +462,7 @@ def get_specificity_program(Perturbation_path, Sample = ["D0", "sample_D1", "sam
           df_specificity = pd.DataFrame(program_specificity).set_index('target_name')
           all_specificity.append(df_specificity)
 
-      # Fix #5: Guard against empty Sample list
+      # Fix #5: Guard against empty conditions list
       if not all_specificity:
           return pd.DataFrame()
 
@@ -630,13 +630,13 @@ def compute_kd_efficiency(mdata, categorical_key='sample', prog_key='cNMF', data
     return df_kd
 
 # Function to get significant programs for each gene across all days
-def get_significant_programs(Perturbation_path, Sample = ["D0", "sample_D1","sample_D2","sample_D3"], adj_pval_threshold=0.05, effect_size='log2FC'):
+def get_significant_programs(Perturbation_path, conditions = ["D0", "sample_D1","sample_D2","sample_D3"], adj_pval_threshold=0.05, effect_size='log2FC'):
 
     print('Compute significant programs')
     
     significant_programs = {}
     
-    for samp in Sample:
+    for samp in conditions:
         # Read perturbation results for each day
         df = pd.read_csv(f"{Perturbation_path}_{samp}.txt", sep="\t")
         
@@ -656,40 +656,42 @@ def get_significant_programs(Perturbation_path, Sample = ["D0", "sample_D1","sam
     return significant_programs
 
 # get signifcant programs 
-def get_significant_programs_df(Perturbation_path, Sample = ["D0", "sample_D1","sample_D2","sample_D3"], adj_pval_threshold=0.05, effect_size='log2FC'):
+def get_significant_programs_df(Perturbation_path, conditions = ["D0", "sample_D1","sample_D2","sample_D3"], adj_pval_threshold=0.05, effect_size='log2FC'):
 
     print('Compile significant programs')
 
     # Get significant programs
-    significant_programs = get_significant_programs(Perturbation_path, Sample, adj_pval_threshold, effect_size=effect_size)
+    significant_programs = get_significant_programs(Perturbation_path, conditions, adj_pval_threshold, effect_size=effect_size)
 
     # Convert to DataFrame format for easier viewing
     sig_prog_data = []
 
     for gene, days_data in significant_programs.items():
         row = {'target_name': gene}
-        for samp in Sample:
+        for samp in conditions:
             programs = days_data.get(samp, [])
             row[f'significant programs {samp}'] = ', '.join(map(str, programs)) if programs else ''
         sig_prog_data.append(row)
 
-    df_significant_programs = pd.DataFrame(sig_prog_data)
+    # Explicit columns keep the schema when no program is significant (empty table)
+    columns = ['target_name'] + [f'significant programs {samp}' for samp in conditions]
+    df_significant_programs = pd.DataFrame(sig_prog_data, columns=columns)
     df_significant_programs = df_significant_programs.set_index('target_name')
 
-    for samp in Sample:
+    for samp in conditions:
         df_significant_programs[f'# programs {samp}'] = df_significant_programs[f'significant programs {samp}'].apply(
-            lambda x: str(len(x.split(','))) if x and x != '' else 0
-        )
+            lambda x: len(x.split(',')) if x else 0
+        ).astype(int)
 
 
     return df_significant_programs
 
 # Get top correlation terms 
-def get_correlation_df(perturbation_path, Sample=["D0", "sample_D1", "sample_D2", "sample_D3"], top_n=5, save_path = None, effect_size='log2FC'):
+def get_correlation_df(perturbation_path, conditions=["D0", "sample_D1", "sample_D2", "sample_D3"], top_n=5, save_path = None, effect_size='log2FC'):
 
     correlation_results_all_days = {}
 
-    for day in Sample:
+    for day in conditions:
         print(f"Compute correlation for {day}")
         perturb_path = f"{perturbation_path}_{day}.txt"
 
@@ -746,7 +748,7 @@ def get_correlation_df(perturbation_path, Sample=["D0", "sample_D1", "sample_D2"
 #-------------- helper methods starget summary--------------
 
 # final function to compile target Summary sheet 
-def Compile_Target_Summary_sheet(mdata, perturbation_path, Sample = ["D0", "sample_D1","sample_D2","sample_D3"], adj_pval_threshold= 0.05,
+def Compile_Target_Summary_sheet(mdata, perturbation_path, conditions = ["D0", "sample_D1","sample_D2","sample_D3"], adj_pval_threshold= 0.05,
 top_n=5, T= 0.5 , categorical_key = "sample", prog_key = 'cNMF', data_key = 'rna', guide_targets_key = "guide_targets", guide_assignment_key = "guide_assignment", save_path = None, effect_size='log2FC',
 gene_names_key=None, control_target_name='non-targeting'):
 
@@ -757,9 +759,9 @@ gene_names_key=None, control_target_name='non-targeting'):
     guide_targets_key=guide_targets_key)
     df_guide_days = get_guide_cells_per_days(mdata,  categorical_key=categorical_key, guide_assignment_key=guide_assignment_key, prog_key=prog_key,
     data_key=data_key, guide_targets_key=guide_targets_key)
-    df_significant_program = get_significant_programs_df(perturbation_path ,Sample=Sample, adj_pval_threshold=adj_pval_threshold, effect_size=effect_size)
-    df_specificity_program =  get_specificity_program(perturbation_path, Sample=Sample, T = T, save_path = save_path, effect_size=effect_size) # save_path for saving specificity scores
-    df_correlation = get_correlation_df(perturbation_path ,Sample=Sample, top_n=top_n, save_path = save_path, effect_size=effect_size)
+    df_significant_program = get_significant_programs_df(perturbation_path ,conditions=conditions, adj_pval_threshold=adj_pval_threshold, effect_size=effect_size)
+    df_specificity_program =  get_specificity_program(perturbation_path, conditions=conditions, T = T, save_path = save_path, effect_size=effect_size) # save_path for saving specificity scores
+    df_correlation = get_correlation_df(perturbation_path ,conditions=conditions, top_n=top_n, save_path = save_path, effect_size=effect_size)
     df_kd = compute_kd_efficiency(mdata, categorical_key=categorical_key, prog_key=prog_key, data_key=data_key,
         gene_names_key=gene_names_key, guide_targets_key=guide_targets_key,
         guide_assignment_key=guide_assignment_key, control_target_name=control_target_name, save_path=save_path)
@@ -783,7 +785,7 @@ gene_names_key=None, control_target_name='non-targeting'):
 #-------------- helper methods summary--------------
 
 # get simply items ready in the summary sheet
-def simple_Summary_cols(df, k, df_GO, df_Perturbation, df_Program_loading, df_Explained_Variance = None, specicicity_path = None, Sample = ["D0",
+def simple_Summary_cols(df, k, df_GO, df_Perturbation, df_Program_loading, df_Explained_Variance = None, specicicity_path = None, conditions = ["D0",
   "sample_D1","sample_D2","sample_D3" ],
   non_tagerting_key = None, effect_size='log2FC', adjusted_pval_key='Adjusted P-value'):                                                                                                   
    
@@ -807,8 +809,8 @@ def simple_Summary_cols(df, k, df_GO, df_Perturbation, df_Program_loading, df_Ex
           df_Perturbation['program_name'] = df_Perturbation['program_name'].astype(str)
 
           # compute # regulator per condition for + and -
-          conditions = (df_Perturbation['Sample']).unique()
-          for condition in conditions:
+          perturb_conditions = (df_Perturbation['Sample']).unique()
+          for condition in perturb_conditions:
               df_Perturbation_ = df_Perturbation[df_Perturbation['Sample'] == condition]
 
               # create perturbation program summary col
@@ -820,7 +822,7 @@ def simple_Summary_cols(df, k, df_GO, df_Perturbation, df_Program_loading, df_Ex
               df[f'Significant regulators with negative effect {condition}'] = [df_Perturbation_negative[df_Perturbation_negative['program_name']==i].shape[0] for i in programs_str]
 
           # create perturbation gene summary col
-          for condition in conditions:
+          for condition in perturb_conditions:
               df_Perturbation_enriched = df_Perturbation.loc[df_Perturbation['adj_pval']<=0.05]
               df_Perturbation_D = df_Perturbation_enriched.loc[df_Perturbation_enriched['Sample'] == condition]
 
@@ -836,11 +838,11 @@ def simple_Summary_cols(df, k, df_GO, df_Perturbation, df_Program_loading, df_Ex
       # Fix #5: Moved specificity block outside df_Perturbation guard
       if specicicity_path is not None:
           if df_Perturbation is not None:
-              conditions = df_Perturbation['Sample'].unique()
+              spec_conditions = df_Perturbation['Sample'].unique()
           else:
-              conditions = Sample
+              spec_conditions = conditions
 
-          for condition in conditions:
+          for condition in spec_conditions:
               specificity_score_df = pd.read_csv(os.path.join(specicicity_path, f"specificity_score_{condition}.txt"), sep="\t", index_col=0)
 
               col = {}
@@ -942,7 +944,7 @@ def get_top_terms_Summary_cols(df_GO, df_Geneset, adjusted_pval_key='Adjusted P-
 #-------------- helper methods summary--------------
 
 # compile summry sheet
-def Compile_Summary_sheet(mdata, df_GO, df_Geneset, df_Perturbation, df_Program_loading, df_Explained_Variance , specicicity_path = None, Sample = ["D0", "sample_D1","sample_D2","sample_D3"],
+def Compile_Summary_sheet(mdata, df_GO, df_Geneset, df_Perturbation, df_Program_loading, df_Explained_Variance , specicicity_path = None, conditions = ["D0", "sample_D1","sample_D2","sample_D3"],
 categorical_key = "sample",non_tagerting_key=None, effect_size='log2FC', adjusted_pval_key='Adjusted P-value'):
 
     print('complie summary sheet')
@@ -957,13 +959,13 @@ categorical_key = "sample",non_tagerting_key=None, effect_size='log2FC', adjuste
     'Notes': [''] * k,
     'Automatic Timepoint': [''] * k }, index=pd.Index(programs, name='program_name'))
 
-    simple_Summary_cols(df, k, df_GO, df_Perturbation, df_Program_loading, df_Explained_Variance, specicicity_path = specicicity_path, Sample = Sample, non_tagerting_key=non_tagerting_key, effect_size=effect_size, adjusted_pval_key=adjusted_pval_key)
+    simple_Summary_cols(df, k, df_GO, df_Perturbation, df_Program_loading, df_Explained_Variance, specicicity_path = specicicity_path, conditions = conditions, non_tagerting_key=non_tagerting_key, effect_size=effect_size, adjusted_pval_key=adjusted_pval_key)
     df_cell_info_cols = get_program_info_Summary_cols(mdata,categorical_key)
     df_top_terms = get_top_terms_Summary_cols(df_GO, df_Geneset, adjusted_pval_key=adjusted_pval_key)
 
     # refill automatic time point
-    col_names = [f'Mean program score {samp}' for samp in Sample]
-    col_mapping = {f'Mean program score {samp}': samp for samp in Sample}      # Create mapping from column names to condition A, B, C
+    col_names = [f'Mean program score {samp}' for samp in conditions]
+    col_mapping = {f'Mean program score {samp}': samp for samp in conditions}      # Create mapping from column names to condition A, B, C
     df_mean = df_cell_info_cols[col_names]
     
     df['Automatic Timepoint'] = df_mean.idxmax(axis=1).map(col_mapping)
