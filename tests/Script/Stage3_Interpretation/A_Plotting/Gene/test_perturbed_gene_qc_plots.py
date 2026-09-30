@@ -166,7 +166,9 @@ class TestComputeGeneCorrelationMatrix:
         """Each lazy row equals the Pearson correlation of cNMF loading vectors."""
         result = compute_gene_correlation_matrix(test_mdata)
         loadings = pd.DataFrame(test_mdata['cNMF'].varm['loadings'], columns=result.columns)
-        genes = loadings.columns[loadings.std() > 0][:5]
+        # Unique names only: a duplicated column would select several vectors
+        unique = ~loadings.columns.duplicated(keep=False)
+        genes = loadings.columns[unique & (loadings.std() > 0).values][:5]
         expected = loadings[genes].corr()
         for gene in genes:
             np.testing.assert_allclose(result.loc[gene][genes].values, expected[gene].values, atol=1e-4)

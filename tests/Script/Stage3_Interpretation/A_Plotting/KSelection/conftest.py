@@ -159,22 +159,6 @@ def synthetic_count_df():
 
 
 @pytest.fixture(scope="session")
-def synthetic_test_stats_df():
-    """Synthetic perturbation stats DataFrame."""
-    rng = np.random.default_rng(42)
-    rows = []
-    for k in [5, 10, 15, 20, 30]:
-        for cond in ['D0', 'D1', 'D2']:
-            for target in [f'gene_{i}' for i in range(5)]:
-                rows.append({
-                    'K': k, 'condition': cond, 'target_name': target,
-                    'adj_pval': rng.uniform(0.0001, 0.1),
-                    'log2FC': rng.normal(0, 0.5),
-                })
-    return pd.DataFrame(rows)
-
-
-@pytest.fixture(scope="session")
 def synthetic_explained_var():
     """Synthetic explained variance dict."""
     return {5: 0.15, 10: 0.25, 15: 0.35, 20: 0.42, 30: 0.50}

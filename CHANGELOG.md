@@ -14,6 +14,10 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
   `--Sample` is renamed `--Conditions` (`--Sample` still works as a deprecated
   alias). `--categorical_key` help text now describes it as the `.obs` column
   holding each cell's condition label.
+- The Excel summary functions in `Compile_excel_sheet.py` (`Compile_Perturbation_sheet`,
+  `Compile_Target_Summary_sheet`, `Compile_Summary_sheet`, `load_simple_sheets`, …)
+  take `conditions=` instead of `Sample=`, matching `load_perturbation_data`.
+  The `# programs <condition>` columns are now integers.
 - Condition labels no longer default to one study's values: when `--Conditions`
   is omitted (plotting, K-selection, Excel summary), labels are read from
   `obs[categorical_key]` in the h5mu.
