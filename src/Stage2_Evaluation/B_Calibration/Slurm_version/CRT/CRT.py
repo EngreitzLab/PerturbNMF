@@ -140,7 +140,8 @@ def run_CRT(adata, k, sel_thresh, output_folder, args):
             n_ensemble=10,
             seed0=7,
             group_size=args.number_guide,
-            max_groups=None,
+            max_groups=args.max_ntc_groups,
+            replace=args.ntc_replace,
         )
 
         # CRT p-values for each NTC group in each ensemble (null distribution): the
@@ -565,6 +566,8 @@ def main():
     parser.add_argument('--resampling', type=str, choices=list(RESAMPLING_METHODS), default='bernoulli', help='How CRT null treated sets are drawn. bernoulli (default): each cell independently ~ Bernoulli(propensity), so the null set size varies around the observed count. fixed_count: every null set keeps the observed treated count within each stratum of the categorical covariates (exact within-stratum permutation when all covariates are categorical; propensity-weighted Pareto sampling within strata, an approximation, when continuous covariates are present). fixed_count is calibrated for few-cell targets where bernoulli is anticonservative.')
     parser.add_argument('--outcome', type=str, choices=list(OUTCOMES), default='clr', help='CRT outcome Y per cell and program. clr (default): centered log-ratio of usage floored at 1e-8; effect reported as log2FC. usage: per-cell usage share (usage row-normalized to proportions, no log, no floor); effect reported as usage_share_diff, the covariate-adjusted difference in mean usage share (not a fold change), plus control_usage_share (covariate-adjusted baseline share) and usage_share_relative_diff (diff / baseline). usage with --resampling fixed_count is the recommended configuration (calibrated on a matched NTC null, no floor hyperparameter). Output file names do not change; use --save_dir to keep runs apart.')
     parser.add_argument('--matched_ntc_null', action='store_true', help='Also build a cell-count-matched NTC null (one NTC pseudo-target per real target with exactly its cell count, scored with the same CRT) and write {K}_CRT_matched_null_{covar_tag}_{condition}.txt. Roughly doubles CRT runtime. The frequency-matched guide groups rarely reach the few-cell regime, so this is the calibration diagnostic for small targets.')
+    parser.add_argument('--ntc_replace', action='store_true', help='Build the NTC null groups with replacement across groups (a guide can appear in several groups, never twice in one; identical groups are rejected), as SCEPTRE does for its negative-control gRNA groups. Default off: guides are consumed, which caps the null at about n_ntc_guides / --number_guide groups per ensemble (fewer after frequency-bin matching), too few when --number_guide is large. With --ntc_replace and no --max_ntc_groups, each ensemble builds one group per real target, so the NTC null costs about 10x (n_ensemble) the real-target CRT.')
+    parser.add_argument('--max_ntc_groups', type=int, default=None, help='Maximum NTC null groups per ensemble (default: None = as many as the NTC pool allows; with --ntc_replace, one per real target). Use to bound runtime with --ntc_replace.')
     parser.add_argument('--FDR_method', type=str, choices=['BH', 'StoreyQ'], default='BH', help='FDR correction method: BH (Benjamini-Hochberg) or StoreyQ (Storey Q-value) (default: BH)')
     parser.add_argument('--save_dir', type=str, default=None, help='Base directory under which {K}_{thresh} subdirs are created. Default: <out_dir>/<run_name>/Evaluation/')
     parser.add_argument('--skip_existing', help='If set, skip per-(K, sel_thresh, condition) computations whose output .txt files already exist. Useful for resuming preempted jobs.', action='store_true')

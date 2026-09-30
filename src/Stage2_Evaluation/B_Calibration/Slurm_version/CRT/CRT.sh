@@ -82,6 +82,11 @@ python3 /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage2_Eval
         #                           Recommended: --resampling fixed_count --outcome usage
         #   --matched_ntc_null      off by default; append to also write a cell-count-matched
         #                           NTC null ({K}_CRT_matched_null_*.txt; ~2x runtime)
+        #   --ntc_replace           off by default; append to build NTC null groups with
+        #                           replacement across groups (as SCEPTRE does); use when
+        #                           --number_guide is large and the NTC pool is small
+        #   --max_ntc_groups        default None; cap on NTC null groups per ensemble
+        #                           (with --ntc_replace, None = one per real target)
         #   --save_dir              default <out_dir>/<run_name>/Evaluation/{K}_{thresh}/
         #   --covariates            default None  (e.g. --covariates pct_counts_mt doublet_scores)
         #   --log_covariates        default None  (e.g. --log_covariates total_counts guides_per_cell)

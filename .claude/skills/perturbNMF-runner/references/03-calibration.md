@@ -50,6 +50,8 @@ Key parameters (always ask):
 | `--resampling` | `bernoulli` | Null treated-set draw: `bernoulli` (size varies) or `fixed_count` (treated count fixed within each categorical-covariate stratum; exact for categorical-only covariates, approximate Pareto sampling with continuous ones). `fixed_count` is calibrated for few-cell targets; output names don't change, so use `--save_dir` to keep runs apart |
 | `--outcome` | `clr` | CRT outcome: `clr` (CLR of usage floored at 1e-8; effect `log2FC`) or `usage` (per-cell usage share, no log/floor; effect `usage_share_diff`). Recommend `--resampling fixed_count --outcome usage`; output names don't change, so use `--save_dir` to keep runs apart |
 | `--matched_ntc_null` | off | Also write `{K}_CRT_matched_null_<covariates>_{condition}.txt`: one NTC pseudo-target per real target with exactly its cell count, scored with the same CRT (~2x runtime) |
+| `--ntc_replace` | off | Build NTC null groups with replacement across groups (as SCEPTRE does); use when `--number_guide` is large relative to the NTC pool |
+| `--max_ntc_groups` | None | Cap on NTC null groups per ensemble (with `--ntc_replace`, None = one per real target) |
 | `--save_dir` | auto | Custom output directory (default: `<out_dir>/<run_name>/Evaluation/<K>_<sel_thresh>/`) |
 | `--skip_existing` | off | Skip the CRT recompute for a (K, sel_thresh, condition) when **both** its real and fake `.txt` exist, and regenerate the QQ `.png` from the cached raw p-values. Resume a preempted job **or** re-plot without recomputing. |
 

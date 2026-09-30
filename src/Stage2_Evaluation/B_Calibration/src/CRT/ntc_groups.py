@@ -117,9 +117,25 @@ def make_ntc_groups_matched_by_freq(
     max_groups: Optional[int] = None,
     drop_remainder: bool = True,
     max_attempts: int = 100,
+    replace: bool = False,
 ) -> Dict[str, List[str]]:
     """
-    Returns dict group_id -> list of NTC guide names (no overlap within replicate).
+    Returns dict group_id -> list of NTC guide names.
+
+    replace=False (default): guides are consumed as groups are built, so no guide is
+    shared between groups within a replicate.
+
+    replace=True: guides are returned to the pool after each group, so a guide can
+    appear in several groups (never twice in one group), and identical groups are
+    rejected. This mirrors how SCEPTRE builds its negative-control ("undercover")
+    gRNA groups: each group is an independent without-replacement draw of
+    calibration_group_size NTC gRNAs, rejection-sampled so that no two groups are
+    the same set (sample_combinations_v2 in src/negative_control_functions.cpp,
+    https://github.com/Katsevich-Lab/sceptre). Without replacement, the NTC pool is
+    used up after about n_ntc / group_size groups, and the per-bin matching shrinks
+    that further: with ~200 NTC guides and 15 guides per target, only 3-6 groups per
+    replicate could be formed, too few for a stable null. If max_groups is None,
+    replace=True builds one group per real-gene signature (i.e. per real target).
     """
     rng = np.random.default_rng(seed)
 
@@ -130,10 +146,16 @@ def make_ntc_groups_matched_by_freq(
             continue
         bin_to_guides.setdefault(bin_id, []).append(guide)
 
-    for guides in bin_to_guides.values():
-        rng.shuffle(guides)
+    if not replace:
+        for guides in bin_to_guides.values():
+            rng.shuffle(guides)
+
+    # With replacement the pool never runs out, so the loop needs an explicit cap
+    if replace and max_groups is None:
+        max_groups = len(real_gene_bin_sigs)
 
     groups: Dict[str, List[str]] = {}
+    seen_groups: Set[Tuple[str, ...]] = set()
     attempts = 0
     group_idx = 0
 
@@ -168,10 +190,24 @@ def make_ntc_groups_matched_by_freq(
             continue
 
         selected: List[str] = []
-        for bin_id, need in counts.items():
-            pool = bin_to_guides[bin_id]
-            selected.extend(pool[:need])
-            del pool[:need]
+        if replace:
+            for bin_id, need in counts.items():
+                pool = bin_to_guides[bin_id]
+                selected.extend(rng.choice(pool, size=need, replace=False).tolist())
+
+            # Reject a group identical to one already drawn (as SCEPTRE does)
+            key = tuple(sorted(selected))
+            if key in seen_groups:
+                attempts += 1
+                if attempts >= max_attempts and drop_remainder:
+                    break
+                continue
+            seen_groups.add(key)
+        else:
+            for bin_id, need in counts.items():
+                pool = bin_to_guides[bin_id]
+                selected.extend(pool[:need])
+                del pool[:need]
 
         groups[f"ntc_{group_idx}"] = selected
         group_idx += 1
@@ -190,9 +226,11 @@ def make_ntc_groups_ensemble(
     group_size: int = 6,
     max_groups: Optional[int] = None,
     drop_remainder: bool = True,
+    replace: bool = False,
 ) -> List[Dict[str, List[str]]]:
     """
     Returns list of group dicts, one per ensemble replicate.
+    See make_ntc_groups_matched_by_freq for replace.
     """
     groups_ens: List[Dict[str, List[str]]] = []
     for e in range(n_ensemble):
@@ -205,6 +243,7 @@ def make_ntc_groups_ensemble(
             seed=seed0 + e,
             max_groups=max_groups,
             drop_remainder=drop_remainder,
+            replace=replace,
         )
         groups_ens.append(groups)
     return groups_ens

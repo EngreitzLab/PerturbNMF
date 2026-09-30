@@ -445,10 +445,12 @@ CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['gu
 | `--resampling` | str | `bernoulli` | `bernoulli` or `fixed_count` (choices enforced); `fixed_count` holds the treated count fixed within each categorical-covariate stratum in every permutation |
 | `--outcome` | str | `clr` | `clr` or `usage` (choices enforced); `usage` = per-cell usage share (row-normalized, no log/floor), effect column `usage_share_diff` instead of `log2FC` |
 | `--matched_ntc_null` | flag | off | Also score a cell-count-matched NTC null → `{K}_CRT_matched_null_<covariate_token>_{condition}.txt` |
+| `--ntc_replace` | flag | off | Build NTC null groups with replacement across groups (never twice in one group; identical groups rejected), as SCEPTRE does |
+| `--max_ntc_groups` | int | None | Cap on NTC null groups per ensemble (with `--ntc_replace`, None = one per real target) |
 | `--save_dir` | str | None | Custom save directory (default: `<out_dir>/<run_name>/Evaluation/<K>_<sel_thresh>/`) |
 | `--skip_existing` | flag | off | Skip the CRT recompute for a (K, sel_thresh, condition) when **both** its real and fake `.txt` exist, and regenerate the QQ `.png` from the cached raw p-values (resume a preempted job or re-plot without recomputing) |
 
-**Null calibration:** CRT builds NTC (non-targeting control) pseudo-gene groups of size `--number_guide`, frequency-matched to real genes, and compares them to real targets on a real-vs-NTC QQ plot (one `.png` per K/sel_thresh/condition). `--number_guide` therefore controls the null group size (no longer hardcoded to 6). Ensemble count / bin count / seeds are set inside the vendored `src/CRT/` package, not exposed as flags.
+**Null calibration:** CRT builds NTC (non-targeting control) pseudo-gene groups of size `--number_guide`, frequency-matched to real genes, and compares them to real targets on a real-vs-NTC QQ plot (one `.png` per K/sel_thresh/condition). `--number_guide` therefore controls the null group size (no longer hardcoded to 6). Ensemble count / bin count / seeds are set inside the vendored `src/CRT/` package, not exposed as flags; `--ntc_replace` and `--max_ntc_groups` control how the groups are sampled.
 
 **Output files** (covariate token = `--covariates` then `log_`-prefixed `--log_covariates` joined by `_`, or `no_covariates` when none):
 - `{K}_CRT_<covariate_token>_{condition}.txt` — real results: `target_name, program_name, log2FC` (with `--outcome usage`: `usage_share_diff, control_usage_share, usage_share_relative_diff`), `p-value` (skew), `adj_pval`, `p-value_raw`, `adj_pval_raw`.
