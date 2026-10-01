@@ -18,8 +18,11 @@ Existence and retraction of the chosen PMIDs is checked separately by verify_cit
 
 Prints coverage: claims with a direct PMID, any PMID, database-only, none.
 
+With --write-problems, each program's problems go to <dir>/problems.json for the repair pass
+(repair_rejected_answers.sh); a passing program clears this gate's entry.
+
 Usage:
-    python validate_citation_answers.py --dispatch <citations_dispatch> --arm cite
+    python validate_citation_answers.py --dispatch <citations_dispatch> --arm cite [--write-problems]
 """
 
 from __future__ import annotations
@@ -29,6 +32,8 @@ import json
 import re
 from collections import Counter
 from pathlib import Path
+
+from record_item_problems import record_item_problems
 
 
 def load(path: Path):
@@ -179,12 +184,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dispatch", required=True, type=Path)
     parser.add_argument("--arm", required=True)
+    parser.add_argument("--write-problems", action="store_true",
+                        help="record each failing item's problems in problems.json for repair_rejected_answers.sh")
     args = parser.parse_args()
 
     coverage, problems, warnings = Counter(), [], []
     directories = sorted(args.dispatch.glob(f"{args.arm}_p*"), key=lambda d: int(d.name.split("_p")[-1]))
     for directory in directories:
         found = validate_program(directory, coverage, warnings)
+        if args.write_problems:
+            # The "P<id>" prefix is dropped: the repair call sees one item only.
+            record_item_problems(directory, "validate_citation_answers", [re.sub(r"^P\d+:? ", "", p) for p in found])
         problems += found
         if not found:
             print(f"{directory.name}: PASS")

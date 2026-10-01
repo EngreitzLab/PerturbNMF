@@ -2,11 +2,18 @@
 
 A failed request is never cached, so a rerun retries exactly the requests that failed and
 everything else is free.
+
+Several processes may share one cache dir (e.g. build_citation_candidates.py shards). A save
+takes an exclusive lock, re-reads the file, merges in this process's new entries and atomically
+replaces it, so no process overwrites another's fetches.
 """
 from __future__ import annotations
 
+import fcntl
 import http.client
 import json
+import os
+import socket
 import time
 import urllib.parse
 import urllib.request
@@ -37,10 +44,16 @@ class CachedHttp:
         cache_dir.mkdir(parents=True, exist_ok=True)
         self.pause = pause
         self.cache_file = cache_dir / "http_cache.json"
+        # Locks a sidecar, not the cache file itself: os.replace swaps the cache file's inode.
+        self.lock_file = cache_dir / "http_cache.json.lock"
+        self.cache = self.read_disk_cache()
+        self.new_entries = {}  # fetched by this process since its last save
+        self.dirty = 0
+
+    def read_disk_cache(self) -> dict:
         cache = json.loads(self.cache_file.read_text()) if self.cache_file.exists() else {}
         # A failed request is never a result: drop it so the next run retries it.
-        self.cache = {k: v for k, v in cache.items() if v is not None}
-        self.dirty = 0
+        return {k: v for k, v in cache.items() if v is not None}
 
     def get_json(self, url: str, body: Optional[dict] = None, headers: Optional[dict] = None):
         key = url + ("|" + json.dumps(body, sort_keys=True) if body else "")
@@ -65,6 +78,7 @@ class CachedHttp:
         if result is None:
             return None
         self.cache[key] = result
+        self.new_entries[key] = result
         self.dirty += 1
         if self.dirty % 25 == 0:
             self.save()
@@ -91,10 +105,27 @@ class CachedHttp:
         if result is None:
             return None
         self.cache[key] = result
+        self.new_entries[key] = result
         self.dirty += 1
         if self.dirty % 25 == 0:
             self.save()
         return result
 
     def save(self):
-        self.cache_file.write_text(json.dumps(self.cache))
+        """Merge this process's new entries into the file on disk, under an exclusive lock."""
+        with open(self.lock_file, "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            merged = self.read_disk_cache()
+            merged.update(self.new_entries)
+            # Same dir, so os.replace is atomic; named per host+process, so it is unique even
+            # where the filesystem does not honour flock across nodes.
+            temp_path = self.cache_dir / f"http_cache.json.{socket.gethostname()}.{os.getpid()}.tmp"
+            try:
+                temp_path.write_text(json.dumps(merged))
+                os.replace(temp_path, self.cache_file)
+            except BaseException:
+                temp_path.unlink(missing_ok=True)
+                raise
+        # Pick up what other processes fetched, too.
+        self.cache = merged
+        self.new_entries = {}

@@ -4,7 +4,7 @@ Several gates judge the same item (validate_citation_answers.py, verify_cited_pm
 repair pass re-prompts from their findings. Each gate owns its own entry under "sources", so a
 gate that now passes clears only what it wrote; "problems" is the de-duplicated union, in order:
 
-    {"problems": ["P3 G1: L4 was not offered", ...],
+    {"problems": ["G1: L4 was not offered", ...],
      "sources": {"validate_citation_answers": [...], "verify_cited_pmids": [...]}}
 
 When no gate has anything left, the file is removed: no problems.json means no known problem.
