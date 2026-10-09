@@ -156,6 +156,22 @@ def main():
         help="uns key for guide target names. Default: guide_targets",
     )
     parser.add_argument(
+        "--organism",
+        type=str,
+        default="human",
+        help="Species of the data, for MyGene gene summaries in the Program Loadings "
+        "sheet. With mouse, each gene gets the summaries of its human orthologs "
+        "(MGI + Ensembl), listed in a 'Human ortholog' column. Default: human",
+    )
+    parser.add_argument(
+        "--ortholog_table",
+        type=str,
+        default=None,
+        help="For --organism mouse: TSV of mouse-human orthologs (columns: "
+        "mouse_symbol, mouse_ensembl, human_symbol, source). Default: the table "
+        "cached in src/Stage2_Evaluation/Resources/, downloaded if missing",
+    )
+    parser.add_argument(
         "--gene_names_key",
         type=str,
         default="symbol",
@@ -289,6 +305,8 @@ def main():
         num_gene=args.num_gene,
         data_key=args.data_key,
         gene_names_key=args.gene_names_key,
+        species=args.organism,
+        ortholog_table=args.ortholog_table,
     )
     df_Program_loading_flat = compile_Program_loading_score_sheet_flat(
         mdata,
@@ -370,19 +388,29 @@ def main():
     )
 
     # ── Target Summary (writes specificity / correlation / KD-efficiency sidecars to save_path) ──
-    df_Target_Summary = Compile_Target_Summary_sheet(
-        mdata,
-        Perturbation_path_base,
-        Sample=args.Conditions,
-        categorical_key=args.categorical_key,
-        prog_key=args.prog_key,
-        data_key=args.data_key,
-        guide_targets_key=args.guide_targets_key,
-        save_path=args.save_path,
-        effect_size=args.effect_size,
-        control_target_name=args.control_target_name,
-        gene_names_key=args.gene_names_key,
-    )
+    # Needs guide information; skipped for non-perturbed data.
+    has_guides = args.guide_targets_key in mdata[args.prog_key].uns
+    if has_guides:
+        df_Target_Summary = Compile_Target_Summary_sheet(
+            mdata,
+            Perturbation_path_base,
+            Sample=args.Conditions,
+            categorical_key=args.categorical_key,
+            prog_key=args.prog_key,
+            data_key=args.data_key,
+            guide_targets_key=args.guide_targets_key,
+            save_path=args.save_path,
+            effect_size=args.effect_size,
+            control_target_name=args.control_target_name,
+            gene_names_key=args.gene_names_key,
+        )
+    else:
+        print(
+            f"No uns['{args.guide_targets_key}'] in '{args.prog_key}': "
+            "skipping the Targets Summary sheet (non-perturbed data).",
+            flush=True,
+        )
+        df_Target_Summary = None
 
     # ── Program Summary ──
     df_Summary = Compile_Summary_sheet(
@@ -393,7 +421,8 @@ def main():
         df_Program_loading_flat,
         df_Explained_Variance,
         Sample=args.Conditions,
-        specicicity_path=args.save_path,
+        # specificity scores are written by the Targets Summary step
+        specicicity_path=args.save_path if has_guides else None,
         categorical_key=args.categorical_key,
         non_tagerting_key=args.non_targeting_key,
         effect_size=args.effect_size,
@@ -405,9 +434,10 @@ def main():
     df_Program_loading_long.to_csv(
         f"{args.save_path}/Program_Loadings_{args.K}_{thresh_str}.tsv", sep="\t"
     )
-    df_Target_Summary.to_csv(
-        f"{args.save_path}/Targets_Summary_{args.K}_{thresh_str}.tsv", sep="\t"
-    )
+    if df_Target_Summary is not None:
+        df_Target_Summary.to_csv(
+            f"{args.save_path}/Targets_Summary_{args.K}_{thresh_str}.tsv", sep="\t"
+        )
     print(f"Saved separate TSV files to {args.save_path}")
 
     # ── Write Excel ──
@@ -418,7 +448,8 @@ def main():
         df_Program_loading_long.to_excel(
             writer, sheet_name="Program Loadings", index=True
         )
-        df_Target_Summary.to_excel(writer, sheet_name="Targets Summary", index=True)
+        if df_Target_Summary is not None:
+            df_Target_Summary.to_excel(writer, sheet_name="Targets Summary", index=True)
 
         if df_Association is not None:
             df_Association.to_excel(writer, sheet_name="Sample Association", index=True)

@@ -235,12 +235,24 @@ def main():
     print(f"there are {program_len} Program found")
 
     # found detected perturbed gene (use gene symbols from var column when var_names are Ensembl IDs)
-    perturbed_gene = np.unique(mdata[args.prog_key].uns["guide_targets"])
-    if args.gene_name_key in mdata[args.data_key].var.columns:
-        gene_symbols = mdata[args.data_key].var[args.gene_name_key].astype(str).tolist()
+    # uns['guide_targets'] only exists for perturbation data (written by inference
+    # when guides are present); without it there are no perturbed genes to mark.
+    if "guide_targets" in mdata[args.prog_key].uns:
+        perturbed_gene = np.unique(mdata[args.prog_key].uns["guide_targets"])
+        if args.gene_name_key in mdata[args.data_key].var.columns:
+            gene_symbols = (
+                mdata[args.data_key].var[args.gene_name_key].astype(str).tolist()
+            )
+        else:
+            gene_symbols = mdata[args.data_key].var_names.tolist()
+        perturbed_gene_found = sorted(set(gene_symbols) & set(perturbed_gene.tolist()))
     else:
-        gene_symbols = mdata[args.data_key].var_names.tolist()
-    perturbed_gene_found = sorted(set(gene_symbols) & set(perturbed_gene.tolist()))
+        perturbed_gene_found = []
+        print(
+            f"No uns['guide_targets'] in '{args.prog_key}': treating the data as "
+            "non-perturbed; perturbed-gene annotations will be empty.",
+            flush=True,
+        )
 
     # compute correlations (both K x K; full matrices written to corr_dir every run)
     corr_dir = args.corr_matrix_path or args.save_path
