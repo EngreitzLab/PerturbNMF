@@ -284,7 +284,7 @@ def build_parser():
 
     # context info
     p.add_argument("--programs", type=int, nargs="+", help="Program ids, space separated (e.g. 1 2 3). Default: all.")
-    p.add_argument("--cell_type", default="", help="Cell type, e.g. 'teloHAEC aortic endothelial cell'.")
+    p.add_argument("--cell_type", default="", help="Cell type, e.g. 'aortic endothelial cell'.")
     p.add_argument("--organism", default="human")
 
     # select top items of the program
