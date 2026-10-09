@@ -225,8 +225,38 @@ def _natural_sort_key(filepath):
     ]
 
 
+# obsm keys used by other tools (e.g. Seurat conversions) for the scanpy embeddings
+ALT_EMBEDDING_KEYS = {"X_umap": ("UMAP", "umap"), "X_pca": ("PCA", "pca")}
+
+
+def _adopt_alt_embedding_keys(adata):
+    """Copy an embedding stored under a non-scanpy obsm key to 'X_umap'/'X_pca'.
+
+    Reuses the embedding the data came with instead of recomputing a different
+    one. Existing 'X_umap'/'X_pca' entries and the original keys are left as is.
+    """
+    for std_key, alt_keys in ALT_EMBEDDING_KEYS.items():
+        if std_key in adata.obsm:
+            continue
+        for alt_key in alt_keys:
+            if alt_key not in adata.obsm:
+                continue
+            emb = adata.obsm[alt_key]
+            # scanpy plotting needs an array; some converters store a DataFrame
+            emb = emb.to_numpy() if hasattr(emb, "to_numpy") else np.asarray(emb)
+            adata.obsm[std_key] = emb[:, :2] if std_key == "X_umap" else emb
+            print(f"ensure_umap: using obsm['{alt_key}'] as '{std_key}'.", flush=True)
+            break
+
+
 def ensure_umap(mdata, data_key, prog_key, n_top_genes=2000, n_comps=50):
-    """Compute PCA/UMAP from top-variance genes and write to both modalities; no-op if X_umap already exists in both."""
+    """Compute PCA/UMAP from top-variance genes and write to both modalities; no-op if X_umap already exists in both.
+
+    Embeddings stored under 'UMAP'/'PCA' (e.g. Seurat conversions) are reused first.
+    """
+    _adopt_alt_embedding_keys(mdata[data_key])
+    _adopt_alt_embedding_keys(mdata[prog_key])
+
     has_prog = "X_umap" in mdata[prog_key].obsm
     has_data = "X_umap" in mdata[data_key].obsm
     if has_prog and has_data:
