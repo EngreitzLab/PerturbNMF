@@ -221,7 +221,8 @@ Same as sk-cNMF except:
 | `--gwas_data_path` | str | None | Path to GWAS data (required only for trait enrichment) |
 | `--X_normalized_path` | str | None | Normalized counts h5ad (needed for explained variance). Path pattern: `<out_dir>/<run_name>/Inference/cnmf_tmp/Inference.norm_counts.h5ad` (prefix is always `Inference`, not the run_name) |
 | `--guide_annotation_path` | str | None | Guide annotation TSV |
-| `--organism` | str | `human` | Species for enrichment |
+| `--organism` | str | `human` | Species for enrichment (`human` or `mouse`; mouse genes are mapped to human orthologs) |
+| `--ortholog_table` | str | None | Mouse-human ortholog TSV; default MGI + Ensembl, cached in `Resources/` |
 | `--FDR_method` | str | `StoreyQ` | FDR method: `StoreyQ` or `BH` |
 | `--balanced` | flag | off | Subsample each target's U-test reference to the target's cell count |
 | `--balanced_seed` | int | `0` | Seed for the `--balanced` subsample |
@@ -275,6 +276,8 @@ Same as sk-cNMF except:
 | `--variance_col` | str | `Total` | No | Variance column name |
 | `--stability_file` | str | None | No | Pre-computed stability/error file (TSV or NPZ) |
 | `--run_program_dotplot` | flag | False | No | Enable per-(K, sel_thresh) program dotplots; requires `{output_dir}/{run_name}/Inference/adata/cNMF_{K}_{thresh}.h5mu` to exist for each pair |
+| `--no_trait` | flag | False | No | Skip trait (GWAS) enrichment files and plots (non-human data) |
+| `--no_perturbation` | flag | False | No | Skip perturbation files and regulator plots (non-perturbed data, no guides) |
 
 ---
 
@@ -667,6 +670,8 @@ cover multiple K values.
 | `--save_path` | str | `{out_dir}/{run_name}/Interpretation/Summary_table/{K}_{thresh}` | Output dir for the `.xlsx`, TSVs, and specificity/correlation/KD sidecars |
 | `--mdata_path` | str | `{out_dir}/{run_name}/Inference/adata/cNMF_{K}_{thresh}.h5mu` | Input MuData |
 | `--num_gene` | int | `300` | Top genes per program / per enriched term to keep |
+| `--organism` | str | `human` | Species of the data; with `mouse`, each gene gets the MyGene summaries of its human orthologs (listed in a `Human ortholog` column) |
+| `--ortholog_table` | str | None | Mouse-human ortholog TSV; default MGI + Ensembl, cached in `Resources/` |
 | `--perturbation_file_name` | str | `perturbation_association_results` | Perturbation result file stem (between `{K}_` and `_{Condition}.txt`); e.g. `CRT` |
 | `--Conditions` | str (nargs=\*) | all labels found in the data | Condition labels (values of obs[categorical_key]); `--Sample` is a deprecated alias |
 | `--effect_size` | str | `log2FC` | Effect-size column in perturbation files (e.g. `approx_log2FC`) |

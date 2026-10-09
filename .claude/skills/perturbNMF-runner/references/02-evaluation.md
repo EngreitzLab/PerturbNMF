@@ -39,7 +39,8 @@ Reconstruction error and stability are computed automatically.
 | `--FDR_method` | `StoreyQ` | FDR correction: `StoreyQ` or `BH` |
 | `--balanced` | off | Subsample each target's U-test reference to the target's cell count (all kept if fewer) |
 | `--balanced_seed` | `0` | Seed for the `--balanced` subsample |
-| `--organism` | `human` | Species for enrichment |
+| `--organism` | `human` | Species for enrichment (`human` or `mouse`; mouse genes are mapped to human orthologs) |
+| `--ortholog_table` | None | Mouse-human ortholog TSV; default MGI + Ensembl, cached in `Resources/` |
 | `--n_top` | `300` | Top genes for enrichment tests |
 | `--guide_annotation_key` | `["non-targeting"]` | Non-targeting guide identifiers (accepts multiple values) |
 | `--use_cache` | flag | Load enrichr gene set libraries from cached JSON in `Resources/` instead of downloading; falls back to download + cache on miss |

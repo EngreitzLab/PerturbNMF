@@ -12,6 +12,8 @@ from anndata import AnnData
 from gseapy import Biomart, Msigdb
 from tqdm.auto import tqdm
 
+from .orthologs import collapse_to_human, load_ortholog_table
+
 logging.basicConfig(level=logging.INFO)
 
 _RESOURCES_DIR = os.path.join(
@@ -78,6 +80,18 @@ def get_idconversion(var_names, organism="human", chunk_size=100):
     return gene_names
 
 
+def _mouse_gene_ids(mdata, prog_key, data_key, gene_names_key):
+    """Mouse symbols or Ensembl IDs for the loadings columns, unchanged in case."""
+    if gene_names_key is not None and gene_names_key in mdata[data_key].var.columns:
+        genes = mdata[data_key].var[gene_names_key].astype(str).tolist()
+    elif "var_names" in mdata[prog_key].uns.keys():
+        genes = [str(v) for v in mdata[prog_key].uns["var_names"]]
+    else:
+        genes = [str(v) for v in mdata[data_key].var_names]
+    # "Symbol:ENSMUSG..." style names: keep the symbol
+    return [g.split(":", 1)[0] if ":ens" in g.lower() else g for g in genes]
+
+
 def get_program_gene_loadings(
     mdata,
     prog_key="prog",
@@ -85,10 +99,22 @@ def get_program_gene_loadings(
     data_key="rna",
     organism="human",
     gene_names_key=None,
+    ortholog_table=None,
+    map_to_human=True,
 ):
-    """Get gene loadings for each program in the mudata object."""
+    """Get gene loadings for each program in the mudata object.
 
-    if gene_names_key is not None and gene_names_key in mdata[data_key].var.columns:
+    For mouse data with map_to_human=True (gene sets in human symbols), genes are
+    mapped to human orthologs (see orthologs.py); ortholog_table is an optional
+    path to a pre-built ortholog table. With map_to_human=False, mouse symbols are
+    kept unchanged (gene sets in mouse symbols, e.g. MSigDB mouse).
+    """
+    if organism not in ("human", "mouse"):
+        raise ValueError(f"Unsupported organism '{organism}'; use 'human' or 'mouse'.")
+
+    if organism == "mouse":
+        gene_names = _mouse_gene_ids(mdata, prog_key, data_key, gene_names_key)
+    elif gene_names_key is not None and gene_names_key in mdata[data_key].var.columns:
         gene_names = (
             mdata[data_key].var[gene_names_key].astype(str).str.upper().tolist()
         )
@@ -112,6 +138,9 @@ def get_program_gene_loadings(
         ).T
         loadings["gene_names"] = gene_names
         loadings.set_index("gene_names", inplace=True)
+
+    if organism == "mouse" and map_to_human:
+        loadings = collapse_to_human(loadings, load_ortholog_table(ortholog_table))
 
     # with open('var_names.txt', 'w') as fil:
     #     for nam in mdata[data_key].var_names:
@@ -403,6 +432,7 @@ def compute_geneset_enrichment(
     use_loadings_gene=False,  # False = use all oncology gene, True = use interact expresseed gene
     gene_names_key: Optional[str] = None,
     use_cache: bool = False,
+    ortholog_table: Optional[str] = None,
     **kwargs,
 ) -> Optional[pd.DataFrame]:
     """
@@ -442,6 +472,9 @@ def compute_geneset_enrichment(
         number of threads to run processes on.
     inplace : bool (default: True)
         whether to insert the results back into the mudata object.
+    ortholog_table : str (default: None)
+        For organism='mouse': path to a mouse-human ortholog table. By default the
+        MGI + Ensembl table is downloaded once and cached in Resources/.
 
     Returns
     -------
@@ -484,6 +517,9 @@ def compute_geneset_enrichment(
         data_key=data_key,
         organism=organism,
         gene_names_key=gene_names_key,
+        ortholog_table=ortholog_table,
+        # Enrichr and user gene sets use human symbols; MSigDB mouse sets do not.
+        map_to_human=not (database == "msigdb" and user_geneset is None),
     )
 
     # run enrichment

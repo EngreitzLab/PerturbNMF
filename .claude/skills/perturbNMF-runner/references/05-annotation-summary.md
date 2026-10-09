@@ -120,6 +120,7 @@ other stage (no notebook required). Submit one job per K to cover multiple K val
 | `--perturbation_file_name` | `perturbation_association_results` | Perturbation file stem (e.g. `CRT`) |
 | `--effect_size` | `log2FC` | Effect-size column (e.g. `approx_log2FC`) |
 | `--gene_names_key` | `symbol` | var column with gene symbols |
+| `--organism` | `human` | Species of the data; `mouse` annotates genes with their human orthologs' summaries |
 | `--non_targeting_key` | `non-targeting` | Negative-control target label(s) |
 
 See `references/parameter-catalog.md` (Section 12) for the full flag list, including

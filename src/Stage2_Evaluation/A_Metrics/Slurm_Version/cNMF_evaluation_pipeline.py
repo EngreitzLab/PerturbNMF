@@ -211,6 +211,15 @@ def main():
         default="human",
     )
     parser.add_argument(
+        "--ortholog_table",
+        type=str,
+        default=None,
+        help="For --organism mouse: TSV of mouse-human orthologs used to match genes "
+        "to the human gene-set libraries (columns: mouse_symbol, mouse_ensembl, "
+        "human_symbol, source). Default: MGI + Ensembl table, downloaded once and "
+        "cached in src/Stage2_Evaluation/Resources/",
+    )
+    parser.add_argument(
         "--FDR_method",
         help="Method for FDR correction in perturbation association (default: StoreyQ)",
         type=str,
@@ -257,6 +266,15 @@ def main():
     run_motif_enrichment.add_motif_arguments(parser)
 
     args = parser.parse_args()
+
+    # The bundled GWAS resource (OpenTargets L2G) is human-only.
+    if args.Perform_trait and args.organism.lower() != "human":
+        print(
+            f"--organism {args.organism}: skipping trait (GWAS) enrichment, which is "
+            "only available for human data. Pass --no_trait to K-selection plotting.",
+            flush=True,
+        )
+        args.Perform_trait = False
 
     if args.Perform_trait and args.gwas_data_path is None:
         parser.error("--gwas_data_path is required when --Perform_trait is set")
@@ -418,6 +436,12 @@ def main():
 
             # Run perturbation assocation
             if args.Perform_perturbation:
+                if args.guide_targets_key not in mdata[args.prog_key].uns:
+                    raise ValueError(
+                        f"--Perform_perturbation needs guide information, but uns['"
+                        f"{args.guide_targets_key}'] is missing from '{args.prog_key}' "
+                        f"(K={k}). For non-perturbed data, drop --Perform_perturbation."
+                    )
                 # Validate reference_targets against mdata guide_targets
                 mdata_targets = set(mdata[args.prog_key].uns[args.guide_targets_key])
                 matched_ref = mdata_targets.intersection(reference_targets)
@@ -475,6 +499,7 @@ def main():
                         data_key=args.data_key,
                         prog_name=None,
                         organism=args.organism,
+                        ortholog_table=args.ortholog_table,
                         library="Reactome_2022",
                         method="fisher",
                         database="enrichr",
@@ -495,6 +520,7 @@ def main():
                         data_key=args.data_key,
                         prog_name=None,
                         organism=args.organism,
+                        ortholog_table=args.ortholog_table,
                         library="GO_Biological_Process_2023",
                         method="fisher",
                         database="enrichr",

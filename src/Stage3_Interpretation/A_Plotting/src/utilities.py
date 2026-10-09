@@ -30,7 +30,7 @@ def convert_with_mygene(dataframe, species="human", index=True):
             dataframe.index,
             scopes="ensembl.gene",
             fields="symbol,name",
-            species="human",
+            species=species,
         )
     else:
         # Query multiple genes at once
@@ -38,7 +38,7 @@ def convert_with_mygene(dataframe, species="human", index=True):
             dataframe.columns,
             scopes="ensembl.gene",
             fields="symbol,name",
-            species="human",
+            species=species,
         )
 
     # Create mapping dictionary
@@ -64,7 +64,7 @@ def convert_adata_with_mygene(adata, species="human"):
     mg = mygene.MyGeneInfo()
     gene_list = adata.var_names.tolist()
     annotations = mg.querymany(
-        gene_list, scopes="ensembl.gene", fields="symbol", species="human"
+        gene_list, scopes="ensembl.gene", fields="symbol", species=species
     )
 
     # Process the results to create mapping
