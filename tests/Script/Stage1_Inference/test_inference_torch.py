@@ -21,8 +21,13 @@ import anndata as ad
 import mudata as mu
 
 from .conftest import (
-    TEST_K, TEST_NUMITER, TEST_NUMHVGENES, TEST_SEL_THRESH, TEST_SEED,
-    PERSISTENT_OUTPUT, check_data_format,
+    TEST_K,
+    TEST_NUMITER,
+    TEST_NUMHVGENES,
+    TEST_SEL_THRESH,
+    TEST_SEED,
+    PERSISTENT_OUTPUT,
+    check_data_format,
 )
 
 from torch_cnmf import cNMF
@@ -33,6 +38,7 @@ from Stage1_Inference.src.plot_diagnostics import generate_all_plots
 # ---------------------------------------------------------------------------
 # Helper: run the full inference pipeline for a given mode and return output dir
 # ---------------------------------------------------------------------------
+
 
 def _make_torch_output_dir(mode):
     """Create output dir for a torch-cNMF mode test.
@@ -160,18 +166,31 @@ def _validate_outputs(output_dir, adata_dir):
                 assert "rna" in mdata.mod, f"k={k}: Missing 'rna' modality"
                 assert "cNMF" in mdata.mod, f"k={k}: Missing 'cNMF' modality"
                 assert mdata["cNMF"].n_obs > 0, f"k={k}: No cells in cNMF modality"
-                assert mdata["cNMF"].n_vars <= k, f"k={k}: Expected <= {k} programs, got {mdata['cNMF'].n_vars}"
-                assert "loadings" in mdata["cNMF"].varm, f"k={k}: Missing varm['loadings']"
-                assert "guide_names" in mdata["cNMF"].uns, f"k={k}: Missing uns['guide_names']"
-                assert "guide_targets" in mdata["cNMF"].uns, f"k={k}: Missing uns['guide_targets']"
+                assert mdata["cNMF"].n_vars <= k, (
+                    f"k={k}: Expected <= {k} programs, got {mdata['cNMF'].n_vars}"
+                )
+                assert "loadings" in mdata["cNMF"].varm, (
+                    f"k={k}: Missing varm['loadings']"
+                )
+                assert "guide_names" in mdata["cNMF"].uns, (
+                    f"k={k}: Missing uns['guide_names']"
+                )
+                assert "guide_targets" in mdata["cNMF"].uns, (
+                    f"k={k}: Missing uns['guide_targets']"
+                )
 
-    assert not missing, f"Missing {len(missing)} output files:\n" + "\n".join(f"  {f}" for f in missing)
-    print(f"\nAll output files verified ({len(TEST_K) * len(TEST_SEL_THRESH)} K×thresh combos)")
+    assert not missing, f"Missing {len(missing)} output files:\n" + "\n".join(
+        f"  {f}" for f in missing
+    )
+    print(
+        f"\nAll output files verified ({len(TEST_K) * len(TEST_SEL_THRESH)} K×thresh combos)"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Test: data validation (shared across modes)
 # ---------------------------------------------------------------------------
+
 
 class TestDataValid:
     def test_data_valid(self, mini_h5ad_path):
@@ -186,6 +205,7 @@ class TestDataValid:
 # ---------------------------------------------------------------------------
 # Test: batch mode (full HALS, default)
 # ---------------------------------------------------------------------------
+
 
 class TestBatchMode:
     """End-to-end test for torch-cNMF in batch mode."""
@@ -206,6 +226,7 @@ class TestBatchMode:
 # ---------------------------------------------------------------------------
 # Test: minibatch mode
 # ---------------------------------------------------------------------------
+
 
 class TestMinibatchMode:
     """End-to-end test for torch-cNMF in minibatch mode."""
@@ -229,6 +250,7 @@ class TestMinibatchMode:
 # ---------------------------------------------------------------------------
 # Test: dataloader mode
 # ---------------------------------------------------------------------------
+
 
 class TestDataloaderMode:
     """End-to-end test for torch-cNMF in dataloader mode."""

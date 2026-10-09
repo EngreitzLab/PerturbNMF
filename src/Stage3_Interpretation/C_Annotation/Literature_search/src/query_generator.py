@@ -1,4 +1,5 @@
 """LLM-powered query generation from program context."""
+
 from __future__ import annotations
 
 import json
@@ -63,7 +64,9 @@ def generate_search_queries(
     system_prompt = _load_prompt("query_generation.txt")
     context = _format_program_context(program_row)
     if interaction_verbs:
-        context += f"\nInteraction verbs to use in queries: {', '.join(interaction_verbs)}"
+        context += (
+            f"\nInteraction verbs to use in queries: {', '.join(interaction_verbs)}"
+        )
     user_prompt = (
         f"Generate {max_queries} targeted PubMed search queries for the "
         f"following gene expression program:\n\n"
@@ -84,11 +87,13 @@ def generate_search_queries(
     valid = []
     for q in queries:
         if isinstance(q, dict) and "query" in q:
-            valid.append({
-                "query": q["query"],
-                "strategy": q.get("strategy", "unknown"),
-                "target": q.get("target", ""),
-            })
+            valid.append(
+                {
+                    "query": q["query"],
+                    "strategy": q.get("strategy", "unknown"),
+                    "target": q.get("target", ""),
+                }
+            )
     if not valid:
         logger.warning("No valid queries from LLM; using fallback")
         return _fallback_queries(program_row, interaction_verbs)
@@ -113,20 +118,24 @@ def _fallback_queries(
     if genes:
         # Broad gene OR query (top 10)
         gene_or = " OR ".join(genes[:10])
-        queries.append({
-            "query": f"({gene_or})",
-            "strategy": "broad_context",
-            "target": "papers mentioning any top genes",
-        })
+        queries.append(
+            {
+                "query": f"({gene_or})",
+                "strategy": "broad_context",
+                "target": "papers mentioning any top genes",
+            }
+        )
 
     # Gene pair queries for top 3 pairs
     for i in range(0, min(6, len(genes)), 2):
         if i + 1 < len(genes):
-            queries.append({
-                "query": f"({genes[i]} AND {genes[i+1]})",
-                "strategy": "gene_pair",
-                "target": f"co-occurrence of {genes[i]} and {genes[i+1]}",
-            })
+            queries.append(
+                {
+                    "query": f"({genes[i]} AND {genes[i + 1]})",
+                    "strategy": "gene_pair",
+                    "target": f"co-occurrence of {genes[i]} and {genes[i + 1]}",
+                }
+            )
 
     # Regulator queries (single column, no direction)
     regs = row.get("regulators", "")
@@ -136,18 +145,22 @@ def _fallback_queries(
     for reg in reg_list[:3]:
         if genes:
             # Basic regulator + target genes query
-            queries.append({
-                "query": f"({reg} AND ({' OR '.join(genes[:5])}))",
-                "strategy": "regulator_target",
-                "target": f"regulator {reg} with target genes",
-            })
+            queries.append(
+                {
+                    "query": f"({reg} AND ({' OR '.join(genes[:5])}))",
+                    "strategy": "regulator_target",
+                    "target": f"regulator {reg} with target genes",
+                }
+            )
             # Regulator + verb + context query (if verbs provided)
             if interaction_verbs and cell_type:
                 verb = interaction_verbs[0]
-                queries.append({
-                    "query": f'("{reg} {verb}" AND {genes[0]} AND {cell_type})',
-                    "strategy": "regulator_verb_context",
-                    "target": f"{reg} {verb} {genes[0]} in {cell_type}",
-                })
+                queries.append(
+                    {
+                        "query": f'("{reg} {verb}" AND {genes[0]} AND {cell_type})',
+                        "strategy": "regulator_verb_context",
+                        "target": f"{reg} {verb} {genes[0]} in {cell_type}",
+                    }
+                )
 
     return queries[:8]

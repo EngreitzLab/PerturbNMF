@@ -96,7 +96,9 @@ def save_state(path: Path, state: PipelineState) -> None:
     path.write_text(json.dumps(state.to_dict(), indent=2), encoding="utf-8")
 
 
-def mark_step(state: PipelineState, step: str, status: str, info: Optional[Dict[str, Any]] = None) -> None:
+def mark_step(
+    state: PipelineState, step: str, status: str, info: Optional[Dict[str, Any]] = None
+) -> None:
     s = state.steps.get(step) or StepState()
     s.status = status
     if status == "completed":

@@ -21,6 +21,7 @@ A task shared by several programs is searched once. The bundles are not modified
 Env: ANTHROPIC_API_KEY (or a Claude Code login), NCBI_EMAIL / NCBI_API_KEY, UNPAYWALL_EMAIL,
 OPENALEX_API_KEY (only for the openalex source); read from AGeneTic/.env when present.
 """
+
 import argparse
 import asyncio
 import importlib
@@ -32,12 +33,29 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 AGENETIC_DIR = HERE.parent
-sys.path[:0] = [str(HERE), str(HERE / "1.1.Search_literature"), str(AGENETIC_DIR / "2.Evidence_curation")]
+sys.path[:0] = [
+    str(HERE),
+    str(HERE / "1.1.Search_literature"),
+    str(AGENETIC_DIR / "2.Evidence_curation"),
+]
 
-from claude_agent_sdk import (AssistantMessage, ClaudeAgentOptions, ResultMessage,  # noqa: E402
-                              ToolUseBlock, create_sdk_mcp_server, query, tool)
+from claude_agent_sdk import (
+    AssistantMessage,
+    ClaudeAgentOptions,
+    ResultMessage,  # noqa: E402
+    ToolUseBlock,
+    create_sdk_mcp_server,
+    query,
+    tool,
+)
 from evidence_cache import pair_key  # noqa: E402
-from src import default_out_dir, describe_gene, gene_entries, load_env, load_program_JSON  # noqa: E402
+from src import (
+    default_out_dir,
+    describe_gene,
+    gene_entries,
+    load_env,
+    load_program_JSON,
+)  # noqa: E402
 
 SERVER = "literature"
 # source -> (module, function); pubmed / arxiv need langchain_community
@@ -54,25 +72,36 @@ RESULT_SCHEMA = {
     "type": "object",
     "properties": {
         "queries": {"type": "array", "items": {"type": "string"}},
-        "rung_reached": {"type": ["integer", "null"]},   # plan mode: 1-based ladder rung that found evidence
-        "papers": {"type": "array", "items": {
-            "type": "object",
-            "properties": {
-                "title": {"type": "string"},
-                "pmid": {"type": ["string", "null"]},
-                "doi": {"type": ["string", "null"]},
-                "url": {"type": ["string", "null"]},
-                "pdf_path": {"type": ["string", "null"]},
-                "relevance": {"type": "string"},
+        "rung_reached": {
+            "type": ["integer", "null"]
+        },  # plan mode: 1-based ladder rung that found evidence
+        "papers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "pmid": {"type": ["string", "null"]},
+                    "doi": {"type": ["string", "null"]},
+                    "url": {"type": ["string", "null"]},
+                    "pdf_path": {"type": ["string", "null"]},
+                    "relevance": {"type": "string"},
+                },
+                "required": ["title", "relevance"],
             },
-            "required": ["title", "relevance"],
-        }},
-        "web_hits": {"type": "array", "items": {
-            "type": "object",
-            "properties": {"title": {"type": "string"}, "url": {"type": "string"},
-                           "snippet": {"type": "string"}},
-            "required": ["title", "url"],
-        }},
+        },
+        "web_hits": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "url": {"type": "string"},
+                    "snippet": {"type": "string"},
+                },
+                "required": ["title", "url"],
+            },
+        },
         "notes": {"type": "string"},
     },
     "required": ["queries", "papers", "web_hits", "notes"],
@@ -120,14 +149,20 @@ Put web results in web_hits.
 def not_found_pairs(bundle):
     omnipath = bundle.get("gene_interactions", {}).get("OmniPath")
     if omnipath is None:
-        raise ValueError(f"{bundle.get('program_id')}: no gene_interactions.OmniPath block "
-                         "(run 1.0.Search_database/search_gene_interaction/search_OmniPath.py first)")
+        raise ValueError(
+            f"{bundle.get('program_id')}: no gene_interactions.OmniPath block "
+            "(run 1.0.Search_database/search_gene_interaction/search_OmniPath.py first)"
+        )
     return [p for p in omnipath["pairs"].values() if not p["found"]]
 
 
 def plan_queries(bundle):
     """Every query of every literature_plan in the bundle (llm_query_agent.py), in plan order."""
-    return [q for plan in bundle.get("literature_plan", {}).values() for q in plan.get("queries", [])]
+    return [
+        q
+        for plan in bundle.get("literature_plan", {}).values()
+        for q in plan.get("queries", [])
+    ]
 
 
 def task_dir_name(query_id):
@@ -135,40 +170,48 @@ def task_dir_name(query_id):
 
 
 def build_plan_prompt(q, entries, bundle):
-    ladder = "\n".join(f"  rung {i}: {r['scope']}\n    PubMed: {r['pubmed_query']}\n    text: {r['text_query']}"
-                       for i, r in enumerate(q["ladder"], 1))
-    return "\n".join([
-        f"Program {bundle.get('program_id')} ({bundle.get('organism', 'human')}, "
-        f"cell type: {bundle.get('cell_type') or 'unspecified'}).",
-        f"Program GO terms: {', '.join(bundle.get('GO', [])[:8]) or 'none'}",
-        "",
-        f"Hypothesis ({q['question_type']}): {q['hypothesis']}",
-        "",
-        "Genes involved:",
-        *[describe_gene(g, entries.get(g)) for g in q["genes"]],
-        "",
-        "Query ladder:",
-        ladder,
-    ])
+    ladder = "\n".join(
+        f"  rung {i}: {r['scope']}\n    PubMed: {r['pubmed_query']}\n    text: {r['text_query']}"
+        for i, r in enumerate(q["ladder"], 1)
+    )
+    return "\n".join(
+        [
+            f"Program {bundle.get('program_id')} ({bundle.get('organism', 'human')}, "
+            f"cell type: {bundle.get('cell_type') or 'unspecified'}).",
+            f"Program GO terms: {', '.join(bundle.get('GO', [])[:8]) or 'none'}",
+            "",
+            f"Hypothesis ({q['question_type']}): {q['hypothesis']}",
+            "",
+            "Genes involved:",
+            *[describe_gene(g, entries.get(g)) for g in q["genes"]],
+            "",
+            "Query ladder:",
+            ladder,
+        ]
+    )
 
 
 def build_prompt(pair, entries, bundle):
     gene, reg = pair["gene"], pair["regulator"]
-    stats = "; ".join(f"{c}: log2FC={s.get('log2fc')}, adj_p={s.get('adj_pval')}"
-                      for c, s in pair.get("regulator_stats", {}).items())
-    return "\n".join([
-        f"Program {bundle.get('program_id')} ({bundle.get('organism', 'human')}, "
-        f"cell type: {bundle.get('cell_type') or 'unspecified'}).",
-        f"Program GO terms: {', '.join(bundle.get('GO', [])[:8]) or 'none'}",
-        "",
-        f"Program gene ({pair.get('query_category')}):",
-        describe_gene(gene, entries.get(gene)),
-        "",
-        f"Perturbed regulator ({stats}):",
-        describe_gene(reg, entries.get(reg)),
-        "",
-        f"Find literature relating {gene} and {reg}.",
-    ])
+    stats = "; ".join(
+        f"{c}: log2FC={s.get('log2fc')}, adj_p={s.get('adj_pval')}"
+        for c, s in pair.get("regulator_stats", {}).items()
+    )
+    return "\n".join(
+        [
+            f"Program {bundle.get('program_id')} ({bundle.get('organism', 'human')}, "
+            f"cell type: {bundle.get('cell_type') or 'unspecified'}).",
+            f"Program GO terms: {', '.join(bundle.get('GO', [])[:8]) or 'none'}",
+            "",
+            f"Program gene ({pair.get('query_category')}):",
+            describe_gene(gene, entries.get(gene)),
+            "",
+            f"Perturbed regulator ({stats}):",
+            describe_gene(reg, entries.get(reg)),
+            "",
+            f"Find literature relating {gene} and {reg}.",
+        ]
+    )
 
 
 # tools
@@ -179,7 +222,9 @@ def load_search_functions(sources):
         try:
             funcs[name] = getattr(importlib.import_module(module), name)
         except ImportError as e:
-            raise ImportError(f"source '{s}' ({module}.py) cannot be imported: {e}") from e
+            raise ImportError(
+                f"source '{s}' ({module}.py) cannot be imported: {e}"
+            ) from e
     return funcs
 
 
@@ -189,26 +234,42 @@ def list_pdfs(pair_dir):
 
 def make_tools(funcs, pair_dir, max_papers, calls):
     """One agent tool per search function; each downloads into pair_dir and logs to calls."""
-    schema = {"type": "object",
-              "properties": {"query": {"type": "string"},
-                             "max_results": {"type": "integer", "minimum": 1, "maximum": 15}},
-              "required": ["query"]}
+    schema = {
+        "type": "object",
+        "properties": {
+            "query": {"type": "string"},
+            "max_results": {"type": "integer", "minimum": 1, "maximum": 15},
+        },
+        "required": ["query"],
+    }
     tools = []
     for name, fn in funcs.items():
+
         def _make(name=name, fn=fn):
             @tool(name, (fn.__doc__ or name).strip(), schema)
             async def _run(args):
                 n = min(int(args.get("max_results") or max_papers), max_papers)
                 before = list_pdfs(pair_dir)
                 try:
-                    text = await asyncio.to_thread(fn, args["query"], n, None, str(pair_dir))
+                    text = await asyncio.to_thread(
+                        fn, args["query"], n, None, str(pair_dir)
+                    )
                 except Exception as e:  # a failing source must not end the agent run
                     text = f"Error during {name}: {e}"
                 new = sorted(list_pdfs(pair_dir) - before)
-                calls.append({"tool": name, "query": args["query"], "max_results": n,
-                              "new_pdfs": new, "error": text.startswith("Error")})
+                calls.append(
+                    {
+                        "tool": name,
+                        "query": args["query"],
+                        "max_results": n,
+                        "new_pdfs": new,
+                        "error": text.startswith("Error"),
+                    }
+                )
                 return {"content": [{"type": "text", "text": str(text)}]}
+
             return _run
+
         tools.append(_make())
     return tools
 
@@ -218,15 +279,19 @@ async def search_task(prompt, system_prompt, pair_dir, funcs, args, task_info):
     """Run one agent search into pair_dir; task_info (pair or query fields) is stored in the log."""
     pair_dir.mkdir(parents=True, exist_ok=True)
     calls, web_queries = [], []
-    server = create_sdk_mcp_server(SERVER, tools=make_tools(funcs, pair_dir, args.max_papers, calls))
-    allowed = [f"mcp__{SERVER}__{n}" for n in funcs] + (["WebSearch"] if args.web_search else [])
+    server = create_sdk_mcp_server(
+        SERVER, tools=make_tools(funcs, pair_dir, args.max_papers, calls)
+    )
+    allowed = [f"mcp__{SERVER}__{n}" for n in funcs] + (
+        ["WebSearch"] if args.web_search else []
+    )
     options = ClaudeAgentOptions(
         system_prompt=system_prompt.format(max_calls=args.max_tool_calls),
         mcp_servers={SERVER: server},
-        tools=["WebSearch"] if args.web_search else [],   # no Bash / Read / Write
+        tools=["WebSearch"] if args.web_search else [],  # no Bash / Read / Write
         allowed_tools=allowed,
         permission_mode="dontAsk",
-        setting_sources=[],                                # ignore user/project settings
+        setting_sources=[],  # ignore user/project settings
         model=args.model,
         max_turns=args.max_turns,
         max_budget_usd=args.max_budget_usd,
@@ -263,36 +328,107 @@ async def search_task(prompt, system_prompt, pair_dir, funcs, args, task_info):
         "is_error": getattr(final, "is_error", True),
         "stop_reason": getattr(final, "subtype", None),
     }
-    (pair_dir / "web_hits.json").write_text(json.dumps(result.get("web_hits", []), indent=2))
+    (pair_dir / "web_hits.json").write_text(
+        json.dumps(result.get("web_hits", []), indent=2)
+    )
     (pair_dir / "search_log.json").write_text(json.dumps(log, indent=2))
     return log
 
 
 def build_parser():
-    p = argparse.ArgumentParser(description="Claude Agent SDK literature search for literature_plan queries or OmniPath not-found gene-regulator pairs.")
+    p = argparse.ArgumentParser(
+        description="Claude Agent SDK literature search for literature_plan queries or OmniPath not-found gene-regulator pairs."
+    )
 
     # IO
-    p.add_argument("--info_dir", required=True, help="Gene_info_extended_PerturbNMF_Info folder from 1.0.Search_database.")
-    p.add_argument("--lit_dir", default=None, help="Literature_info_extended_PerturbNMF_Info folder (P<k>.json there win over --info_dir). Default: <info_dir>/../Literature_info_extended_PerturbNMF_Info.")
-    p.add_argument("--out_dir", default=None, help="Search output folder. Default: <lit_dir>/Literature_search.")
+    p.add_argument(
+        "--info_dir",
+        required=True,
+        help="Gene_info_extended_PerturbNMF_Info folder from 1.0.Search_database.",
+    )
+    p.add_argument(
+        "--lit_dir",
+        default=None,
+        help="Literature_info_extended_PerturbNMF_Info folder (P<k>.json there win over --info_dir). Default: <info_dir>/../Literature_info_extended_PerturbNMF_Info.",
+    )
+    p.add_argument(
+        "--out_dir",
+        default=None,
+        help="Search output folder. Default: <lit_dir>/Literature_search.",
+    )
 
     # context info
-    p.add_argument("--programs", type=int, nargs="+", required=True, help="Program ids, space separated (e.g. 1 2 3).")
-    p.add_argument("--mode", default="auto", choices=["auto", "plan", "omnipath"], help="plan: literature_plan queries (llm_query_agent.py); omnipath: OmniPath not-found pairs; auto: plan when the bundle has one.")
-    p.add_argument("--max_queries", type=int, default=None, help="plan mode: max queries searched per program (in plan order). Default: all.")
-    p.add_argument("--max_pairs", type=int, default=None, help="omnipath mode: max not-found pairs searched per program (in OmniPath's stored order). Default: all.")
+    p.add_argument(
+        "--programs",
+        type=int,
+        nargs="+",
+        required=True,
+        help="Program ids, space separated (e.g. 1 2 3).",
+    )
+    p.add_argument(
+        "--mode",
+        default="auto",
+        choices=["auto", "plan", "omnipath"],
+        help="plan: literature_plan queries (llm_query_agent.py); omnipath: OmniPath not-found pairs; auto: plan when the bundle has one.",
+    )
+    p.add_argument(
+        "--max_queries",
+        type=int,
+        default=None,
+        help="plan mode: max queries searched per program (in plan order). Default: all.",
+    )
+    p.add_argument(
+        "--max_pairs",
+        type=int,
+        default=None,
+        help="omnipath mode: max not-found pairs searched per program (in OmniPath's stored order). Default: all.",
+    )
 
     # search
-    p.add_argument("--sources", nargs="+", default=["ncbi", "crossref", "nature"], choices=list(SOURCES), help="Paper searchers given to the agent (openalex needs OPENALEX_API_KEY; pubmed/arxiv need langchain_community).")
-    p.add_argument("--max_papers", type=int, default=5, help="Max papers per tool call (searchers cap at 15).")
-    p.add_argument("--no_web_search", dest="web_search", action="store_false", help="Do not give the agent the WebSearch tool.")
+    p.add_argument(
+        "--sources",
+        nargs="+",
+        default=["ncbi", "crossref", "nature"],
+        choices=list(SOURCES),
+        help="Paper searchers given to the agent (openalex needs OPENALEX_API_KEY; pubmed/arxiv need langchain_community).",
+    )
+    p.add_argument(
+        "--max_papers",
+        type=int,
+        default=5,
+        help="Max papers per tool call (searchers cap at 15).",
+    )
+    p.add_argument(
+        "--no_web_search",
+        dest="web_search",
+        action="store_false",
+        help="Do not give the agent the WebSearch tool.",
+    )
 
     # agent
-    p.add_argument("--model", default="claude-sonnet-5", help="Claude model for the search agent.")
-    p.add_argument("--max_turns", type=int, default=20, help="Max agent turns per task.")
-    p.add_argument("--max_tool_calls", type=int, default=8, help="Tool-call budget stated in the agent's instructions.")
-    p.add_argument("--max_budget_usd", type=float, default=1.0, help="Hard spend cap per task (USD).")
-    p.add_argument("--overwrite", action="store_true", help="Re-search tasks that already have a search_log.json.")
+    p.add_argument(
+        "--model", default="claude-sonnet-5", help="Claude model for the search agent."
+    )
+    p.add_argument(
+        "--max_turns", type=int, default=20, help="Max agent turns per task."
+    )
+    p.add_argument(
+        "--max_tool_calls",
+        type=int,
+        default=8,
+        help="Tool-call budget stated in the agent's instructions.",
+    )
+    p.add_argument(
+        "--max_budget_usd",
+        type=float,
+        default=1.0,
+        help="Hard spend cap per task (USD).",
+    )
+    p.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Re-search tasks that already have a search_log.json.",
+    )
     return p
 
 
@@ -301,14 +437,37 @@ def program_tasks(bundle, mode, args):
     entries = gene_entries(bundle)
     info = {"program": bundle.get("program_id"), "cell_type": bundle.get("cell_type")}
     if mode == "plan":
-        return [(task_dir_name(q["id"]), build_plan_prompt(q, entries, bundle), PLAN_SYSTEM_PROMPT,
-                 {**info, "mode": "plan", "query_id": q["id"], "question_type": q["question_type"],
-                  "hypothesis": q["hypothesis"], "genes": q["genes"]})
-                for q in plan_queries(bundle)[:args.max_queries]]
-    return [(pair_key(p["gene"], p["regulator"]), build_prompt(p, entries, bundle), SYSTEM_PROMPT,
-             {**info, "mode": "omnipath", "pair": pair_key(p["gene"], p["regulator"]),
-              "gene": p["gene"], "regulator": p["regulator"]})
-            for p in not_found_pairs(bundle)[:args.max_pairs]]
+        return [
+            (
+                task_dir_name(q["id"]),
+                build_plan_prompt(q, entries, bundle),
+                PLAN_SYSTEM_PROMPT,
+                {
+                    **info,
+                    "mode": "plan",
+                    "query_id": q["id"],
+                    "question_type": q["question_type"],
+                    "hypothesis": q["hypothesis"],
+                    "genes": q["genes"],
+                },
+            )
+            for q in plan_queries(bundle)[: args.max_queries]
+        ]
+    return [
+        (
+            pair_key(p["gene"], p["regulator"]),
+            build_prompt(p, entries, bundle),
+            SYSTEM_PROMPT,
+            {
+                **info,
+                "mode": "omnipath",
+                "pair": pair_key(p["gene"], p["regulator"]),
+                "gene": p["gene"],
+                "regulator": p["regulator"],
+            },
+        )
+        for p in not_found_pairs(bundle)[: args.max_pairs]
+    ]
 
 
 async def run(args):
@@ -320,40 +479,66 @@ async def run(args):
 
     summary, done = {}, set()
     for label, bundle in bundles.items():
-        mode = args.mode if args.mode != "auto" else ("plan" if plan_queries(bundle) else "omnipath")
+        mode = (
+            args.mode
+            if args.mode != "auto"
+            else ("plan" if plan_queries(bundle) else "omnipath")
+        )
         tasks = program_tasks(bundle, mode, args)
         print(f"[{label}] {len(tasks)} {mode} task(s) to search")
         summary[label] = {"mode": mode, "tasks": []}
         for key, prompt, system_prompt, task_info in tasks:
             task_dir = out_dir / key
             summary[label]["tasks"].append(key)
-            if key in done or ((task_dir / "search_log.json").exists() and not args.overwrite):
+            if key in done or (
+                (task_dir / "search_log.json").exists() and not args.overwrite
+            ):
                 print(f"  {key}: already searched; skipped (use --overwrite)")
                 continue
-            log = await search_task(prompt, system_prompt, task_dir, funcs, args, task_info)
+            log = await search_task(
+                prompt, system_prompt, task_dir, funcs, args, task_info
+            )
             done.add(key)
-            print(f"  {key}: tool calls={len(log['tool_calls'])} web={len(log['web_search_queries'])} "
-                  f"PDFs={log['n_pdfs']} rung={log['rung_reached']} cost=${log['total_cost_usd'] or 0:.3f} "
-                  f"{'[agent error: ' + str(log['stop_reason']) + ']' if log['is_error'] else ''}")
+            print(
+                f"  {key}: tool calls={len(log['tool_calls'])} web={len(log['web_search_queries'])} "
+                f"PDFs={log['n_pdfs']} rung={log['rung_reached']} cost=${log['total_cost_usd'] or 0:.3f} "
+                f"{'[agent error: ' + str(log['stop_reason']) + ']' if log['is_error'] else ''}"
+            )
 
     meta = {
         "created": datetime.now().isoformat(timespec="seconds"),
         "inputs": {"info_dir": str(args.info_dir), "lit_dir": str(lit_dir)},
-        "params": {k: getattr(args, k) for k in (
-            "mode", "max_queries", "max_pairs", "sources", "max_papers", "web_search", "model",
-            "max_turns", "max_tool_calls", "max_budget_usd")},
+        "params": {
+            k: getattr(args, k)
+            for k in (
+                "mode",
+                "max_queries",
+                "max_pairs",
+                "sources",
+                "max_papers",
+                "web_search",
+                "model",
+                "max_turns",
+                "max_tool_calls",
+                "max_budget_usd",
+            )
+        },
         "programs": summary,
         "n_searched_this_run": len(done),
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2))
-    print(f"[done] {len(done)} task(s) searched -> {out_dir}; meta -> {out_dir / 'meta.json'}")
+    print(
+        f"[done] {len(done)} task(s) searched -> {out_dir}; meta -> {out_dir / 'meta.json'}"
+    )
 
 
 def main():
     args = build_parser().parse_args()
     load_env()
     if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("  [warn] ANTHROPIC_API_KEY not set (env or AGeneTic/.env); relying on a Claude Code login")
+        print(
+            "  [warn] ANTHROPIC_API_KEY not set (env or AGeneTic/.env); relying on a Claude Code login"
+        )
     if "openalex" in args.sources and not os.environ.get("OPENALEX_API_KEY"):
         raise SystemExit("--sources openalex needs OPENALEX_API_KEY")
     asyncio.run(run(args))

@@ -16,6 +16,7 @@ Stored in '<out_dir>/P<k>.json' -> literature_plan[<plan_name>] (other plans kep
 
 Env: ANTHROPIC_API_KEY (or AGeneTic/.env).
 """
+
 import argparse
 import math
 import sys
@@ -28,8 +29,18 @@ from pydantic import BaseModel, Field
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from src import (default_out_dir, describe_gene, gene_aliases, gene_entries, load_env,  # noqa: E402
-                 load_program_JSON, make_handler, regulator_stats, write_bundles, write_meta)
+from src import (
+    default_out_dir,
+    describe_gene,
+    gene_aliases,
+    gene_entries,
+    load_env,  # noqa: E402
+    load_program_JSON,
+    make_handler,
+    regulator_stats,
+    write_bundles,
+    write_meta,
+)
 
 SOURCE = "QueryAgent"
 
@@ -50,30 +61,50 @@ QuestionType = Literal[tuple(QUESTION_TYPES)]
 
 
 class QueryRung(BaseModel):
-    scope: str = Field(description="What this rung covers, e.g. 'gene + regulator + cell type'.")
-    pubmed_query: str = Field(description="PubMed E-utilities syntax: field tags ([tiab], [mesh]), AND/OR/NOT, aliases OR-ed in parentheses.")
-    text_query: str = Field(description="Plain keyword query for Crossref / Nature / OpenAlex / web search (no field tags).")
+    scope: str = Field(
+        description="What this rung covers, e.g. 'gene + regulator + cell type'."
+    )
+    pubmed_query: str = Field(
+        description="PubMed E-utilities syntax: field tags ([tiab], [mesh]), AND/OR/NOT, aliases OR-ed in parentheses."
+    )
+    text_query: str = Field(
+        description="Plain keyword query for Crossref / Nature / OpenAlex / web search (no field tags)."
+    )
 
 
 class PlannedQuery(BaseModel):
     id: str = Field(description="Short unique id, e.g. Q1.")
     question_type: QuestionType
-    hypothesis: str = Field(description="The specific, testable statement this query looks for evidence on.")
-    genes: list[str] = Field(description="Gene symbols involved, exactly as named in the digest.")
-    priority: Literal[1, 2, 3] = Field(description="1 = most informative for the program's function.")
-    ladder: list[QueryRung] = Field(description="2-4 rungs from most specific to broadest; searched in order.")
+    hypothesis: str = Field(
+        description="The specific, testable statement this query looks for evidence on."
+    )
+    genes: list[str] = Field(
+        description="Gene symbols involved, exactly as named in the digest."
+    )
+    priority: Literal[1, 2, 3] = Field(
+        description="1 = most informative for the program's function."
+    )
+    ladder: list[QueryRung] = Field(
+        description="2-4 rungs from most specific to broadest; searched in order."
+    )
 
 
 class CurationQuestion(BaseModel):
     id: str = Field(description="Short unique id, e.g. C1.")
     question_type: QuestionType
-    question: str = Field(description="A self-contained question answerable from retrieved papers (names genes and cell type explicitly).")
+    question: str = Field(
+        description="A self-contained question answerable from retrieved papers (names genes and cell type explicitly)."
+    )
     genes: list[str]
-    query_ids: list[str] = Field(description="Ids of the queries whose papers answer this question.")
+    query_ids: list[str] = Field(
+        description="Ids of the queries whose papers answer this question."
+    )
 
 
 class LiteraturePlan(BaseModel):
-    interpreted_goal: str = Field(description="One or two sentences: what the literature search should establish.")
+    interpreted_goal: str = Field(
+        description="One or two sentences: what the literature search should establish."
+    )
     queries: list[PlannedQuery]
     curation_questions: list[CurationQuestion]
 
@@ -99,58 +130,82 @@ Do not assign a program label and do not claim any finding; you are only plannin
 
 # digest
 def _fmt_stats(stats):
-    return "; ".join(f"{c}: log2FC={s.get('log2fc')}, adj_p={s.get('adj_pval')}" for c, s in stats.items())
+    return "; ".join(
+        f"{c}: log2FC={s.get('log2fc')}, adj_p={s.get('adj_pval')}"
+        for c, s in stats.items()
+    )
 
 
 def bundle_digest(bundle, max_genes=40):
     entries = gene_entries(bundle)
     regs = regulator_stats(bundle)
-    lines = [f"Program {bundle.get('program_id')} | organism: {bundle.get('organism')} | "
-             f"cell type: {bundle.get('cell_type')} | conditions: {', '.join(bundle.get('conditions', []))}",
-             f"Enriched GO terms: {', '.join(bundle.get('GO', [])) or 'none'}",
-             f"Program specificity: {bundle.get('program_specificity', {}).get('per_condition')}", ""]
+    lines = [
+        f"Program {bundle.get('program_id')} | organism: {bundle.get('organism')} | "
+        f"cell type: {bundle.get('cell_type')} | conditions: {', '.join(bundle.get('conditions', []))}",
+        f"Enriched GO terms: {', '.join(bundle.get('GO', [])) or 'none'}",
+        f"Program specificity: {bundle.get('program_specificity', {}).get('per_condition')}",
+        "",
+    ]
 
     def gene_lines(gene):
         entry = entries.get(gene, {})
         text = describe_gene(gene, entry)
         grif = entry.get("gene_info", {}).get("GeneRIF") or {}
         if grif.get("found"):
-            text += (f"\n  GeneRIF context (evidence_in_cell_type={grif.get('evidence_in_cell_type')}): "
-                     f"{grif.get('context_summary')}")
+            text += (
+                f"\n  GeneRIF context (evidence_in_cell_type={grif.get('evidence_in_cell_type')}): "
+                f"{grif.get('context_summary')}"
+            )
         return text
 
-    for key, title in (("program_genes", "Program genes (top loadings)"),
-                       ("distinctive_genes", "Distinctive genes")):
-        genes = [e["gene"] for e in bundle.get(key, []) if isinstance(e, dict)][:max_genes]
+    for key, title in (
+        ("program_genes", "Program genes (top loadings)"),
+        ("distinctive_genes", "Distinctive genes"),
+    ):
+        genes = [e["gene"] for e in bundle.get(key, []) if isinstance(e, dict)][
+            :max_genes
+        ]
         lines += [f"{title}:"] + [gene_lines(g) for g in genes] + [""]
     lines.append("Perturbation regulators (knockdown effect on this program):")
-    lines += [f"{gene_lines(r)}\n  effect: {_fmt_stats(s)}" for r, s in regs.items()] + [""]
+    lines += [
+        f"{gene_lines(r)}\n  effect: {_fmt_stats(s)}" for r, s in regs.items()
+    ] + [""]
 
     omnipath = bundle.get("gene_interactions", {}).get("OmniPath")
     if omnipath:
         pairs = omnipath.get("pairs", {}).values()
         found = [f"{p['regulator']}-{p['gene']}" for p in pairs if p.get("found")]
         missing = [f"{p['regulator']}-{p['gene']}" for p in pairs if not p.get("found")]
-        lines += [f"OmniPath regulator-gene pairs with a database interaction: {', '.join(found) or 'none'}",
-                  f"OmniPath pairs with NO database interaction: {', '.join(missing) or 'none'}"]
+        lines += [
+            f"OmniPath regulator-gene pairs with a database interaction: {', '.join(found) or 'none'}",
+            f"OmniPath pairs with NO database interaction: {', '.join(missing) or 'none'}",
+        ]
     return "\n".join(lines)
 
 
 def build_plan(bundle, goal, handler, args):
     system = SYSTEM_PROMPT.format(
         types="\n".join(f"  {k}: {v}" for k, v in QUESTION_TYPES.items()),
-        disease=(f"Disease context for D9: {args.disease_context}." if args.disease_context
-                 else "No disease context was given: do not plan D9 questions."),
-        max_queries=args.max_queries)
+        disease=(
+            f"Disease context for D9: {args.disease_context}."
+            if args.disease_context
+            else "No disease context was given: do not plan D9 questions."
+        ),
+        max_queries=args.max_queries,
+    )
     prompt = f"Research goal:\n{goal}\n\nProgram digest:\n{bundle_digest(bundle)}"
-    out = handler.get_json(system, prompt, LiteraturePlan, effort=args.effort, max_tokens=args.max_tokens)
+    out = handler.get_json(
+        system, prompt, LiteraturePlan, effort=args.effort, max_tokens=args.max_tokens
+    )
     return out.model_dump() if out is not None else None
 
 
 def from_research_brief(bundle, handler, args):
     brief = bundle.get("research_brief")
     if not brief:
-        raise ValueError(f"{bundle.get('program_id')}: no research_brief; pass --question instead")
+        raise ValueError(
+            f"{bundle.get('program_id')}: no research_brief; pass --question instead"
+        )
     return build_plan(bundle, brief, handler, args)
 
 
@@ -165,7 +220,9 @@ def regulator_strength(genes, regs):
     for g in genes:
         for s in regs.get(g, {}).values():
             if s.get("log2fc") is not None and s.get("adj_pval"):
-                best = max(best, abs(s["log2fc"]) * -math.log10(max(s["adj_pval"], 1e-300)))
+                best = max(
+                    best, abs(s["log2fc"]) * -math.log10(max(s["adj_pval"], 1e-300))
+                )
     return best
 
 
@@ -201,9 +258,9 @@ def finalize_plan(plan, bundle, plan_name, args):
         q["regulator_strength"] = round(regulator_strength(q["genes"], regs), 3)
         queries.append(q)
     queries.sort(key=lambda q: (q["priority"], -q["regulator_strength"]))
-    for q in queries[args.max_queries:]:
+    for q in queries[args.max_queries :]:
         dropped.append(f"{q['id']}: over --max_queries; query dropped")
-    queries = queries[:args.max_queries]
+    queries = queries[: args.max_queries]
 
     ids = {q["id"]: f"{plan_name}:{q['id']}" for q in queries}
     for q in queries:
@@ -212,7 +269,9 @@ def finalize_plan(plan, bundle, plan_name, args):
     for c in plan["curation_questions"]:
         c["genes"] = resolve(c["genes"], c["id"])
         c["query_ids"] = [ids[i] for i in c["query_ids"] if i in ids]
-        if not c["query_ids"] and c["question_type"] != "C7_cell_type":   # C7 can also read gene_pdfs/
+        if (
+            not c["query_ids"] and c["question_type"] != "C7_cell_type"
+        ):  # C7 can also read gene_pdfs/
             dropped.append(f"{c['id']}: none of its queries kept; question dropped")
             continue
         c["id"] = f"{plan_name}:{c['id']}"
@@ -221,26 +280,72 @@ def finalize_plan(plan, bundle, plan_name, args):
 
 
 def build_parser():
-    p = argparse.ArgumentParser(description="Turn a program's research_brief (or --question) into literature queries and curation questions.")
+    p = argparse.ArgumentParser(
+        description="Turn a program's research_brief (or --question) into literature queries and curation questions."
+    )
 
     # IO
-    p.add_argument("--info_dir", required=True, help="Gene_info_extended_PerturbNMF_Info folder from 1.0.Search_database.")
-    p.add_argument("--out_dir", default=None, help="Literature_info_extended_PerturbNMF_Info folder. Default: <info_dir>/../Literature_info_extended_PerturbNMF_Info.")
+    p.add_argument(
+        "--info_dir",
+        required=True,
+        help="Gene_info_extended_PerturbNMF_Info folder from 1.0.Search_database.",
+    )
+    p.add_argument(
+        "--out_dir",
+        default=None,
+        help="Literature_info_extended_PerturbNMF_Info folder. Default: <info_dir>/../Literature_info_extended_PerturbNMF_Info.",
+    )
 
     # context info
-    p.add_argument("--programs", type=int, nargs="+", required=True, help="Program ids, space separated (e.g. 1 2 3).")
-    p.add_argument("--question", default=None, help="Free-text question to plan for instead of the research_brief (vague -> specific mode).")
-    p.add_argument("--plan_name", default=None, help="Key under literature_plan (other plans are kept). Default: 'brief', or 'question' with --question.")
-    p.add_argument("--disease_context", default=None, help="Enables D9 disease questions, e.g. 'coronary artery disease'.")
+    p.add_argument(
+        "--programs",
+        type=int,
+        nargs="+",
+        required=True,
+        help="Program ids, space separated (e.g. 1 2 3).",
+    )
+    p.add_argument(
+        "--question",
+        default=None,
+        help="Free-text question to plan for instead of the research_brief (vague -> specific mode).",
+    )
+    p.add_argument(
+        "--plan_name",
+        default=None,
+        help="Key under literature_plan (other plans are kept). Default: 'brief', or 'question' with --question.",
+    )
+    p.add_argument(
+        "--disease_context",
+        default=None,
+        help="Enables D9 disease questions, e.g. 'coronary artery disease'.",
+    )
 
     # plan
-    p.add_argument("--max_queries", type=int, default=12, help="Max queries kept per program (ranked by priority, then regulator |log2FC| x -log10 adj_p).")
+    p.add_argument(
+        "--max_queries",
+        type=int,
+        default=12,
+        help="Max queries kept per program (ranked by priority, then regulator |log2FC| x -log10 adj_p).",
+    )
 
     # agent
-    p.add_argument("--model", default="claude-sonnet-5", help="Claude model for the query agent.")
-    p.add_argument("--effort", default="high", choices=["low", "medium", "high", "xhigh", "max"], help="Effort level of the query agent.")
-    p.add_argument("--max_tokens", type=int, default=16000, help="Max output tokens per program.")
-    p.add_argument("--overwrite", action="store_true", help="Re-plan programs that already have literature_plan[<plan_name>].")
+    p.add_argument(
+        "--model", default="claude-sonnet-5", help="Claude model for the query agent."
+    )
+    p.add_argument(
+        "--effort",
+        default="high",
+        choices=["low", "medium", "high", "xhigh", "max"],
+        help="Effort level of the query agent.",
+    )
+    p.add_argument(
+        "--max_tokens", type=int, default=16000, help="Max output tokens per program."
+    )
+    p.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Re-plan programs that already have literature_plan[<plan_name>].",
+    )
     return p
 
 
@@ -255,36 +360,68 @@ def main():
     summary = {}
     for label, bundle in bundles.items():
         if plan_name in bundle.get("literature_plan", {}) and not args.overwrite:
-            print(f"[{label}] literature_plan['{plan_name}'] exists; skipped (use --overwrite)")
+            print(
+                f"[{label}] literature_plan['{plan_name}'] exists; skipped (use --overwrite)"
+            )
             continue
-        plan = (from_question(args.question, bundle, handler, args) if args.question
-                else from_research_brief(bundle, handler, args))
+        plan = (
+            from_question(args.question, bundle, handler, args)
+            if args.question
+            else from_research_brief(bundle, handler, args)
+        )
         if plan is None:
-            print(f"[{label}] [warn] query agent returned nothing; bundle left unchanged")
+            print(
+                f"[{label}] [warn] query agent returned nothing; bundle left unchanged"
+            )
             summary[label] = {"error": True}
             continue
         plan, dropped = finalize_plan(plan, bundle, plan_name, args)
-        plan.update(source="question" if args.question else "research_brief", goal=args.question or bundle.get("research_brief"),
-                    model=args.model, created=datetime.now().isoformat(timespec="seconds"), dropped=dropped)
+        plan.update(
+            source="question" if args.question else "research_brief",
+            goal=args.question or bundle.get("research_brief"),
+            model=args.model,
+            created=datetime.now().isoformat(timespec="seconds"),
+            dropped=dropped,
+        )
         bundle.setdefault("literature_plan", {})[plan_name] = plan
         types = {}
         for q in plan["queries"]:
             types[q["question_type"]] = types.get(q["question_type"], 0) + 1
-        summary[label] = {"n_queries": len(plan["queries"]), "n_questions": len(plan["curation_questions"]),
-                          "question_types": types, "n_dropped": len(dropped)}
-        print(f"[{label}] {len(plan['queries'])} queries, {len(plan['curation_questions'])} curation questions; "
-              f"types {types}; {len(dropped)} dropped")
+        summary[label] = {
+            "n_queries": len(plan["queries"]),
+            "n_questions": len(plan["curation_questions"]),
+            "question_types": types,
+            "n_dropped": len(dropped),
+        }
+        print(
+            f"[{label}] {len(plan['queries'])} queries, {len(plan['curation_questions'])} curation questions; "
+            f"types {types}; {len(dropped)} dropped"
+        )
         for d in dropped:
             print(f"    [drop] {d}")
 
     write_bundles(out_dir, bundles)
-    write_meta(out_dir, SOURCE, {
-        "created": datetime.now().isoformat(timespec="seconds"),
-        "inputs": {"info_dir": str(args.info_dir)},
-        "plan_name": plan_name,
-        "params": {k: getattr(args, k) for k in ("question", "disease_context", "max_queries", "model", "effort", "max_tokens")},
-        "programs": summary,
-    })
+    write_meta(
+        out_dir,
+        SOURCE,
+        {
+            "created": datetime.now().isoformat(timespec="seconds"),
+            "inputs": {"info_dir": str(args.info_dir)},
+            "plan_name": plan_name,
+            "params": {
+                k: getattr(args, k)
+                for k in (
+                    "question",
+                    "disease_context",
+                    "max_queries",
+                    "model",
+                    "effort",
+                    "max_tokens",
+                )
+            },
+            "programs": summary,
+        },
+    )
     return 0
 
 

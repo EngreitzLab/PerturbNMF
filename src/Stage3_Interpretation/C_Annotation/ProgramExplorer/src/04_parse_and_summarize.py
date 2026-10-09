@@ -104,7 +104,9 @@ def get_cli_overrides(argv: List[str]) -> set[str]:
 def apply_config_overrides(
     args: argparse.Namespace, config: Dict[str, object], cli_overrides: set[str]
 ) -> argparse.Namespace:
-    steps_cfg = config.get("steps", {}) if isinstance(config.get("steps", {}), dict) else {}
+    steps_cfg = (
+        config.get("steps", {}) if isinstance(config.get("steps", {}), dict) else {}
+    )
     step_cfg = steps_cfg.get("parse_results", {})
     if not isinstance(step_cfg, dict):
         return args
@@ -120,24 +122,24 @@ def apply_config_overrides(
 
 def download_from_gcs(gcs_prefix: str, local_dir: str) -> List[str]:
     """Download all files from a GCS prefix to a local directory.
-    
+
     Returns list of downloaded file paths.
     """
     os.makedirs(local_dir, exist_ok=True)
-    
+
     # Ensure prefix ends with * for glob-like behavior
     if not gcs_prefix.endswith("*"):
         gcs_prefix = gcs_prefix.rstrip("/") + "/*"
-    
+
     print(f"Downloading from {gcs_prefix} to {local_dir}...")
-    
+
     cmd = ["gcloud", "storage", "cp", gcs_prefix, local_dir]
     result = subprocess.run(cmd, capture_output=True, text=True)
-    
+
     if result.returncode != 0:
         print(f"  ✗ GCS download failed: {result.stderr}")
         return []
-    
+
     # Find downloaded files
     downloaded = glob.glob(os.path.join(local_dir, "*"))
     print(f"  ✓ Downloaded {len(downloaded)} files")
@@ -150,7 +152,7 @@ def parse_final_results(result_file: str, output_dir: str) -> List[int]:
     Supports both Anthropic direct API and Vertex AI response formats:
     - Anthropic: {"custom_id": "...", "result": {"type": "succeeded", "message": {"content": [{"text": "..."}]}}}
     - Vertex AI: {"custom_id": "...", "response": {"content": [{"text": "..."}]}}
-    
+
     Returns a list of topic IDs successfully written.
     """
     if not os.path.exists(output_dir):
@@ -164,7 +166,11 @@ def parse_final_results(result_file: str, output_dir: str) -> List[int]:
             try:
                 data = json.loads(line)
                 custom_id = data.get("custom_id")
-                if custom_id and isinstance(custom_id, str) and custom_id.startswith("topic_"):
+                if (
+                    custom_id
+                    and isinstance(custom_id, str)
+                    and custom_id.startswith("topic_")
+                ):
                     # expected format: topic_<num>_annotation
                     m = re.match(r"topic_(\d+)", custom_id)
                     if not m:
@@ -172,15 +178,17 @@ def parse_final_results(result_file: str, output_dir: str) -> List[int]:
                     topic_number = int(m.group(1))
 
                     text_content = ""
-                    
+
                     # Try Vertex AI format first: {"response": {"content": [{"text": "..."}]}}
                     response = data.get("response", {})
                     if response:
                         content = response.get("content", [])
                         if isinstance(content, list) and content:
                             first = content[0]
-                            text_content = first.get("text", "") if isinstance(first, dict) else ""
-                    
+                            text_content = (
+                                first.get("text", "") if isinstance(first, dict) else ""
+                            )
+
                     # Fallback to Anthropic format: {"result": {"type": "succeeded", "message": {"content": [...]}}}
                     if not text_content:
                         result = data.get("result", {})
@@ -189,14 +197,22 @@ def parse_final_results(result_file: str, output_dir: str) -> List[int]:
                             content = message.get("content", [])
                             if isinstance(content, list) and content:
                                 first = content[0]
-                                text_content = first.get("text", "") if isinstance(first, dict) else ""
+                                text_content = (
+                                    first.get("text", "")
+                                    if isinstance(first, dict)
+                                    else ""
+                                )
                         elif result.get("type") == "errored":
                             error = result.get("error", {})
-                            print(f"  ✗ Topic {topic_number} failed. Reason: {error.get('message', 'Unknown error')}")
+                            print(
+                                f"  ✗ Topic {topic_number} failed. Reason: {error.get('message', 'Unknown error')}"
+                            )
                             continue
 
                     if text_content:
-                        output_filename = os.path.join(output_dir, f"topic_{topic_number}_annotation.md")
+                        output_filename = os.path.join(
+                            output_dir, f"topic_{topic_number}_annotation.md"
+                        )
                         with open(output_filename, "w", encoding="utf-8") as out_f:
                             out_f.write(text_content)
                         print(f"  ✓ Saved Topic {topic_number}")
@@ -211,7 +227,9 @@ def parse_final_results(result_file: str, output_dir: str) -> List[int]:
     return saved_ids
 
 
-def load_top_genes_by_topic(gene_loading_file: str, top_n: int = 10) -> Dict[int, List[str]]:
+def load_top_genes_by_topic(
+    gene_loading_file: str, top_n: int = 10
+) -> Dict[int, List[str]]:
     """Load top genes by RowID from gene loading CSV."""
     top_genes_by_topic: Dict[int, List[str]] = {}
     if not gene_loading_file or not os.path.exists(gene_loading_file):
@@ -225,12 +243,15 @@ def load_top_genes_by_topic(gene_loading_file: str, top_n: int = 10) -> Dict[int
         elif "RowID" in gene_df.columns:
             group_col = "RowID"
         else:
-             print("  ✗ CSV missing 'program_id' or 'RowID' column")
-             return top_genes_by_topic
+            print("  ✗ CSV missing 'program_id' or 'RowID' column")
+            return top_genes_by_topic
 
         for topic_id, group in gene_df.groupby(group_col):
             genes = (
-                group.sort_values("Score", ascending=False)["Name"].astype(str).head(top_n).tolist()
+                group.sort_values("Score", ascending=False)["Name"]
+                .astype(str)
+                .head(top_n)
+                .tolist()
             )
             top_genes_by_topic[int(topic_id)] = genes
         print(f"  ✓ Loaded gene data for {len(top_genes_by_topic)} topics")
@@ -253,7 +274,9 @@ def generate_unique_topic_names(
         key=lambda x: int(re.search(r"topic_(\d+)_", x).group(1)),
     )
 
-    top_genes_by_topic = load_top_genes_by_topic(gene_loading_file) if gene_loading_file else {}
+    top_genes_by_topic = (
+        load_top_genes_by_topic(gene_loading_file) if gene_loading_file else {}
+    )
 
     topic_rows: List[Dict[str, object]] = []
     used_names = set()
@@ -272,7 +295,9 @@ def generate_unique_topic_names(
                 content,
                 re.DOTALL,
             )
-            keywords_match = re.search(r"\*\*(?:Program label|Three Key Words):\*\*(.*?)\n", content, re.DOTALL)
+            keywords_match = re.search(
+                r"\*\*(?:Program label|Three Key Words):\*\*(.*?)\n", content, re.DOTALL
+            )
 
             summary = summary_match.group(1).strip() if summary_match else ""
             keywords_str = keywords_match.group(1).strip() if keywords_match else ""
@@ -297,7 +322,9 @@ def generate_unique_topic_names(
                 final_name = f"{base_name} ({signature_gene})"
 
             while final_name in used_names:
-                if topic_number in top_genes_by_topic and counter - 2 < len(top_genes_by_topic[topic_number]):
+                if topic_number in top_genes_by_topic and counter - 2 < len(
+                    top_genes_by_topic[topic_number]
+                ):
                     signature_gene = top_genes_by_topic[topic_number][counter - 2]
                     final_name = f"{base_name} ({signature_gene})"
                 else:
@@ -307,7 +334,9 @@ def generate_unique_topic_names(
                         re.IGNORECASE,
                     )
                     if distinguishing_terms and counter - 2 < len(distinguishing_terms):
-                        final_name = f"{base_name} ({distinguishing_terms[counter - 2]})"
+                        final_name = (
+                            f"{base_name} ({distinguishing_terms[counter - 2]})"
+                        )
                     else:
                         final_name = f"{base_name} ({counter})"
                 counter += 1
@@ -351,18 +380,27 @@ def build_parser() -> argparse.ArgumentParser:
         description="Parse Anthropic JSONL results to markdown and generate a summary CSV."
     )
     parser.add_argument("--config", help="Path to config file (YAML or JSON)")
-    parser.add_argument("--results-jsonl", help="Path to the .jsonl results file from Anthropic Batch API")
-    parser.add_argument("--markdown-dir", help="Directory to write/read per-topic markdown files")
+    parser.add_argument(
+        "--results-jsonl",
+        help="Path to the .jsonl results file from Anthropic Batch API",
+    )
+    parser.add_argument(
+        "--markdown-dir", help="Directory to write/read per-topic markdown files"
+    )
     parser.add_argument("--summary-csv", help="Path to write the summary CSV")
     parser.add_argument(
         "--gene-loading-file",
         help="Optional gene loading CSV (columns: Name, Score, RowID) to enrich summary naming",
     )
-    parser.add_argument("--no-parse", action="store_true", help="Skip parsing JSONL → markdown step")
-    parser.add_argument("--no-summary", action="store_true", help="Skip generating summary CSV step")
+    parser.add_argument(
+        "--no-parse", action="store_true", help="Skip parsing JSONL → markdown step"
+    )
+    parser.add_argument(
+        "--no-summary", action="store_true", help="Skip generating summary CSV step"
+    )
     parser.add_argument(
         "--gcs-prefix",
-        help="GCS prefix to download Vertex AI results from (e.g., gs://bucket/outputs/job_123/)"
+        help="GCS prefix to download Vertex AI results from (e.g., gs://bucket/outputs/job_123/)",
     )
     return parser
 
@@ -382,7 +420,7 @@ def main() -> None:
         # Download Vertex AI results from GCS
         temp_dir = tempfile.mkdtemp(prefix="vertex_results_")
         downloaded = download_from_gcs(args.gcs_prefix, temp_dir)
-        
+
         # Find JSONL files in downloaded results
         jsonl_files = [f for f in downloaded if f.endswith(".jsonl")]
         if jsonl_files:
@@ -396,7 +434,9 @@ def main() -> None:
         if not args.markdown_dir:
             raise SystemExit("--markdown-dir is required unless --no-parse is set")
         if not results_jsonl:
-            raise SystemExit("--results-jsonl or --gcs-prefix is required unless --no-parse is set")
+            raise SystemExit(
+                "--results-jsonl or --gcs-prefix is required unless --no-parse is set"
+            )
         parse_final_results(results_jsonl, args.markdown_dir)
 
     # Step B: markdown → summary CSV
@@ -405,7 +445,9 @@ def main() -> None:
             raise SystemExit("--markdown-dir is required unless --no-summary is set")
         if not args.summary_csv:
             raise SystemExit("--summary-csv is required unless --no-summary is set")
-        generate_unique_topic_names(args.markdown_dir, args.summary_csv, args.gene_loading_file)
+        generate_unique_topic_names(
+            args.markdown_dir, args.summary_csv, args.gene_loading_file
+        )
 
 
 if __name__ == "__main__":

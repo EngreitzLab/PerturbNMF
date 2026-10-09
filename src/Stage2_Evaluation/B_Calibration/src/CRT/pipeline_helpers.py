@@ -46,7 +46,9 @@ def _fit_propensity(
     return _extract_probabilities(propensity_model(inputs.C, y01))
 
 
-def _sample_crt_indices(p: np.ndarray, B: int, seed: int) -> Tuple[np.ndarray, np.ndarray]:
+def _sample_crt_indices(
+    p: np.ndarray, B: int, seed: int
+) -> Tuple[np.ndarray, np.ndarray]:
     return crt_index_sampler_fast_numba(p, B, seed)
 
 
@@ -161,9 +163,7 @@ def _stack_skew_outputs(
 ) -> Tuple[pd.DataFrame, np.ndarray]:
     pvals_sn_mat = np.vstack([r.pvals_sn for r in results])
     skew_params = np.stack([r.skew_params for r in results])
-    pvals_skew_df = pd.DataFrame(
-        pvals_sn_mat, index=gene_list, columns=program_names
-    )
+    pvals_skew_df = pd.DataFrame(pvals_sn_mat, index=gene_list, columns=program_names)
     return pvals_skew_df, skew_params
 
 

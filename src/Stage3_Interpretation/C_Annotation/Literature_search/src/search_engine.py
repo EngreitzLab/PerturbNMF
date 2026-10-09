@@ -1,4 +1,5 @@
 """PubTator3 search orchestration: baseline + LLM queries + dedup."""
+
 from __future__ import annotations
 
 import logging
@@ -30,9 +31,7 @@ class SearchEngine:
         logger.info("Baseline query (%d genes): %s...", len(genes), query[:120])
         return search_pubtator(query, max_results=max_results)
 
-    def search_query(
-        self, query: str, max_results: int = 50
-    ) -> List[Dict[str, Any]]:
+    def search_query(self, query: str, max_results: int = 50) -> List[Dict[str, Any]]:
         """Execute a single PubTator3 query."""
         logger.debug("Executing query: %s", query[:120])
         return search_pubtator(query, max_results=max_results)
@@ -73,7 +72,9 @@ class SearchEngine:
                 pmid_info[pmid]["sources"].append("baseline")
 
         # 2) PubMed search (broader than PubTator3)
-        pubmed_results = search_pubmed(f"({' OR '.join(genes[:10])})", max_results=max_pubtator_results)
+        pubmed_results = search_pubmed(
+            f"({' OR '.join(genes[:10])})", max_results=max_pubtator_results
+        )
         for r in pubmed_results:
             pmid = r.get("pmid")
             if pmid is None:

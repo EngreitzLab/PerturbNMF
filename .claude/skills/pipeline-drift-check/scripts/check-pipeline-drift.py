@@ -26,13 +26,21 @@ if not (ROOT / ".git").exists():
     sys.exit(0)
 
 # Primary flag plus one optional alias, e.g. add_argument('--Conditions', '--Sample', ...)
-ARG_RE = re.compile(r"add_argument\(\s*['\"]--([a-zA-Z][a-zA-Z0-9_-]+)['\"](?:\s*,\s*['\"]--([a-zA-Z][a-zA-Z0-9_-]+)['\"])?")
+ARG_RE = re.compile(
+    r"add_argument\(\s*['\"]--([a-zA-Z][a-zA-Z0-9_-]+)['\"](?:\s*,\s*['\"]--([a-zA-Z][a-zA-Z0-9_-]+)['\"])?"
+)
 R_ARG_RE = re.compile(r"make_option\(\s*['\"]--([a-zA-Z][a-zA-Z0-9_-]+)['\"]")
 PYTEST_ARG_RE = re.compile(r"addoption\(\s*['\"]--([a-zA-Z][a-zA-Z0-9_-]+)['\"]")
 DASH_RE = re.compile(r"--([a-zA-Z][a-zA-Z0-9_-]+)")
 TABLE_ROW_RE = re.compile(r"^\|\s*`?([a-z][a-z0-9_-]+)`?\s*\|", re.MULTILINE)
 
-SKIP_DIR_PARTS = {"JupterNote_Version", "JupterNote_version", "tests", ".git", "__pycache__"}
+SKIP_DIR_PARTS = {
+    "JupterNote_Version",
+    "JupterNote_version",
+    "tests",
+    ".git",
+    "__pycache__",
+}
 # Wildcard placeholders in narrative prose ("renamed --foo_* to --bar_*").
 WILDCARD_RE = re.compile(r"--[a-zA-Z0-9_]+_\*")
 # Abstract placeholders used in skill markdown to document conventions, not
@@ -42,7 +50,9 @@ WILDCARD_RE = re.compile(r"--[a-zA-Z0-9_]+_\*")
 # can't tell these apart from real flag references, so we exempt them.
 SKILL_PLACEHOLDER_ALLOWLIST = {"flag", "flag_name", "COMMENTED---"}
 # Lines describing a rename — old name on the line is documentation, not drift.
-RENAME_RE = re.compile(r"(?:→|->|\bis now\b|\brenamed\b|\bformerly\b|\bwas\s+renamed\b)", re.IGNORECASE)
+RENAME_RE = re.compile(
+    r"(?:→|->|\bis now\b|\brenamed\b|\bformerly\b|\bwas\s+renamed\b)", re.IGNORECASE
+)
 # Lines referencing external CLI tools — their --flags belong to those tools.
 EXTERNAL_TOOL_RE = re.compile(
     r"\b(sacct|sbatch|squeue|scancel|sinfo|srun|salloc|jupyter|nbconvert|pytest|conftest)\b"
@@ -55,7 +65,12 @@ def skip(p: Path) -> bool:
 
 def py_args(py: Path) -> set[str]:
     try:
-        return {name for pair in ARG_RE.findall(py.read_text(errors="ignore")) for name in pair if name}
+        return {
+            name
+            for pair in ARG_RE.findall(py.read_text(errors="ignore"))
+            for name in pair
+            if name
+        }
     except OSError:
         return set()
 
@@ -129,8 +144,15 @@ def md_param_table_names(md: str) -> set[str]:
         if in_section and not _skip_line(line):
             m = TABLE_ROW_RE.match(line)
             if m and m.group(1).lower() not in {
-                "parameter", "argument", "name", "type", "default",
-                "description", "required", "optional", "key",
+                "parameter",
+                "argument",
+                "name",
+                "type",
+                "default",
+                "description",
+                "required",
+                "optional",
+                "key",
             }:
                 out.add(m.group(1))
     return out
@@ -165,7 +187,7 @@ def sh_runner_args(sh: Path, target_basename: str | None = None) -> set[str]:
         if s.startswith("#"):
             continue
         if not in_block:
-            invokes = (("python" in s and ".py" in s) or ("Rscript" in s and ".R" in s))
+            invokes = ("python" in s and ".py" in s) or ("Rscript" in s and ".R" in s)
             if invokes:
                 if target_basename is None or target_basename in s:
                     in_block = True
@@ -194,7 +216,9 @@ def find_sibling(py: Path, suffix: str) -> Path | None:
     return None
 
 
-def check_per_script(pipeline: dict[Path, set[str]]) -> list[tuple[Path, Path, set[str]]]:
+def check_per_script(
+    pipeline: dict[Path, set[str]],
+) -> list[tuple[Path, Path, set[str]]]:
     """For each pipeline .py, compare its sibling README and .sh to its argparse.
 
     Returns list of (consumer_file, pipeline_py, stale_arg_set).
@@ -217,7 +241,9 @@ def check_per_script(pipeline: dict[Path, set[str]]) -> list[tuple[Path, Path, s
     return findings
 
 
-def check_skill_globally(global_args: set[str], helper_args: set[str]) -> dict[Path, set[str]]:
+def check_skill_globally(
+    global_args: set[str], helper_args: set[str]
+) -> dict[Path, set[str]]:
     """Skill markdown: an arg must be in some pipeline .py OR in a skill helper .py.
     The latter exempts the skill's own CLI flags (--gpu, --stage, etc.)."""
     valid = global_args | helper_args
@@ -245,14 +271,18 @@ def main() -> int:
     skill_drift = check_skill_globally(global_args, helper_args)
 
     if not per_script and not skill_drift:
-        print("No drift detected. README/.sh/skill docs are aligned with src/ argparse.")
+        print(
+            "No drift detected. README/.sh/skill docs are aligned with src/ argparse."
+        )
         return 0
 
     lines: list[str] = ["<doc-sync-check>", "Param drift detected in PerturbNMF."]
 
     if per_script:
         lines.append("")
-        lines.append("Per-script drift (sibling README/.sh has args missing from its .py):")
+        lines.append(
+            "Per-script drift (sibling README/.sh has args missing from its .py):"
+        )
         # Group by consumer file for readability
         by_consumer: dict[Path, list[tuple[Path, set[str]]]] = defaultdict(list)
         for consumer, py, stale in per_script:
@@ -267,7 +297,9 @@ def main() -> int:
 
     if skill_drift:
         lines.append("")
-        lines.append("Skill drift (args mentioned but not defined in ANY pipeline .py):")
+        lines.append(
+            "Skill drift (args mentioned but not defined in ANY pipeline .py):"
+        )
         for path, stale in sorted(skill_drift.items()):
             rel = path.relative_to(ROOT)
             lines.append(f"  {rel}")

@@ -20,6 +20,7 @@ Each step is executed via subprocess, calling the numbered scripts
 (01_genes_to_string_enrichment.py ... 05_generate_html_report.py) located
 in the same directory as this file.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,8 +37,10 @@ from typing import Any, Dict, List, Optional
 try:
     from dotenv import load_dotenv
 except ImportError:  # python-dotenv is optional
+
     def load_dotenv() -> None:  # type: ignore[misc]
         pass
+
 
 # Resolve the directory containing this script (and sibling step scripts).
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -63,19 +66,18 @@ from pipeline_state import (  # noqa: E402
 load_dotenv()
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 # Pipeline steps in order
 STEPS = [
-    "string_enrichment",   # Step 1: Extract genes + STRING enrichment
-    "literature_fetch",    # Step 2: Fetch NCBI/Harmonizome data
-    "batch_prepare",       # Step 3a: Prepare LLM batch request
-    "batch_submit",        # Step 3b: Submit to Vertex AI
-    "parse_results",       # Step 4: Parse LLM responses
-    "html_report",         # Step 5: Generate HTML report
+    "string_enrichment",  # Step 1: Extract genes + STRING enrichment
+    "literature_fetch",  # Step 2: Fetch NCBI/Harmonizome data
+    "batch_prepare",  # Step 3a: Prepare LLM batch request
+    "batch_submit",  # Step 3b: Submit to Vertex AI
+    "parse_results",  # Step 4: Parse LLM responses
+    "html_report",  # Step 5: Generate HTML report
 ]
 
 
@@ -91,16 +93,21 @@ class PipelineConfig:
 
     All intermediate paths are auto-generated.
     """
+
     # Required inputs (user must provide these)
     gene_loading: Path
-    celltype_enrichment: Optional[Path]  # Optional raw enrichment file (summary auto-generated)
+    celltype_enrichment: Optional[
+        Path
+    ]  # Optional raw enrichment file (summary auto-generated)
     regulator_file: Optional[Path]
     output_dir: Path
 
     # Optional settings with defaults
     topics: Optional[List[int]] = None  # None = all topics
     species: int = 10090  # Mouse by default
-    keyword: str = ""  # PubMed keyword for your tissue/cell type; empty = no keyword filter
+    keyword: str = (
+        ""  # PubMed keyword for your tissue/cell type; empty = no keyword filter
+    )
     annotation_role: str = "molecular and cell biologist"
     annotation_context: str = "a gene program extracted from single-cell Perturb-seq"
     n_top_genes: int = 300
@@ -119,7 +126,9 @@ class PipelineConfig:
     llm_wait: bool = False  # Default: do not wait; resume later
 
     # Vertex AI settings (only used if llm_backend="vertex")
-    vertex_bucket: str = os.environ.get("VERTEX_BUCKET", "")  # e.g. gs://<your-bucket>/batch
+    vertex_bucket: str = os.environ.get(
+        "VERTEX_BUCKET", ""
+    )  # e.g. gs://<your-bucket>/batch
 
     # Gene summary options
     full_summaries: bool = False  # Use full HTML summaries (3x longer)
@@ -146,24 +155,22 @@ class PipelineConfig:
             "genes_json": out / "genes_top.json",
             "genes_overview": out / "genes_overview.csv",
             "enrichment_full": out / "string_enrichment" / "enrichment_full.csv",
-            "enrichment_filtered": out / "string_enrichment" / "enrichment_filtered.csv",
+            "enrichment_filtered": out
+            / "string_enrichment"
+            / "enrichment_filtered.csv",
             "enrichment_figures": out / "string_enrichment" / "figures",
             "enrichment_cache": out / "string_enrichment" / "cache",
             "gene_loading_with_uniqueness": out / "gene_loading_with_uniqueness.csv",
             "celltype_summary": out / "celltype_summary.csv",
-
             # Step 2 outputs
             "ncbi_json": out / "literature_context.json",
             "ncbi_csv": out / "literature_context.csv",
-
             # Step 3 outputs
             "batch_request_json": out / "llm_batches" / "batch_request.json",
             "batch_request_jsonl": out / "llm_batches" / "batch_request.jsonl",
-
             # Step 4 outputs
             "annotations_dir": out / "annotations",
             "summary_csv": out / "annotations" / "summary.csv",
-
             # Step 5 outputs
             "report_html": out / "annotations" / "report.html",
         }
@@ -184,15 +191,30 @@ class PipelineConfig:
 
         # Filter to only known fields
         known_fields = {
-            "gene_loading", "celltype_enrichment", "output_dir",
-            "regulator_file", "topics", "species", "keyword",
-            "annotation_role", "annotation_context",
-            "n_top_genes", "top_loading", "top_unique",
-            "top_enrichment", "genes_per_term",
-            "top_positive_regulators", "top_negative_regulators",
+            "gene_loading",
+            "celltype_enrichment",
+            "output_dir",
+            "regulator_file",
+            "topics",
+            "species",
+            "keyword",
+            "annotation_role",
+            "annotation_context",
+            "n_top_genes",
+            "top_loading",
+            "top_unique",
+            "top_enrichment",
+            "genes_per_term",
+            "top_positive_regulators",
+            "top_negative_regulators",
             "regulator_significance_threshold",
-            "llm_backend", "llm_model", "llm_max_tokens", "llm_wait",
-            "vertex_bucket", "full_summaries", "resume"
+            "llm_backend",
+            "llm_model",
+            "llm_max_tokens",
+            "llm_wait",
+            "vertex_bucket",
+            "full_summaries",
+            "resume",
         }
         if "keyword" not in data and "context" in data:
             data["keyword"] = data["context"]
@@ -221,26 +243,44 @@ def run_step_1_string_enrichment(config: PipelineConfig) -> bool:
     script = _SCRIPT_DIR / "01_genes_to_string_enrichment.py"
 
     cmd = [
-        sys.executable, str(script), "all",
-        "--input", str(config.gene_loading),
-        "--n-top", str(config.n_top_genes),
-        "--json-out", str(config.get_path("genes_json")),
-        "--csv-out", str(config.get_path("genes_overview")),
-        "--species", str(config.species),
-        "--out-csv-full", str(config.get_path("enrichment_full")),
-        "--out-csv-filtered", str(config.get_path("enrichment_filtered")),
-        "--figures-dir", str(config.get_path("enrichment_figures")),
-        "--cache-dir", str(config.get_path("enrichment_cache")),
-        "--gene-loading-out", str(config.get_path("gene_loading_with_uniqueness")),
+        sys.executable,
+        str(script),
+        "all",
+        "--input",
+        str(config.gene_loading),
+        "--n-top",
+        str(config.n_top_genes),
+        "--json-out",
+        str(config.get_path("genes_json")),
+        "--csv-out",
+        str(config.get_path("genes_overview")),
+        "--species",
+        str(config.species),
+        "--out-csv-full",
+        str(config.get_path("enrichment_full")),
+        "--out-csv-filtered",
+        str(config.get_path("enrichment_filtered")),
+        "--figures-dir",
+        str(config.get_path("enrichment_figures")),
+        "--cache-dir",
+        str(config.get_path("enrichment_cache")),
+        "--gene-loading-out",
+        str(config.get_path("gene_loading_with_uniqueness")),
     ]
 
     if config.celltype_enrichment:
-        cmd.extend([
-            "--celltype-enrichment", str(config.celltype_enrichment),
-            "--celltype-summary-out", str(config.get_path("celltype_summary")),
-        ])
+        cmd.extend(
+            [
+                "--celltype-enrichment",
+                str(config.celltype_enrichment),
+                "--celltype-summary-out",
+                str(config.get_path("celltype_summary")),
+            ]
+        )
     else:
-        logger.info("Cell-type enrichment file not provided; skipping cell-type summary generation.")
+        logger.info(
+            "Cell-type enrichment file not provided; skipping cell-type summary generation."
+        )
 
     if config.topics:
         cmd.extend(["--topics", ",".join(map(str, config.topics))])
@@ -272,15 +312,23 @@ def run_step_2_literature_fetch(config: PipelineConfig) -> bool:
         gene_input = config.gene_loading
 
     cmd = [
-        sys.executable, str(script),
-        "--input", str(gene_input),
-        "--keyword", config.keyword,
-        "--json-out", str(config.get_path("ncbi_json")),
-        "--csv-out", str(config.get_path("ncbi_csv")),
-        "--gene-summary-source", "harmonizome",
+        sys.executable,
+        str(script),
+        "--input",
+        str(gene_input),
+        "--keyword",
+        config.keyword,
+        "--json-out",
+        str(config.get_path("ncbi_json")),
+        "--csv-out",
+        str(config.get_path("ncbi_csv")),
+        "--gene-summary-source",
+        "harmonizome",
         # Fetch summaries for exactly top_loading + top_unique genes
-        "--top-loading", str(config.top_loading),
-        "--top-unique", str(config.top_unique),
+        "--top-loading",
+        str(config.top_loading),
+        "--top-unique",
+        str(config.top_unique),
     ]
 
     # Optional: Use full HTML summaries (3x longer)
@@ -289,11 +337,16 @@ def run_step_2_literature_fetch(config: PipelineConfig) -> bool:
 
     if config.regulator_file and config.regulator_file.exists():
         cmd.extend(["--regulator-file", str(config.regulator_file)])
-        cmd.extend([
-            "--top-positive-regulators", str(config.top_positive_regulators),
-            "--top-negative-regulators", str(config.top_negative_regulators),
-            "--regulator-significance-threshold", str(config.regulator_significance_threshold),
-        ])
+        cmd.extend(
+            [
+                "--top-positive-regulators",
+                str(config.top_positive_regulators),
+                "--top-negative-regulators",
+                str(config.top_negative_regulators),
+                "--regulator-significance-threshold",
+                str(config.regulator_significance_threshold),
+            ]
+        )
     if config.topics:
         cmd.extend(["--topics", ",".join(map(str, config.topics))])
 
@@ -331,31 +384,51 @@ def run_step_3a_batch_prepare(config: PipelineConfig) -> bool:
 
     search_keyword = config.keyword
     cmd = [
-        sys.executable, str(script), "prepare",
-        "--gene-file", str(gene_input),
-        "--celltype-dir", str(celltype_summary.parent),  # Fallback directory
-        "--enrichment-file", str(config.get_path("enrichment_filtered")),
-        "--ncbi-file", str(config.get_path("ncbi_json")),
-        "--output-file", str(config.get_path("batch_request_json")),
-        "--top-loading", str(config.top_loading),
-        "--top-unique", str(config.top_unique),
-        "--top-enrichment", str(config.top_enrichment),
-        "--genes-per-term", str(config.genes_per_term),
-        "--annotation-role", str(config.annotation_role),
-        "--annotation-context", str(config.annotation_context),
-        "--search-keyword", str(search_keyword),
+        sys.executable,
+        str(script),
+        "prepare",
+        "--gene-file",
+        str(gene_input),
+        "--celltype-dir",
+        str(celltype_summary.parent),  # Fallback directory
+        "--enrichment-file",
+        str(config.get_path("enrichment_filtered")),
+        "--ncbi-file",
+        str(config.get_path("ncbi_json")),
+        "--output-file",
+        str(config.get_path("batch_request_json")),
+        "--top-loading",
+        str(config.top_loading),
+        "--top-unique",
+        str(config.top_unique),
+        "--top-enrichment",
+        str(config.top_enrichment),
+        "--genes-per-term",
+        str(config.genes_per_term),
+        "--annotation-role",
+        str(config.annotation_role),
+        "--annotation-context",
+        str(config.annotation_context),
+        "--search-keyword",
+        str(search_keyword),
     ]
 
     if celltype_summary.exists():
         cmd.extend(["--celltype-file", str(celltype_summary)])
 
     if config.regulator_file:
-        cmd.extend([
-            "--regulator-file", str(config.regulator_file),
-            "--top-positive-regulators", str(config.top_positive_regulators),
-            "--top-negative-regulators", str(config.top_negative_regulators),
-            "--regulator-significance-threshold", str(config.regulator_significance_threshold),
-        ])
+        cmd.extend(
+            [
+                "--regulator-file",
+                str(config.regulator_file),
+                "--top-positive-regulators",
+                str(config.top_positive_regulators),
+                "--top-negative-regulators",
+                str(config.top_negative_regulators),
+                "--regulator-significance-threshold",
+                str(config.regulator_significance_threshold),
+            ]
+        )
     if config.topics:
         cmd.extend(["--topics", ",".join(map(str, config.topics))])
 
@@ -370,7 +443,9 @@ def run_step_3a_batch_prepare(config: PipelineConfig) -> bool:
     return True
 
 
-def run_step_3b_batch_submit(config: PipelineConfig) -> Optional[tuple[str, Optional[str], bool]]:
+def run_step_3b_batch_submit(
+    config: PipelineConfig,
+) -> Optional[tuple[str, Optional[str], bool]]:
     """Step 3b: Submit batch to LLM backend.
 
     Returns (batch_id, results_path, waiting)
@@ -445,16 +520,20 @@ def run_step_3b_batch_submit(config: PipelineConfig) -> Optional[tuple[str, Opti
     if backend == "vertex":
         # Read batch ID (Vertex stores job name)
         batch_id_file = config.get_path("batch_request_json").with_suffix(".batch_id")
-        batch_id = batch_id_file.read_text(encoding="utf-8").strip() if batch_id_file.exists() else None
+        batch_id = (
+            batch_id_file.read_text(encoding="utf-8").strip()
+            if batch_id_file.exists()
+            else None
+        )
         waiting = not config.llm_wait
 
         # Vertex AI: look for GCS prefix
         output_base = None
         for line in result.stdout.splitlines():
             if "Results available at:" in line or "Output:" in line:
-                match = re.search(r'(gs://[^\s]+)', line)
+                match = re.search(r"(gs://[^\s]+)", line)
                 if match:
-                    output_base = match.group(1).rstrip('/')
+                    output_base = match.group(1).rstrip("/")
                     break
 
         output_path = None
@@ -465,7 +544,7 @@ def run_step_3b_batch_submit(config: PipelineConfig) -> Optional[tuple[str, Opti
                 if list_result.returncode == 0:
                     for gcs_line in list_result.stdout.splitlines():
                         if "prediction-model-" in gcs_line:
-                            output_path = gcs_line.rstrip('/')
+                            output_path = gcs_line.rstrip("/")
                             break
                 if not output_path:
                     output_path = output_base
@@ -499,7 +578,9 @@ def run_step_3b_batch_submit(config: PipelineConfig) -> Optional[tuple[str, Opti
     return batch_id or "", results_path, waiting
 
 
-def run_step_4_parse_results(config: PipelineConfig, results_path: Optional[str] = None) -> bool:
+def run_step_4_parse_results(
+    config: PipelineConfig, results_path: Optional[str] = None
+) -> bool:
     """Step 4: Parse LLM responses and generate summary.
 
     Args:
@@ -520,10 +601,14 @@ def run_step_4_parse_results(config: PipelineConfig, results_path: Optional[str]
         gene_input = config.gene_loading
 
     cmd = [
-        sys.executable, str(script),
-        "--markdown-dir", str(config.get_path("annotations_dir")),
-        "--summary-csv", str(config.get_path("summary_csv")),
-        "--gene-loading-file", str(gene_input),
+        sys.executable,
+        str(script),
+        "--markdown-dir",
+        str(config.get_path("annotations_dir")),
+        "--summary-csv",
+        str(config.get_path("summary_csv")),
+        "--gene-loading-file",
+        str(gene_input),
     ]
 
     if results_path:
@@ -559,19 +644,29 @@ def run_step_5_html_report(config: PipelineConfig) -> bool:
         gene_input = config.gene_loading
 
     cmd = [
-        sys.executable, str(script),
-        "--summary-csv", str(config.get_path("summary_csv")),
-        "--annotations-dir", str(config.get_path("annotations_dir")),
-        "--enrichment-dir", str(config.get_path("enrichment_figures")),
-        "--gene-loading-csv", str(gene_input),
-        "--output-html", str(config.get_path("report_html")),
+        sys.executable,
+        str(script),
+        "--summary-csv",
+        str(config.get_path("summary_csv")),
+        "--annotations-dir",
+        str(config.get_path("annotations_dir")),
+        "--enrichment-dir",
+        str(config.get_path("enrichment_figures")),
+        "--gene-loading-csv",
+        str(gene_input),
+        "--output-html",
+        str(config.get_path("report_html")),
     ]
 
     if config.regulator_file and config.regulator_file.exists():
-        cmd.extend([
-            "--volcano-csv", str(config.regulator_file),
-            "--regulator-significance-threshold", str(config.regulator_significance_threshold),
-        ])
+        cmd.extend(
+            [
+                "--volcano-csv",
+                str(config.regulator_file),
+                "--regulator-significance-threshold",
+                str(config.regulator_significance_threshold),
+            ]
+        )
 
     logger.info(f"Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=False)
@@ -628,7 +723,9 @@ def run_pipeline(
             )
             return False
         if state.config_hash != config_hash and force_restart:
-            logger.warning("Config changed; restarting pipeline and overwriting prior outputs after warning.")
+            logger.warning(
+                "Config changed; restarting pipeline and overwriting prior outputs after warning."
+            )
             state = init_state(config_hash, config.topics)
             save_state(state_path, state)
     else:
@@ -759,7 +856,9 @@ def run_pipeline(
             # If no results path but batch_id exists, check/fetch batch status
             if not results_path and state.batch.get("batch_id"):
                 batch_id = state.batch["batch_id"]
-                logger.info("No results path found. Checking batch status for %s...", batch_id)
+                logger.info(
+                    "No results path found. Checking batch status for %s...", batch_id
+                )
 
                 from batch_utils import check_anthropic_batch, check_vertex_batch
 
@@ -773,10 +872,14 @@ def run_pipeline(
                     results_dest = config.get_path("batch_request_json").with_name(
                         config.get_path("batch_request_json").stem + "_results.jsonl"
                     )
-                    status, fetched_path = check_anthropic_batch(batch_id, str(results_dest))
+                    status, fetched_path = check_anthropic_batch(
+                        batch_id, str(results_dest)
+                    )
 
                 if status == "in_progress":
-                    logger.info("Batch %s still processing. Rerun later to continue.", batch_id)
+                    logger.info(
+                        "Batch %s still processing. Rerun later to continue.", batch_id
+                    )
                     save_state(state_path, state)
                     return True  # Exit cleanly, not an error
 
@@ -794,7 +897,9 @@ def run_pipeline(
                     logger.info("Batch results downloaded to: %s", fetched_path)
 
             if not results_path:
-                logger.error("No batch results available. Provide --gcs-prefix or ensure batch completed.")
+                logger.error(
+                    "No batch results available. Provide --gcs-prefix or ensure batch completed."
+                )
                 mark_step(state, step, "failed")
                 save_state(state_path, state)
                 return False
@@ -864,69 +969,52 @@ Steps:
   batch_submit       Step 3b: Submit to LLM backend (Anthropic/Vertex)
   parse_results      Step 4: Parse LLM responses
   html_report        Step 5: Generate HTML report
-"""
+""",
     )
 
     # Config file
-    parser.add_argument(
-        "--config", "-c",
-        help="Path to YAML config file"
-    )
+    parser.add_argument("--config", "-c", help="Path to YAML config file")
 
     # Required inputs (can be overridden by CLI)
-    parser.add_argument(
-        "--gene-loading",
-        help="Path to gene loading matrix CSV"
-    )
+    parser.add_argument("--gene-loading", help="Path to gene loading matrix CSV")
     parser.add_argument(
         "--celltype-enrichment",
-        help="Path to raw cell-type enrichment CSV (summary auto-generated)"
+        help="Path to raw cell-type enrichment CSV (summary auto-generated)",
     )
-    parser.add_argument(
-        "--output-dir",
-        help="Output directory for all results"
-    )
+    parser.add_argument("--output-dir", help="Output directory for all results")
 
     # Optional inputs
     parser.add_argument(
-        "--regulator-file",
-        help="Path to SCEPTRE regulator results CSV"
+        "--regulator-file", help="Path to SCEPTRE regulator results CSV"
     )
 
     # Step control
     parser.add_argument(
-        "--start-from",
-        choices=STEPS,
-        help="Step to start from (skips earlier steps)"
+        "--start-from", choices=STEPS, help="Step to start from (skips earlier steps)"
     )
     parser.add_argument(
-        "--stop-after",
-        choices=STEPS,
-        help="Step to stop after (skips later steps)"
+        "--stop-after", choices=STEPS, help="Step to stop after (skips later steps)"
     )
     parser.add_argument(
         "--gcs-prefix",
-        help="GCS prefix for batch results (for resuming at parse_results)"
+        help="GCS prefix for batch results (for resuming at parse_results)",
     )
 
     # Optional settings
     parser.add_argument(
-        "--topics",
-        help="Comma-separated list of topic IDs to process (default: all)"
+        "--topics", help="Comma-separated list of topic IDs to process (default: all)"
     )
     parser.add_argument(
         "--species",
         type=int,
         default=10090,
-        help="NCBI taxonomy ID (default: 10090 for mouse)"
+        help="NCBI taxonomy ID (default: 10090 for mouse)",
     )
     parser.add_argument(
-        "--keyword",
-        help="PubMed search keyword for your tissue/cell type"
+        "--keyword", help="PubMed search keyword for your tissue/cell type"
     )
     parser.add_argument(
-        "--annotation-role",
-        help="Specialist role used in the LLM prompt header"
+        "--annotation-role", help="Specialist role used in the LLM prompt header"
     )
     parser.add_argument(
         "--annotation-context",
@@ -953,21 +1041,22 @@ Steps:
     parser.add_argument(
         "--no-resume",
         action="store_true",
-        help="Disable resume/caching (re-query all APIs)"
+        help="Disable resume/caching (re-query all APIs)",
     )
     parser.add_argument(
         "--wait",
         action="store_true",
-        help="Wait for batch completion (default: submit and exit; resume later)")
+        help="Wait for batch completion (default: submit and exit; resume later)",
+    )
     parser.add_argument(
         "--force-restart",
         action="store_true",
-        help="Ignore existing state (warn) and restart pipeline, potentially overwriting outputs"
+        help="Ignore existing state (warn) and restart pipeline, potentially overwriting outputs",
     )
     parser.add_argument(
         "--restart-from",
         choices=STEPS,
-        help="Re-run from the specified step (warns about overwriting downstream outputs)"
+        help="Re-run from the specified step (warns about overwriting downstream outputs)",
     )
 
     args = parser.parse_args()
@@ -983,12 +1072,15 @@ Steps:
             )
         config = PipelineConfig(
             gene_loading=Path(args.gene_loading),
-            celltype_enrichment=Path(args.celltype_enrichment) if args.celltype_enrichment else None,
+            celltype_enrichment=Path(args.celltype_enrichment)
+            if args.celltype_enrichment
+            else None,
             regulator_file=Path(args.regulator_file) if args.regulator_file else None,
             output_dir=Path(args.output_dir),
             top_positive_regulators=args.top_positive_regulators or 3,
             top_negative_regulators=args.top_negative_regulators or 3,
-            regulator_significance_threshold=args.regulator_significance_threshold or 0.05,
+            regulator_significance_threshold=args.regulator_significance_threshold
+            or 0.05,
         )
 
     # Apply CLI overrides

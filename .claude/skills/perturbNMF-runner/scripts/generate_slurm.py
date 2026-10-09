@@ -23,6 +23,7 @@ def get_gpu_mem_constraint(min_mem_gb):
         eligible = [AVAILABLE_GPU_MEMS_GB[-1]]  # fallback to largest
     return "|".join(f"GPU_MEM:{m}GB" for m in eligible)
 
+
 # Stage definitions: script path (relative), conda env, whether GPU is needed
 STAGES = {
     "inference-sk": {
@@ -88,7 +89,9 @@ def generate_script(args, passthrough_args):
     """Generate the complete SLURM shell script."""
     stage_info = STAGES[args.stage]
     pipeline_root = args.pipeline_root
-    skill_scripts = os.path.join(pipeline_root, ".claude/skills/perturbNMF-runner/scripts")
+    skill_scripts = os.path.join(
+        pipeline_root, ".claude/skills/perturbNMF-runner/scripts"
+    )
     script_path = os.path.join(pipeline_root, stage_info["script"])
     conda_env = stage_info["conda_env"]
     needs_gpu = stage_info["gpu"] or args.gpu
@@ -117,18 +120,18 @@ def generate_script(args, passthrough_args):
     # The sentinel '---COMMENTED---' splits tokens into active flags (before, emitted
     # inside the python command) and unused flags (after, emitted as commented-out
     # `#     --flag value` lines below the command for easy toggling).
-    COMMENT_SEP = '---COMMENTED---'
+    COMMENT_SEP = "---COMMENTED---"
     passthrough_str = ""
     commented_lines = []
     if passthrough_args:
         tokens = list(passthrough_args)
-        if tokens and tokens[0] == '--':
+        if tokens and tokens[0] == "--":
             tokens = tokens[1:]
 
         if COMMENT_SEP in tokens:
             idx = tokens.index(COMMENT_SEP)
             active_tokens = tokens[:idx]
-            commented_tokens = tokens[idx + 1:]
+            commented_tokens = tokens[idx + 1 :]
         else:
             active_tokens = tokens
             commented_tokens = []
@@ -137,7 +140,7 @@ def generate_script(args, passthrough_args):
             grouped = []
             current = []
             for tok in toks:
-                if tok.startswith('--') and current:
+                if tok.startswith("--") and current:
                     grouped.append(prefix + " ".join(current))
                     current = [tok]
                 else:
@@ -154,174 +157,200 @@ def generate_script(args, passthrough_args):
 
     # Build script as lines for clean formatting
     lines = [
-        '#!/bin/bash',
-        '',
-        '# SLURM job configuration',
-        f'#SBATCH --job-name={args.job_name}',
-        f'#SBATCH --output={log_dir}/%j.out',
-        f'#SBATCH --error={log_dir}/%j.err',
+        "#!/bin/bash",
+        "",
+        "# SLURM job configuration",
+        f"#SBATCH --job-name={args.job_name}",
+        f"#SBATCH --output={log_dir}/%j.out",
+        f"#SBATCH --error={log_dir}/%j.err",
     ]
     if args.partition:
-        lines.append(f'#SBATCH --partition={args.partition}')
-    lines.extend([
-        f'#SBATCH --time={args.time}',
-        '#SBATCH --nodes=1',
-        '#SBATCH --ntasks=1',
-        f'#SBATCH --cpus-per-task={args.cpus}',
-        f'#SBATCH --mem={args.mem}',
-    ])
+        lines.append(f"#SBATCH --partition={args.partition}")
+    lines.extend(
+        [
+            f"#SBATCH --time={args.time}",
+            "#SBATCH --nodes=1",
+            "#SBATCH --ntasks=1",
+            f"#SBATCH --cpus-per-task={args.cpus}",
+            f"#SBATCH --mem={args.mem}",
+        ]
+    )
 
     if needs_gpu:
-        lines.append('#SBATCH --gres=gpu:1')
+        lines.append("#SBATCH --gres=gpu:1")
         if args.gpu_sku:
             # Explicit single-SKU override (cluster-specific GPU_SKU feature)
-            lines.append(f'#SBATCH -C GPU_SKU:{args.gpu_sku}')
+            lines.append(f"#SBATCH -C GPU_SKU:{args.gpu_sku}")
         elif args.gpu_min_mem:
             # Select all GPUs with sufficient memory (cluster-specific GPU_MEM feature)
             constraint = get_gpu_mem_constraint(args.gpu_min_mem)
             lines.append(f'#SBATCH -C "{constraint}"')
 
     if args.email:
-        lines.extend([
-            '',
-            '# Email notifications',
-            '#SBATCH --mail-type=BEGIN,END,FAIL',
-            f'#SBATCH --mail-user={args.email}',
-        ])
+        lines.extend(
+            [
+                "",
+                "# Email notifications",
+                "#SBATCH --mail-type=BEGIN,END,FAIL",
+                f"#SBATCH --mail-user={args.email}",
+            ]
+        )
 
-    lines.extend([
-        '',
-        '# Configuration',
-        f'export PIPELINE_ROOT="{pipeline_root}"',
-        f'OUT_DIR="{args.output_dir}"',
-        f'RUN_NAME="{args.run_name}"',
-        f'LOG_DIR="{log_dir}"',
-        '',
-        '# Store start time',
-        'START_TIME=$(date +%s)',
-        '',
-        '# Print job information',
-        'echo "Job started at: $(date)"',
-        'echo "Job ID: $SLURM_JOB_ID"',
-        'echo "Node: $SLURMD_NODENAME"',
-        'echo "Working directory: $(pwd)"',
-        'echo "CPUs: $SLURM_CPUS_PER_TASK"',
-        'echo "Partition: $SLURM_JOB_PARTITION"',
-        'echo "Log directory: $LOG_DIR"',
-        '',
-        '# Create log directory',
-        'mkdir -p "$LOG_DIR"',
-    ])
+    lines.extend(
+        [
+            "",
+            "# Configuration",
+            f'export PIPELINE_ROOT="{pipeline_root}"',
+            f'OUT_DIR="{args.output_dir}"',
+            f'RUN_NAME="{args.run_name}"',
+            f'LOG_DIR="{log_dir}"',
+            "",
+            "# Store start time",
+            "START_TIME=$(date +%s)",
+            "",
+            "# Print job information",
+            'echo "Job started at: $(date)"',
+            'echo "Job ID: $SLURM_JOB_ID"',
+            'echo "Node: $SLURMD_NODENAME"',
+            'echo "Working directory: $(pwd)"',
+            'echo "CPUs: $SLURM_CPUS_PER_TASK"',
+            'echo "Partition: $SLURM_JOB_PARTITION"',
+            'echo "Log directory: $LOG_DIR"',
+            "",
+            "# Create log directory",
+            'mkdir -p "$LOG_DIR"',
+        ]
+    )
 
     if needs_gpu:
-        lines.extend([
-            '',
-            '# Start resource monitoring',
-            'MONITOR_LOG="$LOG_DIR/resource_monitor_${SLURM_JOB_ID}.log"',
-            'monitor_resources() {',
-            '    while true; do',
-            '        echo "$(date \'+%Y-%m-%d %H:%M:%S\')" >> "$MONITOR_LOG"',
-            '        echo "=== GPU Usage ===" >> "$MONITOR_LOG"',
-            '        nvidia-smi --query-gpu=timestamp,name,utilization.gpu,utilization.memory,memory.total,memory.used,memory.free,temperature.gpu --format=csv >> "$MONITOR_LOG" 2>/dev/null',
-            '        echo "=== Memory ===" >> "$MONITOR_LOG"',
-            '        free -h >> "$MONITOR_LOG"',
-            '        echo "---" >> "$MONITOR_LOG"',
-            '        sleep 30',
-            '    done',
-            '}',
-            'monitor_resources &',
-            'MONITOR_PID=$!',
-        ])
+        lines.extend(
+            [
+                "",
+                "# Start resource monitoring",
+                'MONITOR_LOG="$LOG_DIR/resource_monitor_${SLURM_JOB_ID}.log"',
+                "monitor_resources() {",
+                "    while true; do",
+                '        echo "$(date \'+%Y-%m-%d %H:%M:%S\')" >> "$MONITOR_LOG"',
+                '        echo "=== GPU Usage ===" >> "$MONITOR_LOG"',
+                '        nvidia-smi --query-gpu=timestamp,name,utilization.gpu,utilization.memory,memory.total,memory.used,memory.free,temperature.gpu --format=csv >> "$MONITOR_LOG" 2>/dev/null',
+                '        echo "=== Memory ===" >> "$MONITOR_LOG"',
+                '        free -h >> "$MONITOR_LOG"',
+                '        echo "---" >> "$MONITOR_LOG"',
+                "        sleep 30",
+                "    done",
+                "}",
+                "monitor_resources &",
+                "MONITOR_PID=$!",
+            ]
+        )
 
-    lines.extend([
-        '',
-        f'# Activate conda environment',
-        f'echo "Activating conda environment: {conda_env}"',
-        'eval "$(conda shell.bash hook)"',
-        f'conda activate {conda_env}',
-    ])
+    lines.extend(
+        [
+            "",
+            f"# Activate conda environment",
+            f'echo "Activating conda environment: {conda_env}"',
+            'eval "$(conda shell.bash hook)"',
+            f"conda activate {conda_env}",
+        ]
+    )
 
     # torch-nmf-dl is self-contained (see Tools/PerturbNMF/env/). Pin resolution
     # to the env so a stale ~/.local/lib/python3.9/site-packages can never shadow
     # or silently supply its packages. Other envs still rely on user-site.
-    if conda_env == 'torch-nmf-dl':
-        lines.extend([
-            '',
-            '# Resolve imports against the env only, never ~/.local (user site)',
-            'export PYTHONNOUSERSITE=1',
-        ])
+    if conda_env == "torch-nmf-dl":
+        lines.extend(
+            [
+                "",
+                "# Resolve imports against the env only, never ~/.local (user site)",
+                "export PYTHONNOUSERSITE=1",
+            ]
+        )
 
-    lines.extend([
-        '',
-        'echo "Active env: $CONDA_DEFAULT_ENV"',
-        'echo "Python: $(python --version)"',
-    ])
+    lines.extend(
+        [
+            "",
+            'echo "Active env: $CONDA_DEFAULT_ENV"',
+            'echo "Python: $(python --version)"',
+        ]
+    )
 
-    lines.extend([
-        '',
-        f'# Run pipeline',
-        f'echo "Running: {args.stage}"',
-        f'{stage_info.get("interpreter", "python3")} {script_path}{passthrough_str}',
-    ])
+    lines.extend(
+        [
+            "",
+            f"# Run pipeline",
+            f'echo "Running: {args.stage}"',
+            f"{stage_info.get('interpreter', 'python3')} {script_path}{passthrough_str}",
+        ]
+    )
 
     if commented_lines:
-        lines.append('')
-        lines.append('# Optional / unused flags for this stage (uncomment + add to the command above to enable):')
+        lines.append("")
+        lines.append(
+            "# Optional / unused flags for this stage (uncomment + add to the command above to enable):"
+        )
         lines.extend(commented_lines)
 
-    lines.extend([
-        '',
-        '# Capture exit code',
-        'EXIT_CODE=$?',
-        'if [ $EXIT_CODE -ne 0 ]; then',
-        '    echo "ERROR: Pipeline exited with code $EXIT_CODE"',
-        'fi',
-    ])
+    lines.extend(
+        [
+            "",
+            "# Capture exit code",
+            "EXIT_CODE=$?",
+            "if [ $EXIT_CODE -ne 0 ]; then",
+            '    echo "ERROR: Pipeline exited with code $EXIT_CODE"',
+            "fi",
+        ]
+    )
 
     if needs_gpu:
-        lines.extend([
-            '',
-            '# Stop resource monitoring',
-            'kill $MONITOR_PID 2>/dev/null',
-            'echo "Final GPU status:"',
-            'nvidia-smi 2>/dev/null || echo "GPU not available"',
-        ])
+        lines.extend(
+            [
+                "",
+                "# Stop resource monitoring",
+                "kill $MONITOR_PID 2>/dev/null",
+                'echo "Final GPU status:"',
+                'nvidia-smi 2>/dev/null || echo "GPU not available"',
+            ]
+        )
 
     # For inference stages, generate h5mu structure files after pipeline completes
     if args.stage.startswith("inference") and not args.no_structure:
         h5mu_script = os.path.join(skill_scripts, "generate_h5mu_structure.py")
-        lines.extend([
-            '',
-            '# Generate h5mu structure summary files',
-            'if [ $EXIT_CODE -eq 0 ]; then',
-            f'    ADATA_DIR="{args.output_dir}/{args.run_name}/Inference/adata"',
-            '    if [ -d "$ADATA_DIR" ]; then',
-            '        echo "Generating h5mu structure files..."',
-            f'        python3 {h5mu_script} dummy --adata_dir "$ADATA_DIR"',
-            '        echo "h5mu structure generation complete"',
-            '    else',
-            '        echo "WARNING: adata directory not found at $ADATA_DIR, skipping structure generation"',
-            '    fi',
-            'else',
-            '    echo "Skipping h5mu structure generation due to pipeline error"',
-            'fi',
-        ])
+        lines.extend(
+            [
+                "",
+                "# Generate h5mu structure summary files",
+                "if [ $EXIT_CODE -eq 0 ]; then",
+                f'    ADATA_DIR="{args.output_dir}/{args.run_name}/Inference/adata"',
+                '    if [ -d "$ADATA_DIR" ]; then',
+                '        echo "Generating h5mu structure files..."',
+                f'        python3 {h5mu_script} dummy --adata_dir "$ADATA_DIR"',
+                '        echo "h5mu structure generation complete"',
+                "    else",
+                '        echo "WARNING: adata directory not found at $ADATA_DIR, skipping structure generation"',
+                "    fi",
+                "else",
+                '    echo "Skipping h5mu structure generation due to pipeline error"',
+                "fi",
+            ]
+        )
 
-    lines.extend([
-        '',
-        '# Elapsed time',
-        'END_TIME=$(date +%s)',
-        'ELAPSED=$((END_TIME - START_TIME))',
-        'HOURS=$((ELAPSED / 3600))',
-        'MINUTES=$(((ELAPSED % 3600) / 60))',
-        'SECONDS=$((ELAPSED % 60))',
-        '',
-        'echo "Job completed at: $(date)"',
-        'echo "Total elapsed time: ${HOURS}h ${MINUTES}m ${SECONDS}s (${ELAPSED} seconds)"',
-        'exit $EXIT_CODE',
-    ])
+    lines.extend(
+        [
+            "",
+            "# Elapsed time",
+            "END_TIME=$(date +%s)",
+            "ELAPSED=$((END_TIME - START_TIME))",
+            "HOURS=$((ELAPSED / 3600))",
+            "MINUTES=$(((ELAPSED % 3600) / 60))",
+            "SECONDS=$((ELAPSED % 60))",
+            "",
+            'echo "Job completed at: $(date)"',
+            'echo "Total elapsed time: ${HOURS}h ${MINUTES}m ${SECONDS}s (${ELAPSED} seconds)"',
+            "exit $EXIT_CODE",
+        ]
+    )
 
-    script = '\n'.join(lines) + '\n'
+    script = "\n".join(lines) + "\n"
 
     return script
 
@@ -333,76 +362,89 @@ def main():
 
     # Generator-specific arguments
     parser.add_argument(
-        '--stage', type=str, required=True,
+        "--stage",
+        type=str,
+        required=True,
         choices=list(STAGES.keys()),
-        help='Pipeline stage to run'
+        help="Pipeline stage to run",
+    )
+    parser.add_argument("--job_name", type=str, required=True, help="SLURM job name")
+    parser.add_argument(
+        "--output_dir", type=str, required=True, help="Output directory for results"
     )
     parser.add_argument(
-        '--job_name', type=str, required=True,
-        help='SLURM job name'
+        "--run_name", type=str, required=True, help="Run name identifier"
     )
     parser.add_argument(
-        '--output_dir', type=str, required=True,
-        help='Output directory for results'
+        "--cpus", type=int, default=10, help="CPUs per task (default: 10)"
     )
     parser.add_argument(
-        '--run_name', type=str, required=True,
-        help='Run name identifier'
+        "--mem", type=str, default="64G", help="Memory allocation (default: 64G)"
     )
     parser.add_argument(
-        '--cpus', type=int, default=10,
-        help='CPUs per task (default: 10)'
+        "--time",
+        type=str,
+        default="10:00:00",
+        help="Time limit HH:MM:SS (default: 10:00:00)",
     )
     parser.add_argument(
-        '--mem', type=str, default='64G',
-        help='Memory allocation (default: 64G)'
-    )
-    parser.add_argument(
-        '--time', type=str, default='10:00:00',
-        help='Time limit HH:MM:SS (default: 10:00:00)'
-    )
-    parser.add_argument(
-        '--partition', type=str, default=os.environ.get('SLURM_PARTITION'),
+        "--partition",
+        type=str,
+        default=os.environ.get("SLURM_PARTITION"),
         help='SLURM partition(s), e.g. "normal" or "p1,p2" (default: $SLURM_PARTITION; '
-             'if unset, no --partition line is written and the cluster default is used)'
+        "if unset, no --partition line is written and the cluster default is used)",
     )
     parser.add_argument(
-        '--gpu', action='store_true',
-        help='Request GPU resources (auto-set for torch stages)'
+        "--gpu",
+        action="store_true",
+        help="Request GPU resources (auto-set for torch stages)",
     )
     parser.add_argument(
-        '--gpu_sku', type=str, default=None,
-        help='Explicit single GPU SKU constraint, written as `-C GPU_SKU:<value>` '
-             '(e.g., H100_SXM5; requires a cluster that defines GPU_SKU features). '
-             'Overrides --gpu_min_mem. If neither is set, no GPU constraint is written.'
+        "--gpu_sku",
+        type=str,
+        default=None,
+        help="Explicit single GPU SKU constraint, written as `-C GPU_SKU:<value>` "
+        "(e.g., H100_SXM5; requires a cluster that defines GPU_SKU features). "
+        "Overrides --gpu_min_mem. If neither is set, no GPU constraint is written.",
     )
     parser.add_argument(
-        '--gpu_min_mem', type=int, default=None,
+        "--gpu_min_mem",
+        type=int,
+        default=None,
         help='Minimum GPU memory in GB, written as `-C "GPU_MEM:<N>GB|..."` for all '
-             'sizes >= this value (requires a cluster that defines GPU_MEM features). '
-             'Default: no GPU constraint.'
+        "sizes >= this value (requires a cluster that defines GPU_MEM features). "
+        "Default: no GPU constraint.",
     )
     parser.add_argument(
-        '--email', type=str, default=os.environ.get('SLURM_MAIL_USER'),
-        help='Email for SLURM notifications (default: $SLURM_MAIL_USER; '
-             'if unset, no mail directives are written)'
+        "--email",
+        type=str,
+        default=os.environ.get("SLURM_MAIL_USER"),
+        help="Email for SLURM notifications (default: $SLURM_MAIL_USER; "
+        "if unset, no mail directives are written)",
     )
     parser.add_argument(
-        '--pipeline_root', type=str, required=True,
-        help='Path to the PerturbNMF repo on the machine that runs the job (required; '
-             'always ask the user — no default is assumed)'
+        "--pipeline_root",
+        type=str,
+        required=True,
+        help="Path to the PerturbNMF repo on the machine that runs the job (required; "
+        "always ask the user — no default is assumed)",
     )
     parser.add_argument(
-        '--log_dir', type=str, default=None,
-        help='Custom log directory (default: <output_dir>/<run_name>/logs)'
+        "--log_dir",
+        type=str,
+        default=None,
+        help="Custom log directory (default: <output_dir>/<run_name>/logs)",
     )
     parser.add_argument(
-        '--script_output_path', type=str, default=None,
-        help='Where to write the generated .sh file (default: stdout)'
+        "--script_output_path",
+        type=str,
+        default=None,
+        help="Where to write the generated .sh file (default: stdout)",
     )
     parser.add_argument(
-        '--no_structure', action='store_true',
-        help='Skip h5mu structure file generation after inference'
+        "--no_structure",
+        action="store_true",
+        help="Skip h5mu structure file generation after inference",
     )
 
     # Parse only known args; the rest are passthrough to the pipeline script
@@ -412,7 +454,7 @@ def main():
 
     if args.script_output_path:
         os.makedirs(os.path.dirname(args.script_output_path), exist_ok=True)
-        with open(args.script_output_path, 'w') as f:
+        with open(args.script_output_path, "w") as f:
             f.write(script)
         os.chmod(args.script_output_path, 0o755)
         print(f"Script written to: {args.script_output_path}")
@@ -420,5 +462,5 @@ def main():
         print(script)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

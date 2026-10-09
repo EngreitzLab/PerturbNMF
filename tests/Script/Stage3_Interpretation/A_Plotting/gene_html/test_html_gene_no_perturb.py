@@ -17,13 +17,23 @@ from pathlib import Path
 
 import pytest
 import matplotlib
+
 matplotlib.use("Agg")
 
-from Stage3_Interpretation.A_Plotting.src.html_Perturbed_gene_QC_plots import export_gene_html
+from Stage3_Interpretation.A_Plotting.src.html_Perturbed_gene_QC_plots import (
+    export_gene_html,
+)
 
 
-def _export(tmp_path, test_mdata, target_gene, gene_loading_corr_matrix,
-            available_samples, perturb_path_base=None, perturb_corr_by_sample=None):
+def _export(
+    tmp_path,
+    test_mdata,
+    target_gene,
+    gene_loading_corr_matrix,
+    available_samples,
+    perturb_path_base=None,
+    perturb_corr_by_sample=None,
+):
     export_gene_html(
         mdata=test_mdata,
         perturb_path_base=perturb_path_base,
@@ -46,13 +56,22 @@ def _export(tmp_path, test_mdata, target_gene, gene_loading_corr_matrix,
 
 
 class TestNoPerturbPathBase:
-
     def test_page_written_without_perturb_files(
-        self, tmp_path, test_mdata, target_gene, gene_loading_corr_matrix, available_samples
+        self,
+        tmp_path,
+        test_mdata,
+        target_gene,
+        gene_loading_corr_matrix,
+        available_samples,
     ):
         """perturb_path_base=None still produces a page; no per-condition JSON."""
-        gene_dir = _export(tmp_path, test_mdata, target_gene,
-                           gene_loading_corr_matrix, available_samples)
+        gene_dir = _export(
+            tmp_path,
+            test_mdata,
+            target_gene,
+            gene_loading_corr_matrix,
+            available_samples,
+        )
         assert (gene_dir / f"gene_{target_gene}.html").is_file()
         # header panels still there
         assert (gene_dir / "data" / "top_programs.json").is_file()
@@ -63,10 +82,20 @@ class TestNoPerturbPathBase:
         assert not list((gene_dir / "data").glob("waterfall_*.json"))
 
     def test_metadata_reports_zero_significant(
-        self, tmp_path, test_mdata, target_gene, gene_loading_corr_matrix, available_samples
+        self,
+        tmp_path,
+        test_mdata,
+        target_gene,
+        gene_loading_corr_matrix,
+        available_samples,
     ):
-        gene_dir = _export(tmp_path, test_mdata, target_gene,
-                           gene_loading_corr_matrix, available_samples)
+        gene_dir = _export(
+            tmp_path,
+            test_mdata,
+            target_gene,
+            gene_loading_corr_matrix,
+            available_samples,
+        )
         with open(gene_dir / "metadata.json") as f:
             meta = json.load(f)
         assert meta["n_significant_program_perturbations_total"] == 0
@@ -74,7 +103,6 @@ class TestNoPerturbPathBase:
 
 
 class TestRequiredArgs:
-
     def test_missing_loading_corr_raises(
         self, tmp_path, test_mdata, target_gene, available_samples
     ):
@@ -82,10 +110,21 @@ class TestRequiredArgs:
             _export(tmp_path, test_mdata, target_gene, None, available_samples)
 
     def test_perturb_base_without_corr_raises(
-        self, tmp_path, test_mdata, target_gene, gene_loading_corr_matrix,
-        available_samples, perturb_path_base
+        self,
+        tmp_path,
+        test_mdata,
+        target_gene,
+        gene_loading_corr_matrix,
+        available_samples,
+        perturb_path_base,
     ):
         with pytest.raises(ValueError, match="perturb_corr_by_sample is required"):
-            _export(tmp_path, test_mdata, target_gene, gene_loading_corr_matrix,
-                    available_samples, perturb_path_base=perturb_path_base,
-                    perturb_corr_by_sample=None)
+            _export(
+                tmp_path,
+                test_mdata,
+                target_gene,
+                gene_loading_corr_matrix,
+                available_samples,
+                perturb_path_base=perturb_path_base,
+                perturb_corr_by_sample=None,
+            )

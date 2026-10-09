@@ -8,6 +8,7 @@ All scripts write to one shared output folder; a script reads '<out_dir>/P<k>.js
 when it already exists (so earlier sources are kept) and '<bundle_dir>/P<k>.json'
 otherwise. The original bundles are never modified.
 """
+
 import copy
 import json
 import time
@@ -44,9 +45,13 @@ def load_program_JSON(bundle_dir, out_dir, programs):
         paths[pid] = extended if extended.exists() else bundle_dir / f"P{pid}.json"
     missing = [str(p) for p in paths.values() if not p.exists()]
     if missing:
-        raise FileNotFoundError(f"No bundle for {len(missing)} of {len(programs)} programs: {missing}")
+        raise FileNotFoundError(
+            f"No bundle for {len(missing)} of {len(programs)} programs: {missing}"
+        )
     n_ext = sum(p.parent == out_dir for p in paths.values())
-    print(f"[load] {len(paths)} bundle(s): {n_ext} from {out_dir}, {len(paths) - n_ext} from {bundle_dir}")
+    print(
+        f"[load] {len(paths)} bundle(s): {n_ext} from {out_dir}, {len(paths) - n_ext} from {bundle_dir}"
+    )
     bundles = {}
     for pid, p in paths.items():
         bundles[f"P{pid}"] = json.loads(p.read_text())
@@ -56,27 +61,37 @@ def load_program_JSON(bundle_dir, out_dir, programs):
 
 def validate_bundle(bundle, path):
     """Raise if the bundle lacks the gene lists or has malformed gene entries."""
+
     def _valid_entry(e):
-        return isinstance(e, str) or (isinstance(e, dict) and isinstance(e.get("gene"), str)
-                                      and isinstance(e.get("gene_info", {}), dict))
+        return isinstance(e, str) or (
+            isinstance(e, dict)
+            and isinstance(e.get("gene"), str)
+            and isinstance(e.get("gene_info", {}), dict)
+        )
 
     for key in GENE_LISTS:
         if not isinstance(bundle.get(key), list):
             raise ValueError(f"{path}: '{key}' missing or not a list")
         bad = [e for e in bundle[key] if not _valid_entry(e)]
         if bad:
-            raise ValueError(f"{path}: '{key}' has {len(bad)} entries that are neither a gene "
-                             f"name nor {{'gene': ...}}: {bad[:3]}")
+            raise ValueError(
+                f"{path}: '{key}' has {len(bad)} entries that are neither a gene "
+                f"name nor {{'gene': ...}}: {bad[:3]}"
+            )
     regulators = bundle.get("perturbation_regulators", {})
     if not isinstance(regulators, dict):
-        raise ValueError(f"{path}: 'perturbation_regulators' must be {{condition: [entries]}}")
+        raise ValueError(
+            f"{path}: 'perturbation_regulators' must be {{condition: [entries]}}"
+        )
     for cond, regs in regulators.items():
         if not isinstance(regs, list):
             raise ValueError(f"{path}: perturbation_regulators['{cond}'] is not a list")
         bad = [r for r in regs if not (isinstance(r, dict) and _valid_entry(r))]
         if bad:
-            raise ValueError(f"{path}: perturbation_regulators['{cond}'] has {len(bad)} entries "
-                             f"without a 'gene' name: {bad[:3]}")
+            raise ValueError(
+                f"{path}: perturbation_regulators['{cond}'] has {len(bad)} entries "
+                f"without a 'gene' name: {bad[:3]}"
+            )
 
 
 def gene_name(entry):
@@ -109,8 +124,10 @@ def split_cached(bundles, source, overwrite=False):
                 if isinstance(e, dict) and source in e.get("gene_info", {}):
                     cached.setdefault(gene_name(e), e["gene_info"][source])
     query = [g for g in genes if g not in cached]
-    print(f"[{source}] {len(genes)} unique genes: {len(cached)} already have {source} info "
-          f"(skipped{'' if cached else '; none'}), {len(query)} to query")
+    print(
+        f"[{source}] {len(genes)} unique genes: {len(cached)} already have {source} info "
+        f"(skipped{'' if cached else '; none'}), {len(query)} to query"
+    )
     return genes, cached, query
 
 
@@ -121,13 +138,17 @@ def request_with_retry(method, url, retries=3, **kwargs):
     for attempt in range(retries + 1):
         try:
             resp = requests.request(method, url, timeout=60, **kwargs)
-        except (requests.ConnectionError, requests.Timeout, requests.exceptions.ChunkedEncodingError):
+        except (
+            requests.ConnectionError,
+            requests.Timeout,
+            requests.exceptions.ChunkedEncodingError,
+        ):
             if attempt == retries:
                 raise
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
             continue
         if resp.status_code in TRANSIENT_STATUS and attempt < retries:
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
             continue
         resp.raise_for_status()
         return resp
@@ -157,7 +178,9 @@ def report_query(source, genes, info):
         print(f"[{source}] nothing to query")
         return {}, []
     not_found = [g for g in genes if g not in info]
-    renamed = {g: i["symbol"] for g, i in info.items() if i.get("symbol") and i["symbol"] != g}
+    renamed = {
+        g: i["symbol"] for g, i in info.items() if i.get("symbol") and i["symbol"] != g
+    }
     print(f"[{source}] found {len(info)}/{len(genes)} queried; renamed {len(renamed)}")
     if not_found:
         print(f"  [warn] {len(not_found)} genes not found in {source}: {not_found}")
@@ -169,9 +192,13 @@ def write_outputs(out_dir, bundles, source, info, meta):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     for label, bundle in bundles.items():
-        (out_dir / f"{label}.json").write_text(json.dumps(attach_source(bundle, source, info), indent=2))
+        (out_dir / f"{label}.json").write_text(
+            json.dumps(attach_source(bundle, source, info), indent=2)
+        )
         genes = collect_genes(bundle)
-        print(f"  {label}: genes={len(genes)} found={sum(info.get(g, NOT_FOUND)['found'] for g in genes)}")
+        print(
+            f"  {label}: genes={len(genes)} found={sum(info.get(g, NOT_FOUND)['found'] for g in genes)}"
+        )
     meta_path = out_dir / f"meta_{source}.json"
     meta_path.write_text(json.dumps(meta, indent=2))
     print(f"[done] {len(bundles)} bundle(s) -> {out_dir}; meta -> {meta_path}")

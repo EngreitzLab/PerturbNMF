@@ -8,12 +8,20 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 
 from tools.page_fetch import fetch_page_content_and_summarize
-os.environ['DISPLAY'] = ':99'
+
+os.environ["DISPLAY"] = ":99"
 
 ua = UserAgent()
 
 
-def BingSearchTool(args, query: str, mini_handler, read_content: bool = True, return_num: int = 5, screenshot: bool = False):
+def BingSearchTool(
+    args,
+    query: str,
+    mini_handler,
+    read_content: bool = True,
+    return_num: int = 5,
+    screenshot: bool = False,
+):
     """
     Use Selenium to get search results from Bing. Optionally, fetch content from the links and summarize.
 
@@ -31,13 +39,12 @@ def BingSearchTool(args, query: str, mini_handler, read_content: bool = True, re
     driver = None
     results = []
 
-
     url = f"https://www.bing.com/search?q={query}"
 
     user_agent = ua.random
 
     options = Options()
-    if not getattr(args, 'visualize', False):
+    if not getattr(args, "visualize", False):
         options.add_argument("--headless")
     options.add_argument(f"user-agent={user_agent}")
     options.add_argument("--no-sandbox")
@@ -48,7 +55,7 @@ def BingSearchTool(args, query: str, mini_handler, read_content: bool = True, re
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--incognito")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--blink-settings=imagesEnabled=false")  
+    options.add_argument("--blink-settings=imagesEnabled=false")
 
     service = Service(args.chrome_driver)
     driver = webdriver.Chrome(service=service, options=options)
@@ -81,24 +88,31 @@ def BingSearchTool(args, query: str, mini_handler, read_content: bool = True, re
 
         link = link_elem["href"]
 
-        if not (link.startswith('http://') or link.startswith('https://')):
+        if not (link.startswith("http://") or link.startswith("https://")):
             continue
 
         if read_content:
             try:
-                page_content = fetch_page_content_and_summarize(args, link, mini_handler, False)
-                results.append(f"Title: {title}\nURL: {link}\n\n Content:{page_content}")
+                page_content = fetch_page_content_and_summarize(
+                    args, link, mini_handler, False
+                )
+                results.append(
+                    f"Title: {title}\nURL: {link}\n\n Content:{page_content}"
+                )
             except:
                 continue
         else:
             snippet_elem = result.find("p")
-            snippet = snippet_elem.get_text().strip() if snippet_elem else "No snippet available."
+            snippet = (
+                snippet_elem.get_text().strip()
+                if snippet_elem
+                else "No snippet available."
+            )
             results.append(f"Title: {title}\nSnippet: {snippet}\nURL: {link}")
 
         success_count += 1
         if success_count >= return_num:
             break
-
 
     if results:
         return "\n\n-----------------------\n\n".join(results)
@@ -108,9 +122,24 @@ def BingSearchTool(args, query: str, mini_handler, read_content: bool = True, re
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Bing Search Tool")
-    parser.add_argument('--chrome_driver', type=str, default="/usr/local/bin/chromedriver", help='Path to ChromeDriver')
-    parser.add_argument('--visualize', action='store_true', help='Visualize the search results')
+    parser.add_argument(
+        "--chrome_driver",
+        type=str,
+        default="/usr/local/bin/chromedriver",
+        help="Path to ChromeDriver",
+    )
+    parser.add_argument(
+        "--visualize", action="store_true", help="Visualize the search results"
+    )
     args = parser.parse_args()
-    result = BingSearchTool(args, "Genetic disease", mini_handler=None, read_content=False, return_num=5, screenshot=False)
+    result = BingSearchTool(
+        args,
+        "Genetic disease",
+        mini_handler=None,
+        read_content=False,
+        return_num=5,
+        screenshot=False,
+    )
     print(result)

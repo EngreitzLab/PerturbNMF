@@ -37,9 +37,12 @@ class RowCorr:
     """
 
     def __init__(self, X, names, row_label="rows", col_label="columns"):
-        self.Z = np.ascontiguousarray(_zscore_rows(X, names, row_label, col_label),
-                                      dtype=np.float32)
-        self.index = self.columns = pd.Index(np.asarray(names).astype(str), dtype=object)
+        self.Z = np.ascontiguousarray(
+            _zscore_rows(X, names, row_label, col_label), dtype=np.float32
+        )
+        self.index = self.columns = pd.Index(
+            np.asarray(names).astype(str), dtype=object
+        )
         self._pos = {g: i for i, g in enumerate(self.index)}
 
     @property
@@ -89,7 +92,9 @@ def _zscore_rows(X, names, row_label="rows", col_label="columns"):
         )
     with np.errstate(invalid="ignore", divide="ignore"):
         Z = (X - X.mean(axis=1, keepdims=True)) / X.std(axis=1, keepdims=True)
-    Z[np.ptp(X, axis=1) == 0] = np.nan  # exact test; round-off can leave std tiny but nonzero
+    Z[np.ptp(X, axis=1) == 0] = (
+        np.nan
+    )  # exact test; round-off can leave std tiny but nonzero
     return Z
 
 
@@ -105,7 +110,7 @@ def column_pearson_streaming(X, chunk_rows=100_000):
 
     def chunks():
         for s in range(0, N, chunk_rows):
-            C = X[s:s + chunk_rows]
+            C = X[s : s + chunk_rows]
             C = C.toarray() if hasattr(C, "toarray") else np.asarray(C)
             yield C.astype(np.float64, copy=False)
 
@@ -120,6 +125,8 @@ def column_pearson_streaming(X, chunk_rows=100_000):
         C = C - mean
         S += C.T @ C
     sd = np.sqrt(np.diag(S))
-    sd[hi == lo] = np.nan  # exact constant test; round-off can leave sd tiny but nonzero
+    sd[hi == lo] = (
+        np.nan
+    )  # exact constant test; round-off can leave sd tiny but nonzero
     with np.errstate(invalid="ignore", divide="ignore"):
         return S / np.outer(sd, sd)

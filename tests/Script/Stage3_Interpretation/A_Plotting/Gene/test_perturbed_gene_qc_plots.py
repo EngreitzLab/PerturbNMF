@@ -16,7 +16,8 @@ import numpy as np
 import pandas as pd
 import pytest
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from Stage3_Interpretation.A_Plotting.src.Perturbed_gene_QC_plots import (
@@ -33,10 +34,9 @@ from Stage3_Interpretation.A_Plotting.src.Perturbed_gene_QC_plots import (
 
 
 class TestPlotTopProgramPerGene:
-
     def _pick_unique_symbol(self, test_mdata):
         """Return a gene symbol that appears exactly once in rna.var['symbol']."""
-        symbols = test_mdata['rna'].var['symbol'].astype(str)
+        symbols = test_mdata["rna"].var["symbol"].astype(str)
         counts = symbols.value_counts()
         unique = counts[counts == 1].index
         if len(unique) == 0:
@@ -53,24 +53,26 @@ class TestPlotTopProgramPerGene:
             save_path=gene_output_dir,
             save_name="test_top_program_per_gene",
         )
-        plt.close('all')
+        plt.close("all")
         assert ax is not None
-        assert os.path.isfile(os.path.join(gene_output_dir, "test_top_program_per_gene.svg"))
+        assert os.path.isfile(
+            os.path.join(gene_output_dir, "test_top_program_per_gene.svg")
+        )
 
     def test_missing_gene(self, test_mdata, gene_output_dir):
         """plot_top_program_per_gene returns None for a missing gene (standalone)."""
         result = plot_top_program_per_gene(
             test_mdata,
-            Target_Gene='NONEXISTENT_GENE_XYZ',
+            Target_Gene="NONEXISTENT_GENE_XYZ",
             save_path=gene_output_dir,
             save_name="test_top_program_missing",
         )
-        plt.close('all')
+        plt.close("all")
         assert result is None
 
     def test_duplicate_symbol_raises(self, test_mdata, gene_output_dir):
         """Symbols that map from multiple Ensembl IDs should raise ValueError."""
-        symbols = test_mdata['rna'].var['symbol'].astype(str)
+        symbols = test_mdata["rna"].var["symbol"].astype(str)
         dup_counts = symbols.value_counts()
         dups = dup_counts[dup_counts > 1].index
         if len(dups) == 0:
@@ -87,7 +89,7 @@ class TestPlotTopProgramPerGene:
     def test_top_n_exceeds_programs_raises(self, test_mdata, gene_output_dir):
         """top_n_programs larger than n_programs should raise ValueError."""
         gene = self._pick_unique_symbol(test_mdata)
-        n_programs = test_mdata['cNMF'].varm['loadings'].shape[0]
+        n_programs = test_mdata["cNMF"].varm["loadings"].shape[0]
         with pytest.raises(ValueError, match="exceeds the number of programs"):
             plot_top_program_per_gene(
                 test_mdata,
@@ -99,18 +101,19 @@ class TestPlotTopProgramPerGene:
 
 
 class TestPlotLog2FC:
-
-    def test_returns_axes_and_df(self, synthetic_gene_perturbation_tsv, gene_output_dir):
+    def test_returns_axes_and_df(
+        self, synthetic_gene_perturbation_tsv, gene_output_dir
+    ):
         """plot_log2FC returns (Axes, DataFrame) and saves SVG."""
         ax, df = plot_log2FC(
             synthetic_gene_perturbation_tsv,
-            Target='gene_0',
+            Target="gene_0",
             num_item=3,
             significance_threshold=0.5,
             save_path=gene_output_dir,
             save_name="test_gene_log2fc",
         )
-        plt.close('all')
+        plt.close("all")
         assert ax is not None
         assert isinstance(df, pd.DataFrame)
         assert os.path.isfile(os.path.join(gene_output_dir, "test_gene_log2fc.svg"))
@@ -120,27 +123,30 @@ class TestPlotLog2FC:
         fig, ax = plt.subplots()
         result_ax, df = plot_log2FC(
             synthetic_gene_perturbation_tsv,
-            Target='NONEXISTENT',
+            Target="NONEXISTENT",
             ax=ax,
         )
-        fig.savefig(os.path.join(gene_output_dir, "test_gene_log2fc_missing.png"), dpi=100)
-        plt.close('all')
+        fig.savefig(
+            os.path.join(gene_output_dir, "test_gene_log2fc_missing.png"), dpi=100
+        )
+        plt.close("all")
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 0
 
 
 class TestPlotVolcano:
-
-    def test_returns_axes_df_texts(self, synthetic_gene_perturbation_tsv, gene_output_dir):
+    def test_returns_axes_df_texts(
+        self, synthetic_gene_perturbation_tsv, gene_output_dir
+    ):
         """plot_volcano returns (Axes, DataFrame, list) and saves SVG."""
         ax, df, texts = plot_volcano(
             synthetic_gene_perturbation_tsv,
-            Target='gene_0',
+            Target="gene_0",
             significance_threshold=0.5,
             save_path=gene_output_dir,
             save_name="test_gene_volcano",
         )
-        plt.close('all')
+        plt.close("all")
         assert ax is not None
         assert isinstance(df, pd.DataFrame)
         assert isinstance(texts, list)
@@ -148,12 +154,11 @@ class TestPlotVolcano:
 
 
 class TestComputeGeneCorrelationMatrix:
-
     def test_returns_square_gene_corr(self, test_mdata, gene_output_dir):
         """compute_gene_correlation_matrix returns a G x G row-on-demand corr and writes the .npz."""
         save_path = os.path.join(gene_output_dir, "test_gene_loading_corr.npz")
         result = compute_gene_correlation_matrix(test_mdata, save_path=save_path)
-        n_genes = test_mdata['rna'].n_vars
+        n_genes = test_mdata["rna"].n_vars
         assert result.shape == (n_genes, n_genes)
         g = result.columns[0]
         row = result.loc[g]
@@ -164,10 +169,9 @@ class TestComputeGeneCorrelationMatrix:
 
 
 class TestAnalyzeCorrelations:
-
     def test_returns_axes(self, gene_output_dir):
         """analyze_correlations returns Axes for a known gene."""
-        genes = [f'gene_{i}' for i in range(10)]
+        genes = [f"gene_{i}" for i in range(10)]
         rng = np.random.default_rng(42)
         mat = rng.uniform(-0.5, 1.0, (10, 10))
         mat = (mat + mat.T) / 2
@@ -176,32 +180,34 @@ class TestAnalyzeCorrelations:
 
         ax = analyze_correlations(
             corr,
-            Target='gene_0',
+            Target="gene_0",
             top_corr_genes=3,
             save_path=gene_output_dir,
             save_name="test_gene_correlations",
         )
-        plt.close('all')
+        plt.close("all")
         assert ax is not None
-        assert os.path.isfile(os.path.join(gene_output_dir, "test_gene_correlations.svg"))
+        assert os.path.isfile(
+            os.path.join(gene_output_dir, "test_gene_correlations.svg")
+        )
 
     def test_missing_gene(self, gene_output_dir):
         """analyze_correlations returns None for missing gene (standalone)."""
-        corr = pd.DataFrame(
-            np.eye(3), index=['a', 'b', 'c'], columns=['a', 'b', 'c']
-        )
+        corr = pd.DataFrame(np.eye(3), index=["a", "b", "c"], columns=["a", "b", "c"])
         result = analyze_correlations(
-            corr, Target='MISSING',
+            corr,
+            Target="MISSING",
             save_path=gene_output_dir,
             save_name="test_gene_corr_missing",
         )
-        plt.close('all')
+        plt.close("all")
         assert result is None
 
 
 class TestComputeGeneWaterfallCor:
-
-    def test_returns_correlation_matrix(self, synthetic_gene_perturbation_tsv, gene_output_dir):
+    def test_returns_correlation_matrix(
+        self, synthetic_gene_perturbation_tsv, gene_output_dir
+    ):
         """compute_gene_waterfall_cor returns a T x T corr (self = 1 per row) and writes the .npz."""
         save_path = os.path.join(gene_output_dir, "test_regulator_corr.npz")
         result = compute_gene_waterfall_cor(
@@ -221,34 +227,32 @@ class TestComputeGeneWaterfallCor:
 
 
 class TestCreateGeneCorrelationWaterfall:
-
     def test_returns_axes_and_texts(self, synthetic_gene_correlation, gene_output_dir):
         """create_gene_correlation_waterfall returns (Axes, list of texts)."""
         ax, texts = create_gene_correlation_waterfall(
             synthetic_gene_correlation,
-            Target_Gene='gene_0',
+            Target_Gene="gene_0",
             top_corr_genes=2,
             save_path=gene_output_dir,
             save_name="test_gene_waterfall",
         )
-        plt.close('all')
+        plt.close("all")
         assert ax is not None
         assert isinstance(texts, list)
         assert os.path.isfile(os.path.join(gene_output_dir, "test_gene_waterfall.svg"))
 
 
 class TestPlotPerturbationVsControl:
-
     def test_with_real_mdata(self, test_mdata, gene_output_dir):
         """plot_perturbation_vs_control works if guide_assignment exists."""
-        if 'guide_assignment' not in test_mdata['cNMF'].obsm:
+        if "guide_assignment" not in test_mdata["cNMF"].obsm:
             pytest.skip("guide_assignment not in mdata")
-        if 'guide_targets' not in test_mdata['cNMF'].uns:
+        if "guide_targets" not in test_mdata["cNMF"].uns:
             pytest.skip("guide_targets not in mdata")
 
         # Pick a target gene that actually exists in guide_targets
-        targets = np.array(test_mdata['cNMF'].uns['guide_targets'])
-        valid = [t for t in np.unique(targets) if t != 'non-targeting']
+        targets = np.array(test_mdata["cNMF"].uns["guide_targets"])
+        valid = [t for t in np.unique(targets) if t != "non-targeting"]
         if not valid:
             pytest.skip("No targeting guides found")
 
@@ -259,22 +263,25 @@ class TestPlotPerturbationVsControl:
             target_gene=target_gene,
             ax=ax,
         )
-        fig.savefig(os.path.join(gene_output_dir, "test_perturb_vs_control.png"), dpi=100)
-        plt.close('all')
-        assert os.path.isfile(os.path.join(gene_output_dir, "test_perturb_vs_control.png"))
+        fig.savefig(
+            os.path.join(gene_output_dir, "test_perturb_vs_control.png"), dpi=100
+        )
+        plt.close("all")
+        assert os.path.isfile(
+            os.path.join(gene_output_dir, "test_perturb_vs_control.png")
+        )
 
 
 class TestPlotPerturbationVsControlByCondition:
-
     def test_with_real_mdata(self, test_mdata, gene_output_dir):
         """plot_perturbation_vs_control_by_condition works if guide data exists."""
-        if 'guide_assignment' not in test_mdata['cNMF'].obsm:
+        if "guide_assignment" not in test_mdata["cNMF"].obsm:
             pytest.skip("guide_assignment not in mdata")
-        if 'guide_targets' not in test_mdata['cNMF'].uns:
+        if "guide_targets" not in test_mdata["cNMF"].uns:
             pytest.skip("guide_targets not in mdata")
 
-        targets = np.array(test_mdata['cNMF'].uns['guide_targets'])
-        valid = [t for t in np.unique(targets) if t != 'non-targeting']
+        targets = np.array(test_mdata["cNMF"].uns["guide_targets"])
+        valid = [t for t in np.unique(targets) if t != "non-targeting"]
         if not valid:
             pytest.skip("No targeting guides found")
 
@@ -283,12 +290,17 @@ class TestPlotPerturbationVsControlByCondition:
         result = plot_perturbation_vs_control_by_condition(
             test_mdata,
             target_gene=target_gene,
-            condition_key='batch',
+            condition_key="batch",
             ax=ax,
         )
-        fig.savefig(os.path.join(gene_output_dir, "test_perturb_vs_control_by_condition.png"), dpi=100)
-        plt.close('all')
-        assert os.path.isfile(os.path.join(gene_output_dir, "test_perturb_vs_control_by_condition.png"))
+        fig.savefig(
+            os.path.join(gene_output_dir, "test_perturb_vs_control_by_condition.png"),
+            dpi=100,
+        )
+        plt.close("all")
+        assert os.path.isfile(
+            os.path.join(gene_output_dir, "test_perturb_vs_control_by_condition.png")
+        )
 
 
 if __name__ == "__main__":

@@ -47,11 +47,16 @@ FORBIDDEN_PATTERNS = [
     r"@stanford\.edu",
     r"tony_method",
 ]
-FORBIDDEN_RE = re.compile("|".join(f"(?:{p})" for p in FORBIDDEN_PATTERNS), re.IGNORECASE)
+FORBIDDEN_RE = re.compile(
+    "|".join(f"(?:{p})" for p in FORBIDDEN_PATTERNS), re.IGNORECASE
+)
 
 REPO_ROOT = Path(
     subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, check=True
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.strip()
 )
 ALLOWLIST_PATH = REPO_ROOT / "tools" / "lab_specific_allowlist.txt"
@@ -74,7 +79,9 @@ def load_allowlist(path: Path) -> tuple[list[str], list[str]]:
         elif kind == "text" and value:
             literals.append(value)
         else:
-            sys.exit(f"{path}: cannot parse allowlist line: {raw!r} (expected 'path: <glob>' or 'text: <literal>')")
+            sys.exit(
+                f"{path}: cannot parse allowlist line: {raw!r} (expected 'path: <glob>' or 'text: <literal>')"
+            )
     return path_globs, literals
 
 
@@ -118,11 +125,15 @@ def scan_tracked(path_globs: list[str], literals: list[str]) -> list[str]:
             continue
         for lineno, line in enumerate(lines, 1):
             for hit in find_hits(line, literals):
-                problems.append(f"{file_path}:{lineno}: matches '{hit}': {line.strip()[:160]}")
+                problems.append(
+                    f"{file_path}:{lineno}: matches '{hit}': {line.strip()[:160]}"
+                )
     return problems
 
 
-def scan_diff(diff_args: list[str], path_globs: list[str], literals: list[str]) -> list[str]:
+def scan_diff(
+    diff_args: list[str], path_globs: list[str], literals: list[str]
+) -> list[str]:
     """Scan only added lines (and added/renamed file paths) in a diff."""
     problems = []
     diff = git("diff", "--no-color", "--unified=0", "--no-ext-diff", *diff_args)
@@ -131,7 +142,13 @@ def scan_diff(diff_args: list[str], path_globs: list[str], literals: list[str]) 
     for line in diff.splitlines():
         if line.startswith("+++ "):
             target = line[4:]
-            current_file = None if target == "/dev/null" else target[2:] if target.startswith("b/") else target
+            current_file = (
+                None
+                if target == "/dev/null"
+                else target[2:]
+                if target.startswith("b/")
+                else target
+            )
             if current_file and not is_path_allowed(current_file, path_globs):
                 for hit in find_hits(current_file, literals):
                     problems.append(f"{current_file}: [path] matches '{hit}'")
@@ -143,7 +160,9 @@ def scan_diff(diff_args: list[str], path_globs: list[str], literals: list[str]) 
         if line.startswith("+") and current_file:
             if not is_path_allowed(current_file, path_globs):
                 for hit in find_hits(line[1:], literals):
-                    problems.append(f"{current_file}:{lineno}: matches '{hit}': {line[1:].strip()[:160]}")
+                    problems.append(
+                        f"{current_file}:{lineno}: matches '{hit}': {line[1:].strip()[:160]}"
+                    )
             lineno += 1
     return problems
 
@@ -151,8 +170,14 @@ def scan_diff(diff_args: list[str], path_globs: list[str], literals: list[str]) 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--staged", action="store_true", help="Scan lines added in the index (for pre-commit)")
-    mode.add_argument("--diff", metavar="REF", help="Scan lines added since REF (e.g. origin/main)")
+    mode.add_argument(
+        "--staged",
+        action="store_true",
+        help="Scan lines added in the index (for pre-commit)",
+    )
+    mode.add_argument(
+        "--diff", metavar="REF", help="Scan lines added since REF (e.g. origin/main)"
+    )
     args = parser.parse_args()
 
     path_globs, literals = load_allowlist(ALLOWLIST_PATH)
