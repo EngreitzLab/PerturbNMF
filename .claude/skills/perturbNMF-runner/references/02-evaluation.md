@@ -37,7 +37,8 @@ Reconstruction error and stability are computed automatically.
 | `--guide_annotation_path` | None | TSV with a `targeting` column to identify non-targeting controls (alternative to `--guide_annotation_key`) |
 | `--gene_names_key` | `symbol` | Column in data_guide["rna"].var with gene names |
 | `--FDR_method` | `StoreyQ` | FDR correction: `StoreyQ` or `BH` |
-| `--organism` | `human` | Species for enrichment |
+| `--organism` | `human` | Species for enrichment (`human` or `mouse`; mouse genes are mapped to human orthologs) |
+| `--ortholog_table` | None | Mouse-human ortholog TSV; default MGI + Ensembl, cached in `Resources/` |
 | `--n_top` | `300` | Top genes for enrichment tests |
 | `--guide_annotation_key` | `["non-targeting"]` | Non-targeting guide identifiers (accepts multiple values) |
 | `--use_cache` | flag | Load enrichr gene set libraries from cached JSON in `Resources/` instead of downloading; falls back to download + cache on miss |

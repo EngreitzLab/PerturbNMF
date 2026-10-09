@@ -20,6 +20,7 @@ from Stage3_Interpretation.A_Plotting.src import (
     plot_explained_variance,
     programs_dotplots,
     plot_k_selection_panel,
+    plot_k_selection_panel_no_traits,
     read_condition_labels_from_h5mu,
 )
 
@@ -142,6 +143,20 @@ def main():
         help="If set, also generate per-(K, sel_thresh) program dotplots. Requires the inference "
         "h5mu (cNMF_{K}_{thresh}.h5mu) to exist for each (K, sel_thresh). Default off.",
     )
+    parser.add_argument(
+        "--no_trait",
+        action="store_true",
+        help="Skip trait (GWAS) enrichment: do not require or read the trait files and "
+        "drop the trait plots. Use when evaluation ran without --Perform_trait "
+        "(e.g. mouse data). Default off.",
+    )
+    parser.add_argument(
+        "--no_perturbation",
+        action="store_true",
+        help="Skip perturbation results: do not require or read the perturbation "
+        "association files and drop the regulator plots. Use for datasets without "
+        "guides (non-perturbed scRNA-seq). Default off.",
+    )
 
     args = parser.parse_args()
 
@@ -154,7 +169,7 @@ def main():
         yaml.dump(args_dict, f, default_flow_style=False, width=1000)
 
     # ---- Condition labels: default to the values of --groupby in the inference h5mu ----
-    if args.Conditions is None:
+    if args.Conditions is None and not args.no_perturbation:
         first_h5mu = (
             f"{args.output_directory}/{args.run_name}/Inference/adata/"
             f"cNMF_{args.K[0]}_{str(args.sel_threshs[0]).replace('.', '_')}.h5mu"
@@ -175,15 +190,21 @@ def main():
     )
     _ev_pat = args.variance_file or "{k}_Explained_Variance_Summary.txt"
 
+    required_pats = [_go_pat, _gs_pat, _ev_pat]
+    if not args.no_trait:
+        required_pats.append(_tr_pat)
+
     missing = []
     for sel_thresh in args.sel_threshs:
         sel_str = str(sel_thresh).replace(".", "_")
         for k in args.K:
             k_folder = os.path.join(args.eval_folder_name, f"{k}_{sel_str}")
-            for pat in [_go_pat, _gs_pat, _tr_pat, _ev_pat]:
+            for pat in required_pats:
                 fpath = os.path.join(k_folder, pat.format(k=k))
                 if not os.path.isfile(fpath):
                     missing.append(fpath)
+            if args.no_perturbation:
+                continue
             for cond in args.Conditions:
                 fpath = os.path.join(k_folder, _pt_pat.format(k=k, sample=cond))
                 if not os.path.isfile(fpath):
@@ -218,31 +239,40 @@ def main():
             trait_file=args.trait_file,
             term_col=args.term_col,
             adjpval_col=args.adjpval_col,
+            include_traits=not args.no_trait,
         )
         plot_enrichment(
             count_df,
             folder_name=args.save_folder_name,
             file_name=f"Enrichment_{sel_thresh}",
+            include_traits=not args.no_trait,
         )
 
         # Perturbation
-        test_stats_df = load_perturbation_data(
-            folder=args.eval_folder_name,
-            components=args.K,
-            sel_thresh=sel_thresh,
-            conditions=args.Conditions,
-            pval=args.pval,
-            perturbation_file=args.perturbation_file,
-            perturb_adjpval_col=args.perturb_adjpval_col,
-            perturb_target_col=args.perturb_target_col,
-            perturb_log2fc_col=args.perturb_log2fc_col,
-        )
-        plot_perturbation(
-            test_stats_df,
-            folder_name=args.save_folder_name,
-            pval=args.pval,
-            file_name=f"Perturbation_{sel_thresh}",
-        )
+        if args.no_perturbation:
+            print(
+                "--no_perturbation set: skipping perturbation results and regulator plots.",
+                flush=True,
+            )
+            test_stats_df = None
+        else:
+            test_stats_df = load_perturbation_data(
+                folder=args.eval_folder_name,
+                components=args.K,
+                sel_thresh=sel_thresh,
+                conditions=args.Conditions,
+                pval=args.pval,
+                perturbation_file=args.perturbation_file,
+                perturb_adjpval_col=args.perturb_adjpval_col,
+                perturb_target_col=args.perturb_target_col,
+                perturb_log2fc_col=args.perturb_log2fc_col,
+            )
+            plot_perturbation(
+                test_stats_df,
+                folder_name=args.save_folder_name,
+                pval=args.pval,
+                file_name=f"Perturbation_{sel_thresh}",
+            )
 
         # Explained Variance
         stats_EV = load_explained_variance_data(
@@ -260,8 +290,13 @@ def main():
 
         # Motif (working in progress)
 
-        # K-selection panel
-        plot_k_selection_panel(
+        # K-selection panel (perturbation row is hidden when test_stats_df is None)
+        panel_fn = (
+            plot_k_selection_panel_no_traits
+            if args.no_trait
+            else plot_k_selection_panel
+        )
+        panel_fn(
             stats_SE,
             count_df,
             test_stats_df,

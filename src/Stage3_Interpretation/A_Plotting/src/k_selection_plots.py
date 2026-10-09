@@ -413,7 +413,13 @@ def load_enrichment_data(
     trait_file=None,
     term_col="Term",
     adjpval_col="Adjusted P-value",
+    include_traits=True,
 ):
+    """Count unique significant terms per K for GO, gene set and trait enrichment.
+
+    Set include_traits=False when trait enrichment was not run (non-human data);
+    the trait files are then not read and the 'traits' column is filled with 0.
+    """
 
     # loading function
     def load(k, term, folder, term_col, adjpval_col):
@@ -465,15 +471,16 @@ def load_enrichment_data(
                 adjpval_col,
             )
         )
-        term_df.append(
-            load(
-                k,
-                "traits",
-                "{}/{}".format(k_folder, trait_file.format(k=k)),
-                term_col,
-                adjpval_col,
+        if include_traits:
+            term_df.append(
+                load(
+                    k,
+                    "traits",
+                    "{}/{}".format(k_folder, trait_file.format(k=k)),
+                    term_col,
+                    adjpval_col,
+                )
             )
-        )
 
     term_df = pd.concat(term_df, ignore_index=True)
 
@@ -513,7 +520,9 @@ def load_enrichment_data(
 
 
 # plot loaded df — 3 independent square figures
-def plot_enrichment(count_df, folder_name=None, file_name=None, selected_k=None):
+def plot_enrichment(
+    count_df, folder_name=None, file_name=None, selected_k=None, include_traits=True
+):
     enrichment_config = [
         ("go_terms", "Unique GO terms", "GO term enrichment", _COLORS["go_terms"], "o"),
         (
@@ -525,6 +534,9 @@ def plot_enrichment(count_df, folder_name=None, file_name=None, selected_k=None)
         ),
         ("traits", "Unique traits", "Trait enrichment", _COLORS["traits"], "D"),
     ]
+
+    if not include_traits:
+        enrichment_config = [c for c in enrichment_config if c[0] != "traits"]
 
     for col, ylabel, title, color, marker in enrichment_config:
         fig, ax = plt.subplots(figsize=(4, 3.5))
@@ -800,6 +812,88 @@ def plot_explained_variance(stats, folder_name=None, file_name=None, selected_k=
     plt.show()
 
 
+def _plot_regulator_row(ax_all, ax_per_condition, test_stats_df, pval, _add_vline):
+    """Plot unique significant regulators per K, pooled and per condition."""
+    # --- Row 3, Col 0: Regulators (all conditions) ---
+    ax = ax_all
+    plotting_df = (
+        test_stats_df.loc[test_stats_df.adj_pval <= pval, ["K", "target_name"]]
+        .drop_duplicates()
+        .groupby(["K"])
+        .count()
+        .reset_index()
+    )
+    ax.plot(
+        plotting_df["K"],
+        plotting_df["target_name"],
+        color=_COLORS["primary"],
+        linewidth=1.5,
+        marker="o",
+        markersize=4,
+        markerfacecolor=_COLORS["perturbation"],
+        markeredgecolor=_COLORS["primary"],
+        markeredgewidth=0.8,
+        zorder=3,
+    )
+    ax.fill_between(
+        plotting_df["K"],
+        plotting_df["target_name"],
+        alpha=0.08,
+        color=_COLORS["perturbation"],
+    )
+    _add_vline(ax)
+    _style_ax(
+        ax,
+        xlabel="Number of components (k)",
+        ylabel="No. unique regulators",
+        title="Unique regulators for all conditions",
+    )
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
+
+    # --- Row 3, Col 1: Regulators (per sample) ---
+    ax = ax_per_condition
+    plotting_df_sample = (
+        test_stats_df.loc[
+            test_stats_df.adj_pval <= pval, ["K", "condition", "target_name"]
+        ]
+        .drop_duplicates()
+        .groupby(["K", "condition"])
+        .count()
+        .reset_index()
+    )
+    sns.lineplot(
+        x="K",
+        y="target_name",
+        hue="condition",
+        data=plotting_df_sample,
+        palette=_PALETTE[: plotting_df_sample["condition"].nunique()],
+        linewidth=1.5,
+        marker="o",
+        markersize=4,
+        ax=ax,
+        legend="brief",
+    )
+    _add_vline(ax)
+    _style_ax(
+        ax,
+        xlabel="Number of components (k)",
+        ylabel="No. unique regulators",
+        title="Unique regulators per condition",
+    )
+    ax.legend(
+        title="Condition",
+        fontsize=7,
+        title_fontsize=8,
+        frameon=True,
+        fancybox=False,
+        edgecolor="#cccccc",
+        bbox_to_anchor=(1.02, 1),
+        loc="upper left",
+        borderaxespad=0,
+    )
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
+
+
 # Combined panel figure: 3 rows x 3 columns
 # Row 1: Stability, Error, Explained variance
 # Row 2: GO terms, Gene sets, Traits
@@ -945,84 +1039,12 @@ def plot_k_selection_panel(
         _style_ax(ax, xlabel="Number of components (k)", ylabel=ylabel, title=title)
         ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
 
-    # --- Row 3, Col 0: Regulators (all conditions) ---
-    ax = axes[2, 0]
-    plotting_df = (
-        test_stats_df.loc[test_stats_df.adj_pval <= pval, ["K", "target_name"]]
-        .drop_duplicates()
-        .groupby(["K"])
-        .count()
-        .reset_index()
-    )
-    ax.plot(
-        plotting_df["K"],
-        plotting_df["target_name"],
-        color=_COLORS["primary"],
-        linewidth=1.5,
-        marker="o",
-        markersize=4,
-        markerfacecolor=_COLORS["perturbation"],
-        markeredgecolor=_COLORS["primary"],
-        markeredgewidth=0.8,
-        zorder=3,
-    )
-    ax.fill_between(
-        plotting_df["K"],
-        plotting_df["target_name"],
-        alpha=0.08,
-        color=_COLORS["perturbation"],
-    )
-    _add_vline(ax)
-    _style_ax(
-        ax,
-        xlabel="Number of components (k)",
-        ylabel="No. unique regulators",
-        title="Unique regulators for all conditions",
-    )
-    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
-
-    # --- Row 3, Col 1: Regulators (per sample) ---
-    ax = axes[2, 1]
-    plotting_df_sample = (
-        test_stats_df.loc[
-            test_stats_df.adj_pval <= pval, ["K", "condition", "target_name"]
-        ]
-        .drop_duplicates()
-        .groupby(["K", "condition"])
-        .count()
-        .reset_index()
-    )
-    sns.lineplot(
-        x="K",
-        y="target_name",
-        hue="condition",
-        data=plotting_df_sample,
-        palette=_PALETTE[: plotting_df_sample["condition"].nunique()],
-        linewidth=1.5,
-        marker="o",
-        markersize=4,
-        ax=ax,
-        legend="brief",
-    )
-    _add_vline(ax)
-    _style_ax(
-        ax,
-        xlabel="Number of components (k)",
-        ylabel="No. unique regulators",
-        title="Unique regulators per condition",
-    )
-    ax.legend(
-        title="Condition",
-        fontsize=7,
-        title_fontsize=8,
-        frameon=True,
-        fancybox=False,
-        edgecolor="#cccccc",
-        bbox_to_anchor=(1.02, 1),
-        loc="upper left",
-        borderaxespad=0,
-    )
-    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
+    # --- Row 3: Regulators (hidden when there is no perturbation data) ---
+    if test_stats_df is None:
+        axes[2, 0].set_visible(False)
+        axes[2, 1].set_visible(False)
+    else:
+        _plot_regulator_row(axes[2, 0], axes[2, 1], test_stats_df, pval, _add_vline)
 
     # --- Row 3, Col 2: hide empty panel ---
     axes[2, 2].set_visible(False)
@@ -1198,84 +1220,12 @@ def plot_k_selection_panel_no_traits(
     # --- Row 2, Col 2: hide empty panel ---
     axes[1, 2].set_visible(False)
 
-    # --- Row 3, Col 0: Regulators (all conditions) ---
-    ax = axes[2, 0]
-    plotting_df = (
-        test_stats_df.loc[test_stats_df.adj_pval <= pval, ["K", "target_name"]]
-        .drop_duplicates()
-        .groupby(["K"])
-        .count()
-        .reset_index()
-    )
-    ax.plot(
-        plotting_df["K"],
-        plotting_df["target_name"],
-        color=_COLORS["primary"],
-        linewidth=1.5,
-        marker="o",
-        markersize=4,
-        markerfacecolor=_COLORS["perturbation"],
-        markeredgecolor=_COLORS["primary"],
-        markeredgewidth=0.8,
-        zorder=3,
-    )
-    ax.fill_between(
-        plotting_df["K"],
-        plotting_df["target_name"],
-        alpha=0.08,
-        color=_COLORS["perturbation"],
-    )
-    _add_vline(ax)
-    _style_ax(
-        ax,
-        xlabel="Number of components (k)",
-        ylabel="No. unique regulators",
-        title="Unique regulators for all conditions",
-    )
-    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
-
-    # --- Row 3, Col 1: Regulators (per sample) ---
-    ax = axes[2, 1]
-    plotting_df_sample = (
-        test_stats_df.loc[
-            test_stats_df.adj_pval <= pval, ["K", "condition", "target_name"]
-        ]
-        .drop_duplicates()
-        .groupby(["K", "condition"])
-        .count()
-        .reset_index()
-    )
-    sns.lineplot(
-        x="K",
-        y="target_name",
-        hue="condition",
-        data=plotting_df_sample,
-        palette=_PALETTE[: plotting_df_sample["condition"].nunique()],
-        linewidth=1.5,
-        marker="o",
-        markersize=4,
-        ax=ax,
-        legend="brief",
-    )
-    _add_vline(ax)
-    _style_ax(
-        ax,
-        xlabel="Number of components (k)",
-        ylabel="No. unique regulators",
-        title="Unique regulators per condition",
-    )
-    ax.legend(
-        title="Condition",
-        fontsize=7,
-        title_fontsize=8,
-        frameon=True,
-        fancybox=False,
-        edgecolor="#cccccc",
-        bbox_to_anchor=(1.02, 1),
-        loc="upper left",
-        borderaxespad=0,
-    )
-    ax.yaxis.set_major_locator(ticker.MaxNLocator(integer=True, nbins=5))
+    # --- Row 3: Regulators (hidden when there is no perturbation data) ---
+    if test_stats_df is None:
+        axes[2, 0].set_visible(False)
+        axes[2, 1].set_visible(False)
+    else:
+        _plot_regulator_row(axes[2, 0], axes[2, 1], test_stats_df, pval, _add_vline)
 
     # --- Row 3, Col 2: hide empty panel ---
     axes[2, 2].set_visible(False)
