@@ -166,7 +166,9 @@ def compile_Program_loading_score_sheet_long(
             map_mouse_to_human,
         )
 
-        table = load_ortholog_table(ortholog_table)
+        # Map all top genes at once (building the lookup is the slow part).
+        all_genes = pd.unique(result_df.stack().dropna().astype(str).str.strip())
+        orthologs = map_mouse_to_human(all_genes, load_ortholog_table(ortholog_table))
 
     for program_idx, row in result_df.iterrows():
         # Query all genes for this program at once
@@ -177,8 +179,7 @@ def compile_Program_loading_score_sheet_long(
             continue
 
         if use_orthologs:
-            orthologs = map_mouse_to_human(genes_list, table)
-            query_genes = sorted({h for hs in orthologs.values() for h in hs})
+            query_genes = sorted({h for g in genes_list for h in orthologs.get(g, [])})
             query_species = "human"
         else:
             query_genes, query_species = genes_list, species

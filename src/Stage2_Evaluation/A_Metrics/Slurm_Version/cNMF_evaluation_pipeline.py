@@ -47,6 +47,15 @@ def _read_samples_from_h5mu(h5mu_path, data_key, categorical_key):
         return None
 
 
+def _h5mu_has_uns_key(h5mu_path, mod_key, uns_key):
+    """True if mod/<mod_key>/uns/<uns_key> exists in the h5mu; None if unreadable."""
+    try:
+        with h5py.File(h5mu_path, "r") as f:
+            return f"mod/{mod_key}/uns/{uns_key}" in f
+    except OSError:
+        return None
+
+
 # Make the repo's src/ importable regardless of the current working directory
 from pathlib import Path
 
@@ -203,8 +212,9 @@ def main():
 
     parser.add_argument(
         "--organism",
-        help="Organism/species for enrichment analysis (default: human)",
-        type=str,
+        help="Organism/species for enrichment analysis: human or mouse (default: human)",
+        type=str.lower,
+        choices=["human", "mouse"],
         default="human",
     )
     parser.add_argument(
@@ -245,7 +255,7 @@ def main():
     args = parser.parse_args()
 
     # The bundled GWAS resource (OpenTargets L2G) is human-only.
-    if args.Perform_trait and args.organism.lower() != "human":
+    if args.Perform_trait and args.organism != "human":
         print(
             f"--organism {args.organism}: skipping trait (GWAS) enrichment, which is "
             "only available for human data. Pass --no_trait to K-selection plotting.",
@@ -301,6 +311,25 @@ def main():
         reference_targets = df_target_non.index.values.tolist()
     else:
         reference_targets = args.guide_annotation_key
+
+    # Check for guide information before computing any metric.
+    if args.Perform_perturbation:
+        for sel_thresh in args.sel_threshs:
+            for k in args.K:
+                h5mu_path = (
+                    f"{args.out_dir}/{args.run_name}/Inference/adata/"
+                    f"cNMF_{k}_{str(sel_thresh).replace('.', '_')}.h5mu"
+                )
+                if (
+                    _h5mu_has_uns_key(h5mu_path, args.prog_key, args.guide_targets_key)
+                    is False
+                ):
+                    raise ValueError(
+                        f"--Perform_perturbation needs guide information, but uns['"
+                        f"{args.guide_targets_key}'] is missing from '{args.prog_key}' "
+                        f"in {h5mu_path}. For non-perturbed data, drop "
+                        "--Perform_perturbation."
+                    )
 
     for sel_thresh in args.sel_threshs:
         for k in args.K:
@@ -405,12 +434,6 @@ def main():
 
             # Run perturbation assocation
             if args.Perform_perturbation:
-                if args.guide_targets_key not in mdata[args.prog_key].uns:
-                    raise ValueError(
-                        f"--Perform_perturbation needs guide information, but uns['"
-                        f"{args.guide_targets_key}'] is missing from '{args.prog_key}' "
-                        f"(K={k}). For non-perturbed data, drop --Perform_perturbation."
-                    )
                 # Validate reference_targets against mdata guide_targets
                 mdata_targets = set(mdata[args.prog_key].uns[args.guide_targets_key])
                 matched_ref = mdata_targets.intersection(reference_targets)

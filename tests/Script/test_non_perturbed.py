@@ -186,8 +186,37 @@ def test_trait_enrichment_still_requires_gwas_for_human(
 def test_perturbation_without_guides_fails_clearly(
     run_dir, evaluation_main, monkeypatch
 ):
-    monkeypatch.setattr(sys, "argv", _eval_argv(run_dir, "--Perform_perturbation"))
+    """Fails before any metric is computed (no categorical results written)."""
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        _eval_argv(
+            run_dir,
+            "--Perform_perturbation",
+            "--Perform_categorical",
+            "--categorical_key",
+            "sample",
+        ),
+    )
     with pytest.raises(ValueError, match="drop --Perform_perturbation"):
+        evaluation_main()
+    eval_dir = run_dir["run"] / "Evaluation" / f"{K_VALUES[0]}_{SEL_STR}"
+    assert not (
+        eval_dir / f"{K_VALUES[0]}_categorical_association_results.txt"
+    ).exists()
+
+
+def test_organism_is_case_insensitive(run_dir, evaluation_main, monkeypatch, capsys):
+    monkeypatch.setattr(
+        sys, "argv", _eval_argv(run_dir, "--Perform_trait", "--organism", "Mouse")
+    )
+    assert evaluation_main() == 0
+    assert "skipping trait (GWAS) enrichment" in capsys.readouterr().out
+
+
+def test_unsupported_organism_is_rejected(run_dir, evaluation_main, monkeypatch):
+    monkeypatch.setattr(sys, "argv", _eval_argv(run_dir, "--organism", "rat"))
+    with pytest.raises(SystemExit):
         evaluation_main()
 
 

@@ -157,7 +157,8 @@ def main():
     )
     parser.add_argument(
         "--organism",
-        type=str,
+        type=str.lower,
+        choices=["human", "mouse"],
         default="human",
         help="Species of the data, for MyGene gene summaries in the Program Loadings "
         "sheet. With mouse, each gene gets the summaries of its human orthologs "

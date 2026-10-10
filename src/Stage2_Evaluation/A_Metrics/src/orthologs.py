@@ -44,13 +44,16 @@ ENSEMBL_MARTS = [
 ]
 ENSEMBL_QUERY = (
     '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE Query>'
-    '<Query virtualSchemaName="default" formatter="TSV" header="1" uniqueRows="1">'
+    '<Query virtualSchemaName="default" formatter="TSV" header="1" uniqueRows="1"'
+    ' completionStamp="1">'
     '<Dataset name="mmusculus_gene_ensembl" interface="default">'
     '<Attribute name="ensembl_gene_id"/>'
     '<Attribute name="external_gene_name"/>'
     '<Attribute name="hsapiens_homolog_associated_gene_name"/>'
     "</Dataset></Query>"
 )
+# BioMart appends this line only when the full result was sent.
+ENSEMBL_COMPLETION_STAMP = "[success]"
 DOWNLOAD_TIMEOUT_S = 600
 MOUSE_TAXON = "10090"
 HUMAN_TAXON = "9606"
@@ -84,8 +87,11 @@ def _fetch_ensembl() -> pd.DataFrame:
     errors = []
     for mart in ENSEMBL_MARTS:
         try:
-            text = _download(f"{mart}?{query}")
-            df = pd.read_csv(io.StringIO(text), sep="\t", dtype=str)
+            text = _download(f"{mart}?{query}").rstrip("\n")
+            body, _, last_line = text.rpartition("\n")
+            if last_line.strip() != ENSEMBL_COMPLETION_STAMP:
+                raise RuntimeError("incomplete response (no completion stamp)")
+            df = pd.read_csv(io.StringIO(body), sep="\t", dtype=str)
             if df.shape[1] != 3 or df.empty:
                 raise RuntimeError(f"unexpected response: {text[:200]!r}")
             break
@@ -117,9 +123,19 @@ def load_ortholog_table(path: str | None = None) -> pd.DataFrame:
         table = pd.read_csv(DEFAULT_TABLE_PATH, sep="\t", dtype=str)
     else:
         logger.info("Downloading mouse-human ortholog table (MGI + Ensembl)")
-        table = build_ortholog_table()
+        try:
+            table = build_ortholog_table()
+        except (OSError, RuntimeError) as err:
+            raise RuntimeError(
+                f"Could not download the mouse-human ortholog table ({err}). On a node "
+                "without internet access, build it once elsewhere (it is cached at "
+                f"{DEFAULT_TABLE_PATH}) or pass a pre-built table with --ortholog_table."
+            ) from err
         os.makedirs(RESOURCES_DIR, exist_ok=True)
-        table.to_csv(DEFAULT_TABLE_PATH, sep="\t", index=False)
+        # Write to a temporary file first so concurrent jobs never read a partial table.
+        tmp_path = f"{DEFAULT_TABLE_PATH}.{os.getpid()}.tmp"
+        table.to_csv(tmp_path, sep="\t", index=False)
+        os.replace(tmp_path, DEFAULT_TABLE_PATH)
         logger.info(f"Saved ortholog table to {DEFAULT_TABLE_PATH}")
 
     missing = set(TABLE_COLUMNS) - set(table.columns)
