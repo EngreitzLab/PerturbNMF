@@ -29,6 +29,8 @@
 | `--selected_k` | None | K value to highlight with a red dashed line |
 | `--stability_file` | None | Pre-computed stability/error TSV/NPZ (bypasses `cnmf.consensus()`; for torch-cNMF runs) |
 | `--run_program_dotplot` | off | Enable per-(K, sel_thresh) program dotplots (default off; requires the inference h5mu artifact per K/threshold) |
+| `--no_trait` | off | Skip trait (GWAS) enrichment inputs and plots (non-human data) |
+| `--no_perturbation` | off | Skip perturbation inputs and regulator plots (non-perturbed data, no guides) |
 
 Enrichment file patterns use `{k}` placeholder (and `{sample}` for perturbation). See `references/parameter-catalog.md` Section 4 for all optional params.
 
