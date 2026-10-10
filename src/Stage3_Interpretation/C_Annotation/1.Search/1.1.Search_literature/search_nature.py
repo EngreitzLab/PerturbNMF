@@ -13,11 +13,11 @@ from pdf_download import download_paper, report_downloads
 
 # Nature portfolio search (Crossref, DOI prefix 10.1038) + PDF download from nature.com.
 #
-# PDFs come from nature.com under Stanford's institutional subscription, which Nature grants
-# by IP address: it works from Sherlock / campus / Stanford VPN (Sherlock egresses from a
-# Stanford 171.67.x address) with no SUNet login. Off the Stanford network, only open-access
-# articles download. Stanford's license covers research use, not bulk harvesting, so results
-# are capped and PDF requests are spaced out.
+# PDFs come from nature.com under an institutional subscription, which Nature grants by IP
+# address: it works from a network covered by your institution's license (campus, VPN, or a
+# cluster that egresses from an institutional address) with no login. Elsewhere, only
+# open-access articles download. Institutional licenses cover research use, not bulk
+# harvesting, so results are capped and PDF requests are spaced out.
 CROSSREF_BASE_URL = "https://api.crossref.org"
 NATURE_BASE_URL = "https://www.nature.com"
 NATURE_DOI_PREFIX = "10.1038"
@@ -122,7 +122,7 @@ def search_Nature(
        bibliographic (title, authors, journal, year) via Crossref, restricted to DOI prefix 10.1038
     2. Adding a journal name or year to the query biases toward it (e.g. "... Nature Genetics 2023")
     3. Only journal articles are returned (no news, editorials split out by Crossref type)
-    4. PDF download uses Stanford's subscription by IP: run on Sherlock / campus / Stanford VPN
+    4. PDF download uses an institutional subscription by IP: run on a licensed network
 
     Env (optional): CROSSREF_MAILTO / PUBMED_EMAIL (Crossref polite pool). No API key needed.
 
@@ -168,7 +168,7 @@ def search_Nature(
             pdf_path, msg = download_paper(out_dir, f"nature_{rec['article_id']}",
                                            doi=rec["doi"], pdf_urls=[rec["pdf_url"]])
             if not pdf_path:
-                msg += "; is this running on the Stanford network (Sherlock / campus / VPN)?"
+                msg += "; is this running on a network with institutional access (campus / VPN)?"
             downloads.append((rec["title"], pdf_path, msg))
             pdf_line = '\n' + 'PDF: ' + (pdf_path or f'Not downloaded ({msg})')
 
@@ -177,7 +177,7 @@ def search_Nature(
     if out_dir:
         report_downloads("Nature", query, downloads, out_dir)
 
-    return "\n".join(data_list) + '\n' + "Data source: Nature (nature.com, Stanford subscription)"
+    return "\n".join(data_list) + '\n' + "Data source: Nature (nature.com, institutional subscription)"
 
 
 if __name__ == "__main__":

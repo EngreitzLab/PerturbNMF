@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=omnipath_interact
-#SBATCH -p normal
+#SBATCH -p <partition>
 #SBATCH --time=00:30:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4GB
@@ -18,11 +18,13 @@
 # --programs (required) takes space-separated ids (e.g. 1 2 3); only those P<k>.json are read.
 
 set -euo pipefail
-source /oak/stanford/groups/engreitz/Users/ymo/miniforge3/etc/profile.d/conda.sh
+eval "$(conda shell.bash hook)"
 conda activate NMF_Benchmarking
 
-SCRIPT_DIR=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Interpretation/C_Annotation/AGeneTic/1.Search/1.0.Search_database/search_gene_interaction
-RESULT=/oak/stanford/groups/engreitz/Users/ymo/Project/Helen_telohaec/Result/073126_2kG_torch_e8_64
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
+SCRIPT_DIR="$PIPELINE_ROOT/src/Stage3_Interpretation/C_Annotation/1.Search/1.0.Search_database/search_gene_interaction"
+RESULT="/path/to/output_dir/<run_name>"   # edit: run directory with Interpretation/
 BUNDLE_DIR=$RESULT/Interpretation/AGeneTic_test/PerturbNMF_Info
 
 python $SCRIPT_DIR/search_OmniPath.py \

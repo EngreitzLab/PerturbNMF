@@ -22,6 +22,9 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
   repo from their own location instead of a hardcoded checkout path.
 - Annotation defaults are cell-type neutral; the PubMed keyword is optional, and
   Vertex AI project/bucket come from env vars (`VERTEX_PROJECT_ID`, `VERTEX_BUCKET`).
+- Annotation runners locate their scripts via `PIPELINE_ROOT` (fixing paths into a
+  nonexistent `AGeneTic/` folder); `gpe_export.py` reads the GeneProgramExplorer
+  location from `GPE_DIR`.
 
 ### Added
 - `tools/check_no_lab_specific_content.py` guard (CI + pre-commit) that blocks

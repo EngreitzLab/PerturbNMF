@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=extract_prog_info
-#SBATCH -p normal
+#SBATCH -p <partition>
 #SBATCH --time=00:30:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16GB
@@ -17,11 +17,13 @@
 # literature steps investigate exactly these pairs.
 
 set -euo pipefail
-source /oak/stanford/groups/engreitz/Users/ymo/miniforge3/etc/profile.d/conda.sh
+eval "$(conda shell.bash hook)"
 conda activate NMF_Benchmarking
 
-SCRIPT_DIR=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Interpretation/C_Annotation/AGeneTic/0.Prepare
-RESULT=/oak/stanford/groups/engreitz/Users/ymo/Project/Helen_telohaec/Result/073126_2kG_torch_e8_64
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
+SCRIPT_DIR="$PIPELINE_ROOT/src/Stage3_Interpretation/C_Annotation/0.Prepare"
+RESULT="/path/to/output_dir/<run_name>"   # edit: run directory with Interpretation/
 OUT=$RESULT/Interpretation/AGeneTic_test
 
 python $SCRIPT_DIR/Extract_program_information.py \
@@ -35,7 +37,7 @@ python $SCRIPT_DIR/Extract_program_information.py \
   --gene_name_key var_names \
   --categorical_key type \
   --log2fc_key log2FC \
-  --cell_type "teloHAEC aortic endothelial cell" \
+  --cell_type "aortic endothelial cell" \
   --organism human \
   --top_gene 15 \
   --top_unique_gene 8 \

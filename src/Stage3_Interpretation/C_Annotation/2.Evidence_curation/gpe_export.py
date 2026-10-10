@@ -1,26 +1,33 @@
 """Attach cached paper-qa evidence onto an existing GPE contract, and validate it.
 
-Imports GPE's own contract classes live from Tools/GeneProgramExplorer (``pipeline/src``) so the
-emitted evidence matches the schema exactly. Attach-to-EXISTING-edges only: for each gene-gene
-edge whose pair has a cached result, we append a ``literature`` entry to the edge's ``evidence[]``.
-We never create new edges here.
+Imports GPE's own contract classes live from a GeneProgramExplorer checkout (``pipeline/src``) so
+the emitted evidence matches the schema exactly. Set the ``GPE_DIR`` environment variable to that
+checkout, or pass ``src_dir`` / ``schema_path`` explicitly. Attach-to-EXISTING-edges only: for each
+gene-gene edge whose pair has a cached result, we append a ``literature`` entry to the edge's
+``evidence[]``. We never create new edges here.
 """
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from evidence_cache import read_result  # noqa: E402
 
-GPE_DIR = "/oak/stanford/groups/engreitz/Users/ymo/Tools/GeneProgramExplorer"
+GPE_DIR = os.environ.get("GPE_DIR", "/path/to/GeneProgramExplorer")
 DEFAULT_GPE_SRC = f"{GPE_DIR}/pipeline/src"
 DEFAULT_SCHEMA = f"{GPE_DIR}/contract/schema.json"
 
 
 def _load_gpe(src_dir: str = DEFAULT_GPE_SRC):
     """Put the bundled GPE pipeline on sys.path and return the classes we need."""
+    if not Path(src_dir).is_dir():
+        raise FileNotFoundError(
+            f"GeneProgramExplorer source not found at {src_dir}. Set the GPE_DIR "
+            "environment variable to your GeneProgramExplorer checkout."
+        )
     src_dir = str(Path(src_dir).resolve())
     if src_dir not in sys.path:
         sys.path.insert(0, src_dir)

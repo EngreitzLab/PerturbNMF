@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=agenetic_report
-#SBATCH -p normal
+#SBATCH -p <partition>
 #SBATCH --time=00:10:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2GB
@@ -14,16 +14,18 @@
 # Add --cdn to load Cytoscape.js from the web instead of inlining it (file ~0.4 MB smaller).
 
 set -euo pipefail
-source /oak/stanford/groups/engreitz/Users/ymo/miniforge3/etc/profile.d/conda.sh
+eval "$(conda shell.bash hook)"
 conda activate NMF_Benchmarking
 
-SCRIPT_DIR=/oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF/src/Stage3_Interpretation/C_Annotation/AGeneTic/3.Generate
-RESULT=/oak/stanford/groups/engreitz/Users/ymo/Project/Helen_telohaec/Result/073126_2kG_torch_e8_64
+# Path to your PerturbNMF checkout (export PIPELINE_ROOT=/path/to/PerturbNMF before sbatch)
+: "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
+SCRIPT_DIR="$PIPELINE_ROOT/src/Stage3_Interpretation/C_Annotation/3.Generate"
+RESULT="/path/to/output_dir/<run_name>"   # edit: run directory with Interpretation/
 INFO_DIR=$RESULT/Interpretation/AGeneTic_test/Gene_info_extended_PerturbNMF_Info
 
 python $SCRIPT_DIR/html_report.py \
   --info_dir $INFO_DIR \
   --out $RESULT/Interpretation/AGeneTic_test/Report/AGeneTic_report.html \
-  --dataset_name "Helen teloHAEC 2kG" \
+  --dataset_name "<dataset name>" \
   --top_regulator 5 \
   --top_gene 15
