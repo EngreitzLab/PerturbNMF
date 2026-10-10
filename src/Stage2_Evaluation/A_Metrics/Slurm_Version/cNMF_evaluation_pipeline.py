@@ -48,12 +48,20 @@ def _read_samples_from_h5mu(h5mu_path, data_key, categorical_key):
 
 
 def _h5mu_has_uns_key(h5mu_path, mod_key, uns_key):
-    """True if mod/<mod_key>/uns/<uns_key> exists in the h5mu; None if unreadable."""
+    """True if mod/<mod_key>/uns/<uns_key> exists in the h5mu; None if unreadable.
+
+    Raises ValueError if the modality itself is missing (e.g. a wrong --prog_key).
+    """
     try:
-        with h5py.File(h5mu_path, "r") as f:
-            return f"mod/{mod_key}/uns/{uns_key}" in f
+        f = h5py.File(h5mu_path, "r")
     except OSError:
         return None
+    with f:
+        if f"mod/{mod_key}" not in f:
+            raise ValueError(
+                f"Modality '{mod_key}' not found in {h5mu_path}; check --prog_key."
+            )
+        return f"mod/{mod_key}/uns/{uns_key}" in f
 
 
 # Make the repo's src/ importable regardless of the current working directory

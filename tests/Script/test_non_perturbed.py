@@ -206,6 +206,16 @@ def test_perturbation_without_guides_fails_clearly(
     ).exists()
 
 
+def test_perturbation_with_wrong_prog_key_names_the_modality(
+    run_dir, evaluation_main, monkeypatch
+):
+    monkeypatch.setattr(
+        sys, "argv", _eval_argv(run_dir, "--Perform_perturbation", "--prog_key", "prog")
+    )
+    with pytest.raises(ValueError, match="check --prog_key"):
+        evaluation_main()
+
+
 def test_organism_is_case_insensitive(run_dir, evaluation_main, monkeypatch, capsys):
     monkeypatch.setattr(
         sys, "argv", _eval_argv(run_dir, "--Perform_trait", "--organism", "Mouse")
