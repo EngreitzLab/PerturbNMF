@@ -29,10 +29,29 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
 - `setup_sterile_run.sh` (perturbseq-hypotheses skill): remote inputs use a `remote:`
   manifest prefix (was `sherlock:`), and `fetch_inputs.sh` reads the host from
   `STERILE_RUN_REMOTE` instead of a hardcoded login.
+- ⚠️ Mouse data (`--organism mouse`): genes are matched to the human gene-set
+  libraries (GO, Reactome) through curated mouse-human orthologs (MGI + Ensembl)
+  instead of upper-cased symbols. Mouse genes without a human ortholog are left
+  out of enrichment. Re-run gene set and GO enrichment for mouse datasets.
+- `--organism` accepts only `human` or `mouse` (case-insensitive) in evaluation
+  and the Excel summary. Trait (GWAS) enrichment is skipped, with a message, for
+  mouse data.
+- `ensure_umap` (program and perturbed-gene plots) reuses embeddings stored as
+  `obsm['UMAP']` / `obsm['PCA']` (e.g. Seurat conversions) instead of computing
+  a new UMAP.
 
 ### Added
 - `tools/check_no_lab_specific_content.py` guard (CI + pre-commit) that blocks
   lab/project-specific content in this public repo.
+- Support for scRNA-seq data without perturbations (no guide information):
+  K-selection `--no_perturbation` / `--no_trait`; program plots and the Excel
+  summary run without `uns['guide_targets']` (the Targets Summary sheet is
+  skipped); evaluation stops early when `--Perform_perturbation` is requested
+  without guides. See the README section "Non-perturbed and mouse data".
+- Mouse-human ortholog table (`src/Stage2_Evaluation/A_Metrics/src/orthologs.py`),
+  downloaded once and cached in `src/Stage2_Evaluation/Resources/`, or supplied
+  with `--ortholog_table`. With `--organism mouse`, the Excel summary annotates
+  genes with their human orthologs' summaries in a new `Human ortholog` column.
 
 ## [0.1.1] - 2026-08-10
 

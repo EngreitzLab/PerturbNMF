@@ -98,7 +98,7 @@ input) and on mouse data. Per stage:
 | 2a. Metrics | Leave out `--Perform_perturbation` and `--guide_annotation_path` | `--organism mouse`: genes are mapped to human orthologs for gene set and GO enrichment. Trait (GWAS) enrichment is human-only and is skipped with a message if requested |
 | 2b. Calibration | Not applicable (needs non-targeting guides); skip | No change |
 | 3a. K-selection plots | `--no_perturbation` | `--no_trait` |
-| 3a. Program plots | Leave out `--perturb_path_base`; perturbed-gene annotations are left empty | No change |
+| 3a. Program plots | Leave out `--perturb_path_base` and use `--output_format PDF` or `SVG` (HTML requires `--perturb_path_base`); perturbed-gene annotations are left empty | No change |
 | 3a. Perturbed-gene plots | Not applicable; skip | No change |
 | 3b. Excel summary | The Targets Summary sheet is skipped automatically | `--organism mouse`: genes are annotated with their human orthologs' summaries |
 | 3c. Annotation | No change | `--taxid 10090` (NCBI, UniProt, OmniPath search), `--species mouse` (MyGene search), `--organism mouse` (program extraction) |
@@ -108,6 +108,7 @@ orthologs (union of MGI and Ensembl), not by upper-casing symbols. The table is 
 on first use and cached in `src/Stage2_Evaluation/Resources/orthologs_mouse_human.tsv`;
 pass `--ortholog_table` to use a fixed copy. Mouse genes without a human ortholog are left
 out of enrichment, and a gene with several human orthologs contributes to all of them.
+Custom gene sets used with mouse data must therefore use human gene symbols.
 
 ## Claude Code Skills
 

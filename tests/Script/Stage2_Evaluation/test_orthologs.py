@@ -155,3 +155,73 @@ def test_unsupported_organism():
         get_program_gene_loadings(
             _mdata(["Cdh5"]), prog_key="cNMF", data_key="rna", organism="rat"
         )
+
+
+# Download handling (network calls are replaced by stubs)
+
+ENSEMBL_HEADER = "Gene stable ID\tGene name\tHuman gene name\n"
+ENSEMBL_ROW = "ENSMUSG00000031871\tCdh5\tCDH5\n"
+
+
+def test_ensembl_requires_completion_stamp(monkeypatch):
+    """A response cut short by BioMart (no '[success]' line) is rejected."""
+    from Stage2_Evaluation.A_Metrics.src import orthologs
+
+    monkeypatch.setattr(
+        orthologs, "_download", lambda url: ENSEMBL_HEADER + ENSEMBL_ROW
+    )
+    with pytest.raises(RuntimeError, match="completion stamp"):
+        orthologs._fetch_ensembl()
+
+    monkeypatch.setattr(
+        orthologs, "_download", lambda url: ENSEMBL_HEADER + ENSEMBL_ROW + "[success]\n"
+    )
+    df = orthologs._fetch_ensembl()
+    assert df.to_dict("records") == [
+        {
+            "mouse_symbol": "Cdh5",
+            "mouse_ensembl": "ENSMUSG00000031871",
+            "human_symbol": "CDH5",
+            "source": "Ensembl",
+        }
+    ]
+
+
+def test_download_failure_suggests_ortholog_table(monkeypatch, tmp_path):
+    from Stage2_Evaluation.A_Metrics.src import orthologs
+
+    def offline():
+        raise OSError("network unreachable")
+
+    monkeypatch.setattr(orthologs, "DEFAULT_TABLE_PATH", str(tmp_path / "cache.tsv"))
+    monkeypatch.setattr(orthologs, "build_ortholog_table", offline)
+    with pytest.raises(RuntimeError, match="--ortholog_table"):
+        orthologs.load_ortholog_table()
+
+
+def test_cache_is_written_atomically(monkeypatch, tmp_path, table):
+    """The cache appears in one step (no partial file) and is reused afterwards."""
+    from Stage2_Evaluation.A_Metrics.src import orthologs
+
+    cache = tmp_path / "cache.tsv"
+    monkeypatch.setattr(orthologs, "RESOURCES_DIR", str(tmp_path))
+    monkeypatch.setattr(orthologs, "DEFAULT_TABLE_PATH", str(cache))
+    monkeypatch.setattr(orthologs, "build_ortholog_table", lambda: table)
+    replaced = []
+    real_replace = orthologs.os.replace
+
+    def record_replace(src, dst):
+        assert not cache.exists()  # nothing written to the final path before the move
+        replaced.append((src, dst))
+        real_replace(src, dst)
+
+    monkeypatch.setattr(orthologs.os, "replace", record_replace)
+    first = orthologs.load_ortholog_table()
+    assert replaced and replaced[0][1] == str(cache)
+    assert list(tmp_path.iterdir()) == [cache]  # temporary file is gone
+
+    monkeypatch.setattr(
+        orthologs, "build_ortholog_table", lambda: pytest.fail("rebuilt")
+    )
+    second = orthologs.load_ortholog_table()
+    assert len(second) == len(first)
