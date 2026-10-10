@@ -1,4 +1,5 @@
 """JSON + Markdown + HTML output generation per program."""
+
 from __future__ import annotations
 
 import html as html_lib
@@ -52,9 +53,7 @@ def write_program_json(
 
     for pmid, paper in papers.items():
         paper_dict = paper.to_dict()
-        paper_dict["verification"] = [
-            v.to_dict() for v in verifications.get(pmid, [])
-        ]
+        paper_dict["verification"] = [v.to_dict() for v in verifications.get(pmid, [])]
         # Compute overall badge
         vr_list = verifications.get(pmid, [])
         if vr_list:
@@ -106,8 +105,13 @@ def write_program_markdown(
 
     # Context header
     lines.append("## Program Context\n")
-    for key in ("top_genes", "regulators",
-                "day_most_active", "cell_types", "go_enrichment"):
+    for key in (
+        "top_genes",
+        "regulators",
+        "day_most_active",
+        "cell_types",
+        "go_enrichment",
+    ):
         val = program_context.get(key, "")
         if val:
             label = key.replace("_", " ").title()
@@ -124,7 +128,9 @@ def write_program_markdown(
         badge = _overall_badge(vr_list)
 
         lines.append(f"### {rank}. {paper.title} {badge}\n")
-        lines.append(f"**PMID**: [{paper.pmid}](https://pubmed.ncbi.nlm.nih.gov/{paper.pmid}/)")
+        lines.append(
+            f"**PMID**: [{paper.pmid}](https://pubmed.ncbi.nlm.nih.gov/{paper.pmid}/)"
+        )
         if paper.authors:
             lines.append(f"  |  **Authors**: {paper.authors}")
         if paper.journal:
@@ -189,6 +195,7 @@ def _sort_papers(
     verifications: Dict[int, List[VerificationResult]],
 ) -> List[int]:
     """Sort PMIDs: verified first, then by evidence count."""
+
     def sort_key(pmid):
         vr_list = verifications.get(pmid, [])
         all_passed = all(v.passed for v in vr_list) if vr_list else False
@@ -275,7 +282,7 @@ def _badge_html(badge: str) -> str:
     return (
         f'<span style="display:inline-block;padding:2px 8px;border-radius:4px;'
         f'font-size:0.8em;font-weight:600;color:{fg};background:{bg}">'
-        f'{_esc(label)}</span>'
+        f"{_esc(label)}</span>"
     )
 
 
@@ -293,7 +300,8 @@ def write_program_html(
 
     sorted_pmids = _sort_papers(papers, verifications)
     n_verified = sum(
-        1 for pm in sorted_pmids
+        1
+        for pm in sorted_pmids
         if _overall_badge(verifications.get(pm, [])) == "[VERIFIED]"
     )
 
@@ -301,10 +309,12 @@ def write_program_html(
     parts.append(_html_head(program_id))
 
     # -- Header --
-    parts.append(f'<h1>Program {_esc(str(program_id))} &mdash; Literature Evidence</h1>')
+    parts.append(
+        f"<h1>Program {_esc(str(program_id))} &mdash; Literature Evidence</h1>"
+    )
     parts.append(
         f'<p class="meta">Generated {datetime.now().strftime("%Y-%m-%d %H:%M")} '
-        f'&bull; {len(papers)} papers &bull; {n_verified} verified</p>'
+        f"&bull; {len(papers)} papers &bull; {n_verified} verified</p>"
     )
 
     # -- Context card --
@@ -322,20 +332,26 @@ def write_program_html(
         if val:
             # Turn gene lists into pills
             if key in ("top_genes", "regulators"):
-                genes = [g.strip() for g in val.replace(";", ",").split(",") if g.strip()]
-                val_html = " ".join(f'<span class="gene">{_esc(g)}</span>' for g in genes)
+                genes = [
+                    g.strip() for g in val.replace(";", ",").split(",") if g.strip()
+                ]
+                val_html = " ".join(
+                    f'<span class="gene">{_esc(g)}</span>' for g in genes
+                )
             else:
                 val_html = _esc(val)
-            parts.append(f'<tr><td class="lbl">{_esc(label)}</td><td>{val_html}</td></tr>')
-    parts.append('</table></div>')
+            parts.append(
+                f'<tr><td class="lbl">{_esc(label)}</td><td>{val_html}</td></tr>'
+            )
+    parts.append("</table></div>")
 
     # -- Synthesis --
     if synthesis_text and "unavailable" not in synthesis_text.lower():
         parts.append('<div class="card synthesis"><h2>Synthesis</h2>')
-        parts.append(f'<p>{_esc(synthesis_text)}</p></div>')
+        parts.append(f"<p>{_esc(synthesis_text)}</p></div>")
 
     # -- Papers --
-    parts.append('<h2>Paper Evidence</h2>')
+    parts.append("<h2>Paper Evidence</h2>")
     for rank, pmid in enumerate(sorted_pmids, 1):
         paper = papers[pmid]
         vr_list = verifications.get(pmid, [])
@@ -343,61 +359,69 @@ def write_program_html(
 
         parts.append('<div class="card paper">')
         parts.append(
-            f'<h3>{rank}. {_badge_html(badge)} '
+            f"<h3>{rank}. {_badge_html(badge)} "
             f'<a href="https://pubmed.ncbi.nlm.nih.gov/{pmid}/" target="_blank">'
-            f'{_esc(paper.title or "Untitled")}</a></h3>'
+            f"{_esc(paper.title or 'Untitled')}</a></h3>"
         )
         parts.append(
             f'<p class="meta">PMID:{pmid}'
-            + (f' &bull; {_esc(paper.authors)}' if paper.authors else '')
-            + (f' &bull; {_esc(paper.journal)} ({paper.year})' if paper.journal else '')
-            + '</p>'
+            + (f" &bull; {_esc(paper.authors)}" if paper.authors else "")
+            + (f" &bull; {_esc(paper.journal)} ({paper.year})" if paper.journal else "")
+            + "</p>"
         )
 
         # LLM summary
         if paper.summary:
-            parts.append(f'<p><strong>Summary:</strong> {_esc(paper.summary)}</p>')
+            parts.append(f"<p><strong>Summary:</strong> {_esc(paper.summary)}</p>")
 
         # Evidence sentences
         if paper.evidence_sentences:
-            parts.append('<div class="evidence"><strong>Evidence sentences</strong><ul>')
+            parts.append(
+                '<div class="evidence"><strong>Evidence sentences</strong><ul>'
+            )
             for gene, sents in paper.evidence_sentences.items():
                 for sent in sents:
                     parts.append(
                         f'<li><span class="gene">{_esc(gene)}</span> '
-                        f'&ldquo;{_esc(sent)}&rdquo;</li>'
+                        f"&ldquo;{_esc(sent)}&rdquo;</li>"
                     )
-            parts.append('</ul></div>')
+            parts.append("</ul></div>")
 
         # Gene-gene relations
         if paper.relations:
-            parts.append('<div class="relations"><strong>Gene-gene relations</strong><ul>')
+            parts.append(
+                '<div class="relations"><strong>Gene-gene relations</strong><ul>'
+            )
             for rel in paper.relations[:5]:
                 rtype = rel["type"].replace("_", " ")
                 score = rel.get("score", "")
-                score_str = f' <span class="score">({score:.2f})</span>' if score else ""
+                score_str = (
+                    f' <span class="score">({score:.2f})</span>' if score else ""
+                )
                 parts.append(
                     f'<li><span class="gene">{_esc(rel["gene1"])}</span> '
-                    f'&rarr; <em>{_esc(rtype)}</em> &rarr; '
+                    f"&rarr; <em>{_esc(rtype)}</em> &rarr; "
                     f'<span class="gene">{_esc(rel["gene2"])}</span>{score_str}</li>'
                 )
-            parts.append('</ul></div>')
+            parts.append("</ul></div>")
 
         # Verification
         if vr_list:
-            parts.append('<details><summary>Verification details</summary><ul class="vr">')
+            parts.append(
+                '<details><summary>Verification details</summary><ul class="vr">'
+            )
             for vr in vr_list:
                 icon = "&#10003;" if vr.passed else "&#10007;"
                 cls = "pass" if vr.passed else "fail"
                 parts.append(
                     f'<li class="{cls}">{icon} L{vr.level} ({_esc(vr.method)}): '
-                    f'{_esc(vr.details)}</li>'
+                    f"{_esc(vr.details)}</li>"
                 )
-            parts.append('</ul></details>')
+            parts.append("</ul></details>")
 
-        parts.append('</div>')  # .card.paper
+        parts.append("</div>")  # .card.paper
 
-    parts.append('</div></body></html>')  # close .container
+    parts.append("</div></body></html>")  # close .container
 
     content = "\n".join(parts)
     path.write_text(content, encoding="utf-8")

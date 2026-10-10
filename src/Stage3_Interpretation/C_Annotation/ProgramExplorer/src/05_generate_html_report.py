@@ -23,45 +23,61 @@ import pandas as pd
 from markdown import markdown
 import sys as _sys
 from pathlib import Path as _Path
+
 _sys.path.insert(0, str(_Path(__file__).resolve().parent))
 
 from column_mapper import standardize_regulator_results
 
 PRIORITY_GENES = [
-    "Hif1a", "Epas1", "Arnt", "Fzd4", "Fzd6", "Idh2", "Mdh2", "Ogdh",
-    "Hsp90ab1", "Hspa5", "Creb3l2", "Fkbp8", "Kdr", "Egln1", "Egln2", "Foxo1", "Foxo3"
+    "Hif1a",
+    "Epas1",
+    "Arnt",
+    "Fzd4",
+    "Fzd6",
+    "Idh2",
+    "Mdh2",
+    "Ogdh",
+    "Hsp90ab1",
+    "Hspa5",
+    "Creb3l2",
+    "Fkbp8",
+    "Kdr",
+    "Egln1",
+    "Egln2",
+    "Foxo1",
+    "Foxo3",
 ]
 
 
 def extract_program_stats(annotation_md: str) -> dict:
     """Extract stats from annotation markdown."""
-    stats = {'top_loading': '', 'unique': '', 'celltype': ''}
-    
+    stats = {"top_loading": "", "unique": "", "celltype": ""}
+
     # Extract top-loading genes
-    match = re.search(r'\*\*Top-loading genes?:\*\*\s*([^\n]+)', annotation_md, re.I)
+    match = re.search(r"\*\*Top-loading genes?:\*\*\s*([^\n]+)", annotation_md, re.I)
     if match:
-        stats['top_loading'] = match.group(1).strip()
-    
+        stats["top_loading"] = match.group(1).strip()
+
     # Extract unique genes
-    match = re.search(r'\*\*Unique genes?:\*\*\s*([^\n]+)', annotation_md, re.I)
+    match = re.search(r"\*\*Unique genes?:\*\*\s*([^\n]+)", annotation_md, re.I)
     if match:
-        stats['unique'] = match.group(1).strip()
-    
+        stats["unique"] = match.group(1).strip()
+
     # Extract cell-type enrichment
-    match = re.search(r'\*\*Cell-type enrichment:\*\*\s*([^\n]+)', annotation_md, re.I)
+    match = re.search(r"\*\*Cell-type enrichment:\*\*\s*([^\n]+)", annotation_md, re.I)
     if match:
-        stats['celltype'] = match.group(1).strip()
-    
+        stats["celltype"] = match.group(1).strip()
+
     # Extract brief summary
-    match = re.search(r'\*\*Brief Summary:\*\*\s*([^\n]+)', annotation_md, re.I)
+    match = re.search(r"\*\*Brief Summary:\*\*\s*([^\n]+)", annotation_md, re.I)
     if match:
-        stats['summary'] = match.group(1).strip()
-    
+        stats["summary"] = match.group(1).strip()
+
     # Extract program label
-    match = re.search(r'\*\*Program label:\*\*\s*([^\n]+)', annotation_md, re.I)
+    match = re.search(r"\*\*Program label:\*\*\s*([^\n]+)", annotation_md, re.I)
     if match:
-        stats['label'] = match.group(1).strip()
-    
+        stats["label"] = match.group(1).strip()
+
     return stats
 
 
@@ -75,7 +91,7 @@ def generate_report(
     regulator_significance_threshold: float = 0.05,
 ):
     """Generate Design A: Scientific Minimal HTML report."""
-    
+
     # Load data
     summary_df = pd.read_csv(summary_csv)
     volcano_df = None
@@ -84,94 +100,111 @@ def generate_report(
             pd.read_csv(volcano_csv),
             significance_threshold=regulator_significance_threshold,
         )
-    
+
     # Process volcano data by program
     volcano_by_program = {}
     if volcano_df is not None:
         pvalue_col = (
-            'adj_p_value'
-            if 'adj_p_value' in volcano_df.columns and not volcano_df['adj_p_value'].isna().all()
-            else 'p_value'
+            "adj_p_value"
+            if "adj_p_value" in volcano_df.columns
+            and not volcano_df["adj_p_value"].isna().all()
+            else "p_value"
         )
-        volcano_df['neg_log10_pvalue'] = -np.log10(volcano_df[pvalue_col].replace(0, 1e-300))
-        volcano_df.loc[np.isinf(volcano_df['neg_log10_pvalue']), 'neg_log10_pvalue'] = 300
-        
-        for tid, group in volcano_df.groupby('program_id'):
+        volcano_df["neg_log10_pvalue"] = -np.log10(
+            volcano_df[pvalue_col].replace(0, 1e-300)
+        )
+        volcano_df.loc[np.isinf(volcano_df["neg_log10_pvalue"]), "neg_log10_pvalue"] = (
+            300
+        )
+
+        for tid, group in volcano_df.groupby("program_id"):
             volcano_by_program[int(tid)] = [
                 {
-                    'g': row['grna_target'],
-                    'fc': round(row['log_2_fold_change'], 3),
-                    'p': round(row['neg_log10_pvalue'], 2),
-                    's': bool(row['significant'])
+                    "g": row["grna_target"],
+                    "fc": round(row["log_2_fold_change"], 3),
+                    "p": round(row["neg_log10_pvalue"], 2),
+                    "s": bool(row["significant"]),
                 }
                 for _, row in group.iterrows()
             ]
-    
+
     # Build per-program data
     programs_data = []
     for _, row in summary_df.iterrows():
-        topic_id = int(row['Topic'])
-        topic_name = row['Name']
-        
+        topic_id = int(row["Topic"])
+        topic_name = row["Name"]
+
         # Read annotation
         ann_path = Path(annotations_dir) / f"topic_{topic_id}_annotation.md"
-        annotation_md = ann_path.read_text(encoding='utf-8') if ann_path.exists() else ""
-        
+        annotation_md = (
+            ann_path.read_text(encoding="utf-8") if ann_path.exists() else ""
+        )
+
         # Extract stats
         stats = extract_program_stats(annotation_md)
-        
+
         # Enrichment paths
         enr_rel = os.path.relpath(enrichment_dir, os.path.dirname(output_html))
-        
-        programs_data.append({
-            'id': topic_id,
-            'name': topic_name,
-            'label': stats.get('label', topic_name),
-            'summary': stats.get('summary', ''),
-            'top_loading': stats.get('top_loading', ''),
-            'unique': stats.get('unique', ''),
-            'celltype': stats.get('celltype', ''),
-            'annotation_html': markdown(annotation_md, extensions=['tables', 'fenced_code']),
-            'annotation_text': annotation_md,  # For full-text search
-            'kegg_fig': f"{enr_rel}/program_{topic_id}_kegg_enrichment.png",
-            'process_fig': f"{enr_rel}/program_{topic_id}_process_enrichment.png",
-            'volcano': volcano_by_program.get(topic_id, []),
-        })
-    
-    generated_on = datetime.now().strftime('%Y-%m-%d %H:%M')
-    
+
+        programs_data.append(
+            {
+                "id": topic_id,
+                "name": topic_name,
+                "label": stats.get("label", topic_name),
+                "summary": stats.get("summary", ""),
+                "top_loading": stats.get("top_loading", ""),
+                "unique": stats.get("unique", ""),
+                "celltype": stats.get("celltype", ""),
+                "annotation_html": markdown(
+                    annotation_md, extensions=["tables", "fenced_code"]
+                ),
+                "annotation_text": annotation_md,  # For full-text search
+                "kegg_fig": f"{enr_rel}/program_{topic_id}_kegg_enrichment.png",
+                "process_fig": f"{enr_rel}/program_{topic_id}_process_enrichment.png",
+                "volcano": volcano_by_program.get(topic_id, []),
+            }
+        )
+
+    generated_on = datetime.now().strftime("%Y-%m-%d %H:%M")
+
     # Generate HTML
     html = generate_design_a_html(programs_data, len(programs_data), generated_on)
-    
+
     Path(output_html).parent.mkdir(parents=True, exist_ok=True)
-    with open(output_html, 'w', encoding='utf-8') as f:
+    with open(output_html, "w", encoding="utf-8") as f:
         f.write(html)
-    
+
     print(f"✓ Design A (Scientific Minimal): {output_html}")
     print(f"  - {len(programs_data)} programs")
 
 
 def generate_design_a_html(programs_data, num_programs, generated_on):
     """Generate Design A HTML."""
-    
+
     # Build TOC
-    toc_items = "\n".join([
-        f'<a href="#" onclick="selectProgram({p["id"]}); return false;" data-id="{p["id"]}">'
-        f'{p["id"]}. {p["name"]}</a>'
-        for p in programs_data
-    ])
-    
+    toc_items = "\n".join(
+        [
+            f'<a href="#" onclick="selectProgram({p["id"]}); return false;" data-id="{p["id"]}">'
+            f"{p['id']}. {p['name']}</a>"
+            for p in programs_data
+        ]
+    )
+
     # Program selector options
-    options = "\n".join([
-        f'<option value="{p["id"]}">Program {p["id"]}: {p["name"]}</option>'
-        for p in programs_data
-    ])
-    
+    options = "\n".join(
+        [
+            f'<option value="{p["id"]}">Program {p["id"]}: {p["name"]}</option>'
+            for p in programs_data
+        ]
+    )
+
     # Program data JS
-    programs_js = f"window.PROGRAMS = {json.dumps({p['id']: p for p in programs_data})};\n"
+    programs_js = (
+        f"window.PROGRAMS = {json.dumps({p['id']: p for p in programs_data})};\n"
+    )
     programs_js += f"window.PRIORITY_GENES = {json.dumps(PRIORITY_GENES)};\n"
-    
-    html = f'''<!DOCTYPE html>
+
+    html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -585,8 +618,8 @@ def generate_design_a_html(programs_data, num_programs, generated_on):
     }})();
     </script>
 </body>
-</html>'''
-    
+</html>"""
+
     return html
 
 
@@ -643,7 +676,9 @@ def get_cli_overrides(argv: list[str]) -> set[str]:
 def apply_config_overrides(
     args: argparse.Namespace, config: dict, cli_overrides: set[str]
 ) -> argparse.Namespace:
-    steps_cfg = config.get("steps", {}) if isinstance(config.get("steps", {}), dict) else {}
+    steps_cfg = (
+        config.get("steps", {}) if isinstance(config.get("steps", {}), dict) else {}
+    )
     step_cfg = steps_cfg.get("html_report", {})
     if not isinstance(step_cfg, dict):
         return args
@@ -657,7 +692,7 @@ def apply_config_overrides(
     return args
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", help="Path to config file (YAML or JSON)")
     parser.add_argument("--summary-csv")
@@ -690,7 +725,9 @@ if __name__ == '__main__':
         raise SystemExit(f"Missing required arguments: {', '.join(missing)}")
 
     generate_report(
-        args.summary_csv, args.annotations_dir, args.enrichment_dir,
+        args.summary_csv,
+        args.annotations_dir,
+        args.enrichment_dir,
         args.volcano_csv,
         args.gene_loading_csv,
         args.output_html,

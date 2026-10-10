@@ -19,7 +19,11 @@ def _flatten_pvals_any(obj) -> np.ndarray:
     elif isinstance(obj, Mapping):
         parts = []
         for df in obj.values():
-            a = df.to_numpy() if isinstance(df, (pd.DataFrame, pd.Series)) else np.asarray(df)
+            a = (
+                df.to_numpy()
+                if isinstance(df, (pd.DataFrame, pd.Series))
+                else np.asarray(df)
+            )
             parts.append(np.asarray(a, dtype=np.float64).ravel())
         arr = np.concatenate(parts) if parts else np.empty(0, dtype=np.float64)
     else:
@@ -65,14 +69,32 @@ def qq_plot_real_vs_null(real_pvals, null_pvals, ax=None, title=None):
 
     # Fixed CRT style/colors: real = purple ("All observed"), null = blue (NTC).
     xmax = max(float(x_real.max()), float(x_null.max()))
-    ax.plot([0.0, xmax], [0.0, xmax], color="#333333", linewidth=1.0, label="y = x (null)")
-    ax.scatter(x_null, y_null, label="Null (NTC / fake)", color="#1f77b4",
-               marker=".", s=14.0, alpha=0.6)
-    ax.scatter(x_real, y_real, label="Real (perturbations)", color="#9467bd",
-               marker=".", s=14.0, alpha=0.6)
+    ax.plot(
+        [0.0, xmax], [0.0, xmax], color="#333333", linewidth=1.0, label="y = x (null)"
+    )
+    ax.scatter(
+        x_null,
+        y_null,
+        label="Null (NTC / fake)",
+        color="#1f77b4",
+        marker=".",
+        s=14.0,
+        alpha=0.6,
+    )
+    ax.scatter(
+        x_real,
+        y_real,
+        label="Real (perturbations)",
+        color="#9467bd",
+        marker=".",
+        s=14.0,
+        alpha=0.6,
+    )
 
     ax.set_xlabel("Expected -log10(p)")
     ax.set_ylabel("Observed -log10(p)")
-    ax.set_title(title if title is not None else "CRT QQ plot: real vs null (NTC) p-values")
+    ax.set_title(
+        title if title is not None else "CRT QQ plot: real vs null (NTC) p-values"
+    )
     ax.legend()
     return ax

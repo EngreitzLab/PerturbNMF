@@ -3,6 +3,7 @@ Literature mining utilities for PubTator3 search and evidence extraction.
 Extracted from ProgramExplorer/src/literature_mining.py — only the functions
 needed by the Literature Search pipeline.
 """
+
 from __future__ import annotations
 
 import re
@@ -16,15 +17,38 @@ PUBTATOR_API_BASE = "https://www.ncbi.nlm.nih.gov/research/pubtator3-api"
 EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 
 DEFAULT_DOMAIN_KEYWORDS = [
-    "inflammation", "proliferation", "migration", "adhesion", "metabolism",
-    "hypoxia", "differentiation", "apoptosis", "cell cycle", "signaling",
-    "stress response", "development"
+    "inflammation",
+    "proliferation",
+    "migration",
+    "adhesion",
+    "metabolism",
+    "hypoxia",
+    "differentiation",
+    "apoptosis",
+    "cell cycle",
+    "signaling",
+    "stress response",
+    "development",
 ]
 
 DEFAULT_INTERACTION_VERBS = [
-    "regulates", "induces", "promotes", "inhibits", "suppresses", "activates",
-    "binds", "phosphorylates", "modulates", "mediates", "targets", "controls",
-    "decreases", "increases", "blocks", "triggers", "catalyzes"
+    "regulates",
+    "induces",
+    "promotes",
+    "inhibits",
+    "suppresses",
+    "activates",
+    "binds",
+    "phosphorylates",
+    "modulates",
+    "mediates",
+    "targets",
+    "controls",
+    "decreases",
+    "increases",
+    "blocks",
+    "triggers",
+    "catalyzes",
 ]
 
 
@@ -33,12 +57,16 @@ def split_text_into_sentences(text: str) -> List[str]:
         return []
     protected = text
     subs = {
-        "et al.": "ET_AL_MARKER", "e.g.": "EG_MARKER", "i.e.": "IE_MARKER",
-        "Fig.": "FIG_MARKER", "Ref.": "REF_MARKER", "vs.": "VS_MARKER"
+        "et al.": "ET_AL_MARKER",
+        "e.g.": "EG_MARKER",
+        "i.e.": "IE_MARKER",
+        "Fig.": "FIG_MARKER",
+        "Ref.": "REF_MARKER",
+        "vs.": "VS_MARKER",
     }
     for k, v in subs.items():
         protected = protected.replace(k, v)
-    parts = re.split(r'(?<=[.?!])\s+', protected)
+    parts = re.split(r"(?<=[.?!])\s+", protected)
     sentences = []
     for p in parts:
         restored = p
@@ -51,7 +79,10 @@ def split_text_into_sentences(text: str) -> List[str]:
 
 
 def extract_evidence_sentences(
-    abstract: str, title: str, target_genes: Set[str], context_genes: Set[str],
+    abstract: str,
+    title: str,
+    target_genes: Set[str],
+    context_genes: Set[str],
     domain_keywords: Optional[List[str]] = None,
 ) -> Dict[str, List[str]]:
     if domain_keywords is None:
@@ -66,12 +97,19 @@ def extract_evidence_sentences(
             if re.search(rf"\b{re.escape(g)}\b", sent, re.IGNORECASE):
                 found_targets.append(g)
         normalized_sent = sent.strip(" .")
-        existing_sents = [s[1].strip(" .") for s in [item for sublist in gene_to_sentences.values() for item in sublist]]
+        existing_sents = [
+            s[1].strip(" .")
+            for s in [
+                item for sublist in gene_to_sentences.values() for item in sublist
+            ]
+        ]
         if normalized_sent in existing_sents:
             continue
         score = 0
         for m in context_genes:
-            if m not in found_targets and re.search(rf"\b{re.escape(m)}\b", sent, re.IGNORECASE):
+            if m not in found_targets and re.search(
+                rf"\b{re.escape(m)}\b", sent, re.IGNORECASE
+            ):
                 score += 2
         if any(k in sent_lower for k in domain_keywords):
             score += 1
@@ -115,9 +153,15 @@ def search_pubtator(query: str, max_results: int = 50) -> List[Dict[str, Any]]:
             return []
         data = resp.json()
         results = data.get("results", [])[:max_results]
-        return [{'pmid': r.get('pmid'), 'title': r.get('title', ''),
-                 'score': r.get('score', 0), 'text_hl': r.get('text_hl', '')}
-                for r in results]
+        return [
+            {
+                "pmid": r.get("pmid"),
+                "title": r.get("title", ""),
+                "score": r.get("score", 0),
+                "text_hl": r.get("text_hl", ""),
+            }
+            for r in results
+        ]
     except Exception as e:
         logger.error(f"PubTator search error: {e}")
         return []
@@ -142,43 +186,49 @@ def fetch_bioc_relations_with_text(pmids: List[int]) -> Dict[int, Dict[str, Any]
             docs = [data]
         result = {}
         for doc in docs:
-            pmid = doc.get('pmid') or doc.get('id')
+            pmid = doc.get("pmid") or doc.get("id")
             if not pmid:
                 continue
-            title = ''
-            abstract = ''
+            title = ""
+            abstract = ""
             gene_mentions: Dict[str, set] = {}
-            for passage in doc.get('passages', []):
-                ptype = passage.get('infons', {}).get('type', '')
-                if ptype == 'title':
-                    title = passage.get('text', '')
-                elif ptype == 'abstract':
-                    abstract = passage.get('text', '')
-                for ann in passage.get('annotations', []):
-                    if ann.get('infons', {}).get('type') == 'Gene':
-                        gene_name = ann.get('infons', {}).get('name', '')
-                        text_mention = ann.get('text', '')
+            for passage in doc.get("passages", []):
+                ptype = passage.get("infons", {}).get("type", "")
+                if ptype == "title":
+                    title = passage.get("text", "")
+                elif ptype == "abstract":
+                    abstract = passage.get("text", "")
+                for ann in passage.get("annotations", []):
+                    if ann.get("infons", {}).get("type") == "Gene":
+                        gene_name = ann.get("infons", {}).get("name", "")
+                        text_mention = ann.get("text", "")
                         if gene_name and text_mention:
                             if gene_name.upper() not in gene_mentions:
                                 gene_mentions[gene_name.upper()] = set()
                             gene_mentions[gene_name.upper()].add(text_mention)
             relations = []
-            for rel in doc.get('relations', []):
-                infons = rel.get('infons', {})
-                r1 = infons.get('role1', {})
-                r2 = infons.get('role2', {})
-                rel_type = infons.get('type', 'Unknown')
-                score = float(infons.get('score', 0))
-                if r1.get('type') == 'Gene' and r2.get('type') == 'Gene':
-                    if rel_type in ('Positive_Correlation', 'Negative_Correlation'):
-                        relations.append({
-                            'gene1': r1.get('name', ''), 'gene2': r2.get('name', ''),
-                            'type': rel_type, 'score': score
-                        })
+            for rel in doc.get("relations", []):
+                infons = rel.get("infons", {})
+                r1 = infons.get("role1", {})
+                r2 = infons.get("role2", {})
+                rel_type = infons.get("type", "Unknown")
+                score = float(infons.get("score", 0))
+                if r1.get("type") == "Gene" and r2.get("type") == "Gene":
+                    if rel_type in ("Positive_Correlation", "Negative_Correlation"):
+                        relations.append(
+                            {
+                                "gene1": r1.get("name", ""),
+                                "gene2": r2.get("name", ""),
+                                "type": rel_type,
+                                "score": score,
+                            }
+                        )
             gene_mentions_list = {k: list(v) for k, v in gene_mentions.items()}
             result[int(pmid)] = {
-                'relations': relations, 'title': title,
-                'abstract': abstract, 'gene_mentions': gene_mentions_list
+                "relations": relations,
+                "title": title,
+                "abstract": abstract,
+                "gene_mentions": gene_mentions_list,
             }
         return result
     except Exception as e:
@@ -229,15 +279,17 @@ def search_pubmed(query: str, max_results: int = 20) -> List[Dict[str, Any]]:
         results = []
         for pmid in pmids:
             info = data.get(pmid, {})
-            results.append({
-                "pmid": int(pmid),
-                "title": info.get("title", ""),
-                "source": info.get("source", ""),
-                "authors": ", ".join(
-                    a.get("name", "") for a in info.get("authors", [])[:3]
-                ),
-                "pubdate": info.get("pubdate", ""),
-            })
+            results.append(
+                {
+                    "pmid": int(pmid),
+                    "title": info.get("title", ""),
+                    "source": info.get("source", ""),
+                    "authors": ", ".join(
+                        a.get("name", "") for a in info.get("authors", [])[:3]
+                    ),
+                    "pubdate": info.get("pubdate", ""),
+                }
+            )
         return results
     except Exception as e:
         logger.error(f"PubMed ESummary error: {e}")

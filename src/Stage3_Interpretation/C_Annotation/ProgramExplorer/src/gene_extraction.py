@@ -7,6 +7,7 @@ Provides:
 - Cell-type enrichment validation and summary generation
 - Shared config loading / CLI override utilities
 """
+
 from __future__ import annotations
 
 import json
@@ -19,25 +20,29 @@ from typing import Any, Dict, List, Optional, Set
 import numpy as np
 import pandas as pd
 
-from .column_mapper import ColumnMapper, standardize_gene_loading, standardize_celltype_enrichment
+from .column_mapper import (
+    ColumnMapper,
+    standardize_gene_loading,
+    standardize_celltype_enrichment,
+)
 
 logger = logging.getLogger(__name__)
 
 # ----------------------------- Cell-type summary -----------------------------
 # Thresholds for categorizing cell-type enrichment (FDR < 0.05 required)
 CELLTYPE_THRESHOLDS = {
-    'highly_cell_type_specific': {'log2fc_min': 3.0, 'log2fc_max': None},
-    'moderately_enriched': {'log2fc_min': 1.5, 'log2fc_max': 3.0},
-    'weakly_enriched': {'log2fc_min': 0.5, 'log2fc_max': 1.5},
-    'depleted': {'log2fc_min': None, 'log2fc_max': -0.5},
+    "highly_cell_type_specific": {"log2fc_min": 3.0, "log2fc_max": None},
+    "moderately_enriched": {"log2fc_min": 1.5, "log2fc_max": 3.0},
+    "weakly_enriched": {"log2fc_min": 0.5, "log2fc_max": 1.5},
+    "depleted": {"log2fc_min": None, "log2fc_max": -0.5},
 }
 
 # Column order for cell-type summary output
 CELLTYPE_CATEGORIES = [
-    'highly_cell_type_specific',
-    'moderately_enriched',
-    'weakly_enriched',
-    'depleted',
+    "highly_cell_type_specific",
+    "moderately_enriched",
+    "weakly_enriched",
+    "depleted",
 ]
 
 
@@ -79,9 +84,9 @@ def extract_program_id(value: object) -> Optional[int]:
     # Try to extract digits from common patterns
     # Patterns: Program_X, Topic_X, P_X, X_X (regulator format), program_X, topic_X, p_X
     patterns = [
-        r'^(?:program|topic|p|x)_(\d+)$',  # program_1, topic_1, p_1, x_1
-        r'^(?:program|topic|p|x)(\d+)$',   # program1, topic1, p1, x1
-        r'^(\d+)$',                         # just the number
+        r"^(?:program|topic|p|x)_(\d+)$",  # program_1, topic_1, p_1, x_1
+        r"^(?:program|topic|p|x)(\d+)$",  # program1, topic1, p1, x1
+        r"^(\d+)$",  # just the number
     ]
 
     for pattern in patterns:
@@ -112,7 +117,7 @@ def validate_celltype_enrichment(df: pd.DataFrame, file_path: Path) -> bool:
     has_critical_errors = False
 
     # 1. Check required columns
-    required_cols = {'cell_type', 'program', 'log2_fc_in_vs_out', 'fdr'}
+    required_cols = {"cell_type", "program", "log2_fc_in_vs_out", "fdr"}
     missing = required_cols - set(df.columns)
     if missing:
         warnings_list.append(f"Missing required columns: {sorted(missing)}")
@@ -134,32 +139,42 @@ def validate_celltype_enrichment(df: pd.DataFrame, file_path: Path) -> bool:
 
     # 3. Validate 'program' column - flexible format checking
     df_temp = df.copy()
-    df_temp['program_id_parsed'] = df_temp['program'].apply(extract_program_id)
-    unparseable = df_temp[df_temp['program_id_parsed'].isna()]
+    df_temp["program_id_parsed"] = df_temp["program"].apply(extract_program_id)
+    unparseable = df_temp[df_temp["program_id_parsed"].isna()]
     if not unparseable.empty:
-        sample_invalid = unparseable['program'].head(5).tolist()
-        warnings_list.append(f"Could not parse {len(unparseable)} program identifiers: {sample_invalid}")
-        warnings_list.append(f"  Supported formats: Program_X, program_X, Topic_X, topic_X, P_X, p_X, X_X (regulator), ProgramX, TopicX, X")
+        sample_invalid = unparseable["program"].head(5).tolist()
+        warnings_list.append(
+            f"Could not parse {len(unparseable)} program identifiers: {sample_invalid}"
+        )
+        warnings_list.append(
+            f"  Supported formats: Program_X, program_X, Topic_X, topic_X, P_X, p_X, X_X (regulator), ProgramX, TopicX, X"
+        )
 
     # 4. Validate 'log2_fc_in_vs_out' is numeric
     try:
-        fc_numeric = pd.to_numeric(df['log2_fc_in_vs_out'], errors='coerce')
+        fc_numeric = pd.to_numeric(df["log2_fc_in_vs_out"], errors="coerce")
         non_numeric_fc = df[fc_numeric.isna()]
         if not non_numeric_fc.empty:
-            sample_bad = non_numeric_fc['log2_fc_in_vs_out'].head(5).tolist()
-            warnings_list.append(f"Non-numeric values in 'log2_fc_in_vs_out': {sample_bad}")
-            warnings_list.append(f"  Found {len(non_numeric_fc)} non-numeric log2FC values (will be ignored)")
+            sample_bad = non_numeric_fc["log2_fc_in_vs_out"].head(5).tolist()
+            warnings_list.append(
+                f"Non-numeric values in 'log2_fc_in_vs_out': {sample_bad}"
+            )
+            warnings_list.append(
+                f"  Found {len(non_numeric_fc)} non-numeric log2FC values (will be ignored)"
+            )
     except Exception as e:
         warnings_list.append(f"Failed to validate 'log2_fc_in_vs_out' column: {e}")
 
     # 5. Validate 'fdr' is numeric and in valid range [0, 1]
     try:
-        fdr_numeric = pd.to_numeric(df['fdr'], errors='coerce')
+        fdr_numeric = pd.to_numeric(df["fdr"], errors="coerce")
         non_numeric_fdr = df[fdr_numeric.isna()]
         if not non_numeric_fdr.empty:
-            sample_bad = non_numeric_fdr['fdr'].head(5).tolist()
+            sample_bad = non_numeric_fdr["fdr"].head(5).tolist()
             warnings_list.append(f"Non-numeric values in 'fdr': {sample_bad}")
-            warnings_list.append(f"  Found {len(non_numeric_fdr)} non-numeric FDR values (will be ignored)")
+            warnings_list.append(
+                f"  Found {len(non_numeric_fdr)} non-numeric FDR values (will be ignored)"
+            )
 
         # Check FDR range (should be 0-1 for proper FDR values)
         valid_fdr = fdr_numeric.dropna()
@@ -167,19 +182,27 @@ def validate_celltype_enrichment(df: pd.DataFrame, file_path: Path) -> bool:
             out_of_range_mask = (valid_fdr < 0) | (valid_fdr > 1)
             if out_of_range_mask.any():
                 out_of_range_vals = valid_fdr[out_of_range_mask].head(5).tolist()
-                warnings_list.append(f"FDR values out of range [0, 1]: {out_of_range_vals}")
-                warnings_list.append(f"  Found {out_of_range_mask.sum()} out-of-range FDR values")
+                warnings_list.append(
+                    f"FDR values out of range [0, 1]: {out_of_range_vals}"
+                )
+                warnings_list.append(
+                    f"  Found {out_of_range_mask.sum()} out-of-range FDR values"
+                )
     except Exception as e:
         warnings_list.append(f"Failed to validate 'fdr' column: {e}")
 
     # 6. Check for completely empty cell_type values
-    empty_celltypes = df[df['cell_type'].isna() | (df['cell_type'].astype(str).str.strip() == '')]
+    empty_celltypes = df[
+        df["cell_type"].isna() | (df["cell_type"].astype(str).str.strip() == "")
+    ]
     if not empty_celltypes.empty:
-        warnings_list.append(f"Found {len(empty_celltypes)} rows with empty 'cell_type' values (will be ignored)")
+        warnings_list.append(
+            f"Found {len(empty_celltypes)} rows with empty 'cell_type' values (will be ignored)"
+        )
 
     # 7. Log summary statistics (informational)
-    n_programs = df['program'].nunique()
-    n_celltypes = df['cell_type'].nunique()
+    n_programs = df["program"].nunique()
+    n_celltypes = df["cell_type"].nunique()
     logger.info(f"Cell-type enrichment file summary: {file_path}")
     logger.info(f"  Total rows: {len(df)}")
     logger.info(f"  Unique programs: {n_programs}")
@@ -187,13 +210,19 @@ def validate_celltype_enrichment(df: pd.DataFrame, file_path: Path) -> bool:
 
     # Check for reasonable data coverage (warnings only)
     if n_programs < 10:
-        warnings_list.append(f"Very few programs found ({n_programs}). Expected 50-100 for typical cNMF results.")
+        warnings_list.append(
+            f"Very few programs found ({n_programs}). Expected 50-100 for typical cNMF results."
+        )
     if n_celltypes < 3:
-        warnings_list.append(f"Very few cell types found ({n_celltypes}). Expected multiple cell types.")
+        warnings_list.append(
+            f"Very few cell types found ({n_celltypes}). Expected multiple cell types."
+        )
 
     # Log all warnings
     if warnings_list:
-        logger.warning(f"Cell-type enrichment validation found {len(warnings_list)} issue(s):")
+        logger.warning(
+            f"Cell-type enrichment validation found {len(warnings_list)} issue(s):"
+        )
         for w in warnings_list:
             logger.warning(f"  {w}")
         return False
@@ -245,45 +274,49 @@ def generate_celltype_summary(
     validate_celltype_enrichment(df, enrichment_file)
 
     # Validate required columns (critical check)
-    required_cols = {'cell_type', 'program', 'log2_fc_in_vs_out', 'fdr'}
+    required_cols = {"cell_type", "program", "log2_fc_in_vs_out", "fdr"}
     missing = required_cols - set(df.columns)
     if missing:
         logger.error(f"Enrichment file missing required columns: {missing}")
         logger.error(f"  Found columns: {sorted(df.columns)}")
-        logger.error(f"  Cannot proceed without required columns. Please check your input file.")
+        logger.error(
+            f"  Cannot proceed without required columns. Please check your input file."
+        )
         raise ValueError(f"Enrichment file missing required columns: {missing}")
 
     # Extract program ID using flexible parser (handles Program_X, program_X, Topic_X, X, etc.)
-    df['program_id'] = df['program'].apply(extract_program_id)
+    df["program_id"] = df["program"].apply(extract_program_id)
 
     # Check for programs that couldn't be parsed
-    unparsed = df[df['program_id'].isna()]
+    unparsed = df[df["program_id"].isna()]
     if not unparsed.empty:
-        logger.warning(f"Could not parse program IDs for {len(unparsed)} rows (will be excluded):")
+        logger.warning(
+            f"Could not parse program IDs for {len(unparsed)} rows (will be excluded):"
+        )
         logger.warning(f"  Sample values: {unparsed['program'].head(5).tolist()}")
-        df = df[df['program_id'].notna()].copy()
+        df = df[df["program_id"].notna()].copy()
 
     # Ensure program_id is integer type
-    df['program_id'] = df['program_id'].astype(int)
+    df["program_id"] = df["program_id"].astype(int)
 
     # Filter to requested topics if specified
     if topics:
-        df = df[df['program_id'].isin(list(topics))].copy()
+        df = df[df["program_id"].isin(list(topics))].copy()
         logger.info(f"Filtered to {len(df)} rows for topics: {sorted(topics)}")
 
     # Filter to significant results
-    df_sig = df[df['fdr'] < fdr_threshold].copy()
+    df_sig = df[df["fdr"] < fdr_threshold].copy()
     logger.info(f"Found {len(df_sig)} significant rows (FDR < {fdr_threshold})")
 
     # Use cell_type values as-is (assume already has correct names)
-    df_sig['cell_type_display'] = df_sig['cell_type']
+    df_sig["cell_type_display"] = df_sig["cell_type"]
 
     # Categorize each row by log2FC thresholds
     def categorize_row(row: pd.Series) -> Optional[str]:
-        log2fc = row['log2_fc_in_vs_out']
+        log2fc = row["log2_fc_in_vs_out"]
         for cat, bounds in thresholds.items():
-            min_val = bounds.get('log2fc_min')
-            max_val = bounds.get('log2fc_max')
+            min_val = bounds.get("log2fc_min")
+            max_val = bounds.get("log2fc_max")
             # Check if log2fc falls in this category
             if min_val is not None and max_val is not None:
                 if min_val <= log2fc < max_val:
@@ -296,28 +329,28 @@ def generate_celltype_summary(
                     return cat
         return None
 
-    df_sig['category'] = df_sig.apply(categorize_row, axis=1)
-    df_categorized = df_sig.dropna(subset=['category'])
+    df_sig["category"] = df_sig.apply(categorize_row, axis=1)
+    df_categorized = df_sig.dropna(subset=["category"])
     logger.info(f"Categorized {len(df_categorized)} rows into enrichment categories")
 
     # Build summary: for each program, collect cell types per category
-    all_programs = sorted(df['program_id'].unique())
+    all_programs = sorted(df["program_id"].unique())
     records = []
 
     for pid in all_programs:
-        program_data = df_categorized[df_categorized['program_id'] == pid]
-        row = {'program': f'Program_{pid}'}
+        program_data = df_categorized[df_categorized["program_id"] == pid]
+        row = {"program": f"Program_{pid}"}
 
         for cat in CELLTYPE_CATEGORIES:
-            cat_data = program_data[program_data['category'] == cat]
-            cell_types = sorted(cat_data['cell_type_display'].unique())
-            row[cat] = '|'.join(cell_types) if cell_types else ''
+            cat_data = program_data[program_data["category"] == cat]
+            cell_types = sorted(cat_data["cell_type_display"].unique())
+            row[cat] = "|".join(cell_types) if cell_types else ""
 
         records.append(row)
 
     # Create output DataFrame
     summary_df = pd.DataFrame(records)
-    summary_df = summary_df[['program'] + CELLTYPE_CATEGORIES]
+    summary_df = summary_df[["program"] + CELLTYPE_CATEGORIES]
 
     # Write output
     ensure_parent_dir(str(output_file))
@@ -328,6 +361,7 @@ def generate_celltype_summary(
 
 
 # --------------------------- File / path helpers ------------------------------
+
 
 def ensure_parent_dir(path_str: str) -> None:
     path = Path(path_str)
@@ -342,7 +376,7 @@ def resolve_program_id_column(df: pd.DataFrame) -> str:
     """
     mapper = ColumnMapper(df)
     try:
-        actual_col = mapper.get_column('program_id', required=True)
+        actual_col = mapper.get_column("program_id", required=True)
         return actual_col
     except ValueError as e:
         raise ValueError(
@@ -360,6 +394,7 @@ def normalize_program_id(value: object) -> object:
 
 # --------------------------- Extract top genes (CSV) --------------------------
 
+
 def extract_top_genes_by_program(
     df: pd.DataFrame, n_top: int, id_col: str
 ) -> Dict[str, List[str]]:
@@ -371,9 +406,9 @@ def extract_top_genes_by_program(
 
     # Get standardized column names
     try:
-        cols = mapper.get_columns(['gene', 'score'], required=True)
-        gene_col = cols['gene']
-        score_col = cols['score']
+        cols = mapper.get_columns(["gene", "score"], required=True)
+        gene_col = cols["gene"]
+        score_col = cols["score"]
     except ValueError as e:
         raise ValueError(f"Missing required columns for gene extraction: {e}")
 
@@ -399,6 +434,7 @@ def extract_top_genes_by_program(
 
 # ----------------------------- Uniqueness table -------------------------------
 
+
 def default_uniqueness_output(input_path: Path) -> Path:
     suffix = input_path.suffix or ".csv"
     stem = input_path.stem
@@ -415,9 +451,9 @@ def build_uniqueness_table(df: pd.DataFrame, id_col: str) -> pd.DataFrame:
 
     # Get standardized column names
     try:
-        cols = mapper.get_columns(['gene', 'score'], required=True)
-        gene_col = cols['gene']
-        score_col = cols['score']
+        cols = mapper.get_columns(["gene", "score"], required=True)
+        gene_col = cols["gene"]
+        score_col = cols["score"]
     except ValueError as e:
         raise ValueError(f"Missing required columns for uniqueness computation: {e}")
 
@@ -427,11 +463,7 @@ def build_uniqueness_table(df: pd.DataFrame, id_col: str) -> pd.DataFrame:
     work = df.copy()
 
     # Standardize column names to Name, Score, program_id
-    rename_map = {
-        gene_col: 'Name',
-        score_col: 'Score',
-        id_col: 'program_id'
-    }
+    rename_map = {gene_col: "Name", score_col: "Score", id_col: "program_id"}
     work = work.rename(columns=rename_map)
 
     if "UniquenessScore" not in work.columns or work["UniquenessScore"].isna().all():
@@ -452,7 +484,9 @@ def build_uniqueness_table(df: pd.DataFrame, id_col: str) -> pd.DataFrame:
 
     columns = ["Name", "Score", "program_id", "UniquenessScore"]
     out_df = work[columns].copy()
-    out_df.dropna(subset=["Name", "Score", "program_id", "UniquenessScore"], inplace=True)
+    out_df.dropna(
+        subset=["Name", "Score", "program_id", "UniquenessScore"], inplace=True
+    )
     return out_df
 
 
@@ -464,12 +498,16 @@ def build_overview_long_table(
     for program_id_str, genes in top_map.items():
         program_id = normalize_program_id(program_id_str)
         if program_id not in sub_indexed_cache:
-            sub_indexed_cache[program_id] = (
-                df[df[id_col] == program_id].set_index("Name")
+            sub_indexed_cache[program_id] = df[df[id_col] == program_id].set_index(
+                "Name"
             )
         sub_idx = sub_indexed_cache[program_id]
         for rank, gene in enumerate(genes, start=1):
-            score = float(sub_idx.loc[gene, "Score"]) if gene in sub_idx.index else float("nan")
+            score = (
+                float(sub_idx.loc[gene, "Score"])
+                if gene in sub_idx.index
+                else float("nan")
+            )
             records.append(
                 {"program_id": program_id, "rank": rank, "gene": gene, "score": score}
             )
@@ -535,13 +573,23 @@ def parse_topics(value: Optional[object]) -> Optional[Set[int]]:
 def apply_test_mode(
     args: object, config: Dict[str, Any], cli_overrides: Set[str]
 ) -> object:
-    test_cfg = config.get("test", {}) if isinstance(config.get("test", {}), dict) else {}
+    test_cfg = (
+        config.get("test", {}) if isinstance(config.get("test", {}), dict) else {}
+    )
     enabled = bool(test_cfg.get("enabled") or config.get("test_mode"))
     if not enabled:
         return args
 
-    topics = test_cfg.get("topics") or test_cfg.get("programs") or config.get("test_programs")
-    if hasattr(args, "topics") and "topics" not in cli_overrides and not getattr(args, "topics", None):
+    topics = (
+        test_cfg.get("topics")
+        or test_cfg.get("programs")
+        or config.get("test_programs")
+    )
+    if (
+        hasattr(args, "topics")
+        and "topics" not in cli_overrides
+        and not getattr(args, "topics", None)
+    ):
         if topics is not None:
             args.topics = topics  # type: ignore[attr-defined]
     return args
@@ -552,9 +600,15 @@ def apply_config_overrides(
     config: Dict[str, Any],
     cli_overrides: Set[str],
 ) -> object:
-    steps_cfg = config.get("steps", {}) if isinstance(config.get("steps", {}), dict) else {}
+    steps_cfg = (
+        config.get("steps", {}) if isinstance(config.get("steps", {}), dict) else {}
+    )
     step_cfg = steps_cfg.get("string_enrichment", {})
-    if isinstance(step_cfg, dict) and hasattr(args, "command") and getattr(args, "command") in step_cfg:
+    if (
+        isinstance(step_cfg, dict)
+        and hasattr(args, "command")
+        and getattr(args, "command") in step_cfg
+    ):
         step_cfg = step_cfg.get(getattr(args, "command"), {})
     if not isinstance(step_cfg, dict):
         return args
@@ -572,12 +626,18 @@ def apply_default_paths(args: object) -> object:
     n_top = getattr(args, "n_top", None) or 100
 
     if hasattr(args, "json_out") and not getattr(args, "json_out", None):
-        args.json_out = str(DEFAULT_ENRICH_DIR / DEFAULT_GENES_JSON_TEMPLATE.format(n_top=n_top))  # type: ignore[attr-defined]
+        args.json_out = str(
+            DEFAULT_ENRICH_DIR / DEFAULT_GENES_JSON_TEMPLATE.format(n_top=n_top)
+        )  # type: ignore[attr-defined]
     if hasattr(args, "csv_out") and not getattr(args, "csv_out", None):
-        args.csv_out = str(DEFAULT_ENRICH_DIR / DEFAULT_GENES_OVERVIEW_TEMPLATE.format(n_top=n_top))  # type: ignore[attr-defined]
+        args.csv_out = str(
+            DEFAULT_ENRICH_DIR / DEFAULT_GENES_OVERVIEW_TEMPLATE.format(n_top=n_top)
+        )  # type: ignore[attr-defined]
     if hasattr(args, "out_csv_full") and not getattr(args, "out_csv_full", None):
         args.out_csv_full = str(DEFAULT_ENRICH_DIR / DEFAULT_STRING_FULL)  # type: ignore[attr-defined]
-    if hasattr(args, "out_csv_filtered") and not getattr(args, "out_csv_filtered", None):
+    if hasattr(args, "out_csv_filtered") and not getattr(
+        args, "out_csv_filtered", None
+    ):
         args.out_csv_filtered = str(DEFAULT_ENRICH_DIR / DEFAULT_STRING_FILTERED)  # type: ignore[attr-defined]
 
     return args

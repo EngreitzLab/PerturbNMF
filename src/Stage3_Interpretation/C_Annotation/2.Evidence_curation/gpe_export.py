@@ -6,6 +6,7 @@ checkout, or pass ``src_dir`` / ``schema_path`` explicitly. Attach-to-EXISTING-e
 gene-gene edge whose pair has a cached result, we append a ``literature`` entry to the edge's
 ``evidence[]``. We never create new edges here.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,6 +34,7 @@ def _load_gpe(src_dir: str = DEFAULT_GPE_SRC):
         sys.path.insert(0, src_dir)
     from gene_program_explorer.literature_edges import CATEGORY_MAP  # noqa: E402
     from gene_program_explorer.model import Citation, Evidence  # noqa: E402
+
     return Evidence, Citation, CATEGORY_MAP
 
 
@@ -44,7 +46,9 @@ def _already_attached(edge: dict) -> bool:
     )
 
 
-def attach_cached_evidence(contract: dict, evidence_dir, src_dir: str = DEFAULT_GPE_SRC) -> int:
+def attach_cached_evidence(
+    contract: dict, evidence_dir, src_dir: str = DEFAULT_GPE_SRC
+) -> int:
     """Append cached literature evidence to existing gene-gene edges. Returns #edges updated."""
     Evidence, Citation, CATEGORY_MAP = _load_gpe(src_dir)
 
@@ -58,7 +62,10 @@ def attach_cached_evidence(contract: dict, evidence_dir, src_dir: str = DEFAULT_
     for edge in contract.get("edges", []):
         if (edge.get("endpointType") or "node-node") != "node-node":
             continue
-        a, b = symbol_by_id.get(edge.get("source")), symbol_by_id.get(edge.get("target"))
+        a, b = (
+            symbol_by_id.get(edge.get("source")),
+            symbol_by_id.get(edge.get("target")),
+        )
         if not a or not b:
             continue
         if _already_attached(edge):
@@ -72,13 +79,17 @@ def attach_cached_evidence(contract: dict, evidence_dir, src_dir: str = DEFAULT_
         pmids = result.get("pmids") or []
         citation = Citation(
             pmid=pmids[0] if pmids else None,
-            doi=result.get("doi"), title=result.get("title"),
-            year=result.get("year"), url=result.get("url"),
+            doi=result.get("doi"),
+            title=result.get("title"),
+            year=result.get("year"),
+            url=result.get("url"),
         )
         has_cite = any([citation.pmid, citation.doi, citation.title, citation.url])
         evidence = Evidence(
-            kind="literature", sourceDb="paper-qa",
-            interactionType=label, excerpt=result.get("short_excerpt"),
+            kind="literature",
+            sourceDb="paper-qa",
+            interactionType=label,
+            excerpt=result.get("short_excerpt"),
             citation=citation if has_cite else None,
         )
         edge.setdefault("evidence", []).append(evidence.to_dict())
@@ -99,4 +110,6 @@ def validate(contract: dict, schema_path: str = DEFAULT_SCHEMA) -> None:
     for edge in contract.get("edges", []):
         for endpoint in (edge["source"], edge["target"]):
             if endpoint not in valid:
-                raise ValueError(f"Edge {edge['id']} references unknown endpoint {endpoint}")
+                raise ValueError(
+                    f"Edge {edge['id']} references unknown endpoint {endpoint}"
+                )

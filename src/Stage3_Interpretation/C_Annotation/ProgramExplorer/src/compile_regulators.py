@@ -4,7 +4,8 @@
 Given a directory of per-timepoint regulator files, merges them into one
 combined file with a 'day' column and standardised column names.
 """
-#%%
+
+# %%
 import argparse
 import sys
 from pathlib import Path
@@ -74,16 +75,21 @@ def main() -> int:
     )
     parser.add_argument("data_dir", type=Path, help="Directory with per-day files")
     parser.add_argument(
-        "--days", nargs="+", default=["D0", "D1", "D2", "D3"],
+        "--days",
+        nargs="+",
+        default=["D0", "D1", "D2", "D3"],
         help="Time point labels (default: D0 D1 D2 D3)",
     )
     parser.add_argument(
-        "--pattern", default="50_CRT_{day}.txt",
+        "--pattern",
+        default="50_CRT_{day}.txt",
         help="Filename pattern with {day} placeholder",
     )
     parser.add_argument("-o", "--output", type=Path, default=None)
     parser.add_argument(
-        "--rename", nargs="*", default=["target_name=target_gene_name", "approx_log2FC=log2fc"],
+        "--rename",
+        nargs="*",
+        default=["target_name=target_gene_name", "approx_log2FC=log2fc"],
         help="Column renames as key=value pairs",
     )
     args = parser.parse_args()

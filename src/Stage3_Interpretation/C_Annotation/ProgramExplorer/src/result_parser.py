@@ -10,6 +10,7 @@ Functions:
     load_top_genes_by_topic — load top genes per program from a gene-loading CSV
     generate_unique_topic_names — build a summary CSV with unique topic names
 """
+
 from __future__ import annotations
 
 import glob
@@ -70,7 +71,11 @@ def parse_final_results(result_file: str, output_dir: str) -> List[int]:
             try:
                 data = json.loads(line)
                 custom_id = data.get("custom_id")
-                if custom_id and isinstance(custom_id, str) and custom_id.startswith("topic_"):
+                if (
+                    custom_id
+                    and isinstance(custom_id, str)
+                    and custom_id.startswith("topic_")
+                ):
                     # expected format: topic_<num>_annotation
                     m = re.match(r"topic_(\d+)", custom_id)
                     if not m:
@@ -85,7 +90,9 @@ def parse_final_results(result_file: str, output_dir: str) -> List[int]:
                         content = response.get("content", [])
                         if isinstance(content, list) and content:
                             first = content[0]
-                            text_content = first.get("text", "") if isinstance(first, dict) else ""
+                            text_content = (
+                                first.get("text", "") if isinstance(first, dict) else ""
+                            )
 
                     # Fallback to Anthropic format: {"result": {"type": "succeeded", "message": {"content": [...]}}}
                     if not text_content:
@@ -95,14 +102,22 @@ def parse_final_results(result_file: str, output_dir: str) -> List[int]:
                             content = message.get("content", [])
                             if isinstance(content, list) and content:
                                 first = content[0]
-                                text_content = first.get("text", "") if isinstance(first, dict) else ""
+                                text_content = (
+                                    first.get("text", "")
+                                    if isinstance(first, dict)
+                                    else ""
+                                )
                         elif result.get("type") == "errored":
                             error = result.get("error", {})
-                            print(f"  Topic {topic_number} failed. Reason: {error.get('message', 'Unknown error')}")
+                            print(
+                                f"  Topic {topic_number} failed. Reason: {error.get('message', 'Unknown error')}"
+                            )
                             continue
 
                     if text_content:
-                        output_filename = os.path.join(output_dir, f"topic_{topic_number}_annotation.md")
+                        output_filename = os.path.join(
+                            output_dir, f"topic_{topic_number}_annotation.md"
+                        )
                         with open(output_filename, "w", encoding="utf-8") as out_f:
                             out_f.write(text_content)
                         print(f"  Saved Topic {topic_number}")
@@ -117,7 +132,9 @@ def parse_final_results(result_file: str, output_dir: str) -> List[int]:
     return saved_ids
 
 
-def load_top_genes_by_topic(gene_loading_file: str, top_n: int = 10) -> Dict[int, List[str]]:
+def load_top_genes_by_topic(
+    gene_loading_file: str, top_n: int = 10
+) -> Dict[int, List[str]]:
     """Load top genes by RowID from gene loading CSV."""
     top_genes_by_topic: Dict[int, List[str]] = {}
     if not gene_loading_file or not os.path.exists(gene_loading_file):
@@ -136,7 +153,10 @@ def load_top_genes_by_topic(gene_loading_file: str, top_n: int = 10) -> Dict[int
 
         for topic_id, group in gene_df.groupby(group_col):
             genes = (
-                group.sort_values("Score", ascending=False)["Name"].astype(str).head(top_n).tolist()
+                group.sort_values("Score", ascending=False)["Name"]
+                .astype(str)
+                .head(top_n)
+                .tolist()
             )
             top_genes_by_topic[int(topic_id)] = genes
         print(f"  Loaded gene data for {len(top_genes_by_topic)} topics")
@@ -159,7 +179,9 @@ def generate_unique_topic_names(
         key=lambda x: int(re.search(r"topic_(\d+)_", x).group(1)),
     )
 
-    top_genes_by_topic = load_top_genes_by_topic(gene_loading_file) if gene_loading_file else {}
+    top_genes_by_topic = (
+        load_top_genes_by_topic(gene_loading_file) if gene_loading_file else {}
+    )
 
     topic_rows: List[Dict[str, object]] = []
     used_names: set[str] = set()
@@ -178,7 +200,9 @@ def generate_unique_topic_names(
                 content,
                 re.DOTALL,
             )
-            keywords_match = re.search(r"\*\*(?:Program label|Three Key Words):\*\*(.*?)\n", content, re.DOTALL)
+            keywords_match = re.search(
+                r"\*\*(?:Program label|Three Key Words):\*\*(.*?)\n", content, re.DOTALL
+            )
 
             summary = summary_match.group(1).strip() if summary_match else ""
             keywords_str = keywords_match.group(1).strip() if keywords_match else ""
@@ -203,7 +227,9 @@ def generate_unique_topic_names(
                 final_name = f"{base_name} ({signature_gene})"
 
             while final_name in used_names:
-                if topic_number in top_genes_by_topic and counter - 2 < len(top_genes_by_topic[topic_number]):
+                if topic_number in top_genes_by_topic and counter - 2 < len(
+                    top_genes_by_topic[topic_number]
+                ):
                     signature_gene = top_genes_by_topic[topic_number][counter - 2]
                     final_name = f"{base_name} ({signature_gene})"
                 else:
@@ -213,7 +239,9 @@ def generate_unique_topic_names(
                         re.IGNORECASE,
                     )
                     if distinguishing_terms and counter - 2 < len(distinguishing_terms):
-                        final_name = f"{base_name} ({distinguishing_terms[counter - 2]})"
+                        final_name = (
+                            f"{base_name} ({distinguishing_terms[counter - 2]})"
+                        )
                     else:
                         final_name = f"{base_name} ({counter})"
                 counter += 1

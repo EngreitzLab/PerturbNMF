@@ -29,43 +29,53 @@ def UptodateSearchTool(args, query: str):
     try:
         url = f"https://www.uptodate.com/login"
 
-        headers = {'User-Agent': ua.random}
+        headers = {"User-Agent": ua.random}
 
         options = Options()
         if not args.visualize:
             options.add_argument("--headless")  # Run in headless mode (no GUI)
         # options.add_argument("--no-sandbox")  # This is helpful in certain environments (e.g., Docker)
         # options.add_argument("--disable-dev-shm-usage")  # Helps in environments with limited shared memory
-        options.add_argument(f'user-agent={headers["User-Agent"]}')
+        options.add_argument(f"user-agent={headers['User-Agent']}")
 
-        service = Service(args.chrome_driver)  # Update with the path to your chromedriver
+        service = Service(
+            args.chrome_driver
+        )  # Update with the path to your chromedriver
         driver = webdriver.Chrome(service=service, options=options)
 
         driver.get(url)
         time.sleep(1)
-        
+
         # ipdb.set_trace()
         # click //*[@id="onetrust-accept-btn-handler"]
         try:
             element = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, '//*[@id="onetrust-accept-btn-handler"]'))
+                EC.element_to_be_clickable(
+                    (By.XPATH, '//*[@id="onetrust-accept-btn-handler"]')
+                )
             )
             element.click()
         except Exception as e:
             print(f"Error: {str(e)}")
-        
+
         # input the username into //*[@id="username"]
-        driver.find_element(By.XPATH, '//*[@id="userName"]').send_keys(args.uptodate_user)
-        
+        driver.find_element(By.XPATH, '//*[@id="userName"]').send_keys(
+            args.uptodate_user
+        )
+
         # click continue //*[@id="loginForm"]/fieldset/div[2]/span
-        driver.find_element(By.XPATH, '//*[@id="loginForm"]/fieldset/div[2]/span').click()
-        
+        driver.find_element(
+            By.XPATH, '//*[@id="loginForm"]/fieldset/div[2]/span'
+        ).click()
+
         # input the password into //*[@id="password"]
-        driver.find_element(By.XPATH, '//*[@id="password"]').send_keys(args.uptodate_pwd)
-        
+        driver.find_element(By.XPATH, '//*[@id="password"]').send_keys(
+            args.uptodate_pwd
+        )
+
         # find the login button
-        login_button = driver.find_element(By.ID, 'btnLoginSubmit')
-        
+        login_button = driver.find_element(By.ID, "btnLoginSubmit")
+
         # maximum the window
         driver.maximize_window()
 
@@ -75,42 +85,48 @@ def UptodateSearchTool(args, query: str):
 
         # input the query into //*[@id="tbSearch"]
         time.sleep(1)
-        driver.find_element(By.ID, 'tbSearch').send_keys(query)
-        
+        driver.find_element(By.ID, "tbSearch").send_keys(query)
+
         # click //*[@id="search-combobox"]/div[1]/div/form/span[3]
         time.sleep(1)
-        driver.find_element(By.XPATH, '//*[@id="search-combobox"]/div[1]/div/form/span[3]').click()
-        
+        driver.find_element(
+            By.XPATH, '//*[@id="search-combobox"]/div[1]/div/form/span[3]'
+        ).click()
+
         # wait for the search results to be fully rendered
         # WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "search-result")))
-        
+
         # click first result
         try:
             element = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.CLASS_NAME, 'search-result'))
+                EC.element_to_be_clickable((By.CLASS_NAME, "search-result"))
             )
             element.click()
         except Exception as e:
             print(f"Error: {str(e)}")
-        
+
         element = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "a.searchResultLink.search-result-primary-link[role='heading']"))
+            EC.element_to_be_clickable(
+                (
+                    By.CSS_SELECTOR,
+                    "a.searchResultLink.search-result-primary-link[role='heading']",
+                )
+            )
         )
         element.click()
-        
+
         time.sleep(1)
-        
+
         # get all paragraphs
         all_paragraph = []
         # WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "topic-title")))
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-        paragraphs = soup.find_all('p')
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        paragraphs = soup.find_all("p")
         for paragraph in paragraphs:
             all_paragraph.append(paragraph.text)
-        
-        all_paragraph = '\n'.join(all_paragraph)
 
-        
+        all_paragraph = "\n".join(all_paragraph)
+
         return all_paragraph
     except Exception as e:
         return str(e)
@@ -118,5 +134,5 @@ def UptodateSearchTool(args, query: str):
         driver.quit()
 
 
-if __name__ == '__main__':
-    print(UptodateSearchTool('COVID-19'))
+if __name__ == "__main__":
+    print(UptodateSearchTool("COVID-19"))

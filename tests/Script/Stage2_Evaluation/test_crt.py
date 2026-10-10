@@ -22,14 +22,24 @@ import pytest
 # CRT import (skip entire module if sceptre unavailable)
 # ---------------------------------------------------------------------------
 
-CRT_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "src",
-                       "Stage2_Evaluation", "B_Calibration", "Slurm_version", "CRT")
+CRT_DIR = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "..",
+    "src",
+    "Stage2_Evaluation",
+    "B_Calibration",
+    "Slurm_version",
+    "CRT",
+)
 CRT_DIR = os.path.abspath(CRT_DIR)
 
 try:
     sys.path.insert(0, CRT_DIR)
     import CRT as crt_mod  # noqa: F401 — needs sceptre (programDE env)
     from CRT import reformat_data_for_CRT, run_CRT, save_result, main as crt_main
+
     _HAS_CRT = True
 except ImportError:
     _HAS_CRT = False
@@ -38,6 +48,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Small helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_crt_args(
     *,
@@ -74,6 +85,7 @@ def _make_crt_args(
 def _subset_to_one_batch(mdata, batch_col="batch", batch=None):
     """Return a MuData restricted to a single batch — keeps run_CRT iterations to 1."""
     import mudata
+
     rna = mdata["rna"].copy()
     cnmf = mdata["cNMF"].copy()
     if batch is None:
@@ -90,10 +102,12 @@ def _build_fake_crt_out(n_targets=4, n_programs=3, seed=0):
     rng = np.random.default_rng(seed)
     targets = [f"gene{i}" for i in range(n_targets)]
     programs = [f"K{i}" for i in range(n_programs)]
-    pvals = pd.DataFrame(rng.uniform(1e-6, 1, (n_targets, n_programs)),
-                         index=targets, columns=programs)
-    betas = pd.DataFrame(rng.normal(0, 0.5, (n_targets, n_programs)),
-                         index=targets, columns=programs)
+    pvals = pd.DataFrame(
+        rng.uniform(1e-6, 1, (n_targets, n_programs)), index=targets, columns=programs
+    )
+    betas = pd.DataFrame(
+        rng.normal(0, 0.5, (n_targets, n_programs)), index=targets, columns=programs
+    )
     return {"pvals_skew_df": pvals, "betas_df": betas}
 
 
@@ -101,7 +115,10 @@ def _build_fake_crt_out(n_targets=4, n_programs=3, seed=0):
 # Reformat: structural tests
 # ===========================================================================
 
-@pytest.mark.skipif(not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)")
+
+@pytest.mark.skipif(
+    not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)"
+)
 class TestCRTReformat:
     """Test the reformat_data_for_CRT function from the CRT calibration script."""
 
@@ -141,14 +158,18 @@ class TestCRTReformat:
 # Reformat: covariate variants
 # ===========================================================================
 
-@pytest.mark.skipif(not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)")
+
+@pytest.mark.skipif(
+    not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)"
+)
 class TestCRTReformatCovariates:
     """Vary the `covariates` / `log_covariates` arguments and check covar matrix."""
 
     def test_reformat_no_covariates_empty_covar(self, test_mdata):
         """With no covariates, covar should be a DataFrame with 0 columns."""
-        adata = reformat_data_for_CRT(test_mdata.copy(),
-                                      covariates=None, log_covariates=None)
+        adata = reformat_data_for_CRT(
+            test_mdata.copy(), covariates=None, log_covariates=None
+        )
         covar = adata.obsm["covar"]
         assert isinstance(covar, pd.DataFrame)
         assert covar.shape == (adata.n_obs, 0)
@@ -175,8 +196,9 @@ class TestCRTReformatCovariates:
 
     def test_reformat_log_covariates_prefix(self, test_mdata):
         """log_covariates should be prefixed `log_` and equal log1p(obs[key])."""
-        adata = reformat_data_for_CRT(test_mdata.copy(),
-                                      log_covariates=["guide_umi_counts"])
+        adata = reformat_data_for_CRT(
+            test_mdata.copy(), log_covariates=["guide_umi_counts"]
+        )
         covar = adata.obsm["covar"]
         assert list(covar.columns) == ["log_guide_umi_counts"]
         expected = np.log1p(adata.obs["guide_umi_counts"].values)
@@ -200,7 +222,10 @@ class TestCRTReformatCovariates:
 # Reformat: parametrized across K values
 # ===========================================================================
 
-@pytest.mark.skipif(not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)")
+
+@pytest.mark.skipif(
+    not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)"
+)
 class TestCRTReformatPerK:
     """Verify reformat works across the inference K values (5, 10, 15)."""
 
@@ -216,14 +241,19 @@ class TestCRTReformatPerK:
 # save_result: FDR method variants
 # ===========================================================================
 
-@pytest.mark.skipif(not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)")
+
+@pytest.mark.skipif(
+    not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)"
+)
 class TestCRTSaveResult:
     """save_result should write a TSV with adj_pval correctly computed for each FDR method."""
 
     def test_save_result_BH_writes_tsv(self, tmp_path):
         out = _build_fake_crt_out(n_targets=5, n_programs=3)
         args = _make_crt_args(FDR_method="BH")
-        df = save_result(out, k=5, output_folder=str(tmp_path), condition="D0", args=args)
+        df = save_result(
+            out, k=5, output_folder=str(tmp_path), condition="D0", args=args
+        )
 
         # File written to expected path
         expected = tmp_path / "5_CRT_D0.txt"
@@ -246,7 +276,9 @@ class TestCRTSaveResult:
 
         out = _build_fake_crt_out(n_targets=5, n_programs=3, seed=1)
         args = _make_crt_args(FDR_method="StoreyQ")
-        df = save_result(out, k=10, output_folder=str(tmp_path), condition="D1", args=args)
+        df = save_result(
+            out, k=10, output_folder=str(tmp_path), condition="D1", args=args
+        )
 
         expected = tmp_path / "10_CRT_D1.txt"
         assert expected.exists()
@@ -260,9 +292,15 @@ class TestCRTSaveResult:
         """save_result column order should be stable: target, program, log2FC, p-value, adj_pval."""
         out = _build_fake_crt_out(n_targets=3, n_programs=2)
         args = _make_crt_args(FDR_method="BH")
-        df = save_result(out, k=5, output_folder=str(tmp_path), condition="D2", args=args)
+        df = save_result(
+            out, k=5, output_folder=str(tmp_path), condition="D2", args=args
+        )
         assert list(df.columns) == [
-            "target_name", "program_name", "log2FC", "p-value", "adj_pval",
+            "target_name",
+            "program_name",
+            "log2FC",
+            "p-value",
+            "adj_pval",
         ]
 
 
@@ -274,16 +312,18 @@ class TestCRTSaveResult:
 slow = pytest.mark.slow
 
 
-@pytest.mark.skipif(not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)")
+@pytest.mark.skipif(
+    not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)"
+)
 class TestCRTRunCRT:
     """Exercise the full run_CRT pipeline on a single batch with tiny B."""
 
     def _prepare_adata(self, mdata, covariates=None, log_covariates=None):
         """Subset to one batch and run reformat + flooring (mirrors main())."""
         mdata_one = _subset_to_one_batch(mdata)
-        adata = reformat_data_for_CRT(mdata_one,
-                                      covariates=covariates,
-                                      log_covariates=log_covariates)
+        adata = reformat_data_for_CRT(
+            mdata_one, covariates=covariates, log_covariates=log_covariates
+        )
         U = adata.obsm["cnmf_usage"].copy()
         U = np.maximum(U, 1e-8)
         U /= U.sum(axis=1, keepdims=True)
@@ -294,6 +334,7 @@ class TestCRTRunCRT:
     def test_run_CRT_small_guide_group(self, test_mdata, tmp_path):
         """Tiny number_guide (2) — smoke test that pipeline runs and writes outputs."""
         import matplotlib
+
         matplotlib.use("Agg")
         adata = self._prepare_adata(test_mdata)
         args = _make_crt_args(number_guide=2, number_permutations=8, FDR_method="BH")
@@ -318,6 +359,7 @@ class TestCRTRunCRT:
         Test data has 103 non-targeting guides, so a group size of 10 is well within range.
         """
         import matplotlib
+
         matplotlib.use("Agg")
         adata = self._prepare_adata(test_mdata)
         args = _make_crt_args(number_guide=10, number_permutations=8, FDR_method="BH")
@@ -329,6 +371,7 @@ class TestCRTRunCRT:
     def test_run_CRT_with_covariates(self, test_mdata, tmp_path):
         """Run with raw + log covariates included — covar matrix flows into prepare_crt_inputs."""
         import matplotlib
+
         matplotlib.use("Agg")
         adata = self._prepare_adata(
             test_mdata,
@@ -346,6 +389,7 @@ class TestCRTRunCRT:
     def test_run_CRT_more_permutations(self, test_mdata, tmp_path):
         """Higher number_permutations — verifies the B parameter is wired through correctly."""
         import matplotlib
+
         matplotlib.use("Agg")
         adata = self._prepare_adata(test_mdata)
         args = _make_crt_args(number_guide=2, number_permutations=32, FDR_method="BH")
@@ -361,9 +405,12 @@ class TestCRTRunCRT:
             pytest.skip("multipy not installed — StoreyQ branch unavailable")
 
         import matplotlib
+
         matplotlib.use("Agg")
         adata = self._prepare_adata(test_mdata)
-        args = _make_crt_args(number_guide=2, number_permutations=8, FDR_method="StoreyQ")
+        args = _make_crt_args(
+            number_guide=2, number_permutations=8, FDR_method="StoreyQ"
+        )
         run_CRT(adata, k=5, output_folder=str(tmp_path), args=args)
 
         txts = list(tmp_path.glob("5_CRT_*.txt"))
@@ -376,7 +423,10 @@ class TestCRTRunCRT:
 # main(): CLI integration via sys.argv
 # ===========================================================================
 
-@pytest.mark.skipif(not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)")
+
+@pytest.mark.skipif(
+    not _HAS_CRT, reason="CRT requires programDE env (sceptre not available)"
+)
 class TestCRTMain:
     """Exercise `main()` end-to-end with a constructed argv. Heavy — marked slow."""
 
@@ -389,6 +439,7 @@ class TestCRTMain:
         via sys.argv. All outputs routed to tmp_path/results via --save_dir.
         """
         import matplotlib
+
         matplotlib.use("Agg")
 
         # Subset to one batch so the run_CRT inner loop iterates exactly once.
@@ -406,15 +457,24 @@ class TestCRTMain:
 
         argv = [
             "CRT.py",
-            "--out_dir", str(out_dir),
-            "--run_name", run_name,
-            "--components", "5",
-            "--sel_thresh", "2.0",
-            "--categorical_key", "batch",
-            "--number_guide", "2",
-            "--number_permutations", "8",
-            "--FDR_method", "BH",
-            "--save_dir", str(save_dir),
+            "--out_dir",
+            str(out_dir),
+            "--run_name",
+            run_name,
+            "--components",
+            "5",
+            "--sel_thresh",
+            "2.0",
+            "--categorical_key",
+            "batch",
+            "--number_guide",
+            "2",
+            "--number_permutations",
+            "8",
+            "--FDR_method",
+            "BH",
+            "--save_dir",
+            str(save_dir),
         ]
         monkeypatch.setattr(sys, "argv", argv)
 
@@ -426,4 +486,6 @@ class TestCRTMain:
         assert list(save_dir.glob("CRT_*.png"))
         assert list(save_dir.glob("5_CRT_*.txt"))
         # And a config_*.yml at save_config_dir (which == save_dir here)
-        assert list(save_dir.glob("config_*.yml")), "main() should have written a config_*.yml"
+        assert list(save_dir.glob("config_*.yml")), (
+            "main() should have written a config_*.yml"
+        )

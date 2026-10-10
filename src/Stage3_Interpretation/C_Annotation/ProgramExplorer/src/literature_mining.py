@@ -4,6 +4,7 @@ Ported from ProgExplorer/pipeline/02_fetch_ncbi_data.py.
 
 Library module — no CLI/argparse code.
 """
+
 from __future__ import annotations
 
 import re
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 # Private helpers (duplicated from gene_extraction to avoid circular imports)
 # ---------------------------------------------------------------------------
 
+
 def _ensure_program_id_column(df: pd.DataFrame) -> pd.DataFrame:
     if "program_id" in df.columns:
         return df
@@ -45,7 +47,9 @@ def _add_global_uniqueness_scores(df: pd.DataFrame) -> pd.DataFrame:
     required_cols = {"Name", "Score", "program_id"}
     missing = required_cols - set(df.columns)
     if missing:
-        raise ValueError(f"CSV missing required columns for uniqueness: {sorted(missing)}")
+        raise ValueError(
+            f"CSV missing required columns for uniqueness: {sorted(missing)}"
+        )
     updated = df.copy()
     updated["Score"] = pd.to_numeric(updated["Score"], errors="coerce")
     updated["program_id"] = pd.to_numeric(updated["program_id"], errors="coerce")
@@ -74,22 +78,63 @@ def _ensure_global_uniqueness(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 DOMAIN_KEYWORDS = [
-    "inflammation", "proliferation", "migration", "adhesion", "metabolism",
-    "hypoxia", "differentiation", "apoptosis", "cell cycle", "signaling",
-    "stress response", "development"
+    "inflammation",
+    "proliferation",
+    "migration",
+    "adhesion",
+    "metabolism",
+    "hypoxia",
+    "differentiation",
+    "apoptosis",
+    "cell cycle",
+    "signaling",
+    "stress response",
+    "development",
 ]
 
 INTERACTION_VERBS = [
-    "regulates", "induces", "promotes", "inhibits", "suppresses", "activates",
-    "binds", "phosphorylates", "modulates", "mediates", "targets", "controls",
-    "decreases", "increases", "blocks", "triggers", "catalyzes"
+    "regulates",
+    "induces",
+    "promotes",
+    "inhibits",
+    "suppresses",
+    "activates",
+    "binds",
+    "phosphorylates",
+    "modulates",
+    "mediates",
+    "targets",
+    "controls",
+    "decreases",
+    "increases",
+    "blocks",
+    "triggers",
+    "catalyzes",
 ]
 
 MECHANISTIC_VERBS = [
-    "regulates", "induces", "promotes", "inhibits", "suppresses", "activates",
-    "mediates", "controls", "stimulates", "blocks", "enhances", "reduces",
-    "increases", "decreases", "triggers", "phosphorylates", "upregulates",
-    "downregulates", "attenuates", "potentiates", "modulates", "drives"
+    "regulates",
+    "induces",
+    "promotes",
+    "inhibits",
+    "suppresses",
+    "activates",
+    "mediates",
+    "controls",
+    "stimulates",
+    "blocks",
+    "enhances",
+    "reduces",
+    "increases",
+    "decreases",
+    "triggers",
+    "phosphorylates",
+    "upregulates",
+    "downregulates",
+    "attenuates",
+    "potentiates",
+    "modulates",
+    "drives",
 ]
 
 CACHE_DIR = Path("data/cache")
@@ -103,17 +148,22 @@ PUBTATOR_RATE_LIMIT = 0.1
 # Text processing
 # ---------------------------------------------------------------------------
 
+
 def split_text_into_sentences(text: str) -> List[str]:
     if not text:
         return []
     protected = text
     subs = {
-        "et al.": "ET_AL_MARKER", "e.g.": "EG_MARKER", "i.e.": "IE_MARKER",
-        "Fig.": "FIG_MARKER", "Ref.": "REF_MARKER", "vs.": "VS_MARKER"
+        "et al.": "ET_AL_MARKER",
+        "e.g.": "EG_MARKER",
+        "i.e.": "IE_MARKER",
+        "Fig.": "FIG_MARKER",
+        "Ref.": "REF_MARKER",
+        "vs.": "VS_MARKER",
     }
     for k, v in subs.items():
         protected = protected.replace(k, v)
-    parts = re.split(r'(?<=[.?!])\s+', protected)
+    parts = re.split(r"(?<=[.?!])\s+", protected)
     sentences = []
     for p in parts:
         restored = p
@@ -178,12 +228,19 @@ def extract_evidence_sentences(
             if re.search(rf"\b{re.escape(g)}\b", sent, re.IGNORECASE):
                 found_targets.append(g)
         normalized_sent = sent.strip(" .")
-        existing_sents = [s[1].strip(" .") for s in [item for sublist in gene_to_sentences.values() for item in sublist]]
+        existing_sents = [
+            s[1].strip(" .")
+            for s in [
+                item for sublist in gene_to_sentences.values() for item in sublist
+            ]
+        ]
         if normalized_sent in existing_sents:
             continue
         score = 0
         for m in context_genes:
-            if m not in found_targets and re.search(rf"\b{re.escape(m)}\b", sent, re.IGNORECASE):
+            if m not in found_targets and re.search(
+                rf"\b{re.escape(m)}\b", sent, re.IGNORECASE
+            ):
                 score += 2
         if any(k in sent_lower for k in DOMAIN_KEYWORDS):
             score += 1
@@ -205,12 +262,16 @@ def extract_evidence_sentences(
 # BioC parsing
 # ---------------------------------------------------------------------------
 
+
 def parse_bioc_abstract(doc: Dict[str, Any]) -> str:
     text_parts = []
     passages = doc.get("passages", [])
     for p in passages:
         inf = p.get("infons", {})
-        if inf.get("type") in ("title", "abstract") or inf.get("section_type") in ("TITLE", "ABSTRACT"):
+        if inf.get("type") in ("title", "abstract") or inf.get("section_type") in (
+            "TITLE",
+            "ABSTRACT",
+        ):
             text_parts.append(p.get("text", ""))
     return " ".join(text_parts)
 
@@ -248,6 +309,7 @@ def find_gene_mentions(doc: Dict[str, Any], member_genes: List[str]) -> List[str
 # Cache
 # ---------------------------------------------------------------------------
 
+
 def load_cache() -> Dict[str, Any]:
     if CACHE_FILE.exists():
         try:
@@ -266,23 +328,30 @@ def save_cache(cache: Dict[str, Any]):
 # Gene loading
 # ---------------------------------------------------------------------------
 
+
 def load_program_genes(
     csv_path: Path,
     top_n_loading: int = 20,
     top_n_unique: int = 10,
-    top_n_member: int = 100
+    top_n_member: int = 100,
 ) -> Dict[int, Dict[str, List[str]]]:
     df = pd.read_csv(csv_path)
     df = _ensure_program_id_column(df)
     df = _ensure_global_uniqueness(df)
     programs = {}
     for pid, group in df.groupby("program_id"):
-        sorted_loading = group.sort_values("Score", ascending=False)["Name"].astype(str).tolist()
+        sorted_loading = (
+            group.sort_values("Score", ascending=False)["Name"].astype(str).tolist()
+        )
         top_loading_genes = sorted_loading[:top_n_loading]
         top_loading_set = set(top_loading_genes)
         top_unique_genes = []
         if "UniquenessScore" in group.columns:
-            sorted_unique = group.sort_values("UniquenessScore", ascending=False)["Name"].astype(str).tolist()
+            sorted_unique = (
+                group.sort_values("UniquenessScore", ascending=False)["Name"]
+                .astype(str)
+                .tolist()
+            )
             for gene in sorted_unique:
                 if gene not in top_loading_set:
                     top_unique_genes.append(gene)
@@ -296,7 +365,7 @@ def load_program_genes(
             "top_loading": top_loading_genes,
             "top_unique": top_unique_genes,
             "members": members,
-            "all_genes": all_genes
+            "all_genes": all_genes,
         }
     return programs
 
@@ -304,6 +373,7 @@ def load_program_genes(
 # ---------------------------------------------------------------------------
 # Gene summaries
 # ---------------------------------------------------------------------------
+
 
 def resolve_gene_summaries(
     source: str,
@@ -320,7 +390,9 @@ def resolve_gene_summaries(
     if not all_drivers:
         return {pid: {} for pid in program_ids}
     if source == "ncbi":
-        logger.info("Resolving Entrez IDs for %d unique driver genes...", len(all_drivers))
+        logger.info(
+            "Resolving Entrez IDs for %d unique driver genes...", len(all_drivers)
+        )
         symbol_to_id = ncbi_client.normalize_genes(list(all_drivers))
         valid_ids = sorted({gid for gid in symbol_to_id.values() if gid})
         logger.info("Fetching summaries for %d gene IDs...", len(valid_ids))
@@ -341,12 +413,19 @@ def resolve_gene_summaries(
             use_full_summaries=use_full_summaries
         )
         summary_type = "full HTML" if use_full_summaries else "short API"
-        logger.info("Fetching Harmonizome %s summaries for %d unique driver genes...",
-                     summary_type, len(all_drivers))
+        logger.info(
+            "Fetching Harmonizome %s summaries for %d unique driver genes...",
+            summary_type,
+            len(all_drivers),
+        )
         symbol_to_summary = harmonizome_client.get_gene_summaries(sorted(all_drivers))
         for pid in program_ids:
             drivers = programs[pid]["drivers"]
-            summaries = {sym: symbol_to_summary[sym] for sym in drivers if sym in symbol_to_summary}
+            summaries = {
+                sym: symbol_to_summary[sym]
+                for sym in drivers
+                if sym in symbol_to_summary
+            }
             program_gene_summaries[pid] = summaries
         return program_gene_summaries
     raise ValueError(f"Unsupported gene summary source: {source}")
@@ -356,6 +435,7 @@ def resolve_gene_summaries(
 # Regulator loading
 # ---------------------------------------------------------------------------
 
+
 def load_regulator_data(
     csv_path: Path,
     significance_threshold: float = 0.05,
@@ -364,7 +444,9 @@ def load_regulator_data(
         logger.warning(f"Regulator file not found: {csv_path}")
         return {}
     df = pd.read_csv(csv_path)
-    df = standardize_regulator_results(df, significance_threshold=significance_threshold)
+    df = standardize_regulator_results(
+        df, significance_threshold=significance_threshold
+    )
     df = df[df["significant"] == True].copy()
     result = {}
     for pid, group in df.groupby("program_id"):
@@ -383,37 +465,46 @@ def get_top_regulators(
     top_n_positive: Optional[int] = None,
     top_n_negative: Optional[int] = None,
     use_all_significant: bool = False,
-    max_regulators: int = 20
+    max_regulators: int = 20,
 ) -> Dict[str, List[Dict[str, Any]]]:
     reg_df = regulator_data.get(program_id)
     if reg_df is None or len(reg_df) == 0:
-        return {'positive': [], 'negative': []}
+        return {"positive": [], "negative": []}
     top_n_positive = top_n if top_n_positive is None else top_n_positive
     top_n_negative = top_n if top_n_negative is None else top_n_negative
-    sig_df = reg_df[reg_df['significant'] == True].copy()
+    sig_df = reg_df[reg_df["significant"] == True].copy()
     sorted_df = sig_df.sort_values(by="log_2_fold_change")
     if use_all_significant:
         positive = sorted_df[sorted_df["log_2_fold_change"] < 0].head(max_regulators)
-        negative = sorted_df[sorted_df["log_2_fold_change"] > 0].tail(max_regulators).iloc[::-1]
+        negative = (
+            sorted_df[sorted_df["log_2_fold_change"] > 0]
+            .tail(max_regulators)
+            .iloc[::-1]
+        )
     else:
         positive = sorted_df[sorted_df["log_2_fold_change"] < 0].head(top_n_positive)
-        negative = sorted_df[sorted_df["log_2_fold_change"] > 0].tail(top_n_negative).iloc[::-1]
+        negative = (
+            sorted_df[sorted_df["log_2_fold_change"] > 0]
+            .tail(top_n_negative)
+            .iloc[::-1]
+        )
 
     def extract_regulator(row):
-        result = {'gene': row['grna_target'], 'log2fc': row['log_2_fold_change']}
-        if 'p_value' in row:
-            result['pvalue'] = row['p_value']
+        result = {"gene": row["grna_target"], "log2fc": row["log_2_fold_change"]}
+        if "p_value" in row:
+            result["pvalue"] = row["p_value"]
         return result
 
     return {
-        'positive': [extract_regulator(row) for _, row in positive.iterrows()],
-        'negative': [extract_regulator(row) for _, row in negative.iterrows()]
+        "positive": [extract_regulator(row) for _, row in positive.iterrows()],
+        "negative": [extract_regulator(row) for _, row in negative.iterrows()],
     }
 
 
 # ---------------------------------------------------------------------------
 # PubTator3 search and BioC fetch
 # ---------------------------------------------------------------------------
+
 
 def search_pubtator(query: str, max_results: int = 50) -> List[Dict[str, Any]]:
     url = f"{PUBTATOR_API_BASE}/search/"
@@ -425,9 +516,15 @@ def search_pubtator(query: str, max_results: int = 50) -> List[Dict[str, Any]]:
             return []
         data = resp.json()
         results = data.get("results", [])[:max_results]
-        return [{'pmid': r.get('pmid'), 'title': r.get('title', ''),
-                 'score': r.get('score', 0), 'text_hl': r.get('text_hl', '')}
-                for r in results]
+        return [
+            {
+                "pmid": r.get("pmid"),
+                "title": r.get("title", ""),
+                "score": r.get("score", 0),
+                "text_hl": r.get("text_hl", ""),
+            }
+            for r in results
+        ]
     except Exception as e:
         logger.error(f"PubTator search error: {e}")
         return []
@@ -452,43 +549,49 @@ def fetch_bioc_relations_with_text(pmids: List[int]) -> Dict[int, Dict[str, Any]
             docs = [data]
         result = {}
         for doc in docs:
-            pmid = doc.get('pmid') or doc.get('id')
+            pmid = doc.get("pmid") or doc.get("id")
             if not pmid:
                 continue
-            title = ''
-            abstract = ''
+            title = ""
+            abstract = ""
             gene_mentions: Dict[str, Set[str]] = {}
-            for passage in doc.get('passages', []):
-                ptype = passage.get('infons', {}).get('type', '')
-                if ptype == 'title':
-                    title = passage.get('text', '')
-                elif ptype == 'abstract':
-                    abstract = passage.get('text', '')
-                for ann in passage.get('annotations', []):
-                    if ann.get('infons', {}).get('type') == 'Gene':
-                        gene_name = ann.get('infons', {}).get('name', '')
-                        text_mention = ann.get('text', '')
+            for passage in doc.get("passages", []):
+                ptype = passage.get("infons", {}).get("type", "")
+                if ptype == "title":
+                    title = passage.get("text", "")
+                elif ptype == "abstract":
+                    abstract = passage.get("text", "")
+                for ann in passage.get("annotations", []):
+                    if ann.get("infons", {}).get("type") == "Gene":
+                        gene_name = ann.get("infons", {}).get("name", "")
+                        text_mention = ann.get("text", "")
                         if gene_name and text_mention:
                             if gene_name.upper() not in gene_mentions:
                                 gene_mentions[gene_name.upper()] = set()
                             gene_mentions[gene_name.upper()].add(text_mention)
             relations = []
-            for rel in doc.get('relations', []):
-                infons = rel.get('infons', {})
-                r1 = infons.get('role1', {})
-                r2 = infons.get('role2', {})
-                rel_type = infons.get('type', 'Unknown')
-                score = float(infons.get('score', 0))
-                if r1.get('type') == 'Gene' and r2.get('type') == 'Gene':
-                    if rel_type in ('Positive_Correlation', 'Negative_Correlation'):
-                        relations.append({
-                            'gene1': r1.get('name', ''), 'gene2': r2.get('name', ''),
-                            'type': rel_type, 'score': score
-                        })
+            for rel in doc.get("relations", []):
+                infons = rel.get("infons", {})
+                r1 = infons.get("role1", {})
+                r2 = infons.get("role2", {})
+                rel_type = infons.get("type", "Unknown")
+                score = float(infons.get("score", 0))
+                if r1.get("type") == "Gene" and r2.get("type") == "Gene":
+                    if rel_type in ("Positive_Correlation", "Negative_Correlation"):
+                        relations.append(
+                            {
+                                "gene1": r1.get("name", ""),
+                                "gene2": r2.get("name", ""),
+                                "type": rel_type,
+                                "score": score,
+                            }
+                        )
             gene_mentions_list = {k: list(v) for k, v in gene_mentions.items()}
             result[int(pmid)] = {
-                'relations': relations, 'title': title,
-                'abstract': abstract, 'gene_mentions': gene_mentions_list
+                "relations": relations,
+                "title": title,
+                "abstract": abstract,
+                "gene_mentions": gene_mentions_list,
             }
         return result
     except Exception as e:
@@ -500,26 +603,34 @@ def fetch_bioc_relations_with_text(pmids: List[int]) -> Dict[int, Dict[str, Any]
 # Regulator validation
 # ---------------------------------------------------------------------------
 
+
 def validate_regulator_with_string(
-    regulator: str, program_genes: List[str],
-    species: int = 10090, required_score: int = 400
+    regulator: str,
+    program_genes: List[str],
+    species: int = 10090,
+    required_score: int = 400,
 ) -> Dict[str, Any]:
     time.sleep(1.0)
     result = get_regulator_program_interactions(
-        regulator=regulator, program_genes=program_genes,
-        species=species, required_score=required_score, top_n=10
+        regulator=regulator,
+        program_genes=program_genes,
+        species=species,
+        required_score=required_score,
+        top_n=10,
     )
     return {
-        'regulator': regulator,
-        'n_program_targets': result['n_interactions'],
-        'string_interactions': result['interactions']
+        "regulator": regulator,
+        "n_program_targets": result["n_interactions"],
+        "string_interactions": result["interactions"],
     }
 
 
 def validate_regulator_program(
-    regulator: str, program_genes: List[str],
+    regulator: str,
+    program_genes: List[str],
     keyword: str = "",
-    max_pmids: int = 50, min_relation_score: float = 0.5
+    max_pmids: int = 50,
+    min_relation_score: float = 0.5,
 ) -> Dict[str, Any]:
     genes_or = " OR ".join(program_genes[:10])
     query = f"({regulator}) AND ({genes_or})" + (f" AND ({keyword})" if keyword else "")
@@ -527,9 +638,14 @@ def validate_regulator_program(
     time.sleep(PUBTATOR_RATE_LIMIT)
     search_results = search_pubtator(query, max_results=60)
     if not search_results:
-        return {'regulator': regulator, 'papers_found': 0,
-                'papers_with_relations': 0, 'mechanistic_relations': [], 'top_papers': []}
-    pmids = [r['pmid'] for r in search_results[:max_pmids] if r['pmid']]
+        return {
+            "regulator": regulator,
+            "papers_found": 0,
+            "papers_with_relations": 0,
+            "mechanistic_relations": [],
+            "top_papers": [],
+        }
+    pmids = [r["pmid"] for r in search_results[:max_pmids] if r["pmid"]]
     time.sleep(PUBTATOR_RATE_LIMIT)
     pmid_data = fetch_bioc_relations_with_text(pmids)
     mechanistic_relations = []
@@ -538,37 +654,47 @@ def validate_regulator_program(
     seen_gene_pmid = set()
     pmids_with_relations = set()
     for pmid, data in pmid_data.items():
-        rels = data.get('relations', [])
-        abstract = data.get('abstract', '')
-        title = data.get('title', '')
+        rels = data.get("relations", [])
+        abstract = data.get("abstract", "")
+        title = data.get("title", "")
         for rel in rels:
-            if rel['score'] < min_relation_score:
+            if rel["score"] < min_relation_score:
                 continue
-            g1 = rel['gene1'].upper()
-            g2 = rel['gene2'].upper()
-            rel_type = rel['type']
-            if rel_type not in ('Positive_Correlation', 'Negative_Correlation'):
+            g1 = rel["gene1"].upper()
+            g2 = rel["gene2"].upper()
+            rel_type = rel["type"]
+            if rel_type not in ("Positive_Correlation", "Negative_Correlation"):
                 continue
             if regulator_upper not in (g1, g2):
                 continue
             pmids_with_relations.add(pmid)
-            other_gene = rel['gene2'] if g1 == regulator_upper else rel['gene1']
+            other_gene = rel["gene2"] if g1 == regulator_upper else rel["gene1"]
             dedup_key = (other_gene.upper(), pmid)
             if dedup_key in seen_gene_pmid:
                 continue
             seen_gene_pmid.add(dedup_key)
-            sentences = extract_mechanistic_sentences(abstract, regulator, other_gene, max_sentences=2)
+            sentences = extract_mechanistic_sentences(
+                abstract, regulator, other_gene, max_sentences=2
+            )
             if not sentences:
-                sentences = extract_any_mechanistic_sentences(abstract, regulator, max_sentences=1)
-            mechanistic_relations.append({
-                'pmid': pmid, 'target_gene': other_gene, 'relation_type': rel_type,
-                'score': rel['score'], 'title': title, 'sentences': sentences
-            })
+                sentences = extract_any_mechanistic_sentences(
+                    abstract, regulator, max_sentences=1
+                )
+            mechanistic_relations.append(
+                {
+                    "pmid": pmid,
+                    "target_gene": other_gene,
+                    "relation_type": rel_type,
+                    "score": rel["score"],
+                    "title": title,
+                    "sentences": sentences,
+                }
+            )
     if not mechanistic_relations:
         for pmid, data in pmid_data.items():
-            abstract = data.get('abstract', '')
-            title = data.get('title', '')
-            gene_mentions = data.get('gene_mentions', {})
+            abstract = data.get("abstract", "")
+            title = data.get("title", "")
+            gene_mentions = data.get("gene_mentions", {})
             if not abstract:
                 continue
             regulator_aliases = gene_mentions.get(regulator.upper(), [regulator])
@@ -576,91 +702,128 @@ def validate_regulator_program(
                 regulator_aliases = [regulator]
             sentences = []
             for alias in regulator_aliases:
-                sentences = extract_any_mechanistic_sentences(abstract, alias, max_sentences=2)
+                sentences = extract_any_mechanistic_sentences(
+                    abstract, alias, max_sentences=2
+                )
                 if sentences:
                     break
             if not sentences:
-                sentences = extract_any_mechanistic_sentences(abstract, regulator, max_sentences=2)
+                sentences = extract_any_mechanistic_sentences(
+                    abstract, regulator, max_sentences=2
+                )
             if sentences:
-                mechanistic_relations.append({
-                    'pmid': pmid, 'target_gene': 'unknown', 'relation_type': 'Mentioned',
-                    'score': 0.5, 'title': title, 'sentences': sentences
-                })
-    mechanistic_relations.sort(key=lambda x: -x['score'])
+                mechanistic_relations.append(
+                    {
+                        "pmid": pmid,
+                        "target_gene": "unknown",
+                        "relation_type": "Mentioned",
+                        "score": 0.5,
+                        "title": title,
+                        "sentences": sentences,
+                    }
+                )
+    mechanistic_relations.sort(key=lambda x: -x["score"])
     mechanistic_relations = mechanistic_relations[:10]
-    top_papers = [{'pmid': r['pmid'], 'title': r['title']} for r in search_results[:10]]
-    papers_with_rels = len([p for p, d in pmid_data.items() if d.get('relations')])
+    top_papers = [{"pmid": r["pmid"], "title": r["title"]} for r in search_results[:10]]
+    papers_with_rels = len([p for p, d in pmid_data.items() if d.get("relations")])
     return {
-        'regulator': regulator, 'papers_found': len(search_results),
-        'papers_with_relations': papers_with_rels,
-        'mechanistic_relations': mechanistic_relations, 'top_papers': top_papers
+        "regulator": regulator,
+        "papers_found": len(search_results),
+        "papers_with_relations": papers_with_rels,
+        "mechanistic_relations": mechanistic_relations,
+        "top_papers": top_papers,
     }
 
 
 def validate_program_regulators(
-    program_id: int, regulator_data: Dict[int, pd.DataFrame],
-    program_genes: List[str], keyword: str = "",
-    top_n_regulators: int = 3, top_n_positive_regulators: Optional[int] = None,
+    program_id: int,
+    regulator_data: Dict[int, pd.DataFrame],
+    program_genes: List[str],
+    keyword: str = "",
+    top_n_regulators: int = 3,
+    top_n_positive_regulators: Optional[int] = None,
     top_n_negative_regulators: Optional[int] = None,
-    max_pmids_per_regulator: int = 50, use_string: bool = True,
-    use_all_significant: bool = False, max_regulators: int = 20,
-    use_batch: bool = True, min_score: int = 400
+    max_pmids_per_regulator: int = 50,
+    use_string: bool = True,
+    use_all_significant: bool = False,
+    max_regulators: int = 20,
+    use_batch: bool = True,
+    min_score: int = 400,
 ) -> Dict[str, Any]:
     top_regs = get_top_regulators(
-        regulator_data, program_id, top_n=top_n_regulators,
+        regulator_data,
+        program_id,
+        top_n=top_n_regulators,
         top_n_positive=top_n_positive_regulators,
         top_n_negative=top_n_negative_regulators,
-        use_all_significant=use_all_significant, max_regulators=max_regulators
+        use_all_significant=use_all_significant,
+        max_regulators=max_regulators,
     )
-    result: Dict[str, Any] = {'positive_regulators': [], 'negative_regulators': []}
-    all_regulator_genes = [r['gene'] for r in top_regs['positive']] + [r['gene'] for r in top_regs['negative']]
+    result: Dict[str, Any] = {"positive_regulators": [], "negative_regulators": []}
+    all_regulator_genes = [r["gene"] for r in top_regs["positive"]] + [
+        r["gene"] for r in top_regs["negative"]
+    ]
 
     if use_string and use_batch and all_regulator_genes:
         batch_results = batch_validate_regulators(
             regulator_genes=all_regulator_genes,
             program_genes=program_genes,
-            required_score=min_score
+            required_score=min_score,
         )
-        for reg_info in top_regs['positive']:
-            gene = reg_info['gene']
+        for reg_info in top_regs["positive"]:
+            gene = reg_info["gene"]
             interactions = batch_results.get(gene, [])
-            result['positive_regulators'].append({
-                'regulator': gene, 'log2fc': reg_info['log2fc'],
-                'n_program_targets': len(interactions),
-                'string_interactions': interactions
-            })
-        for reg_info in top_regs['negative']:
-            gene = reg_info['gene']
+            result["positive_regulators"].append(
+                {
+                    "regulator": gene,
+                    "log2fc": reg_info["log2fc"],
+                    "n_program_targets": len(interactions),
+                    "string_interactions": interactions,
+                }
+            )
+        for reg_info in top_regs["negative"]:
+            gene = reg_info["gene"]
             interactions = batch_results.get(gene, [])
-            result['negative_regulators'].append({
-                'regulator': gene, 'log2fc': reg_info['log2fc'],
-                'n_program_targets': len(interactions),
-                'string_interactions': interactions
-            })
+            result["negative_regulators"].append(
+                {
+                    "regulator": gene,
+                    "log2fc": reg_info["log2fc"],
+                    "n_program_targets": len(interactions),
+                    "string_interactions": interactions,
+                }
+            )
         return result
 
-    for reg_info in top_regs['positive']:
+    for reg_info in top_regs["positive"]:
         if use_string:
             logger.info(f"  Validating activator {reg_info['gene']} with STRING...")
             validation = validate_regulator_with_string(
-                regulator=reg_info['gene'], program_genes=program_genes)
+                regulator=reg_info["gene"], program_genes=program_genes
+            )
         else:
             validation = validate_regulator_program(
-                regulator=reg_info['gene'], program_genes=program_genes,
-                keyword=keyword, max_pmids=max_pmids_per_regulator)
-        validation['log2fc'] = reg_info['log2fc']
-        result['positive_regulators'].append(validation)
+                regulator=reg_info["gene"],
+                program_genes=program_genes,
+                keyword=keyword,
+                max_pmids=max_pmids_per_regulator,
+            )
+        validation["log2fc"] = reg_info["log2fc"]
+        result["positive_regulators"].append(validation)
 
-    for reg_info in top_regs['negative']:
+    for reg_info in top_regs["negative"]:
         if use_string:
             logger.info(f"  Validating repressor {reg_info['gene']} with STRING...")
             validation = validate_regulator_with_string(
-                regulator=reg_info['gene'], program_genes=program_genes)
+                regulator=reg_info["gene"], program_genes=program_genes
+            )
         else:
             validation = validate_regulator_program(
-                regulator=reg_info['gene'], program_genes=program_genes,
-                keyword=keyword, max_pmids=max_pmids_per_regulator)
-        validation['log2fc'] = reg_info['log2fc']
-        result['negative_regulators'].append(validation)
+                regulator=reg_info["gene"],
+                program_genes=program_genes,
+                keyword=keyword,
+                max_pmids=max_pmids_per_regulator,
+            )
+        validation["log2fc"] = reg_info["log2fc"]
+        result["negative_regulators"].append(validation)
 
     return result

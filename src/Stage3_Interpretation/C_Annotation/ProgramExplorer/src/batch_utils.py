@@ -50,8 +50,13 @@ def check_anthropic_batch(
 
     try:
         import os
+
         auth_token = os.environ.get("ANTHROPIC_AUTH_TOKEN")
-        client = anthropic.Anthropic(auth_token=auth_token) if auth_token else anthropic.Anthropic()
+        client = (
+            anthropic.Anthropic(auth_token=auth_token)
+            if auth_token
+            else anthropic.Anthropic()
+        )
         batch = client.messages.batches.retrieve(batch_id)
     except Exception as exc:
         logger.error("Failed to retrieve batch %s: %s", batch_id, exc)

@@ -6,7 +6,9 @@ import requests
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # llm_summary_agent / pdf_download
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[1])
+)  # llm_summary_agent / pdf_download
 from llm_summary_agent import Summarize_Agent
 from pdf_download import download_paper, report_downloads
 
@@ -27,7 +29,7 @@ def normalize_doi(value):
     doi = str(value).strip().lower()
     for prefix in ("https://doi.org/", "http://doi.org/", "http://dx.doi.org/", "doi:"):
         if doi.startswith(prefix):
-            doi = doi[len(prefix):]
+            doi = doi[len(prefix) :]
             break
     doi = doi.rstrip(".,;)")
     return doi if _DOI_RE.fullmatch(doi) else None
@@ -58,7 +60,9 @@ def _bounded_limit(value, maximum):
 def _openalex_params():
     key = os.getenv("OPENALEX_API_KEY")
     if not key:
-        raise RuntimeError("OPENALEX_API_KEY is not set; use search_NCBI / search_Crossref instead")
+        raise RuntimeError(
+            "OPENALEX_API_KEY is not set; use search_NCBI / search_Crossref instead"
+        )
     params = {"api_key": key}
     email = os.getenv("OPENALEX_EMAIL") or os.getenv("OPENALEX_MAILTO")
     if email:
@@ -71,7 +75,9 @@ def _get(url, params=None, timeout=30, retries=1):
     last = None
     for attempt in range(retries + 1):
         try:
-            resp = requests.get(url, params=params, timeout=timeout, headers={"User-Agent": USER_AGENT})
+            resp = requests.get(
+                url, params=params, timeout=timeout, headers={"User-Agent": USER_AGENT}
+            )
             if resp.status_code in TRANSIENT_STATUS and attempt < retries:
                 time.sleep(0.5 * (attempt + 1))
                 continue
@@ -96,7 +102,11 @@ def _rebuild_abstract(inverted_index):
 def _openalex_record(item):
     ids = item.get("ids") or {}
     pmid_raw = ids.get("pmid")
-    pmid = normalize_pmid(str(pmid_raw).rstrip("/").rsplit("/", 1)[-1]) if pmid_raw else None
+    pmid = (
+        normalize_pmid(str(pmid_raw).rstrip("/").rsplit("/", 1)[-1])
+        if pmid_raw
+        else None
+    )
     source = (item.get("primary_location") or {}).get("source") or {}
     return {
         "openalex_id": item.get("id"),
@@ -111,17 +121,19 @@ def _openalex_record(item):
         "is_retracted": bool(item.get("is_retracted")),
         "cited_by_count": int(item.get("cited_by_count") or 0),
         # open-access PDF locations, tried first by download_paper
-        "pdf_urls": list(dict.fromkeys(
-            loc.get("pdf_url") for loc in [item.get("best_oa_location") or {}] + (item.get("locations") or [])
-            if loc and loc.get("pdf_url"))),
+        "pdf_urls": list(
+            dict.fromkeys(
+                loc.get("pdf_url")
+                for loc in [item.get("best_oa_location") or {}]
+                + (item.get("locations") or [])
+                if loc and loc.get("pdf_url")
+            )
+        ),
     }
 
 
 def search_OpenAlex(
-    query: str = "",
-    max_results: int = 3,
-    mini_handler = None,
-    out_dir: str = None
+    query: str = "", max_results: int = 3, mini_handler=None, out_dir: str = None
 ) -> str:
     """Search OpenAlex (cross-publisher, includes preprints) for works related to the query
 
@@ -147,7 +159,9 @@ def search_OpenAlex(
             f"{OPENALEX_BASE_URL}/works",
             params={"search": query, "per-page": max_results, **_openalex_params()},
         )
-        records = [_openalex_record(item) for item in payload.get("results", [])][:max_results]
+        records = [_openalex_record(item) for item in payload.get("results", [])][
+            :max_results
+        ]
     except Exception as e:
         return f"Error during OpenAlex search: {e}"
 
@@ -158,36 +172,88 @@ def search_OpenAlex(
     data_list = []
     downloads = []
     for rec in records:
-        url = f"https://doi.org/{rec['doi']}" if rec["doi"] else (rec["openalex_id"] or "No URL")
-        tags = "".join(t for t, flag in ((" [RETRACTED]", rec["is_retracted"]), (" [PREPRINT]", rec["is_preprint"])) if flag)
-        info = (f"Year: {rec['year']} | Journal: {rec['journal']} | PMID: {rec['pmid']} | "
-                f"Type: {rec['study_type']} | Cited by: {rec['cited_by_count']}")
+        url = (
+            f"https://doi.org/{rec['doi']}"
+            if rec["doi"]
+            else (rec["openalex_id"] or "No URL")
+        )
+        tags = "".join(
+            t
+            for t, flag in (
+                (" [RETRACTED]", rec["is_retracted"]),
+                (" [PREPRINT]", rec["is_preprint"]),
+            )
+            if flag
+        )
+        info = (
+            f"Year: {rec['year']} | Journal: {rec['journal']} | PMID: {rec['pmid']} | "
+            f"Type: {rec['study_type']} | Cited by: {rec['cited_by_count']}"
+        )
 
         content = "No abstract available."
         if rec["abstract"]:
-            content = Summarize_Agent(rec["abstract"], mini_handler) if mini_handler else rec["abstract"]
+            content = (
+                Summarize_Agent(rec["abstract"], mini_handler)
+                if mini_handler
+                else rec["abstract"]
+            )
 
-        pdf_line = ''
+        pdf_line = ""
         if out_dir:
-            pdf_path, msg = download_paper(out_dir, rec["doi"] or rec["pmid"] or rec["openalex_id"], pmid=rec["pmid"], doi=rec["doi"], pdf_urls=rec["pdf_urls"])
+            pdf_path, msg = download_paper(
+                out_dir,
+                rec["doi"] or rec["pmid"] or rec["openalex_id"],
+                pmid=rec["pmid"],
+                doi=rec["doi"],
+                pdf_urls=rec["pdf_urls"],
+            )
             downloads.append((rec["title"], pdf_path, msg))
-            pdf_line = '\n' + 'PDF: ' + (pdf_path or f'Not downloaded ({msg})')
+            pdf_line = "\n" + "PDF: " + (pdf_path or f"Not downloaded ({msg})")
 
-        data_list.append('Title: ' + rec["title"] + tags + '\n' + 'Url: ' + url + '\n' + info + pdf_line + '\n' + 'Summary: ' + content)
+        data_list.append(
+            "Title: "
+            + rec["title"]
+            + tags
+            + "\n"
+            + "Url: "
+            + url
+            + "\n"
+            + info
+            + pdf_line
+            + "\n"
+            + "Summary: "
+            + content
+        )
 
     if out_dir:
         report_downloads("OpenAlex", query, downloads, out_dir)
 
-    return "\n".join(data_list) + '\n' + "Data source: OpenAlex"
+    return "\n".join(data_list) + "\n" + "Data source: OpenAlex"
 
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Run search_OpenAlex on one or more queries.")
-    parser.add_argument("--query", nargs="+", required=True, help="One or more queries, each quoted.")
-    parser.add_argument("--max_results", type=int, default=3, help="Max papers per query (capped at 15).")
-    parser.add_argument("--out_dir", default=None, help="Download open-access PDFs here. Default: no downloads.")
+
+    parser = argparse.ArgumentParser(
+        description="Run search_OpenAlex on one or more queries."
+    )
+    parser.add_argument(
+        "--query", nargs="+", required=True, help="One or more queries, each quoted."
+    )
+    parser.add_argument(
+        "--max_results",
+        type=int,
+        default=3,
+        help="Max papers per query (capped at 15).",
+    )
+    parser.add_argument(
+        "--out_dir",
+        default=None,
+        help="Download open-access PDFs here. Default: no downloads.",
+    )
     args = parser.parse_args()
     for q in args.query:
         print(f"===== {q}")
-        print(search_OpenAlex(query=q, max_results=args.max_results, out_dir=args.out_dir))
+        print(
+            search_OpenAlex(query=q, max_results=args.max_results, out_dir=args.out_dir)
+        )

@@ -3,6 +3,7 @@
 Level 1 (citation check): Does the cited PMID contain the mentioned genes?
 Level 2 (semantic check): Does the evidence sentence support the claim? (LLM)
 """
+
 from __future__ import annotations
 
 import json
@@ -75,8 +76,11 @@ class Verifier:
         """
         if not claimed_genes:
             return VerificationResult(
-                level=1, passed=True, confidence=1.0,
-                details="No genes to check", method="citation_check",
+                level=1,
+                passed=True,
+                confidence=1.0,
+                details="No genes to check",
+                method="citation_check",
             )
 
         doc_genes_upper = set(paper.gene_mentions.keys())
@@ -92,13 +96,18 @@ class Verifier:
         confidence = len(found) / len(claimed_genes) if claimed_genes else 1.0
 
         if missing:
-            details = f"Found {found}; missing {missing} in PMID:{paper.pmid} annotations"
+            details = (
+                f"Found {found}; missing {missing} in PMID:{paper.pmid} annotations"
+            )
         else:
             details = f"All genes found in PMID:{paper.pmid} annotations"
 
         return VerificationResult(
-            level=1, passed=passed, confidence=confidence,
-            details=details, method="citation_check",
+            level=1,
+            passed=passed,
+            confidence=confidence,
+            details=details,
+            method="citation_check",
         )
 
     # ------------------------------------------------------------------
@@ -114,7 +123,9 @@ class Verifier:
         """Use LLM to check if evidence sentence supports the claim."""
         if self.llm is None:
             return VerificationResult(
-                level=2, passed=True, confidence=0.5,
+                level=2,
+                passed=True,
+                confidence=0.5,
                 details="Semantic check skipped (no LLM configured)",
                 method="semantic_check",
             )
@@ -131,7 +142,9 @@ class Verifier:
         except Exception as exc:
             logger.warning("Semantic check failed: %s", exc)
             return VerificationResult(
-                level=2, passed=True, confidence=0.5,
+                level=2,
+                passed=True,
+                confidence=0.5,
                 details=f"Semantic check error: {exc}",
                 method="semantic_check",
             )
@@ -141,8 +154,11 @@ class Verifier:
         reasoning = result.get("reasoning", "")
 
         return VerificationResult(
-            level=2, passed=supported, confidence=confidence,
-            details=reasoning, method="semantic_check",
+            level=2,
+            passed=supported,
+            confidence=confidence,
+            details=reasoning,
+            method="semantic_check",
         )
 
     # ------------------------------------------------------------------

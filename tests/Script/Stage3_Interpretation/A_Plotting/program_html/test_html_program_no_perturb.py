@@ -17,9 +17,12 @@ from pathlib import Path
 
 import pytest
 import matplotlib
+
 matplotlib.use("Agg")
 
-from Stage3_Interpretation.A_Plotting.src.html_Program_QC_plots import export_program_html
+from Stage3_Interpretation.A_Plotting.src.html_Program_QC_plots import (
+    export_program_html,
+)
 
 
 @pytest.fixture(scope="module")
@@ -27,9 +30,17 @@ def target_program(test_mdata):
     return str(test_mdata["cNMF"].var_names[0])
 
 
-def _export(tmp_path, test_mdata, go_path, target, program_correlation,
-            perturbed_gene_found, available_samples,
-            perturb_path_base=None, waterfall_correlation=None):
+def _export(
+    tmp_path,
+    test_mdata,
+    go_path,
+    target,
+    program_correlation,
+    perturbed_gene_found,
+    available_samples,
+    perturb_path_base=None,
+    waterfall_correlation=None,
+):
     export_program_html(
         mdata=test_mdata,
         perturb_path_base=perturb_path_base,
@@ -52,14 +63,26 @@ def _export(tmp_path, test_mdata, go_path, target, program_correlation,
 
 
 class TestNoPerturbPathBase:
-
     def test_page_written_without_perturb_files(
-        self, tmp_path, test_mdata, go_path, target_program, program_correlation,
-        perturbed_gene_found, available_samples
+        self,
+        tmp_path,
+        test_mdata,
+        go_path,
+        target_program,
+        program_correlation,
+        perturbed_gene_found,
+        available_samples,
     ):
         """perturb_path_base=None still produces a page; no per-sample JSON, no heatmap."""
-        prog_dir = _export(tmp_path, test_mdata, go_path, target_program,
-                           program_correlation, perturbed_gene_found, available_samples)
+        prog_dir = _export(
+            tmp_path,
+            test_mdata,
+            go_path,
+            target_program,
+            program_correlation,
+            perturbed_gene_found,
+            available_samples,
+        )
         assert (prog_dir / f"program_{target_program}.html").is_file()
         # header panels still there
         assert (prog_dir / "data" / "top_genes.json").is_file()
@@ -72,31 +95,70 @@ class TestNoPerturbPathBase:
         assert not (prog_dir / "data" / "heatmap.json").exists()
 
     def test_metadata_reports_zero_significant(
-        self, tmp_path, test_mdata, go_path, target_program, program_correlation,
-        perturbed_gene_found, available_samples
+        self,
+        tmp_path,
+        test_mdata,
+        go_path,
+        target_program,
+        program_correlation,
+        perturbed_gene_found,
+        available_samples,
     ):
-        prog_dir = _export(tmp_path, test_mdata, go_path, target_program,
-                           program_correlation, perturbed_gene_found, available_samples)
+        prog_dir = _export(
+            tmp_path,
+            test_mdata,
+            go_path,
+            target_program,
+            program_correlation,
+            perturbed_gene_found,
+            available_samples,
+        )
         with open(prog_dir / "metadata.json") as f:
             meta = json.load(f)
         assert meta["n_significant_regulators_total"] == 0
 
 
 class TestRequiredArgs:
-
     def test_missing_program_correlation_raises(
-        self, tmp_path, test_mdata, go_path, target_program,
-        perturbed_gene_found, available_samples
+        self,
+        tmp_path,
+        test_mdata,
+        go_path,
+        target_program,
+        perturbed_gene_found,
+        available_samples,
     ):
         with pytest.raises(ValueError, match="program_correlation is required"):
-            _export(tmp_path, test_mdata, go_path, target_program, None,
-                    perturbed_gene_found, available_samples)
+            _export(
+                tmp_path,
+                test_mdata,
+                go_path,
+                target_program,
+                None,
+                perturbed_gene_found,
+                available_samples,
+            )
 
     def test_perturb_base_without_waterfall_raises(
-        self, tmp_path, test_mdata, go_path, target_program, program_correlation,
-        perturbed_gene_found, available_samples, perturb_path_base
+        self,
+        tmp_path,
+        test_mdata,
+        go_path,
+        target_program,
+        program_correlation,
+        perturbed_gene_found,
+        available_samples,
+        perturb_path_base,
     ):
         with pytest.raises(ValueError, match="waterfall_correlation is required"):
-            _export(tmp_path, test_mdata, go_path, target_program, program_correlation,
-                    perturbed_gene_found, available_samples,
-                    perturb_path_base=perturb_path_base, waterfall_correlation=None)
+            _export(
+                tmp_path,
+                test_mdata,
+                go_path,
+                target_program,
+                program_correlation,
+                perturbed_gene_found,
+                available_samples,
+                perturb_path_base=perturb_path_base,
+                waterfall_correlation=None,
+            )

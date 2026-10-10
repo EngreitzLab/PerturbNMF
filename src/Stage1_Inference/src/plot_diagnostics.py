@@ -16,6 +16,7 @@ import os
 import logging
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # 1. Elbow curves: ranked gene loadings per program
 # ---------------------------------------------------------------------------
+
 
 def plot_elbow_curves(loadings_df, output_path, n_top=2000):
     """Plot sorted log-loadings per program to visualize the signal/noise boundary.
@@ -82,6 +84,7 @@ def plot_elbow_curves(loadings_df, output_path, n_top=2000):
 # 2. K-selection plot (stability vs error)
 # ---------------------------------------------------------------------------
 
+
 def plot_k_selection(run_dir, run_name, output_path):
     """Plot the k-selection PNG that cNMF generates during combine/consensus.
 
@@ -90,6 +93,7 @@ def plot_k_selection(run_dir, run_name, output_path):
     cnmf_plot = os.path.join(run_dir, run_name, f"{run_name}.k_selection.png")
     if os.path.exists(cnmf_plot):
         import shutil
+
         # copyfile, not copy2: copy2 preserves mtime via os.utime(), which fails
         # with EPERM when overwriting a file owned by another user (shared group dirs)
         shutil.copyfile(cnmf_plot, output_path)
@@ -101,6 +105,7 @@ def plot_k_selection(run_dir, run_name, output_path):
 # ---------------------------------------------------------------------------
 # 3. Program usage heatmap (cells x programs, grouped by batch)
 # ---------------------------------------------------------------------------
+
 
 def plot_usage_heatmap(mdata, output_path, categorical_key="batch"):
     """Heatmap of program usage scores, cells grouped by batch.
@@ -165,6 +170,7 @@ def plot_usage_heatmap(mdata, output_path, categorical_key="batch"):
 # 4. Loading distribution violin plot
 # ---------------------------------------------------------------------------
 
+
 def plot_loading_violins(loadings_df, output_path):
     """Violin plot of gene loading distributions per program.
 
@@ -207,8 +213,10 @@ def plot_loading_violins(loadings_df, output_path):
 # 5. Program-program top-N gene overlap clustermap
 # ---------------------------------------------------------------------------
 
-def plot_top_gene_overlap(spectra_df, output_path, top_n=300, title=None,
-                          csv_path=None):
+
+def plot_top_gene_overlap(
+    spectra_df, output_path, top_n=300, title=None, csv_path=None
+):
     """Clustermap of shared top-N genes between every pair of programs.
 
     For each program take its top-N genes (largest spectra value), then fill
@@ -266,11 +274,13 @@ def plot_top_gene_overlap(spectra_df, output_path, top_n=300, title=None,
         f"Off-diagonal shared top-{n_top} genes: min {offdiag.min()}, "
         f"mean {offdiag.mean():.1f}, max {offdiag.max()}"
     )
-    pairs = pd.DataFrame({
-        "prog_a": [progs[i] for i in iu[0]],
-        "prog_b": [progs[j] for j in iu[1]],
-        "shared": offdiag,
-    }).sort_values("shared", ascending=False)
+    pairs = pd.DataFrame(
+        {
+            "prog_a": [progs[i] for i in iu[0]],
+            "prog_b": [progs[j] for j in iu[1]],
+            "shared": offdiag,
+        }
+    ).sort_values("shared", ascending=False)
     for _, r in pairs.head(10).iterrows():
         logger.info(f"  {r['prog_a']} <-> {r['prog_b']}: {r['shared']} shared")
 
@@ -279,12 +289,17 @@ def plot_top_gene_overlap(spectra_df, output_path, top_n=300, title=None,
     size = max(6, min(24, 0.35 * n_progs + 4))
     g = sns.clustermap(
         overlap,
-        row_cluster=True, col_cluster=True,
-        cmap="RdBu_r", vmin=0, vmax=n_top,
+        row_cluster=True,
+        col_cluster=True,
+        cmap="RdBu_r",
+        vmin=0,
+        vmax=n_top,
         figsize=(size + 1, size),
-        linewidths=0.1, linecolor="0.9",
+        linewidths=0.1,
+        linecolor="0.9",
         cbar_kws={"label": f"shared genes (top {n_top})"},
-        xticklabels=True, yticklabels=True,
+        xticklabels=True,
+        yticklabels=True,
     )
     g.ax_row_dendrogram.set_visible(False)
     g.ax_col_dendrogram.set_visible(False)
@@ -296,7 +311,8 @@ def plot_top_gene_overlap(spectra_df, output_path, top_n=300, title=None,
     g.figure.suptitle(
         f"{title}\nhierarchically clustered; off-diagonal = redundant / "
         "co-varying programs",
-        y=1.02, fontsize=11,
+        y=1.02,
+        fontsize=11,
     )
     g.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(g.figure)
@@ -307,6 +323,7 @@ def plot_top_gene_overlap(spectra_df, output_path, top_n=300, title=None,
 # ---------------------------------------------------------------------------
 # 6. Consensus clustering plot check
 # ---------------------------------------------------------------------------
+
 
 def collect_clustering_plots(run_dir, run_name, K_list, sel_thresh_list, output_dir):
     """Copy consensus clustering PNGs generated by cNMF into the plots dir."""
@@ -328,8 +345,15 @@ def collect_clustering_plots(run_dir, run_name, K_list, sel_thresh_list, output_
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def generate_all_plots(run_dir, run_name="Inference", K_list=None, sel_thresh_list=None,
-                       categorical_key="batch", top_n_overlap=300):
+
+def generate_all_plots(
+    run_dir,
+    run_name="Inference",
+    K_list=None,
+    sel_thresh_list=None,
+    categorical_key="batch",
+    top_n_overlap=300,
+):
     """Generate all diagnostic plots for an inference run.
 
     Args:
@@ -364,7 +388,8 @@ def generate_all_plots(run_dir, run_name="Inference", K_list=None, sel_thresh_li
 
             # Load gene spectra scores for elbow + violin plots
             spectra_path = os.path.join(
-                run_dir, run_name,
+                run_dir,
+                run_name,
                 f"{run_name}.gene_spectra_score.k_{k}.dt_{thresh_str}.txt",
             )
             if os.path.exists(spectra_path):
@@ -383,7 +408,8 @@ def generate_all_plots(run_dir, run_name="Inference", K_list=None, sel_thresh_li
 
             # Top-N gene overlap clustermap from the median consensus spectra
             median_path = os.path.join(
-                run_dir, run_name,
+                run_dir,
+                run_name,
                 f"{run_name}.spectra.k_{k}.dt_{thresh_str}.consensus.txt",
             )
             if os.path.exists(median_path):

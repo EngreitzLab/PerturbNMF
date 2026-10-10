@@ -7,7 +7,9 @@ import requests
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # llm_summary_agent / pdf_download
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[1])
+)  # llm_summary_agent / pdf_download
 from llm_summary_agent import Summarize_Agent
 from pdf_download import download_paper, report_downloads
 
@@ -27,7 +29,9 @@ USER_AGENT = "PerturbNMF-AGeneTic/0.1 (literature search)"
 TRANSIENT_STATUS = {408, 425, 429, 500, 502, 503, 504}
 
 _TAG_RE = re.compile(r"<[^>]+>")
-_DESCRIPTION_RE = re.compile(r'<meta\s+name="(?:dc\.description|description)"\s+content="([^"]*)"', re.IGNORECASE)
+_DESCRIPTION_RE = re.compile(
+    r'<meta\s+name="(?:dc\.description|description)"\s+content="([^"]*)"', re.IGNORECASE
+)
 
 
 def _clean(text):
@@ -57,7 +61,9 @@ def _get(url, params=None, timeout=30, retries=1):
     last = None
     for attempt in range(retries + 1):
         try:
-            resp = requests.get(url, params=params, timeout=timeout, headers={"User-Agent": USER_AGENT})
+            resp = requests.get(
+                url, params=params, timeout=timeout, headers={"User-Agent": USER_AGENT}
+            )
             if resp.status_code in TRANSIENT_STATUS and attempt < retries:
                 time.sleep(0.5 * (attempt + 1))
                 continue
@@ -74,7 +80,9 @@ def _get(url, params=None, timeout=30, retries=1):
 def _landing_page_abstract(article_url, timeout=30):
     """Nature rarely deposits abstracts in Crossref; read the article page's description meta."""
     try:
-        resp = requests.get(article_url, timeout=timeout, headers={"User-Agent": USER_AGENT})
+        resp = requests.get(
+            article_url, timeout=timeout, headers={"User-Agent": USER_AGENT}
+        )
         m = _DESCRIPTION_RE.search(resp.text) if resp.status_code == 200 else None
         return _clean(m.group(1)) if m else None
     except requests.RequestException:
@@ -85,12 +93,17 @@ def _nature_record(item):
     doi = str(item.get("DOI") or "").lower()
     if not doi.startswith(NATURE_DOI_PREFIX + "/"):
         return None
-    article_id = doi.split("/", 1)[1]           # 10.1038/s41586-020-2012-7 -> s41586-020-2012-7
+    article_id = doi.split("/", 1)[1]  # 10.1038/s41586-020-2012-7 -> s41586-020-2012-7
     titles = item.get("title") or []
-    date_parts = ((item.get("published") or {}).get("date-parts")
-                  or (item.get("issued") or {}).get("date-parts") or [])
+    date_parts = (
+        (item.get("published") or {}).get("date-parts")
+        or (item.get("issued") or {}).get("date-parts")
+        or []
+    )
     container = item.get("container-title") or []
-    authors = [a.get("family") or a.get("name") or "" for a in (item.get("author") or [])]
+    authors = [
+        a.get("family") or a.get("name") or "" for a in (item.get("author") or [])
+    ]
     authors = [a for a in authors if a]
     return {
         "doi": doi,
@@ -98,7 +111,9 @@ def _nature_record(item):
         "url": f"{NATURE_BASE_URL}/articles/{article_id}",
         "pdf_url": f"{NATURE_BASE_URL}/articles/{article_id}.pdf",
         "title": _clean(titles[0] if titles else "") or "No Title",
-        "authors": ", ".join(authors[:3]) + (" et al." if len(authors) > 3 else "") if authors else None,
+        "authors": ", ".join(authors[:3]) + (" et al." if len(authors) > 3 else "")
+        if authors
+        else None,
         "year": date_parts[0][0] if date_parts and date_parts[0] else None,
         "journal": container[0] if container else None,
         "study_type": item.get("type"),
@@ -108,10 +123,7 @@ def _nature_record(item):
 
 
 def search_Nature(
-    query: str = "",
-    max_results: int = 3,
-    mini_handler = None,
-    out_dir: str = None
+    query: str = "", max_results: int = 3, mini_handler=None, out_dir: str = None
 ) -> str:
     """Search Nature portfolio journals (Nature, Nature Genetics, Nature Communications, ...)
     for articles related to the query and optionally download their PDFs
@@ -135,14 +147,19 @@ def search_Nature(
     try:
         query = _bounded_query(query)
         max_results = _bounded_limit(max_results, MAX_SEARCH_RESULTS)
-        params = {"query.bibliographic": query, "rows": max_results,
-                  "filter": f"prefix:{NATURE_DOI_PREFIX},type:journal-article"}
+        params = {
+            "query.bibliographic": query,
+            "rows": max_results,
+            "filter": f"prefix:{NATURE_DOI_PREFIX},type:journal-article",
+        }
         email = os.getenv("CROSSREF_MAILTO") or os.getenv("PUBMED_EMAIL")
         if email:
             params["mailto"] = email
         payload = _get(f"{CROSSREF_BASE_URL}/works", params=params)
         items = (payload or {}).get("message", {}).get("items", [])
-        records = [r for r in (_nature_record(item) for item in items) if r][:max_results]
+        records = [r for r in (_nature_record(item) for item in items) if r][
+            :max_results
+        ]
     except Exception as e:
         return f"Error during Nature search: {e}"
 
@@ -159,34 +176,75 @@ def search_Nature(
         abstract = rec["abstract"] or _landing_page_abstract(rec["url"])
         content = "No abstract available."
         if abstract:
-            content = Summarize_Agent(abstract, mini_handler) if mini_handler else abstract
+            content = (
+                Summarize_Agent(abstract, mini_handler) if mini_handler else abstract
+            )
 
-        pdf_line = ''
+        pdf_line = ""
         if out_dir:
             if i:
-                time.sleep(PDF_PAUSE_SECONDS)   # polite spacing under the institutional license
-            pdf_path, msg = download_paper(out_dir, f"nature_{rec['article_id']}",
-                                           doi=rec["doi"], pdf_urls=[rec["pdf_url"]])
+                time.sleep(
+                    PDF_PAUSE_SECONDS
+                )  # polite spacing under the institutional license
+            pdf_path, msg = download_paper(
+                out_dir,
+                f"nature_{rec['article_id']}",
+                doi=rec["doi"],
+                pdf_urls=[rec["pdf_url"]],
+            )
             if not pdf_path:
                 msg += "; is this running on a network with institutional access (campus / VPN)?"
             downloads.append((rec["title"], pdf_path, msg))
-            pdf_line = '\n' + 'PDF: ' + (pdf_path or f'Not downloaded ({msg})')
+            pdf_line = "\n" + "PDF: " + (pdf_path or f"Not downloaded ({msg})")
 
-        data_list.append('Title: ' + rec["title"] + tags + '\n' + 'Url: ' + rec["url"] + '\n' + info + pdf_line + '\n' + 'Summary: ' + content)
+        data_list.append(
+            "Title: "
+            + rec["title"]
+            + tags
+            + "\n"
+            + "Url: "
+            + rec["url"]
+            + "\n"
+            + info
+            + pdf_line
+            + "\n"
+            + "Summary: "
+            + content
+        )
 
     if out_dir:
         report_downloads("Nature", query, downloads, out_dir)
 
-    return "\n".join(data_list) + '\n' + "Data source: Nature (nature.com, institutional subscription)"
+    return (
+        "\n".join(data_list)
+        + "\n"
+        + "Data source: Nature (nature.com, institutional subscription)"
+    )
 
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Run search_Nature on one or more queries.")
-    parser.add_argument("--query", nargs="+", required=True, help="One or more queries, each quoted.")
-    parser.add_argument("--max_results", type=int, default=3, help="Max papers per query (capped at 15).")
-    parser.add_argument("--out_dir", default=None, help="Download open-access PDFs here. Default: no downloads.")
+
+    parser = argparse.ArgumentParser(
+        description="Run search_Nature on one or more queries."
+    )
+    parser.add_argument(
+        "--query", nargs="+", required=True, help="One or more queries, each quoted."
+    )
+    parser.add_argument(
+        "--max_results",
+        type=int,
+        default=3,
+        help="Max papers per query (capped at 15).",
+    )
+    parser.add_argument(
+        "--out_dir",
+        default=None,
+        help="Download open-access PDFs here. Default: no downloads.",
+    )
     args = parser.parse_args()
     for q in args.query:
         print(f"===== {q}")
-        print(search_Nature(query=q, max_results=args.max_results, out_dir=args.out_dir))
+        print(
+            search_Nature(query=q, max_results=args.max_results, out_dir=args.out_dir)
+        )

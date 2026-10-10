@@ -108,13 +108,20 @@ def check_data_format(
         print(f"Found adata.obsm['{guide_assignment_key}']\n")
         try:
             import scipy.sparse as sp
+
             if sp.issparse(guide_assignment):
-                print(f"WARNING: '{guide_assignment_key}' is sparse. Converting to dense array...")
+                print(
+                    f"WARNING: '{guide_assignment_key}' is sparse. Converting to dense array..."
+                )
                 dense_array = guide_assignment.toarray()
                 adata.obsm[guide_assignment_key] = dense_array
-                print(f"'{guide_assignment_key}' converted to dense array (shape: {dense_array.shape})\n")
+                print(
+                    f"'{guide_assignment_key}' converted to dense array (shape: {dense_array.shape})\n"
+                )
             else:
-                print(f"'{guide_assignment_key}' is already dense (shape: {guide_assignment.shape})\n")
+                print(
+                    f"'{guide_assignment_key}' is already dense (shape: {guide_assignment.shape})\n"
+                )
         except Exception as e:
             print(f"WARNING: Error checking '{guide_assignment_key}' sparsity: {e}\n")
             is_valid = False
