@@ -22,28 +22,37 @@ def main():
         description="Prepare guide data h5ad for CRT calibration from h5mu"
     )
     parser.add_argument(
-        '--h5mu_path', type=str, required=True,
-        help='Path to input h5mu file (any K value works; use smallest for speed)'
+        "--h5mu_path",
+        type=str,
+        required=True,
+        help="Path to input h5mu file (any K value works; use smallest for speed)",
     )
     parser.add_argument(
-        '--output_path', type=str, required=True,
-        help='Path to save output guide h5ad file'
+        "--output_path",
+        type=str,
+        required=True,
+        help="Path to save output guide h5ad file",
     )
     parser.add_argument(
-        '--modality', type=str, default='cNMF',
-        help='Modality to extract guide info from (default: cNMF)'
+        "--modality",
+        type=str,
+        default="cNMF",
+        help="Modality to extract guide info from (default: cNMF)",
     )
     parser.add_argument(
-        '--assignment_key', type=str, default='target_assignment',
-        help='Source key in obsm for guide assignment matrix (default: target_assignment)'
+        "--assignment_key",
+        type=str,
+        default="target_assignment",
+        help="Source key in obsm for guide assignment matrix (default: target_assignment)",
     )
     parser.add_argument(
-        '--names_key', type=str, default='target_names',
-        help='Source key in uns for guide/target names (default: target_names)'
+        "--names_key",
+        type=str,
+        default="target_names",
+        help="Source key in uns for guide/target names (default: target_names)",
     )
     parser.add_argument(
-        '--force', action='store_true',
-        help='Overwrite output file if it exists'
+        "--force", action="store_true", help="Overwrite output file if it exists"
     )
 
     args = parser.parse_args()
@@ -75,9 +84,9 @@ def main():
         adata_guide.obs[col] = mod.obs[col].values
 
     # Map source keys to standard guide_* keys
-    adata_guide.obsm['guide_assignment'] = np.array(mod.obsm[args.assignment_key])
-    adata_guide.uns['guide_names'] = list(mod.uns[args.names_key])
-    adata_guide.uns['guide_targets'] = np.array(mod.uns[args.names_key])
+    adata_guide.obsm["guide_assignment"] = np.array(mod.obsm[args.assignment_key])
+    adata_guide.uns["guide_names"] = list(mod.uns[args.names_key])
+    adata_guide.uns["guide_targets"] = np.array(mod.uns[args.names_key])
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output_path)), exist_ok=True)
     adata_guide.write(args.output_path)
@@ -85,10 +94,10 @@ def main():
     print(f"Guide h5ad saved: {args.output_path}")
     print(f"  Cells: {adata_guide.n_obs}")
     print(f"  Targets: {len(adata_guide.uns['guide_names'])}")
-    names = adata_guide.uns['guide_names']
+    names = adata_guide.uns["guide_names"]
     preview = names[:5] if len(names) > 5 else names
     print(f"  Target names (first 5): {preview}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

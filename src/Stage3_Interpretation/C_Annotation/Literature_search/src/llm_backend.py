@@ -3,6 +3,7 @@
 Supports: anthropic, openai, deepseek, gemini.
 Provider classes adapted from DeepRare/api/interface.py.
 """
+
 from __future__ import annotations
 
 import json
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Optional .env support
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass
@@ -24,9 +26,11 @@ except ImportError:
 # Provider classes (from DeepRare/api/interface.py)
 # ------------------------------------------------------------------
 
+
 class Openai_api:
     def __init__(self, api_key, model):
         from openai import OpenAI
+
         self.client = OpenAI(api_key=api_key)
         self.model = model
 
@@ -38,7 +42,7 @@ class Openai_api:
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt},
-                ]
+                ],
             )
             return str(completion.choices[0].message.content)
         except Exception as e:
@@ -49,10 +53,11 @@ class Openai_api:
 class deepseek_api:
     def __init__(self, api_key, model):
         from openai import OpenAI
+
         self.client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
-        if model == 'deepseek-v3-241226':
+        if model == "deepseek-v3-241226":
             self.model = "deepseek-chat"
-        elif model == 'deepseek-r1-250120':
+        elif model == "deepseek-r1-250120":
             self.model = "deepseek-reasoner"
         else:
             self.model = model
@@ -65,7 +70,7 @@ class deepseek_api:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt},
                 ],
-                stream=False
+                stream=False,
             )
             return str(completion.choices[0].message.content)
         except Exception as e:
@@ -76,6 +81,7 @@ class deepseek_api:
 class gemini_api:
     def __init__(self, api_key, model):
         import google.generativeai as genai
+
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel(model)
 
@@ -92,6 +98,7 @@ class gemini_api:
 class claude_api:
     def __init__(self, api_key, model):
         import anthropic
+
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
 
@@ -101,9 +108,7 @@ class claude_api:
                 model=self.model,
                 max_tokens=4000,
                 system=system_prompt,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
+                messages=[{"role": "user", "content": prompt}],
             )
             return str(message.content[0].text)
         except Exception as e:
@@ -121,8 +126,10 @@ class stanford_api:
         POST https://aiapi-prod.stanford.edu/v1/images/generations
     Auth: Bearer token via STANFORD_API_KEY
     """
+
     def __init__(self, api_key, base_url, model):
         from openai import OpenAI
+
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         self._validate_model(model)
         self.model = model
@@ -149,7 +156,7 @@ class stanford_api:
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt},
-                ]
+                ],
             )
             return str(completion.choices[0].message.content)
         except Exception as e:
@@ -162,25 +169,26 @@ class stanford_api:
 # ------------------------------------------------------------------
 
 PROVIDER_MAP = {
-    "anthropic": (claude_api,     "ANTHROPIC_API_KEY"),
-    "stanford":  (stanford_api,   "STANFORD_API_KEY"),
-    "openai":    (Openai_api,     "OPENAI_API_KEY"),
-    "deepseek":  (deepseek_api,   "DEEPSEEK_API_KEY"),
-    "gemini":    (gemini_api,     "GOOGLE_API_KEY"),
+    "anthropic": (claude_api, "ANTHROPIC_API_KEY"),
+    "stanford": (stanford_api, "STANFORD_API_KEY"),
+    "openai": (Openai_api, "OPENAI_API_KEY"),
+    "deepseek": (deepseek_api, "DEEPSEEK_API_KEY"),
+    "gemini": (gemini_api, "GOOGLE_API_KEY"),
 }
 
 DEFAULT_MODELS = {
     "anthropic": "claude-sonnet-4-5-20250929",
-    "stanford":  "claude-4-5-sonnet",  # also: gpt-5, o1, o3-mini, gpt-5-mini, claude-3-haiku, claude-4-sonnet, claude-opus-4-6, Llama-4, gemini-2.5-pro
-    "openai":    "gpt-4o",
-    "deepseek":  "deepseek-v3-241226",
-    "gemini":    "gemini-2.0-flash",
+    "stanford": "claude-4-5-sonnet",  # also: gpt-5, o1, o3-mini, gpt-5-mini, claude-3-haiku, claude-4-sonnet, claude-opus-4-6, Llama-4, gemini-2.5-pro
+    "openai": "gpt-4o",
+    "deepseek": "deepseek-v3-241226",
+    "gemini": "gemini-2.0-flash",
 }
 
 
 # ------------------------------------------------------------------
 # LLMBackend wrapper
 # ------------------------------------------------------------------
+
 
 class LLMBackend:
     """Thin wrapper providing complete() and complete_json() over provider classes."""
@@ -224,7 +232,9 @@ class LLMBackend:
         else:
             self._client = cls(api_key=api_key, model=self.model)
 
-        logger.info("LLMBackend initialised: provider=%s model=%s", self.provider, self.model)
+        logger.info(
+            "LLMBackend initialised: provider=%s model=%s", self.provider, self.model
+        )
 
     def complete(
         self,
@@ -261,4 +271,3 @@ class LLMBackend:
             "total_input_tokens": self.total_input_tokens,
             "total_output_tokens": self.total_output_tokens,
         }
-

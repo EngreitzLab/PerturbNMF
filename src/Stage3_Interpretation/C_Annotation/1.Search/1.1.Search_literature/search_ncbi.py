@@ -7,7 +7,9 @@ import requests
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # llm_summary_agent / pdf_download
+sys.path.insert(
+    0, str(Path(__file__).resolve().parents[1])
+)  # llm_summary_agent / pdf_download
 from llm_summary_agent import Summarize_Agent
 from pdf_download import download_paper, report_downloads
 
@@ -29,7 +31,7 @@ def normalize_doi(value):
     doi = str(value).strip().lower()
     for prefix in ("https://doi.org/", "http://doi.org/", "http://dx.doi.org/", "doi:"):
         if doi.startswith(prefix):
-            doi = doi[len(prefix):]
+            doi = doi[len(prefix) :]
             break
     doi = doi.rstrip(".,;)")
     return doi if _DOI_RE.fullmatch(doi) else None
@@ -73,7 +75,9 @@ def _get(url, params=None, as_json=True, timeout=30, retries=1):
     last = None
     for attempt in range(retries + 1):
         try:
-            resp = requests.get(url, params=params, timeout=timeout, headers={"User-Agent": USER_AGENT})
+            resp = requests.get(
+                url, params=params, timeout=timeout, headers={"User-Agent": USER_AGENT}
+            )
             if resp.status_code in TRANSIENT_STATUS and attempt < retries:
                 time.sleep(0.5 * (attempt + 1))
                 continue
@@ -94,8 +98,11 @@ def _node_text(node):
 
 
 def _pubmed_year(article):
-    for path in (".//ArticleDate/Year", ".//Journal/JournalIssue/PubDate/Year",
-                 ".//Journal/JournalIssue/PubDate/MedlineDate"):
+    for path in (
+        ".//ArticleDate/Year",
+        ".//Journal/JournalIssue/PubDate/Year",
+        ".//Journal/JournalIssue/PubDate/MedlineDate",
+    ):
         text = _node_text(article.find(path))
         if text:
             m = _YEAR_RE.search(text)
@@ -106,11 +113,19 @@ def _pubmed_year(article):
 
 def _study_type(pub_types):
     lowered = [t.casefold() for t in pub_types]
-    for key, label in (("review", "review"), ("clinical trial", "clinical trial"),
-                       ("meta-analysis", "meta-analysis"), ("randomized", "randomized trial")):
+    for key, label in (
+        ("review", "review"),
+        ("clinical trial", "clinical trial"),
+        ("meta-analysis", "meta-analysis"),
+        ("randomized", "randomized trial"),
+    ):
         if any(key in t for t in lowered):
             return label
-    non_generic = [t for t in pub_types if t.casefold() not in {"journal article", "research support"}]
+    non_generic = [
+        t
+        for t in pub_types
+        if t.casefold() not in {"journal article", "research support"}
+    ]
     return non_generic[0] if non_generic else (pub_types[0] if pub_types else None)
 
 
@@ -138,33 +153,47 @@ def _parse_pubmed_xml(xml_text):
             if text:
                 label = node.attrib.get("Label")
                 abstract_parts.append(f"{label}: {text}" if label else text)
-        pub_types = [t for t in (_node_text(n) for n in article.findall(".//PublicationTypeList/PublicationType")) if t]
-        comments = [node.attrib.get("RefType", "")
-                    for node in medline.findall(".//CommentsCorrectionsList/CommentsCorrections")]
+        pub_types = [
+            t
+            for t in (
+                _node_text(n)
+                for n in article.findall(".//PublicationTypeList/PublicationType")
+            )
+            if t
+        ]
+        comments = [
+            node.attrib.get("RefType", "")
+            for node in medline.findall(
+                ".//CommentsCorrectionsList/CommentsCorrections"
+            )
+        ]
         journal_node = article.find(".//Journal")
-        journal = _node_text(journal_node.find("Title")) if journal_node is not None else None
-        retracted = any(t.casefold() in {"retracted publication", "retraction of publication"} for t in pub_types) \
-            or any("retraction" in c.casefold() for c in comments)
-        records.append({
-            "pmid": pmid,
-            "doi": normalize_doi(ids.get("doi")),
-            "pmcid": ids.get("pmc") or None,
-            "title": _node_text(article.find("ArticleTitle")) or "No Title",
-            "year": _pubmed_year(article),
-            "journal": journal,
-            "study_type": _study_type(pub_types),
-            "abstract": " ".join(abstract_parts) or None,
-            "is_preprint": any("preprint" in t.casefold() for t in pub_types),
-            "is_retracted": retracted,
-        })
+        journal = (
+            _node_text(journal_node.find("Title")) if journal_node is not None else None
+        )
+        retracted = any(
+            t.casefold() in {"retracted publication", "retraction of publication"}
+            for t in pub_types
+        ) or any("retraction" in c.casefold() for c in comments)
+        records.append(
+            {
+                "pmid": pmid,
+                "doi": normalize_doi(ids.get("doi")),
+                "pmcid": ids.get("pmc") or None,
+                "title": _node_text(article.find("ArticleTitle")) or "No Title",
+                "year": _pubmed_year(article),
+                "journal": journal,
+                "study_type": _study_type(pub_types),
+                "abstract": " ".join(abstract_parts) or None,
+                "is_preprint": any("preprint" in t.casefold() for t in pub_types),
+                "is_retracted": retracted,
+            }
+        )
     return records
 
 
 def search_NCBI(
-    query: str = "",
-    max_results: int = 3,
-    mini_handler = None,
-    out_dir: str = None
+    query: str = "", max_results: int = 3, mini_handler=None, out_dir: str = None
 ) -> str:
     """Search PubMed through NCBI E-utilities (esearch -> efetch) for articles related to the query
 
@@ -196,18 +225,31 @@ def search_NCBI(
         # Search for PMIDs related to the query
         payload = _get(
             f"{NCBI_BASE_URL}/esearch.fcgi",
-            params={"db": "pubmed", "term": query, "retmax": max_results,
-                    "retmode": "json", "sort": "relevance", **_ncbi_params()},
+            params={
+                "db": "pubmed",
+                "term": query,
+                "retmax": max_results,
+                "retmode": "json",
+                "sort": "relevance",
+                **_ncbi_params(),
+            },
         )
         result = payload.get("esearchresult", {}) if isinstance(payload, dict) else {}
-        pmids = [p for p in (normalize_pmid(x) for x in result.get("idlist", [])) if p][:max_results]
+        pmids = [p for p in (normalize_pmid(x) for x in result.get("idlist", [])) if p][
+            :max_results
+        ]
         if not pmids:
             return "No results found on NCBI PubMed."
 
         # Fetch canonical metadata for the PMIDs
         xml_text = _get(
             f"{NCBI_BASE_URL}/efetch.fcgi",
-            params={"db": "pubmed", "id": ",".join(pmids), "retmode": "xml", **_ncbi_params()},
+            params={
+                "db": "pubmed",
+                "id": ",".join(pmids),
+                "retmode": "xml",
+                **_ncbi_params(),
+            },
             as_json=False,
         )
         records = _parse_pubmed_xml(str(xml_text))
@@ -219,33 +261,77 @@ def search_NCBI(
     downloads = []
     for rec in records:
         url = "https://pubmed.ncbi.nlm.nih.gov/" + rec["pmid"]
-        tags = "".join(t for t, flag in ((" [RETRACTED]", rec["is_retracted"]), (" [PREPRINT]", rec["is_preprint"])) if flag)
+        tags = "".join(
+            t
+            for t, flag in (
+                (" [RETRACTED]", rec["is_retracted"]),
+                (" [PREPRINT]", rec["is_preprint"]),
+            )
+            if flag
+        )
         info = f"Year: {rec['year']} | Journal: {rec['journal']} | DOI: {rec['doi']} | Type: {rec['study_type']}"
 
         content = "No abstract available."
         if rec["abstract"]:
-            content = Summarize_Agent(rec["abstract"], mini_handler) if mini_handler else rec["abstract"]
+            content = (
+                Summarize_Agent(rec["abstract"], mini_handler)
+                if mini_handler
+                else rec["abstract"]
+            )
 
-        pdf_line = ''
+        pdf_line = ""
         if out_dir:
-            pdf_path, msg = download_paper(out_dir, rec["pmcid"] or rec["pmid"], pmid=rec["pmid"], pmcid=rec["pmcid"], doi=rec["doi"])
+            pdf_path, msg = download_paper(
+                out_dir,
+                rec["pmcid"] or rec["pmid"],
+                pmid=rec["pmid"],
+                pmcid=rec["pmcid"],
+                doi=rec["doi"],
+            )
             downloads.append((rec["title"], pdf_path, msg))
-            pdf_line = '\n' + 'PDF: ' + (pdf_path or f'Not downloaded ({msg})')
+            pdf_line = "\n" + "PDF: " + (pdf_path or f"Not downloaded ({msg})")
 
-        data_list.append('Title: ' + rec["title"] + tags + '\n' + 'Url: ' + url + '\n' + info + pdf_line + '\n' + 'Summary: ' + content)
+        data_list.append(
+            "Title: "
+            + rec["title"]
+            + tags
+            + "\n"
+            + "Url: "
+            + url
+            + "\n"
+            + info
+            + pdf_line
+            + "\n"
+            + "Summary: "
+            + content
+        )
 
     if out_dir:
         report_downloads("NCBI", query, downloads, out_dir)
 
-    return "\n".join(data_list) + '\n' + "Data source: NCBI PubMed (E-utilities)"
+    return "\n".join(data_list) + "\n" + "Data source: NCBI PubMed (E-utilities)"
 
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Run search_NCBI on one or more queries.")
-    parser.add_argument("--query", nargs="+", required=True, help="One or more queries, each quoted.")
-    parser.add_argument("--max_results", type=int, default=3, help="Max papers per query (capped at 15).")
-    parser.add_argument("--out_dir", default=None, help="Download open-access PDFs here. Default: no downloads.")
+
+    parser = argparse.ArgumentParser(
+        description="Run search_NCBI on one or more queries."
+    )
+    parser.add_argument(
+        "--query", nargs="+", required=True, help="One or more queries, each quoted."
+    )
+    parser.add_argument(
+        "--max_results",
+        type=int,
+        default=3,
+        help="Max papers per query (capped at 15).",
+    )
+    parser.add_argument(
+        "--out_dir",
+        default=None,
+        help="Download open-access PDFs here. Default: no downloads.",
+    )
     args = parser.parse_args()
     for q in args.query:
         print(f"===== {q}")

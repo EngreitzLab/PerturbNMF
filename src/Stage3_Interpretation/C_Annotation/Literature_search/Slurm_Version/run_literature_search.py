@@ -8,6 +8,7 @@ Usage:
         --interactions "regulates,induces,promotes,inhibits" \
         --domain-keywords "proliferation,migration,differentiation"
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,7 +34,9 @@ from Literature_search.src.search_engine import SearchEngine
 from Literature_search.src.paper_fetcher import PaperFetcher, PaperData, summarize_paper
 from Literature_search.src.verification import Verifier, VerificationResult
 from Literature_search.src.output_writer import (
-    write_program_json, write_program_markdown, write_program_html,
+    write_program_json,
+    write_program_markdown,
+    write_program_html,
 )
 
 logger = logging.getLogger(__name__)
@@ -42,6 +45,7 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------
 # Excel loading
 # ------------------------------------------------------------------
+
 
 def _match_column(df_columns: List[str], target: str) -> Optional[str]:
     """Case-insensitive column matching."""
@@ -63,7 +67,9 @@ COLUMN_FIELDS = {
 }
 
 
-def load_excel(excel_path: Path, programs: Optional[List[int]] = None) -> List[Dict[str, Any]]:
+def load_excel(
+    excel_path: Path, programs: Optional[List[int]] = None
+) -> List[Dict[str, Any]]:
     """Load program rows from Excel."""
     df = pd.read_excel(excel_path)
     logger.info("Loaded Excel: %d rows, %d columns", len(df), len(df.columns))
@@ -97,6 +103,7 @@ def load_excel(excel_path: Path, programs: Optional[List[int]] = None) -> List[D
 # ------------------------------------------------------------------
 # Per-program processing
 # ------------------------------------------------------------------
+
 
 def _parse_gene_list(text: str) -> List[str]:
     """Parse comma/semicolon separated gene list, filtering Ensembl IDs."""
@@ -145,7 +152,9 @@ def process_program(
         logger.info("Loaded %d cached LLM queries", len(llm_queries))
     else:
         llm_queries = generate_search_queries(
-            llm, row, max_queries=args.max_llm_queries,
+            llm,
+            row,
+            max_queries=args.max_llm_queries,
             interaction_verbs=interaction_verbs,
         )
         query_cache.write_text(json.dumps(llm_queries, indent=2), encoding="utf-8")
@@ -224,16 +233,22 @@ def process_program(
         synthesis_text=synthesis_text,
     )
 
-    logger.info("Program %s complete: %d papers, %d verified", program_id, len(papers), len(verifications))
+    logger.info(
+        "Program %s complete: %d papers, %d verified",
+        program_id,
+        len(papers),
+        len(verifications),
+    )
 
 
 # ------------------------------------------------------------------
 # Main
 # ------------------------------------------------------------------
 
+
 def run(args) -> None:
     """Run the literature search pipeline."""
-    # initializing output dir 
+    # initializing output dir
     cache_dir = args.output_dir / "cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -241,14 +256,14 @@ def run(args) -> None:
     interaction_verbs = [v.strip() for v in args.interactions.split(",") if v.strip()]
     domain_keywords = [k.strip() for k in args.domain_keywords.split(",") if k.strip()]
 
-    # Initialize llm model 
+    # Initialize llm model
     llm = LLMBackend(
         provider=args.llm_provider,
         model=args.llm_model,
         max_tokens=args.llm_max_tokens,
     )
 
-    # initializing useful agent 
+    # initializing useful agent
     search_engine = SearchEngine()
     paper_fetcher = PaperFetcher(args.output_dir)
     verifier = Verifier(llm=llm if args.semantic_check else None)
@@ -260,12 +275,18 @@ def run(args) -> None:
     rows = load_excel(args.excel, programs=programs)
     logger.info("Processing %d programs", len(rows))
 
-    # annotate each program 
+    # annotate each program
     for row in rows:
         try:
             process_program(
-                row, args, llm, search_engine, paper_fetcher, verifier,
-                interaction_verbs, domain_keywords,
+                row,
+                args,
+                llm,
+                search_engine,
+                paper_fetcher,
+                verifier,
+                interaction_verbs,
+                domain_keywords,
             )
         except Exception as exc:
             pid = row.get("program_id", "?")
@@ -283,36 +304,69 @@ def main(argv=None):
         description="Literature Search Agent for PerturbNMF program annotation",
     )
     # Required
-    parser.add_argument("--excel", type=Path, required=True, help="Input Excel with program rows")
-    parser.add_argument("--output-dir", type=Path, required=True, help="Output directory")
+    parser.add_argument(
+        "--excel", type=Path, required=True, help="Input Excel with program rows"
+    )
+    parser.add_argument(
+        "--output-dir", type=Path, required=True, help="Output directory"
+    )
 
     # Program selection
-    parser.add_argument("--programs", type=str, default=None,
-                        help="Comma-separated program IDs (default: all)")
+    parser.add_argument(
+        "--programs",
+        type=str,
+        default=None,
+        help="Comma-separated program IDs (default: all)",
+    )
 
     # Search configuration
-    parser.add_argument("--interactions", type=str,
-                        default="regulates,induces,promotes,inhibits,suppresses,activates,binds,phosphorylates,modulates,mediates,targets,controls,decreases,increases,blocks,triggers,catalyzes",
-                        help="Comma-separated interaction verbs for query formulation")
-    parser.add_argument("--domain-keywords", type=str,
-                        default="inflammation,proliferation,migration,adhesion,metabolism,hypoxia,differentiation,apoptosis,cell cycle,signaling,stress response,development",
-                        help="Comma-separated domain keywords for evidence scoring")
-    parser.add_argument("--max-papers", type=int, default=30,
-                        help="Max papers per program (default: 30)")
-    parser.add_argument("--max-pubtator-results", type=int, default=50,
-                        help="Max results per PubTator query (default: 50)")
-    parser.add_argument("--max-llm-queries", type=int, default=8,
-                        help="Max LLM-generated queries per program (default: 8)")
+    parser.add_argument(
+        "--interactions",
+        type=str,
+        default="regulates,induces,promotes,inhibits,suppresses,activates,binds,phosphorylates,modulates,mediates,targets,controls,decreases,increases,blocks,triggers,catalyzes",
+        help="Comma-separated interaction verbs for query formulation",
+    )
+    parser.add_argument(
+        "--domain-keywords",
+        type=str,
+        default="inflammation,proliferation,migration,adhesion,metabolism,hypoxia,differentiation,apoptosis,cell cycle,signaling,stress response,development",
+        help="Comma-separated domain keywords for evidence scoring",
+    )
+    parser.add_argument(
+        "--max-papers",
+        type=int,
+        default=30,
+        help="Max papers per program (default: 30)",
+    )
+    parser.add_argument(
+        "--max-pubtator-results",
+        type=int,
+        default=50,
+        help="Max results per PubTator query (default: 50)",
+    )
+    parser.add_argument(
+        "--max-llm-queries",
+        type=int,
+        default=8,
+        help="Max LLM-generated queries per program (default: 8)",
+    )
 
     # LLM configuration
-    parser.add_argument("--llm-provider", default="stanford",
-                        choices=["anthropic", "stanford", "openai", "deepseek", "gemini"])
+    parser.add_argument(
+        "--llm-provider",
+        default="stanford",
+        choices=["anthropic", "stanford", "openai", "deepseek", "gemini"],
+    )
     parser.add_argument("--llm-model", default=None)
     parser.add_argument("--llm-max-tokens", type=int, default=4096)
 
     # Verification
-    parser.add_argument("--semantic-check", action="store_true", default=False,
-                        help="Enable LLM semantic verification (costs tokens, off by default)")
+    parser.add_argument(
+        "--semantic-check",
+        action="store_true",
+        default=False,
+        help="Enable LLM semantic verification (costs tokens, off by default)",
+    )
 
     # Resume
     parser.add_argument("--resume", action="store_true", default=True)
@@ -324,7 +378,9 @@ def main(argv=None):
     if not args.excel.exists():
         parser.error(f"Excel file not found: {args.excel}")
     if not args.output_dir.parent.exists():
-        parser.error(f"Parent directory for output does not exist: {args.output_dir.parent}")
+        parser.error(
+            f"Parent directory for output does not exist: {args.output_dir.parent}"
+        )
 
     # Setup logging
     logging.basicConfig(
@@ -332,23 +388,23 @@ def main(argv=None):
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    # intalize folders to be used 
+    # intalize folders to be used
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     # Save config
     slurm_info = {
-        'job_id': os.environ.get('SLURM_JOB_ID'),
-        'job_name': os.environ.get('SLURM_JOB_NAME'),
-        'partition': os.environ.get('SLURM_JOB_PARTITION'),
-        'node_list': os.environ.get('SLURM_JOB_NODELIST'),
+        "job_id": os.environ.get("SLURM_JOB_ID"),
+        "job_name": os.environ.get("SLURM_JOB_NAME"),
+        "partition": os.environ.get("SLURM_JOB_PARTITION"),
+        "node_list": os.environ.get("SLURM_JOB_NODELIST"),
     }
-    job_id = slurm_info['job_id'] or 'no_jobid'
+    job_id = slurm_info["job_id"] or "no_jobid"
     config_to_save = {
-        'args': {k: str(v) for k, v in vars(args).items()},
-        'slurm_info': slurm_info,
+        "args": {k: str(v) for k, v in vars(args).items()},
+        "slurm_info": slurm_info,
     }
-    config_path = args.output_dir / f'config_{job_id}.yml'
-    with open(config_path, 'w') as f:
+    config_path = args.output_dir / f"config_{job_id}.yml"
+    with open(config_path, "w") as f:
         yaml.dump(config_to_save, f, default_flow_style=False, width=1000)
 
     run(args)

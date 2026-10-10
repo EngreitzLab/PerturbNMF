@@ -26,8 +26,9 @@ SEED = 42
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-    parser.add_argument("--full_data", required=True,
-                        help="Path to the full counts .h5ad to subsample")
+    parser.add_argument(
+        "--full_data", required=True, help="Path to the full counts .h5ad to subsample"
+    )
     args = parser.parse_args()
     full_data = args.full_data
 

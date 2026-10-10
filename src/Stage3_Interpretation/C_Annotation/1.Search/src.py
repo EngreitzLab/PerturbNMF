@@ -7,6 +7,7 @@ and writes an extended copy into a sibling 'Literature_info_extended_PerturbNMF_
     '<out_dir>/P<k>.json' is read when it exists (an earlier literature step already extended it),
     '<info_dir>/P<k>.json' otherwise. The 1.0 bundles are never modified.
 """
+
 import copy
 import json
 import os
@@ -47,9 +48,13 @@ def load_program_JSON(info_dir, out_dir, programs):
         paths[f"P{pid}"] = extended if extended.exists() else info_dir / f"P{pid}.json"
     missing = [str(p) for p in paths.values() if not p.exists()]
     if missing:
-        raise FileNotFoundError(f"No bundle for {len(missing)} of {len(paths)} programs: {missing}")
+        raise FileNotFoundError(
+            f"No bundle for {len(missing)} of {len(paths)} programs: {missing}"
+        )
     n_ext = sum(p.parent == out_dir for p in paths.values())
-    print(f"[load] {len(paths)} bundle(s): {n_ext} from {out_dir}, {len(paths) - n_ext} from {info_dir}")
+    print(
+        f"[load] {len(paths)} bundle(s): {n_ext} from {out_dir}, {len(paths) - n_ext} from {info_dir}"
+    )
     return {label: json.loads(p.read_text()) for label, p in paths.items()}
 
 
@@ -70,9 +75,12 @@ def make_handler(model):
     """Anthropic API handler (api/LLM_interface.claude_api); needs ANTHROPIC_API_KEY."""
     sys.path.insert(0, str(AGENETIC_DIR / "api"))
     from LLM_interface import claude_api
+
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise SystemExit("ANTHROPIC_API_KEY not set (export it or add it to AGeneTic/.env)")
+        raise SystemExit(
+            "ANTHROPIC_API_KEY not set (export it or add it to AGeneTic/.env)"
+        )
     return claude_api(api_key=key, model=model)
 
 
@@ -100,7 +108,10 @@ def regulator_stats(bundle):
     stats = {}
     for cond, regs in bundle.get("perturbation_regulators", {}).items():
         for r in regs:
-            stats.setdefault(r["gene"], {})[cond] = {"log2fc": r.get("log2fc"), "adj_pval": r.get("adj_pval")}
+            stats.setdefault(r["gene"], {})[cond] = {
+                "log2fc": r.get("log2fc"),
+                "adj_pval": r.get("adj_pval"),
+            }
     return stats
 
 
@@ -122,12 +133,16 @@ def describe_gene(gene, entry):
     mg, up = info.get("MyGene", {}), info.get("UniProt", {})
     if mg.get("name"):
         lines.append(f"  name: {mg['name']}")
-    summary = mg.get("summary") or up.get("function") or info.get("NCBI", {}).get("summary")
+    summary = (
+        mg.get("summary") or up.get("function") or info.get("NCBI", {}).get("summary")
+    )
     if summary:
         lines.append(f"  function: {summary[:600]}")
     if mg.get("go_bp"):
         lines.append(f"  GO BP: {', '.join(mg['go_bp'][:6])}")
-    return "\n".join([f"- {gene} (names/aliases: {', '.join(gene_aliases(gene, entry))})"] + lines)
+    return "\n".join(
+        [f"- {gene} (names/aliases: {', '.join(gene_aliases(gene, entry))})"] + lines
+    )
 
 
 def attach_gene_block(bundle, source, info):

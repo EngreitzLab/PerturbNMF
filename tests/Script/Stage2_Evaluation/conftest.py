@@ -10,7 +10,9 @@ import pytest
 import pandas as pd
 import mudata
 
-PIPELINE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+PIPELINE_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 sys.path.insert(0, os.path.join(PIPELINE_ROOT, "src"))
 _TEST_OUTPUT = os.path.join(PIPELINE_ROOT, "tests", "output")
 
@@ -22,11 +24,13 @@ _INFERENCE_CANDIDATES = [
     os.path.join(_TEST_OUTPUT, "sk-cNMF", "Inference"),
 ]
 
+
 def _find_inference_path():
     for path in _INFERENCE_CANDIDATES:
         if os.path.isdir(path):
             return path
     return _INFERENCE_CANDIDATES[0]  # default even if missing (will skip at fixture)
+
 
 DEFAULT_INFERENCE_PATH = _find_inference_path()
 EVAL_OUTPUT_DIR = os.path.join(os.path.dirname(DEFAULT_INFERENCE_PATH), "Evaluation")
@@ -111,20 +115,22 @@ def eval_output_dir_per_k(mdata_copy_per_k):
 def cnmf_obj(inference_path):
     """Create a cNMF object pointing to the test inference output."""
     from torch_cnmf import cNMF
+
     run_dir = os.path.dirname(inference_path)  # parent of Inference/
-    return cNMF(output_dir=run_dir, name='Inference')
+    return cNMF(output_dir=run_dir, name="Inference")
 
 
 @pytest.fixture(scope="session")
 def X_norm(inference_path):
     """Load the normalized counts matrix from inference output."""
     import scanpy as sc
+
     norm_path = os.path.join(inference_path, "cnmf_tmp", "Inference.norm_counts.h5ad")
     if not os.path.isfile(norm_path):
         pytest.skip(f"Normalized counts not found: {norm_path}")
     adata = sc.read_h5ad(norm_path)
     X = adata.X
-    if hasattr(X, 'toarray'):
+    if hasattr(X, "toarray"):
         X = X.toarray()
     return X
 
@@ -149,13 +155,17 @@ def reference_targets_from_annotation(guide_annotation_path, test_mdata):
     df = pd.read_csv(guide_annotation_path, sep="\t", index_col=0)
     non_targeting_guides = df[df["targeting"] == False].index.values
     # Intersect annotation guide names with mdata guide_names, then get target group names
-    guide_metadata = pd.DataFrame({
-        "guide": test_mdata["cNMF"].uns["guide_names"],
-        "target": test_mdata["cNMF"].uns["guide_targets"],
-    })
+    guide_metadata = pd.DataFrame(
+        {
+            "guide": test_mdata["cNMF"].uns["guide_names"],
+            "target": test_mdata["cNMF"].uns["guide_targets"],
+        }
+    )
     matched = guide_metadata[guide_metadata["guide"].isin(non_targeting_guides)]
-    print(f"[conftest] annotation non-targeting guides: {len(non_targeting_guides)}, "
-          f"matched in mdata: {len(matched)}")
+    print(
+        f"[conftest] annotation non-targeting guides: {len(non_targeting_guides)}, "
+        f"matched in mdata: {len(matched)}"
+    )
     ref_targets = matched["target"].unique().tolist()
     print(f"[conftest] resolved reference target groups: {ref_targets}")
     if len(ref_targets) == 0:
@@ -170,6 +180,7 @@ def reference_targets_from_annotation(guide_annotation_path, test_mdata):
 # ---------------------------------------------------------------------------
 # Calibration fixtures (use same real data as metrics tests)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def calibration_output_dir():

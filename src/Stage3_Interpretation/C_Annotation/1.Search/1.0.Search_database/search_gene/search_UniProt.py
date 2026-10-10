@@ -2,13 +2,21 @@ import argparse
 import sys
 from datetime import datetime
 
-from src import (default_out_dir, load_program_JSON, report_query,
-                         request_with_retry, split_cached, write_outputs)
+from src import (
+    default_out_dir,
+    load_program_JSON,
+    report_query,
+    request_with_retry,
+    split_cached,
+    write_outputs,
+)
 
 SOURCE = "UniProt"
 UNIPROT_URL = "https://rest.uniprot.org/uniprotkb/search"
-FIELDS = ("accession,gene_primary,gene_synonym,protein_name,cc_function,"
-          "cc_subcellular_location,cc_tissue_specificity,cc_pathway")
+FIELDS = (
+    "accession,gene_primary,gene_synonym,protein_name,cc_function,"
+    "cc_subcellular_location,cc_tissue_specificity,cc_pathway"
+)
 
 
 # query
@@ -17,14 +25,21 @@ def query_uniprot(genes, taxid=9606, batch_size=100):
     query gene, following the Link: rel="next" pagination."""
     entries = []
     for i in range(0, len(genes), batch_size):
-        terms = " OR ".join(f"gene_exact:{g}" for g in genes[i:i + batch_size])
+        terms = " OR ".join(f"gene_exact:{g}" for g in genes[i : i + batch_size])
         url = UNIPROT_URL
-        params = {"query": f"({terms}) AND organism_id:{taxid} AND reviewed:true",
-                  "fields": FIELDS, "format": "json", "size": 500}
+        params = {
+            "query": f"({terms}) AND organism_id:{taxid} AND reviewed:true",
+            "fields": FIELDS,
+            "format": "json",
+            "size": 500,
+        }
         while url:
             resp = request_with_retry("GET", url, params=params)
             entries += resp.json().get("results", [])
-            url, params = resp.links.get("next", {}).get("url"), None  # next url carries the query
+            url, params = (
+                resp.links.get("next", {}).get("url"),
+                None,
+            )  # next url carries the query
     return entries
 
 
@@ -47,7 +62,11 @@ def pick_entries(genes, entries):
             by_primary.setdefault(n, e)
         for n in synonyms:
             by_synonym.setdefault(n, e)
-    return {g: by_primary.get(g) or by_synonym[g] for g in genes if g in by_primary or g in by_synonym}
+    return {
+        g: by_primary.get(g) or by_synonym[g]
+        for g in genes
+        if g in by_primary or g in by_synonym
+    }
 
 
 def _comments(entry, ctype):
@@ -55,15 +74,29 @@ def _comments(entry, ctype):
 
 
 def _texts(entry, ctype):
-    return " ".join(t["value"] for c in _comments(entry, ctype) for t in c.get("texts", [])) or None
+    return (
+        " ".join(
+            t["value"] for c in _comments(entry, ctype) for t in c.get("texts", [])
+        )
+        or None
+    )
 
 
 def format_gene_info(entry):
     primary, synonyms = _gene_names(entry)
-    function_pmids = [ev["id"] for c in _comments(entry, "FUNCTION") for t in c.get("texts", [])
-                      for ev in t.get("evidences", []) if ev.get("source") == "PubMed"]
-    locations = [loc["location"]["value"] for c in _comments(entry, "SUBCELLULAR LOCATION")
-                 for loc in c.get("subcellularLocations", []) if "location" in loc]
+    function_pmids = [
+        ev["id"]
+        for c in _comments(entry, "FUNCTION")
+        for t in c.get("texts", [])
+        for ev in t.get("evidences", [])
+        if ev.get("source") == "PubMed"
+    ]
+    locations = [
+        loc["location"]["value"]
+        for c in _comments(entry, "SUBCELLULAR LOCATION")
+        for loc in c.get("subcellularLocations", [])
+        if "location" in loc
+    ]
     rec_name = entry.get("proteinDescription", {}).get("recommendedName", {})
     return {
         "found": True,
@@ -80,19 +113,43 @@ def format_gene_info(entry):
 
 
 def build_parser():
-    p = argparse.ArgumentParser(description="Extend program bundles with UniProtKB protein function, location and tissue specificity.")
+    p = argparse.ArgumentParser(
+        description="Extend program bundles with UniProtKB protein function, location and tissue specificity."
+    )
 
     # IO
-    p.add_argument("--bundle_dir", required=True, help="program_bundles folder written by Extract_program_information.py.")
-    p.add_argument("--out_dir", default=None, help="Shared output directory (existing P<k>.json there are extended). Default: <bundle_dir>/../Gene_info_extended_PerturbNMF_Info.")
+    p.add_argument(
+        "--bundle_dir",
+        required=True,
+        help="program_bundles folder written by Extract_program_information.py.",
+    )
+    p.add_argument(
+        "--out_dir",
+        default=None,
+        help="Shared output directory (existing P<k>.json there are extended). Default: <bundle_dir>/../Gene_info_extended_PerturbNMF_Info.",
+    )
 
     # context info
-    p.add_argument("--programs", type=int, nargs="+", required=True, help="Program ids, space separated (e.g. 1 2 3); only these bundles are read.")
-    p.add_argument("--taxid", type=int, default=9606, help="NCBI taxonomy id (9606 = human).")
+    p.add_argument(
+        "--programs",
+        type=int,
+        nargs="+",
+        required=True,
+        help="Program ids, space separated (e.g. 1 2 3); only these bundles are read.",
+    )
+    p.add_argument(
+        "--taxid", type=int, default=9606, help="NCBI taxonomy id (9606 = human)."
+    )
 
     # query
-    p.add_argument("--batch_size", type=int, default=100, help="Genes per UniProt query.")
-    p.add_argument("--overwrite", action="store_true", help="Re-query genes that already have this source's info in --out_dir.")
+    p.add_argument(
+        "--batch_size", type=int, default=100, help="Genes per UniProt query."
+    )
+    p.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Re-query genes that already have this source's info in --out_dir.",
+    )
     return p
 
 
@@ -115,8 +172,12 @@ def main():
         "created": datetime.now().isoformat(timespec="seconds"),
         "inputs": {"bundle_dir": str(args.bundle_dir)},
         "source": UNIPROT_URL,
-        "params": {"taxid": args.taxid, "batch_size": args.batch_size, "fields": FIELDS,
-                   "reviewed_only": True},
+        "params": {
+            "taxid": args.taxid,
+            "batch_size": args.batch_size,
+            "fields": FIELDS,
+            "reviewed_only": True,
+        },
         "programs": list(bundles),
         "n_genes": len(genes),
         "n_skipped": len(cached),
@@ -129,5 +190,5 @@ def main():
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

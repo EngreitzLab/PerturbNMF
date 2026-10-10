@@ -9,7 +9,8 @@ Output: CSV with columns Name, Score, RowID where RowID is the program
 By default, only the top-N genes per program (by score) are kept.
 Use --n-top 0 to keep all genes.
 """
-#%%
+
+# %%
 import argparse
 import sys
 from pathlib import Path
@@ -26,7 +27,8 @@ def main() -> int:
         help="Path to gene_spectra_score .txt (TSV) file",
     )
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         help="Output CSV path (default: <input_stem>_top<N>.csv in same dir)",
     )
     parser.add_argument(
@@ -48,9 +50,7 @@ def main() -> int:
 
     # Melt to long format: RowID (program), Name (gene), Score (value)
     df.index.name = "RowID"
-    long = df.reset_index().melt(
-        id_vars="RowID", var_name="Name", value_name="Score"
-    )
+    long = df.reset_index().melt(id_vars="RowID", var_name="Name", value_name="Score")
 
     # Shift RowID to 0-based indexing
     long["RowID"] = long["RowID"] - 1
@@ -65,9 +65,9 @@ def main() -> int:
         print(f"Kept top {args.n_top} genes per program")
 
     # Sort: RowID ascending, Score descending within each program
-    long = long.sort_values(
-        ["RowID", "Score"], ascending=[True, False]
-    ).reset_index(drop=True)
+    long = long.sort_values(["RowID", "Score"], ascending=[True, False]).reset_index(
+        drop=True
+    )
 
     # Reorder columns to match expected format: Name, Score, RowID
     long = long[["Name", "Score", "RowID"]]

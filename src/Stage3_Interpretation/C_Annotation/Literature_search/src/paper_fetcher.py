@@ -1,4 +1,5 @@
 """Fetch, parse, and cache paper metadata from PubTator3 BioC-JSON."""
+
 from __future__ import annotations
 
 import json
@@ -73,7 +74,9 @@ class PaperCache:
         p = self._path(paper.pmid)
         # Atomic write: write to temp then rename
         tmp = p.with_suffix(".tmp")
-        tmp.write_text(json.dumps(paper.to_dict(), ensure_ascii=False), encoding="utf-8")
+        tmp.write_text(
+            json.dumps(paper.to_dict(), ensure_ascii=False), encoding="utf-8"
+        )
         tmp.rename(p)
 
 
@@ -132,7 +135,10 @@ class PaperFetcher:
                 evidence = {}
                 if abstract or title:
                     evidence = extract_evidence_sentences(
-                        abstract, title, target_set, context_set,
+                        abstract,
+                        title,
+                        target_set,
+                        context_set,
                         domain_keywords=domain_keywords,
                     )
 

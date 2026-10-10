@@ -63,12 +63,19 @@ import requests
 
 import sys as _sys
 from pathlib import Path as _Path
+
 _sys.path.insert(0, str(_Path(__file__).resolve().parent))
 
-from column_mapper import ColumnMapper, standardize_gene_loading, standardize_celltype_enrichment
+from column_mapper import (
+    ColumnMapper,
+    standardize_gene_loading,
+    standardize_celltype_enrichment,
+)
 
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 """
@@ -151,13 +158,23 @@ def parse_topics(value: Optional[object]) -> Optional[Set[int]]:
 def apply_test_mode(
     args: argparse.Namespace, config: Dict[str, Any], cli_overrides: Set[str]
 ) -> argparse.Namespace:
-    test_cfg = config.get("test", {}) if isinstance(config.get("test", {}), dict) else {}
+    test_cfg = (
+        config.get("test", {}) if isinstance(config.get("test", {}), dict) else {}
+    )
     enabled = bool(test_cfg.get("enabled") or config.get("test_mode"))
     if not enabled:
         return args
 
-    topics = test_cfg.get("topics") or test_cfg.get("programs") or config.get("test_programs")
-    if hasattr(args, "topics") and "topics" not in cli_overrides and not getattr(args, "topics", None):
+    topics = (
+        test_cfg.get("topics")
+        or test_cfg.get("programs")
+        or config.get("test_programs")
+    )
+    if (
+        hasattr(args, "topics")
+        and "topics" not in cli_overrides
+        and not getattr(args, "topics", None)
+    ):
         if topics is not None:
             args.topics = topics
     return args
@@ -168,7 +185,9 @@ def apply_config_overrides(
     config: Dict[str, Any],
     cli_overrides: Set[str],
 ) -> argparse.Namespace:
-    steps_cfg = config.get("steps", {}) if isinstance(config.get("steps", {}), dict) else {}
+    steps_cfg = (
+        config.get("steps", {}) if isinstance(config.get("steps", {}), dict) else {}
+    )
     step_cfg = steps_cfg.get("string_enrichment", {})
     if isinstance(step_cfg, dict) and args.command in step_cfg:
         step_cfg = step_cfg.get(args.command, {})
@@ -193,24 +212,24 @@ DEFAULT_STRING_FILTERED = "string_enrichment_filtered_process_kegg.csv"
 # ----------------------------- Cell-type summary -----------------------------
 # Thresholds for categorizing cell-type enrichment (FDR < 0.05 required)
 CELLTYPE_THRESHOLDS = {
-    'highly_cell_type_specific': {'log2fc_min': 3.0, 'log2fc_max': None},
-    'moderately_enriched': {'log2fc_min': 1.5, 'log2fc_max': 3.0},
-    'weakly_enriched': {'log2fc_min': 0.5, 'log2fc_max': 1.5},
-    'depleted': {'log2fc_min': None, 'log2fc_max': -0.5},
+    "highly_cell_type_specific": {"log2fc_min": 3.0, "log2fc_max": None},
+    "moderately_enriched": {"log2fc_min": 1.5, "log2fc_max": 3.0},
+    "weakly_enriched": {"log2fc_min": 0.5, "log2fc_max": 1.5},
+    "depleted": {"log2fc_min": None, "log2fc_max": -0.5},
 }
 
 # Column order for cell-type summary output
 CELLTYPE_CATEGORIES = [
-    'highly_cell_type_specific',
-    'moderately_enriched',
-    'weakly_enriched',
-    'depleted',
+    "highly_cell_type_specific",
+    "moderately_enriched",
+    "weakly_enriched",
+    "depleted",
 ]
 
 
 def extract_program_id(value: object) -> Optional[int]:
     """Extract numeric program ID from various naming formats.
-    
+
     Handles formats like:
     - 'Program_1', 'program_1' -> 1
     - 'Topic_1', 'topic_1' -> 1
@@ -218,39 +237,39 @@ def extract_program_id(value: object) -> Optional[int]:
     - 'X1', 'X_1' -> 1 (regulator file format)
     - '1', 1 -> 1
     - 'Program1', 'Topic1' -> 1
-    
+
     Args:
         value: String or int containing program identifier
-        
+
     Returns:
         Integer program ID or None if parsing fails
     """
     import re
-    
+
     if value is None:
         return None
-    
+
     # If already an integer, return it
     if isinstance(value, (int, np.integer)):
         return int(value)
-    
+
     # Convert to string and strip whitespace
     val_str = str(value).strip()
-    
+
     # Try direct integer conversion first
     try:
         return int(val_str)
     except (ValueError, TypeError):
         pass
-    
+
     # Try to extract digits from common patterns
     # Patterns: Program_X, Topic_X, P_X, X_X (regulator format), program_X, topic_X, p_X
     patterns = [
-        r'^(?:program|topic|p|x)_(\d+)$',  # program_1, topic_1, p_1, x_1
-        r'^(?:program|topic|p|x)(\d+)$',   # program1, topic1, p1, x1
-        r'^(\d+)$',                         # just the number
+        r"^(?:program|topic|p|x)_(\d+)$",  # program_1, topic_1, p_1, x_1
+        r"^(?:program|topic|p|x)(\d+)$",  # program1, topic1, p1, x1
+        r"^(\d+)$",  # just the number
     ]
-    
+
     for pattern in patterns:
         match = re.match(pattern, val_str, re.IGNORECASE)
         if match:
@@ -258,109 +277,133 @@ def extract_program_id(value: object) -> Optional[int]:
                 return int(match.group(1))
             except (ValueError, TypeError, IndexError):
                 continue
-    
+
     return None
 
 
 def validate_celltype_enrichment(df: pd.DataFrame, file_path: Path) -> bool:
     """Validate cell-type enrichment DataFrame format and content.
-    
+
     Non-fatal validation that logs warnings instead of raising errors.
     This allows the pipeline to continue even with imperfect input data.
-    
+
     Args:
         df: DataFrame to validate
         file_path: Path to the file (for warning messages)
-    
+
     Returns:
         True if validation passed, False if issues were found
     """
     warnings_list = []
     has_critical_errors = False
-    
+
     # 1. Check required columns
-    required_cols = {'cell_type', 'program', 'log2_fc_in_vs_out', 'fdr'}
+    required_cols = {"cell_type", "program", "log2_fc_in_vs_out", "fdr"}
     missing = required_cols - set(df.columns)
     if missing:
         warnings_list.append(f"Missing required columns: {sorted(missing)}")
         warnings_list.append(f"  Found columns: {sorted(df.columns)}")
         warnings_list.append(f"  Required: {sorted(required_cols)}")
         has_critical_errors = True
-    
+
     # 2. Check DataFrame is not empty
     if df.empty:
         warnings_list.append("Cell-type enrichment file is empty")
         has_critical_errors = True
-    
+
     # If critical errors, log and return early
     if has_critical_errors:
         logger.warning(f"Cell-type enrichment file has critical issues: {file_path}")
         for w in warnings_list:
             logger.warning(f"  {w}")
         return False
-    
+
     # 3. Validate 'program' column - flexible format checking
     df_temp = df.copy()
-    df_temp['program_id_parsed'] = df_temp['program'].apply(extract_program_id)
-    unparseable = df_temp[df_temp['program_id_parsed'].isna()]
+    df_temp["program_id_parsed"] = df_temp["program"].apply(extract_program_id)
+    unparseable = df_temp[df_temp["program_id_parsed"].isna()]
     if not unparseable.empty:
-        sample_invalid = unparseable['program'].head(5).tolist()
-        warnings_list.append(f"Could not parse {len(unparseable)} program identifiers: {sample_invalid}")
-        warnings_list.append(f"  Supported formats: Program_X, program_X, Topic_X, topic_X, P_X, p_X, X_X (regulator), ProgramX, TopicX, X")
-    
+        sample_invalid = unparseable["program"].head(5).tolist()
+        warnings_list.append(
+            f"Could not parse {len(unparseable)} program identifiers: {sample_invalid}"
+        )
+        warnings_list.append(
+            f"  Supported formats: Program_X, program_X, Topic_X, topic_X, P_X, p_X, X_X (regulator), ProgramX, TopicX, X"
+        )
+
     # 4. Validate 'log2_fc_in_vs_out' is numeric
     try:
-        fc_numeric = pd.to_numeric(df['log2_fc_in_vs_out'], errors='coerce')
+        fc_numeric = pd.to_numeric(df["log2_fc_in_vs_out"], errors="coerce")
         non_numeric_fc = df[fc_numeric.isna()]
         if not non_numeric_fc.empty:
-            sample_bad = non_numeric_fc['log2_fc_in_vs_out'].head(5).tolist()
-            warnings_list.append(f"Non-numeric values in 'log2_fc_in_vs_out': {sample_bad}")
-            warnings_list.append(f"  Found {len(non_numeric_fc)} non-numeric log2FC values (will be ignored)")
+            sample_bad = non_numeric_fc["log2_fc_in_vs_out"].head(5).tolist()
+            warnings_list.append(
+                f"Non-numeric values in 'log2_fc_in_vs_out': {sample_bad}"
+            )
+            warnings_list.append(
+                f"  Found {len(non_numeric_fc)} non-numeric log2FC values (will be ignored)"
+            )
     except Exception as e:
         warnings_list.append(f"Failed to validate 'log2_fc_in_vs_out' column: {e}")
-    
+
     # 5. Validate 'fdr' is numeric and in valid range [0, 1]
     try:
-        fdr_numeric = pd.to_numeric(df['fdr'], errors='coerce')
+        fdr_numeric = pd.to_numeric(df["fdr"], errors="coerce")
         non_numeric_fdr = df[fdr_numeric.isna()]
         if not non_numeric_fdr.empty:
-            sample_bad = non_numeric_fdr['fdr'].head(5).tolist()
+            sample_bad = non_numeric_fdr["fdr"].head(5).tolist()
             warnings_list.append(f"Non-numeric values in 'fdr': {sample_bad}")
-            warnings_list.append(f"  Found {len(non_numeric_fdr)} non-numeric FDR values (will be ignored)")
-        
+            warnings_list.append(
+                f"  Found {len(non_numeric_fdr)} non-numeric FDR values (will be ignored)"
+            )
+
         # Check FDR range (should be 0-1 for proper FDR values)
         valid_fdr = fdr_numeric.dropna()
         if len(valid_fdr) > 0:
             out_of_range_mask = (valid_fdr < 0) | (valid_fdr > 1)
             if out_of_range_mask.any():
                 out_of_range_vals = valid_fdr[out_of_range_mask].head(5).tolist()
-                warnings_list.append(f"FDR values out of range [0, 1]: {out_of_range_vals}")
-                warnings_list.append(f"  Found {out_of_range_mask.sum()} out-of-range FDR values")
+                warnings_list.append(
+                    f"FDR values out of range [0, 1]: {out_of_range_vals}"
+                )
+                warnings_list.append(
+                    f"  Found {out_of_range_mask.sum()} out-of-range FDR values"
+                )
     except Exception as e:
         warnings_list.append(f"Failed to validate 'fdr' column: {e}")
-    
+
     # 6. Check for completely empty cell_type values
-    empty_celltypes = df[df['cell_type'].isna() | (df['cell_type'].astype(str).str.strip() == '')]
+    empty_celltypes = df[
+        df["cell_type"].isna() | (df["cell_type"].astype(str).str.strip() == "")
+    ]
     if not empty_celltypes.empty:
-        warnings_list.append(f"Found {len(empty_celltypes)} rows with empty 'cell_type' values (will be ignored)")
-    
+        warnings_list.append(
+            f"Found {len(empty_celltypes)} rows with empty 'cell_type' values (will be ignored)"
+        )
+
     # 7. Log summary statistics (informational)
-    n_programs = df['program'].nunique()
-    n_celltypes = df['cell_type'].nunique()
+    n_programs = df["program"].nunique()
+    n_celltypes = df["cell_type"].nunique()
     logger.info(f"Cell-type enrichment file summary: {file_path}")
     logger.info(f"  Total rows: {len(df)}")
     logger.info(f"  Unique programs: {n_programs}")
     logger.info(f"  Unique cell types: {n_celltypes}")
-    
+
     # Check for reasonable data coverage (warnings only)
     if n_programs < 10:
-        warnings_list.append(f"Very few programs found ({n_programs}). Expected 50-100 for typical cNMF results.")
+        warnings_list.append(
+            f"Very few programs found ({n_programs}). Expected 50-100 for typical cNMF results."
+        )
     if n_celltypes < 3:
-        warnings_list.append(f"Very few cell types found ({n_celltypes}). Expected multiple cell types.")
-    
+        warnings_list.append(
+            f"Very few cell types found ({n_celltypes}). Expected multiple cell types."
+        )
+
     # Log all warnings
     if warnings_list:
-        logger.warning(f"Cell-type enrichment validation found {len(warnings_list)} issue(s):")
+        logger.warning(
+            f"Cell-type enrichment validation found {len(warnings_list)} issue(s):"
+        )
         for w in warnings_list:
             logger.warning(f"  {w}")
         return False
@@ -412,45 +455,49 @@ def generate_celltype_summary(
     validate_celltype_enrichment(df, enrichment_file)
 
     # Validate required columns (critical check)
-    required_cols = {'cell_type', 'program', 'log2_fc_in_vs_out', 'fdr'}
+    required_cols = {"cell_type", "program", "log2_fc_in_vs_out", "fdr"}
     missing = required_cols - set(df.columns)
     if missing:
         logger.error(f"Enrichment file missing required columns: {missing}")
         logger.error(f"  Found columns: {sorted(df.columns)}")
-        logger.error(f"  Cannot proceed without required columns. Please check your input file.")
+        logger.error(
+            f"  Cannot proceed without required columns. Please check your input file."
+        )
         raise ValueError(f"Enrichment file missing required columns: {missing}")
 
     # Extract program ID using flexible parser (handles Program_X, program_X, Topic_X, X, etc.)
-    df['program_id'] = df['program'].apply(extract_program_id)
-    
+    df["program_id"] = df["program"].apply(extract_program_id)
+
     # Check for programs that couldn't be parsed
-    unparsed = df[df['program_id'].isna()]
+    unparsed = df[df["program_id"].isna()]
     if not unparsed.empty:
-        logger.warning(f"Could not parse program IDs for {len(unparsed)} rows (will be excluded):")
+        logger.warning(
+            f"Could not parse program IDs for {len(unparsed)} rows (will be excluded):"
+        )
         logger.warning(f"  Sample values: {unparsed['program'].head(5).tolist()}")
-        df = df[df['program_id'].notna()].copy()
-    
+        df = df[df["program_id"].notna()].copy()
+
     # Ensure program_id is integer type
-    df['program_id'] = df['program_id'].astype(int)
+    df["program_id"] = df["program_id"].astype(int)
 
     # Filter to requested topics if specified
     if topics:
-        df = df[df['program_id'].isin(list(topics))].copy()
+        df = df[df["program_id"].isin(list(topics))].copy()
         logger.info(f"Filtered to {len(df)} rows for topics: {sorted(topics)}")
 
     # Filter to significant results
-    df_sig = df[df['fdr'] < fdr_threshold].copy()
+    df_sig = df[df["fdr"] < fdr_threshold].copy()
     logger.info(f"Found {len(df_sig)} significant rows (FDR < {fdr_threshold})")
 
     # Use cell_type values as-is (assume already has correct names)
-    df_sig['cell_type_display'] = df_sig['cell_type']
+    df_sig["cell_type_display"] = df_sig["cell_type"]
 
     # Categorize each row by log2FC thresholds
     def categorize_row(row: pd.Series) -> Optional[str]:
-        log2fc = row['log2_fc_in_vs_out']
+        log2fc = row["log2_fc_in_vs_out"]
         for cat, bounds in thresholds.items():
-            min_val = bounds.get('log2fc_min')
-            max_val = bounds.get('log2fc_max')
+            min_val = bounds.get("log2fc_min")
+            max_val = bounds.get("log2fc_max")
             # Check if log2fc falls in this category
             if min_val is not None and max_val is not None:
                 if min_val <= log2fc < max_val:
@@ -463,28 +510,28 @@ def generate_celltype_summary(
                     return cat
         return None
 
-    df_sig['category'] = df_sig.apply(categorize_row, axis=1)
-    df_categorized = df_sig.dropna(subset=['category'])
+    df_sig["category"] = df_sig.apply(categorize_row, axis=1)
+    df_categorized = df_sig.dropna(subset=["category"])
     logger.info(f"Categorized {len(df_categorized)} rows into enrichment categories")
 
     # Build summary: for each program, collect cell types per category
-    all_programs = sorted(df['program_id'].unique())
+    all_programs = sorted(df["program_id"].unique())
     records = []
 
     for pid in all_programs:
-        program_data = df_categorized[df_categorized['program_id'] == pid]
-        row = {'program': f'Program_{pid}'}
+        program_data = df_categorized[df_categorized["program_id"] == pid]
+        row = {"program": f"Program_{pid}"}
 
         for cat in CELLTYPE_CATEGORIES:
-            cat_data = program_data[program_data['category'] == cat]
-            cell_types = sorted(cat_data['cell_type_display'].unique())
-            row[cat] = '|'.join(cell_types) if cell_types else ''
+            cat_data = program_data[program_data["category"] == cat]
+            cell_types = sorted(cat_data["cell_type_display"].unique())
+            row[cat] = "|".join(cell_types) if cell_types else ""
 
         records.append(row)
 
     # Create output DataFrame
     summary_df = pd.DataFrame(records)
-    summary_df = summary_df[['program'] + CELLTYPE_CATEGORIES]
+    summary_df = summary_df[["program"] + CELLTYPE_CATEGORIES]
 
     # Write output
     ensure_parent_dir(str(output_file))
@@ -492,6 +539,7 @@ def generate_celltype_summary(
     logger.info(f"Wrote cell-type summary: {output_file} ({len(summary_df)} programs)")
 
     return len(summary_df)
+
 
 """
 @description
@@ -513,12 +561,18 @@ def apply_default_paths(args: argparse.Namespace) -> argparse.Namespace:
     n_top = getattr(args, "n_top", None) or 100
 
     if hasattr(args, "json_out") and not getattr(args, "json_out", None):
-        args.json_out = str(DEFAULT_ENRICH_DIR / DEFAULT_GENES_JSON_TEMPLATE.format(n_top=n_top))
+        args.json_out = str(
+            DEFAULT_ENRICH_DIR / DEFAULT_GENES_JSON_TEMPLATE.format(n_top=n_top)
+        )
     if hasattr(args, "csv_out") and not getattr(args, "csv_out", None):
-        args.csv_out = str(DEFAULT_ENRICH_DIR / DEFAULT_GENES_OVERVIEW_TEMPLATE.format(n_top=n_top))
+        args.csv_out = str(
+            DEFAULT_ENRICH_DIR / DEFAULT_GENES_OVERVIEW_TEMPLATE.format(n_top=n_top)
+        )
     if hasattr(args, "out_csv_full") and not getattr(args, "out_csv_full", None):
         args.out_csv_full = str(DEFAULT_ENRICH_DIR / DEFAULT_STRING_FULL)
-    if hasattr(args, "out_csv_filtered") and not getattr(args, "out_csv_filtered", None):
+    if hasattr(args, "out_csv_filtered") and not getattr(
+        args, "out_csv_filtered", None
+    ):
         args.out_csv_filtered = str(DEFAULT_ENRICH_DIR / DEFAULT_STRING_FILTERED)
 
     return args
@@ -544,7 +598,9 @@ def cache_path(cache_dir: Path, program_id: int) -> Path:
     return cache_dir / f"program_{program_id}_enrichment.json"
 
 
-def load_cached_results(cache_dir: Path, program_id: int) -> Optional[List[Dict[str, Any]]]:
+def load_cached_results(
+    cache_dir: Path, program_id: int
+) -> Optional[List[Dict[str, Any]]]:
     cache_file = cache_path(cache_dir, program_id)
     if not cache_file.exists():
         return None
@@ -559,13 +615,16 @@ def load_cached_results(cache_dir: Path, program_id: int) -> Optional[List[Dict[
     return data
 
 
-def write_cached_results(cache_dir: Path, program_id: int, results: List[Dict[str, Any]]) -> None:
+def write_cached_results(
+    cache_dir: Path, program_id: int, results: List[Dict[str, Any]]
+) -> None:
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_path(cache_dir, program_id)
     cache_file.write_text(json.dumps(results, indent=2), encoding="utf-8")
 
 
 # --------------------------- Extract top genes (CSV) --------------------------
+
 
 def ensure_parent_dir(path_str: str) -> None:
     path = Path(path_str)
@@ -580,7 +639,7 @@ def resolve_program_id_column(df: pd.DataFrame) -> str:
     """
     mapper = ColumnMapper(df)
     try:
-        actual_col = mapper.get_column('program_id', required=True)
+        actual_col = mapper.get_column("program_id", required=True)
         return actual_col
     except ValueError as e:
         raise ValueError(
@@ -604,15 +663,15 @@ def extract_top_genes_by_program(
     Standardizes Gene/Name, Score/Loading columns automatically.
     """
     mapper = ColumnMapper(df)
-    
+
     # Get standardized column names
     try:
-        cols = mapper.get_columns(['gene', 'score'], required=True)
-        gene_col = cols['gene']
-        score_col = cols['score']
+        cols = mapper.get_columns(["gene", "score"], required=True)
+        gene_col = cols["gene"]
+        score_col = cols["score"]
     except ValueError as e:
         raise ValueError(f"Missing required columns for gene extraction: {e}")
-    
+
     # Verify program ID column exists
     if id_col not in df.columns:
         raise ValueError(f"Program ID column '{id_col}' not found in DataFrame")
@@ -665,26 +724,22 @@ def build_uniqueness_table(df: pd.DataFrame, id_col: str) -> pd.DataFrame:
     Build gene loading table with UniquenessScore using flexible column names.
     """
     mapper = ColumnMapper(df)
-    
+
     # Get standardized column names
     try:
-        cols = mapper.get_columns(['gene', 'score'], required=True)
-        gene_col = cols['gene']
-        score_col = cols['score']
+        cols = mapper.get_columns(["gene", "score"], required=True)
+        gene_col = cols["gene"]
+        score_col = cols["score"]
     except ValueError as e:
         raise ValueError(f"Missing required columns for uniqueness computation: {e}")
-    
+
     if id_col not in df.columns:
         raise ValueError(f"Program ID column '{id_col}' not found")
 
     work = df.copy()
-    
+
     # Standardize column names to Name, Score, program_id
-    rename_map = {
-        gene_col: 'Name',
-        score_col: 'Score',
-        id_col: 'program_id'
-    }
+    rename_map = {gene_col: "Name", score_col: "Score", id_col: "program_id"}
     work = work.rename(columns=rename_map)
 
     if "UniquenessScore" not in work.columns or work["UniquenessScore"].isna().all():
@@ -705,7 +760,9 @@ def build_uniqueness_table(df: pd.DataFrame, id_col: str) -> pd.DataFrame:
 
     columns = ["Name", "Score", "program_id", "UniquenessScore"]
     out_df = work[columns].copy()
-    out_df.dropna(subset=["Name", "Score", "program_id", "UniquenessScore"], inplace=True)
+    out_df.dropna(
+        subset=["Name", "Score", "program_id", "UniquenessScore"], inplace=True
+    )
     return out_df
 
 
@@ -717,12 +774,16 @@ def build_overview_long_table(
     for program_id_str, genes in top_map.items():
         program_id = normalize_program_id(program_id_str)
         if program_id not in sub_indexed_cache:
-            sub_indexed_cache[program_id] = (
-                df[df[id_col] == program_id].set_index("Name")
+            sub_indexed_cache[program_id] = df[df[id_col] == program_id].set_index(
+                "Name"
             )
         sub_idx = sub_indexed_cache[program_id]
         for rank, gene in enumerate(genes, start=1):
-            score = float(sub_idx.loc[gene, "Score"]) if gene in sub_idx.index else float("nan")
+            score = (
+                float(sub_idx.loc[gene, "Score"])
+                if gene in sub_idx.index
+                else float("nan")
+            )
             records.append(
                 {"program_id": program_id, "rank": rank, "gene": gene, "score": score}
             )
@@ -741,7 +802,9 @@ def cmd_extract(args: argparse.Namespace) -> int:
         logger.error(f"Input not found: {input_path}")
         return 2
     df = pd.read_csv(input_path)
-    logger.info(f"Loaded input: {input_path} with shape {df.shape} and columns {list(df.columns)}")
+    logger.info(
+        f"Loaded input: {input_path} with shape {df.shape} and columns {list(df.columns)}"
+    )
 
     id_col = resolve_program_id_column(df)
     uniqueness_out = args.gene_loading_out or str(default_uniqueness_output(input_path))
@@ -779,9 +842,15 @@ def cmd_extract(args: argparse.Namespace) -> int:
 STRING_ENRICH_ENDPOINT = "https://string-db.org/api/json/enrichment"
 
 
-def call_string_enrichment(genes: List[str], species: int, retries: int = 3, sleep_between: float = 0.6) -> List[Dict[str, Any]]:
+def call_string_enrichment(
+    genes: List[str], species: int, retries: int = 3, sleep_between: float = 0.6
+) -> List[Dict[str, Any]]:
     identifiers_value = "\r".join(genes)
-    params = {"identifiers": identifiers_value, "species": species, "caller_identity": "topic_analysis_string_enrichment"}
+    params = {
+        "identifiers": identifiers_value,
+        "species": species,
+        "caller_identity": "topic_analysis_string_enrichment",
+    }
 
     attempt = 0
     while attempt <= retries:
@@ -795,9 +864,13 @@ def call_string_enrichment(genes: List[str], species: int, retries: int = 3, sle
                     data = []
                 return data if isinstance(data, list) else []
             else:
-                logger.warning(f"STRING returned status {response.status_code}: {response.text[:200]}")
+                logger.warning(
+                    f"STRING returned status {response.status_code}: {response.text[:200]}"
+                )
         except requests.RequestException as e:
-            logger.warning(f"HTTP error on STRING request (attempt {attempt+1}/{retries+1}): {e}")
+            logger.warning(
+                f"HTTP error on STRING request (attempt {attempt + 1}/{retries + 1}): {e}"
+            )
 
         attempt += 1
         time.sleep(min(2.0, sleep_between * (attempt + 1)))
@@ -819,9 +892,13 @@ def build_full_csv(program_to_results: Dict[str, List[Dict[str, Any]]]) -> pd.Da
                     "fdr": float(t.get("fdr", float("nan"))),
                     "p_value": float(t.get("p_value", float("nan"))),
                     "number_of_genes": int(t.get("number_of_genes", 0)),
-                    "number_of_genes_in_background": int(t.get("number_of_genes_in_background", 0)),
+                    "number_of_genes_in_background": int(
+                        t.get("number_of_genes_in_background", 0)
+                    ),
                     "ncbiTaxonId": int(t.get("ncbiTaxonId", 0)),
-                    "inputGenes": "|".join(t.get("inputGenes", [])) if t.get("inputGenes") else "",
+                    "inputGenes": "|".join(t.get("inputGenes", []))
+                    if t.get("inputGenes")
+                    else "",
                 }
             )
     df = pd.DataFrame(rows)
@@ -849,7 +926,9 @@ def cmd_enrich(args: argparse.Namespace) -> int:
         logger.error("--figures-dir is required when --figures-only is set.")
         return 2
     if not args.figures_only and (not args.out_csv_full or not args.out_csv_filtered):
-        logger.error("--out-csv-full and --out-csv-filtered are required unless --figures-only is set.")
+        logger.error(
+            "--out-csv-full and --out-csv-filtered are required unless --figures-only is set."
+        )
         return 2
 
     genes_path = Path(args.genes_json)
@@ -857,7 +936,9 @@ def cmd_enrich(args: argparse.Namespace) -> int:
         logger.error(f"Genes JSON not found: {genes_path}")
         return 2
 
-    program_to_genes: Dict[str, List[str]] = json.loads(genes_path.read_text(encoding="utf-8"))
+    program_to_genes: Dict[str, List[str]] = json.loads(
+        genes_path.read_text(encoding="utf-8")
+    )
     allowed_topics = parse_topics(args.topics)
     if allowed_topics:
         program_to_genes = {
@@ -865,7 +946,9 @@ def cmd_enrich(args: argparse.Namespace) -> int:
             for pid, genes in program_to_genes.items()
             if int(pid) in allowed_topics
         }
-    logger.info(f"Loaded gene lists for {len(program_to_genes)} programs from {genes_path}")
+    logger.info(
+        f"Loaded gene lists for {len(program_to_genes)} programs from {genes_path}"
+    )
 
     existing_full_df: Optional[pd.DataFrame] = None
     existing_programs: Set[int] = set()
@@ -891,11 +974,17 @@ def cmd_enrich(args: argparse.Namespace) -> int:
 
     program_to_results: Dict[str, List[Dict[str, Any]]] = {}
     total = len(program_to_genes)
-    for idx, program_id in enumerate(sorted(program_to_genes.keys(), key=lambda x: int(x)), start=1):
+    for idx, program_id in enumerate(
+        sorted(program_to_genes.keys(), key=lambda x: int(x)), start=1
+    ):
         program_id_int = int(program_id)
-        genes = [g for g in program_to_genes[program_id] if isinstance(g, str) and g.strip()]
+        genes = [
+            g for g in program_to_genes[program_id] if isinstance(g, str) and g.strip()
+        ]
         skip_enrichment = (
-            args.resume and not args.force_refresh and program_id_int in existing_programs
+            args.resume
+            and not args.force_refresh
+            and program_id_int in existing_programs
         )
 
         results: Optional[List[Dict[str, Any]]] = None
@@ -922,7 +1011,9 @@ def cmd_enrich(args: argparse.Namespace) -> int:
                     retries=args.retries,
                     sleep_between=args.sleep,
                 )
-                logger.info("Program %s: retrieved %d enriched terms", program_id, len(results))
+                logger.info(
+                    "Program %s: retrieved %d enriched terms", program_id, len(results)
+                )
                 if cache_dir:
                     write_cached_results(cache_dir, program_id_int, results)
                 time.sleep(args.sleep)
@@ -1071,18 +1162,28 @@ def cmd_enrich(args: argparse.Namespace) -> int:
 
 # -------------------------------- Entry points -------------------------------
 
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Extract program gene lists and run STRING enrichment.")
+    parser = argparse.ArgumentParser(
+        description="Extract program gene lists and run STRING enrichment."
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # extract
-    p_extract = subparsers.add_parser("extract", help="Extract top-N genes per program from loading CSV")
+    p_extract = subparsers.add_parser(
+        "extract", help="Extract top-N genes per program from loading CSV"
+    )
     p_extract.add_argument("--config", help="Path to config file (YAML or JSON)")
     p_extract.add_argument(
         "--input",
         help="Path to loading CSV (columns: Name, Score, RowID or program_id)",
     )
-    p_extract.add_argument("--n-top", type=int, default=100, help="Number of top genes per program to extract")
+    p_extract.add_argument(
+        "--n-top",
+        type=int,
+        default=100,
+        help="Number of top genes per program to extract",
+    )
     p_extract.add_argument("--json-out", help="Output JSON {program_id: [genes...]}")
     p_extract.add_argument("--csv-out", help="Output overview CSV")
     p_extract.add_argument(
@@ -1097,12 +1198,23 @@ def build_parser() -> argparse.ArgumentParser:
     p_extract.set_defaults(func=cmd_extract)
 
     # enrich
-    p_enrich = subparsers.add_parser("enrich", help="Run STRING enrichment for program gene lists from JSON")
+    p_enrich = subparsers.add_parser(
+        "enrich", help="Run STRING enrichment for program gene lists from JSON"
+    )
     p_enrich.add_argument("--config", help="Path to config file (YAML or JSON)")
-    p_enrich.add_argument("--genes-json", help="Path to JSON mapping {program_id: [genes...]}")
-    p_enrich.add_argument("--species", type=int, default=10090, help="NCBI/STRING species id (default: 10090 mouse)")
+    p_enrich.add_argument(
+        "--genes-json", help="Path to JSON mapping {program_id: [genes...]}"
+    )
+    p_enrich.add_argument(
+        "--species",
+        type=int,
+        default=10090,
+        help="NCBI/STRING species id (default: 10090 mouse)",
+    )
     p_enrich.add_argument("--out-csv-full", help="Full unfiltered CSV output path")
-    p_enrich.add_argument("--out-csv-filtered", help="Filtered CSV (Process/KEGG only, background<500)")
+    p_enrich.add_argument(
+        "--out-csv-filtered", help="Filtered CSV (Process/KEGG only, background<500)"
+    )
     p_enrich.add_argument("--figures-dir", help="Directory to save enrichment figures")
     p_enrich.add_argument(
         "--figures-only",
@@ -1123,8 +1235,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Ignore cached results and re-query STRING",
     )
-    p_enrich.add_argument("--sleep", type=float, default=0.6, help="Sleep seconds between API calls")
-    p_enrich.add_argument("--retries", type=int, default=3, help="Retries per program on HTTP failures")
+    p_enrich.add_argument(
+        "--sleep", type=float, default=0.6, help="Sleep seconds between API calls"
+    )
+    p_enrich.add_argument(
+        "--retries", type=int, default=3, help="Retries per program on HTTP failures"
+    )
     p_enrich.add_argument(
         "--topics",
         type=str,
@@ -1171,27 +1287,32 @@ def build_parser() -> argparse.ArgumentParser:
         rc = cmd_extract(args)
         if rc != 0:
             return rc
-        
+
         # Generate cell-type summary if enrichment file is provided
-        if getattr(args, 'celltype_enrichment', None):
+        if getattr(args, "celltype_enrichment", None):
             celltype_path = Path(args.celltype_enrichment)
             if not celltype_path.exists():
                 logger.error(f"Cell-type enrichment file not found: {celltype_path}")
                 return 2
-            
+
             # Determine output path
-            if getattr(args, 'celltype_summary_out', None):
+            if getattr(args, "celltype_summary_out", None):
                 summary_out = Path(args.celltype_summary_out)
             else:
                 # Default: place next to enrichment file or in output dir
-                if getattr(args, 'out_csv_full', None):
-                    summary_out = Path(args.out_csv_full).parent / "celltype_summary.csv"
+                if getattr(args, "out_csv_full", None):
+                    summary_out = (
+                        Path(args.out_csv_full).parent / "celltype_summary.csv"
+                    )
                 else:
-                    summary_out = celltype_path.parent / "program_celltype_annotations_summary_generated.csv"
-            
+                    summary_out = (
+                        celltype_path.parent
+                        / "program_celltype_annotations_summary_generated.csv"
+                    )
+
             # Parse topics
             topics = parse_topics(args.topics)
-            
+
             try:
                 n_programs = generate_celltype_summary(
                     enrichment_file=celltype_path,
@@ -1202,7 +1323,7 @@ def build_parser() -> argparse.ArgumentParser:
             except Exception as e:
                 logger.error(f"Failed to generate cell-type summary: {e}")
                 return 2
-        
+
         enrich_args = argparse.Namespace(
             genes_json=args.json_out,
             species=args.species,

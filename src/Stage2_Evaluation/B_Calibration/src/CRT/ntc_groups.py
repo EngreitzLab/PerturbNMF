@@ -21,9 +21,7 @@ from .propensity import fit_propensity_logistic
 logger = logging.getLogger(__name__)
 
 
-def guide_frequency(
-    G: sp.spmatrix, guide_names: Sequence[str]
-) -> Dict[str, float]:
+def guide_frequency(G: sp.spmatrix, guide_names: Sequence[str]) -> Dict[str, float]:
     """
     Returns prevalence per guide: freq[g] = mean(G[:,g] > 0) across cells.
     """
@@ -209,7 +207,9 @@ def make_ntc_groups_ensemble(
 
 
 def _validate_group_sizes(
-    groups: Mapping[str, Sequence[str]],  # CHANGED: dropped `expected_size` param — size now follows --number_guide, not a hardcoded value
+    groups: Mapping[
+        str, Sequence[str]
+    ],  # CHANGED: dropped `expected_size` param — size now follows --number_guide, not a hardcoded value
 ) -> Dict[str, float]:
     sizes = np.array([len(guides) for guides in groups.values()], dtype=np.int32)
     if sizes.size == 0:
@@ -305,7 +305,7 @@ def crt_pvals_for_ntc_groups_ensemble(
             cols = [guide_to_col[g] for g in guides if g in guide_to_col]
             if not cols:
                 continue
-            seed = (hash((seed0, e, group_id)) & 0xFFFFFFFF)
+            seed = hash((seed0, e, group_id)) & 0xFFFFFFFF
             pvals = crt_pvals_for_guide_set(
                 inputs=inputs,
                 guide_idx=np.asarray(cols, dtype=np.int32),
@@ -347,7 +347,7 @@ def crt_pvals_for_ntc_groups_ensemble_skew(
             cols = [guide_to_col[g] for g in guides if g in guide_to_col]
             if not cols:
                 continue
-            seed = (hash((seed0, e, group_id)) & 0xFFFFFFFF)
+            seed = hash((seed0, e, group_id)) & 0xFFFFFFFF
             pvals_skew, _ = crt_pvals_for_guide_set_skew(
                 inputs=inputs,
                 guide_idx=np.asarray(cols, dtype=np.int32),

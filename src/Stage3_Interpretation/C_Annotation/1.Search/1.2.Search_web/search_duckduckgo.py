@@ -4,7 +4,9 @@ from tools.page_fetch import fetch_page_content_and_summarize
 
 
 # @tool
-def DuckDuckGoSearchTool(args, query: str, read_content: bool = True, return_num: int = 5, mini_handler=None):
+def DuckDuckGoSearchTool(
+    args, query: str, read_content: bool = True, return_num: int = 5, mini_handler=None
+):
     """
     Use the DDGS (DuckDuckGo Search) to get search results. Optionally, fetch content from the links and summarize.
 
@@ -21,27 +23,31 @@ def DuckDuckGoSearchTool(args, query: str, read_content: bool = True, return_num
     try:
         # Perform a DuckDuckGo search using DDGS
         ddgs = DDGS()
-        results = ddgs.text(query, max_results = return_num)  # Modify max_results if needed
+        results = ddgs.text(
+            query, max_results=return_num
+        )  # Modify max_results if needed
 
         # If no results found
         if not results:
             return "No results found on DuckDuckGo."
 
-
         search_results = []
 
         for result in results:
-            title = result.get('title')
-            snippet = result.get('snippet', 'No snippet available.')
-            link = result.get('link')
-
+            title = result.get("title")
+            snippet = result.get("snippet", "No snippet available.")
+            link = result.get("link")
 
             # If read_content is True, fetch and parse the content of the linked page
             if read_content:
-                page_content = fetch_page_content_and_summarize(args, link, mini_handler, False)
+                page_content = fetch_page_content_and_summarize(
+                    args, link, mini_handler, False
+                )
                 search_results.append(page_content)
             else:
-                search_results.append(f"Title: {title}\nSnippet: {snippet}\nURL: {link}")
+                search_results.append(
+                    f"Title: {title}\nSnippet: {snippet}\nURL: {link}"
+                )
 
         return "\n\n".join(search_results)
 
@@ -50,5 +56,7 @@ def DuckDuckGoSearchTool(args, query: str, read_content: bool = True, return_num
 
 
 if __name__ == "__main__":
-    result = DuckDuckGoSearchTool(None, "Genetic disease", read_content=False, return_num=5)
+    result = DuckDuckGoSearchTool(
+        None, "Genetic disease", read_content=False, return_num=5
+    )
     print(result)

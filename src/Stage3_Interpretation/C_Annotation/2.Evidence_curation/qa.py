@@ -9,6 +9,7 @@ discovery -- search/download happens upstream in 1.Search/search_literature):
 The controlled vocabulary mirrors GeneProgramExplorer's literature_edges.EVIDENCE_CATEGORIES
 so the GPE PaperQA provider can map a category straight onto a contract edge.
 """
+
 from __future__ import annotations
 
 import re
@@ -30,7 +31,9 @@ CATEGORIES = [
 ]
 
 _CATEGORY_RE = re.compile(r"CATEGORY\s*[:=]\s*([a-z_]+)", re.IGNORECASE)
-_VERDICT_RE = re.compile(r"VERDICT\s*[:=]\s*(supported|contradicted|mixed|insufficient)", re.IGNORECASE)
+_VERDICT_RE = re.compile(
+    r"VERDICT\s*[:=]\s*(supported|contradicted|mixed|insufficient)", re.IGNORECASE
+)
 _DIRECTED_RE = re.compile(r"DIRECTED\s*[:=]\s*(yes|no|true|false)", re.IGNORECASE)
 
 # Edge excerpts must be short — the viewer renders evidence.excerpt unclamped.
@@ -58,7 +61,7 @@ def short_excerpt_from(answer_text: str, fallback: str = "") -> str:
     tail = ""
     dir_match = _DIRECTED_RE.search(answer_text or "")
     if dir_match:
-        tail = answer_text[dir_match.end():]
+        tail = answer_text[dir_match.end() :]
         # Drop any leftover header tokens / leading punctuation before the prose.
         tail = re.sub(r"^[\s:>\-]*", "", tail)
     candidate = first_sentence(tail) or first_sentence(fallback)
@@ -93,7 +96,9 @@ async def _build_docs(pdf_dir, settings: Settings) -> Docs:
         try:
             await docs.aadd(str(pdf), settings=settings)
         except Exception as e:  # a single unparsable PDF shouldn't sink the whole run
-            print(f"  [warn] paper-qa could not index {pdf.name}: {type(e).__name__}: {str(e)[:200]}")
+            print(
+                f"  [warn] paper-qa could not index {pdf.name}: {type(e).__name__}: {str(e)[:200]}"
+            )
             continue
     return docs
 
@@ -130,7 +135,7 @@ def _top_context(session: PQASession):
     """Return the highest-scoring context, or None."""
     if not session.contexts:
         return None
-    return max(session.contexts, key=lambda c: (c.score if c.score is not None else -1))
+    return max(session.contexts, key=lambda c: c.score if c.score is not None else -1)
 
 
 def _citation_from_context(ctx, metas: Optional[list] = None) -> dict:
@@ -152,24 +157,51 @@ def _citation_from_context(ctx, metas: Optional[list] = None) -> dict:
                 break
     if not url and doi:
         url = f"https://doi.org/{doi}"
-    return {"title": title, "titles": titles, "year": year, "doi": doi, "url": url, "pmids": pmids}
+    return {
+        "title": title,
+        "titles": titles,
+        "year": year,
+        "doi": doi,
+        "url": url,
+        "pmids": pmids,
+    }
 
 
-async def classify_pair(gene_a: str, gene_b: str, pdf_dir: Path, settings: Settings,
-                        cell_type: str = "", metas: Optional[list] = None) -> dict:
+async def classify_pair(
+    gene_a: str,
+    gene_b: str,
+    pdf_dir: Path,
+    settings: Settings,
+    cell_type: str = "",
+    metas: Optional[list] = None,
+) -> dict:
     """Classify the A-B relationship from the PDFs into the controlled vocabulary."""
     docs = await _build_docs(pdf_dir, settings)
     n_pdfs = len(docs.docs)
     result = {
-        "source_symbol": gene_a, "target_symbol": gene_b, "cell_type": cell_type,
-        "category": None, "directed": False, "excerpt": None, "short_excerpt": None,
-        "answer": "", "title": None, "titles": [], "year": None, "doi": None, "url": None,
-        "pmids": [], "source_db": "paper-qa", "n_pdfs": n_pdfs,
+        "source_symbol": gene_a,
+        "target_symbol": gene_b,
+        "cell_type": cell_type,
+        "category": None,
+        "directed": False,
+        "excerpt": None,
+        "short_excerpt": None,
+        "answer": "",
+        "title": None,
+        "titles": [],
+        "year": None,
+        "doi": None,
+        "url": None,
+        "pmids": [],
+        "source_db": "paper-qa",
+        "n_pdfs": n_pdfs,
     }
     if n_pdfs == 0:
         return result
 
-    session = await docs.aquery(classification_prompt(gene_a, gene_b, cell_type), settings=settings)
+    session = await docs.aquery(
+        classification_prompt(gene_a, gene_b, cell_type), settings=settings
+    )
     answer_text = session.answer or session.formatted_answer or ""
     result["answer"] = answer_text
 
@@ -182,14 +214,18 @@ async def classify_pair(gene_a: str, gene_b: str, pdf_dir: Path, settings: Setti
     result["category"] = category
 
     dir_match = _DIRECTED_RE.search(answer_text)
-    result["directed"] = bool(dir_match and dir_match.group(1).lower() in ("yes", "true"))
+    result["directed"] = bool(
+        dir_match and dir_match.group(1).lower() in ("yes", "true")
+    )
 
     top = _top_context(session)
     if top is not None:
         result["excerpt"] = top.context
         result.update({k: v for k, v in _citation_from_context(top, metas).items()})
     # Short, one-sentence text for the contract edge (viewer renders excerpt unclamped).
-    result["short_excerpt"] = short_excerpt_from(answer_text, fallback=result.get("excerpt") or "")
+    result["short_excerpt"] = short_excerpt_from(
+        answer_text, fallback=result.get("excerpt") or ""
+    )
     return result
 
 
@@ -202,12 +238,24 @@ def question_prompt(question: str) -> str:
     )
 
 
-async def answer_question(question: str, pdf_dirs, settings: Settings, metas: Optional[list] = None,
-                          max_citations: int = 3) -> dict:
+async def answer_question(
+    question: str,
+    pdf_dirs,
+    settings: Settings,
+    metas: Optional[list] = None,
+    max_citations: int = 3,
+) -> dict:
     """Answer one curation question over the PDFs of several folders; verdict + top citations."""
     docs = await _build_docs(pdf_dirs, settings)
-    result = {"question": question, "verdict": None, "answer": "", "citations": [],
-              "short_excerpt": None, "n_pdfs": len(docs.docs), "source_db": "paper-qa"}
+    result = {
+        "question": question,
+        "verdict": None,
+        "answer": "",
+        "citations": [],
+        "short_excerpt": None,
+        "n_pdfs": len(docs.docs),
+        "source_db": "paper-qa",
+    }
     if not docs.docs:
         return result
     session = await docs.aquery(question_prompt(question), settings=settings)
@@ -215,8 +263,14 @@ async def answer_question(question: str, pdf_dirs, settings: Settings, metas: Op
     result["answer"] = answer_text
     m = _VERDICT_RE.search(answer_text)
     result["verdict"] = m.group(1).lower() if m else None
-    ranked = sorted(session.contexts, key=lambda c: (c.score if c.score is not None else -1), reverse=True)
-    result["citations"] = [{**_citation_from_context(c, metas), "excerpt": first_sentence(c.context)}
-                           for c in ranked[:max_citations]]
+    ranked = sorted(
+        session.contexts,
+        key=lambda c: c.score if c.score is not None else -1,
+        reverse=True,
+    )
+    result["citations"] = [
+        {**_citation_from_context(c, metas), "excerpt": first_sentence(c.context)}
+        for c in ranked[:max_citations]
+    ]
     result["short_excerpt"] = first_sentence(_VERDICT_RE.sub("", answer_text).strip())
     return result

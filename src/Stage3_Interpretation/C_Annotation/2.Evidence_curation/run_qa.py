@@ -12,6 +12,7 @@ Two modes:
 
 For whole programs use curate_evidence.py instead.
 """
+
 import argparse
 import asyncio
 import json
@@ -37,9 +38,12 @@ def run_question(args, settings) -> None:
         "answer": session.answer,
         "n_pdfs": len(list(args.pdf_dir.glob("*.pdf"))),
         "contexts": [
-            {"score": c.score, "summary": c.context,
-             "citation": getattr(c.text.doc, "citation", None),
-             "title": getattr(c.text.doc, "title", None)}
+            {
+                "score": c.score,
+                "summary": c.context,
+                "citation": getattr(c.text.doc, "citation", None),
+                "title": getattr(c.text.doc, "title", None),
+            }
             for c in contexts
         ],
     }
@@ -54,8 +58,14 @@ def run_question(args, settings) -> None:
 
 
 def _format_report(payload: dict) -> str:
-    lines = [f"# {payload['question']}", "", "## Answer", payload["answer"], "",
-             f"## Ranked evidence ({len(payload['contexts'])} contexts, {payload['n_pdfs']} PDFs)"]
+    lines = [
+        f"# {payload['question']}",
+        "",
+        "## Answer",
+        payload["answer"],
+        "",
+        f"## Ranked evidence ({len(payload['contexts'])} contexts, {payload['n_pdfs']} PDFs)",
+    ]
     for i, c in enumerate(payload["contexts"], 1):
         cite = c.get("citation") or c.get("title") or "unknown source"
         lines.append(f"{i}. [score {c['score']}] {cite}\n   {c['summary']}")
@@ -66,8 +76,16 @@ def run_pair(args, settings) -> None:
     gene_a, gene_b = args.pair
     log = load_search_log(args.pdf_dir) or {}
     metas = log.get("result", {}).get("papers", [])
-    result = asyncio.run(qa.classify_pair(gene_a, gene_b, args.pdf_dir, settings,
-                                          cell_type=args.cell_type, metas=metas))
+    result = asyncio.run(
+        qa.classify_pair(
+            gene_a,
+            gene_b,
+            args.pdf_dir,
+            settings,
+            cell_type=args.cell_type,
+            metas=metas,
+        )
+    )
     text = json.dumps(result, indent=2)
     if args.json_out:
         Path(args.json_out).write_text(text)
@@ -77,12 +95,27 @@ def run_pair(args, settings) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="paper-qa over a local folder of PDFs")
-    parser.add_argument("--pdf_dir", required=True, type=Path, help="Folder of PDFs (e.g. Literature_search/<A>__<B>).")
-    parser.add_argument("--config", default=str(HERE / "config.yaml"), help="paper-qa settings (qa: block).")
+    parser.add_argument(
+        "--pdf_dir",
+        required=True,
+        type=Path,
+        help="Folder of PDFs (e.g. Literature_search/<A>__<B>).",
+    )
+    parser.add_argument(
+        "--config",
+        default=str(HERE / "config.yaml"),
+        help="paper-qa settings (qa: block).",
+    )
     parser.add_argument("--question", help="Free-form question to answer over the PDFs")
-    parser.add_argument("--pair", nargs=2, metavar=("GENE_A", "GENE_B"),
-                        help="Two gene symbols to classify a relationship between")
-    parser.add_argument("--cell_type", default="", help="Optional cell-type context for pair mode")
+    parser.add_argument(
+        "--pair",
+        nargs=2,
+        metavar=("GENE_A", "GENE_B"),
+        help="Two gene symbols to classify a relationship between",
+    )
+    parser.add_argument(
+        "--cell_type", default="", help="Optional cell-type context for pair mode"
+    )
     parser.add_argument("--json_out", help="Where to write the JSON result")
     parser.add_argument("--report_out", help="(question mode) Markdown report path")
     args = parser.parse_args()

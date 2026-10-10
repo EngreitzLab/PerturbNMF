@@ -4,6 +4,7 @@ paper-qa is slow, so we run it once per gene pair and store the ``classify_pair`
 one JSON file per pair (filename = sorted, upper-cased symbols, e.g. ``ACVR2B__SMAD2.json``).
 The GPE augment step later reads these to attach literature evidence to existing edges.
 """
+
 from __future__ import annotations
 
 import json

@@ -12,7 +12,7 @@ def GoogleSearchTool(
     read_content: bool = True,
     return_num: int = 5,
     screenshot: bool = False,
-    start: int = 1  
+    start: int = 1,
 ):
     """
     Use API to get search results from Google. Optionally, fetch content from the links and summarize.
@@ -44,22 +44,23 @@ def GoogleSearchTool(
 
     if not (1 <= return_num <= 10):
         return "Error: return_num must be between 1 and 10."
-    if start < 1 or start > 91:  # The official limit is usually around 100, but we conservatively use 91 to ensure start+num-1 <= 100
+    if (
+        start < 1 or start > 91
+    ):  # The official limit is usually around 100, but we conservatively use 91 to ensure start+num-1 <= 100
         return "Error: start must be between 1 and 91."
 
     try:
         api_key = args.google_api
         search_engine_id = args.search_engine_id
 
-        url = 'https://www.googleapis.com/customsearch/v1'
+        url = "https://www.googleapis.com/customsearch/v1"
         params = {
-            'key': api_key,
-            'cx': search_engine_id,
-            'q': query.strip(),
-            'num': return_num,
-            'start': start
+            "key": api_key,
+            "cx": search_engine_id,
+            "q": query.strip(),
+            "num": return_num,
+            "start": start,
         }
-
 
         response = requests.get(url, params=params, timeout=20)
 
@@ -71,27 +72,33 @@ def GoogleSearchTool(
             return f"Error: {response.status_code}\n{err}"
 
         results_json = response.json()
-        items = results_json.get('items', [])
+        items = results_json.get("items", [])
         if not items:
             return "No results found."
 
         search_results = []
         for i, item in enumerate(items):
-            title = item.get('title')
-            link = item.get('link')
-            snippet = item.get('snippet', 'No snippet available.')
+            title = item.get("title")
+            link = item.get("link")
+            snippet = item.get("snippet", "No snippet available.")
             # print(f"Result {i}: {title}\nSnippet: {snippet}\nURL: {link}\n")
             # ipdb.set_trace()
             if read_content and link:
                 try:
-                    page_content = fetch_page_content_and_summarize(args, link, mini_handler, False)
+                    page_content = fetch_page_content_and_summarize(
+                        args, link, mini_handler, False
+                    )
                     search_results.append(page_content)
                 except Exception as e:
-                    search_results.append(f"Title: {title}\nSnippet: {snippet}\nURL: {link}")
-                    
+                    search_results.append(
+                        f"Title: {title}\nSnippet: {snippet}\nURL: {link}"
+                    )
+
                 # print(f"Fetched and summarized content from: {link}\n")
             else:
-                search_results.append(f"Title: {title}\nSnippet: {snippet}\nURL: {link}")
+                search_results.append(
+                    f"Title: {title}\nSnippet: {snippet}\nURL: {link}"
+                )
 
         return "\n\n".join(search_results)
 
@@ -103,9 +110,27 @@ def GoogleSearchTool(
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Google Search Tool")
-    parser.add_argument('--google_api', type=str, default=os.getenv("GOOGLE_API_KEY"), help='Google API key')
-    parser.add_argument('--search_engine_id', type=str, default=os.getenv("GOOGLE_CSE_ID"), help='Google CSE id (cx)')
+    parser.add_argument(
+        "--google_api",
+        type=str,
+        default=os.getenv("GOOGLE_API_KEY"),
+        help="Google API key",
+    )
+    parser.add_argument(
+        "--search_engine_id",
+        type=str,
+        default=os.getenv("GOOGLE_CSE_ID"),
+        help="Google CSE id (cx)",
+    )
     args = parser.parse_args()
-    result = GoogleSearchTool(args, "Genetic disease", mini_handler=None, read_content=False, return_num=5, screenshot=False)
+    result = GoogleSearchTool(
+        args,
+        "Genetic disease",
+        mini_handler=None,
+        read_content=False,
+        return_num=5,
+        screenshot=False,
+    )
     print(result)

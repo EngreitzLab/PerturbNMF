@@ -8,76 +8,215 @@ import os
 from pathlib import Path
 
 
-
 # Change path to wherever you have repo locally
-sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
+sys.path.append(str(Path(__file__).resolve().parents[4] / "src"))
 
-from Stage3_Interpretation.A_Plotting.src import merge_pdfs_in_folder, merge_svgs_to_pdf, ensure_umap, condition_labels_from_obs
+from Stage3_Interpretation.A_Plotting.src import (
+    merge_pdfs_in_folder,
+    merge_svgs_to_pdf,
+    ensure_umap,
+    condition_labels_from_obs,
+)
 
-from Stage3_Interpretation.A_Plotting.src import plot_umap_per_program, plot_top_gene_per_program, top_GO_per_program, compute_program_correlation_matrix,\
-                              analyze_program_correlations, plot_violin, plot_program_log2FC, plot_program_heatmap, plot_program_volcano, \
-                              perturbed_program_dotplot, compute_program_waterfall_cor, create_program_correlation_waterfall, create_comprehensive_program_plot, \
-                              export_program_html, write_share_index
+from Stage3_Interpretation.A_Plotting.src import (
+    plot_umap_per_program,
+    plot_top_gene_per_program,
+    top_GO_per_program,
+    compute_program_correlation_matrix,
+    analyze_program_correlations,
+    plot_violin,
+    plot_program_log2FC,
+    plot_program_heatmap,
+    plot_program_volcano,
+    perturbed_program_dotplot,
+    compute_program_waterfall_cor,
+    create_program_correlation_waterfall,
+    create_comprehensive_program_plot,
+    export_program_html,
+    write_share_index,
+)
 
 
 def main():
 
     parser = argparse.ArgumentParser()
 
-    #io path
-    parser.add_argument('--mdata_path', type=str, required=True, help='path to the MuData (.h5mu) file')
-    parser.add_argument('--perturb_path_base', type=str, default=None, help='base path for perturbation result files (sample suffix appended automatically). Omit to skip every per-condition perturbation panel (log2FC, volcano, regulator dotplot, waterfall) plus the regulator heatmap, and plot only the h5mu/GO-derived header row. Required for --output_format HTML.')
-    parser.add_argument('--file_to_dictionary', type=str, default=None, help='path to gene name mapping dictionary file for ID-to-name conversion')
-    parser.add_argument('--reference_gtf_path', type=str, default=None, help='path to reference GTF file for checking gene names')
-    parser.add_argument('--GO_path', type=str, required=True, help='path to Gene Ontology enrichment results directory')
+    # io path
+    parser.add_argument(
+        "--mdata_path", type=str, required=True, help="path to the MuData (.h5mu) file"
+    )
+    parser.add_argument(
+        "--perturb_path_base",
+        type=str,
+        default=None,
+        help="base path for perturbation result files (sample suffix appended automatically). Omit to skip every per-condition perturbation panel (log2FC, volcano, regulator dotplot, waterfall) plus the regulator heatmap, and plot only the h5mu/GO-derived header row. Required for --output_format HTML.",
+    )
+    parser.add_argument(
+        "--file_to_dictionary",
+        type=str,
+        default=None,
+        help="path to gene name mapping dictionary file for ID-to-name conversion",
+    )
+    parser.add_argument(
+        "--reference_gtf_path",
+        type=str,
+        default=None,
+        help="path to reference GTF file for checking gene names",
+    )
+    parser.add_argument(
+        "--GO_path",
+        type=str,
+        required=True,
+        help="path to Gene Ontology enrichment results directory",
+    )
 
     # plotting variables
-    parser.add_argument('--tagert_col_name', type=str, default="program_name", help='column name for target programs in perturbation results')
-    parser.add_argument('--plot_col_name', type=str, default="target_name", help='column name for genes in perturbation results')
-    parser.add_argument('--log2fc_col', type=str, default="log2FC", help='column name for log2 fold change values')
-    parser.add_argument('--top_program', type=int, default=10, help='number of top programs to display')
-    parser.add_argument('--top_enrichned_term', type=int, default=10, help='number of top GO enrichment terms to display per program')
-    parser.add_argument('--p_value', type=float, default=0.05, help='p-value threshold for significance')
-    parser.add_argument('--down_thred_log', type=float, default=-0.00, help='lower log2FC threshold for volcano plot')
-    parser.add_argument('--up_thred_log', type=float, default=0.00, help='upper log2FC threshold for volcano plot')
-    parser.add_argument('--save_path', type=str, required=True, help='directory path to save output (PDF/SVG files or HTML share tree)')
-    parser.add_argument('--square_plots', action="store_true", help='use square aspect ratio for plots')
-    parser.add_argument('--figsize', type=float, nargs=2, default=(35, 35), help='figure size as width height')
-    parser.add_argument('--show', action="store_true", help='display plots interactively')
-    parser.add_argument('--output_format', type=str, default='SVG', choices=['PDF', 'SVG', 'HTML'], help='output format: PDF (matplotlib + PyPDF2 merge), SVG (matplotlib + svglib merge), HTML (interactive Plotly share folder)')
-    parser.add_argument('--Conditions', nargs='*', type=str, default=None, help='Condition labels (values of obs[categorical_key]); default: all labels found in the data')
-    parser.add_argument('--programs', nargs='+', type=int, default=None, help='specific program numbers to plot (e.g. 4 5 6 ... 100). If omitted, all programs are plotted.')
-    parser.add_argument('--subsample_frac', type=float, default=None, help='fraction of cells to subsample for UMAP plots (e.g. 0.1 for 10%%). Default: None (plot all cells)')
-    parser.add_argument('--corr_matrix_path', type=str, default=None, help='directory for the full program x program correlation matrices written every run: <dir>/program_corr.npz (usage correlation) and <dir>/program_waterfall_corr_<sample>.npz (perturbation-effect correlation). Defaults to --save_path.')
-    parser.add_argument('--skip_existing', action='store_false', help='[default on] skip programs whose output already exists. Pass --skip_existing to force re-process all.')
+    parser.add_argument(
+        "--tagert_col_name",
+        type=str,
+        default="program_name",
+        help="column name for target programs in perturbation results",
+    )
+    parser.add_argument(
+        "--plot_col_name",
+        type=str,
+        default="target_name",
+        help="column name for genes in perturbation results",
+    )
+    parser.add_argument(
+        "--log2fc_col",
+        type=str,
+        default="log2FC",
+        help="column name for log2 fold change values",
+    )
+    parser.add_argument(
+        "--top_program", type=int, default=10, help="number of top programs to display"
+    )
+    parser.add_argument(
+        "--top_enrichned_term",
+        type=int,
+        default=10,
+        help="number of top GO enrichment terms to display per program",
+    )
+    parser.add_argument(
+        "--p_value", type=float, default=0.05, help="p-value threshold for significance"
+    )
+    parser.add_argument(
+        "--down_thred_log",
+        type=float,
+        default=-0.00,
+        help="lower log2FC threshold for volcano plot",
+    )
+    parser.add_argument(
+        "--up_thred_log",
+        type=float,
+        default=0.00,
+        help="upper log2FC threshold for volcano plot",
+    )
+    parser.add_argument(
+        "--save_path",
+        type=str,
+        required=True,
+        help="directory path to save output (PDF/SVG files or HTML share tree)",
+    )
+    parser.add_argument(
+        "--square_plots", action="store_true", help="use square aspect ratio for plots"
+    )
+    parser.add_argument(
+        "--figsize",
+        type=float,
+        nargs=2,
+        default=(35, 35),
+        help="figure size as width height",
+    )
+    parser.add_argument(
+        "--show", action="store_true", help="display plots interactively"
+    )
+    parser.add_argument(
+        "--output_format",
+        type=str,
+        default="SVG",
+        choices=["PDF", "SVG", "HTML"],
+        help="output format: PDF (matplotlib + PyPDF2 merge), SVG (matplotlib + svglib merge), HTML (interactive Plotly share folder)",
+    )
+    parser.add_argument(
+        "--Conditions",
+        nargs="*",
+        type=str,
+        default=None,
+        help="Condition labels (values of obs[categorical_key]); default: all labels found in the data",
+    )
+    parser.add_argument(
+        "--programs",
+        nargs="+",
+        type=int,
+        default=None,
+        help="specific program numbers to plot (e.g. 4 5 6 ... 100). If omitted, all programs are plotted.",
+    )
+    parser.add_argument(
+        "--subsample_frac",
+        type=float,
+        default=None,
+        help="fraction of cells to subsample for UMAP plots (e.g. 0.1 for 10%%). Default: None (plot all cells)",
+    )
+    parser.add_argument(
+        "--corr_matrix_path",
+        type=str,
+        default=None,
+        help="directory for the full program x program correlation matrices written every run: <dir>/program_corr.npz (usage correlation) and <dir>/program_waterfall_corr_<sample>.npz (perturbation-effect correlation). Defaults to --save_path.",
+    )
+    parser.add_argument(
+        "--skip_existing",
+        action="store_false",
+        help="[default on] skip programs whose output already exists. Pass --skip_existing to force re-process all.",
+    )
 
     # keys
-    parser.add_argument('--data_key', type=str, default="rna", help='key to access gene expression data in MuData')
-    parser.add_argument('--prog_key', type=str, default="cNMF", help='key to access cNMF programs in MuData')
-    parser.add_argument('--gene_name_key', type=str, default="gene_names", help='key to access gene names in var')
-    parser.add_argument('--categorical_key', type=str, default="sample", help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample")
-
-
+    parser.add_argument(
+        "--data_key",
+        type=str,
+        default="rna",
+        help="key to access gene expression data in MuData",
+    )
+    parser.add_argument(
+        "--prog_key",
+        type=str,
+        default="cNMF",
+        help="key to access cNMF programs in MuData",
+    )
+    parser.add_argument(
+        "--gene_name_key",
+        type=str,
+        default="gene_names",
+        help="key to access gene names in var",
+    )
+    parser.add_argument(
+        "--categorical_key",
+        type=str,
+        default="sample",
+        help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample",
+    )
 
     args = parser.parse_args()
 
     # export_program_html renders the per-sample perturbation sections and the
     # heatmap unconditionally, so the HTML report cannot be produced without the
     # per-sample association files.
-    if args.output_format == 'HTML' and args.perturb_path_base is None:
-        parser.error("--output_format HTML requires --perturb_path_base "
-                     "(the HTML export always renders the perturbation sections). "
-                     "Use --output_format PDF or SVG to plot without perturbation results.")
+    if args.output_format == "HTML" and args.perturb_path_base is None:
+        parser.error(
+            "--output_format HTML requires --perturb_path_base "
+            "(the HTML export always renders the perturbation sections). "
+            "Use --output_format PDF or SVG to plot without perturbation results."
+        )
 
     # save comfigs used
     args_dict = vars(args)
-    job_id = os.environ.get('SLURM_JOB_ID')
-    os.makedirs(f'{args.save_path}', exist_ok=True)
-    with open(f'{args.save_path}/config_{job_id}.yml', 'w') as f:
+    job_id = os.environ.get("SLURM_JOB_ID")
+    os.makedirs(f"{args.save_path}", exist_ok=True)
+    with open(f"{args.save_path}/config_{job_id}.yml", "w") as f:
         yaml.dump(args_dict, f, default_flow_style=False, width=1000)
 
-
-    #read mdata
+    # read mdata
     mdata = mu.read_h5mu(args.mdata_path)
 
     # compute UMAP/PCA from top-variance genes if missing
@@ -85,12 +224,15 @@ def main():
 
     # condition labels default to the values of --categorical_key in the data
     if args.Conditions is None:
-        args.Conditions = condition_labels_from_obs(mdata[args.data_key].obs, args.categorical_key)
-        print(f"--Conditions not given; using {args.categorical_key} values from the h5mu: {args.Conditions}")
+        args.Conditions = condition_labels_from_obs(
+            mdata[args.data_key].obs, args.categorical_key
+        )
+        print(
+            f"--Conditions not given; using {args.categorical_key} values from the h5mu: {args.Conditions}"
+        )
 
-    program_len = len(mdata[args.prog_key].var) # find out list of programs to process
+    program_len = len(mdata[args.prog_key].var)  # find out list of programs to process
     print(f"there are {program_len} Program found")
-
 
     # found detected perturbed gene (use gene symbols from var column when var_names are Ensembl IDs)
     perturbed_gene = np.unique(mdata[args.prog_key].uns["guide_targets"])
@@ -100,9 +242,6 @@ def main():
         gene_symbols = mdata[args.data_key].var_names.tolist()
     perturbed_gene_found = sorted(set(gene_symbols) & set(perturbed_gene.tolist()))
 
-
-
-
     # compute correlations (both K x K; full matrices written to corr_dir every run)
     corr_dir = args.corr_matrix_path or args.save_path
 
@@ -110,48 +249,60 @@ def main():
     # the per-condition rows and the heatmap are skipped and nothing needs computing.
     if args.perturb_path_base is None:
         waterfall_correlation = None
-        print("No --perturb_path_base given: skipping per-condition perturbation panels "
-              "(log2FC, volcano, regulator dotplot, waterfall) and the regulator heatmap.")
+        print(
+            "No --perturb_path_base given: skipping per-condition perturbation panels "
+            "(log2FC, volcano, regulator dotplot, waterfall) and the regulator heatmap."
+        )
     else:
         waterfall_correlation = {}
         for samp in args.Conditions:
             save = f"{corr_dir}/program_waterfall_corr_{samp}.npz"
             waterfall_correlation[samp] = compute_program_waterfall_cor(
-                f"{args.perturb_path_base}_{samp}.txt", save_path=save, log2fc_col=args.log2fc_col)
+                f"{args.perturb_path_base}_{samp}.txt",
+                save_path=save,
+                log2fc_col=args.log2fc_col,
+            )
             print(f"Wrote program x program perturbation correlation: {save}")
 
     program_corr_path = f"{corr_dir}/program_corr.npz"
     program_correlation = compute_program_correlation_matrix(
-        mdata, prog_key=args.prog_key, save_path=program_corr_path)
+        mdata, prog_key=args.prog_key, save_path=program_corr_path
+    )
     print(f"Wrote program x program usage correlation: {program_corr_path}")
-        
-    
-    programs_to_plot = args.programs if args.programs is not None else list(mdata[args.prog_key].var_names)
+
+    programs_to_plot = (
+        args.programs
+        if args.programs is not None
+        else list(mdata[args.prog_key].var_names)
+    )
 
     # Skip-existing support: build the set of programs that actually need processing,
     # but keep `programs_to_plot` as the full ordered list so HTML nav/index stay correct.
     if args.skip_existing:
-        if args.output_format == 'HTML':
-            done = {p.parent.name[len('program_'):]
-                    for p in Path(args.save_path).glob('program_*/metadata.json')}
+        if args.output_format == "HTML":
+            done = {
+                p.parent.name[len("program_") :]
+                for p in Path(args.save_path).glob("program_*/metadata.json")
+            }
         else:
-            ext = '.pdf' if args.output_format == 'PDF' else '.svg'
-            done = {p.stem for p in Path(args.save_path).glob(f'*{ext}')}
+            ext = ".pdf" if args.output_format == "PDF" else ".svg"
+            done = {p.stem for p in Path(args.save_path).glob(f"*{ext}")}
         process_set = {str(p) for p in programs_to_plot if str(p) not in done}
         skipped = len(programs_to_plot) - len(process_set)
         if skipped:
-            print(f"Skip-existing: skipping {skipped} already-produced program(s); {len(process_set)} remaining.")
+            print(
+                f"Skip-existing: skipping {skipped} already-produced program(s); {len(process_set)} remaining."
+            )
     else:
         process_set = {str(p) for p in programs_to_plot}
 
     programs_str = [str(p) for p in programs_to_plot]
     n_progs = len(programs_str)
     for i, program in enumerate(programs_to_plot):
-
         if str(program) not in process_set:
             continue
 
-        if args.output_format == 'HTML':
+        if args.output_format == "HTML":
             prev_pid = programs_str[i - 1] if i > 0 else None
             next_pid = programs_str[i + 1] if i + 1 < n_progs else None
             export_program_html(
@@ -207,19 +358,18 @@ def main():
                 sample=args.Conditions,
                 square_plots=args.square_plots,
                 show=args.show,
-                PDF=(args.output_format == 'PDF'),
+                PDF=(args.output_format == "PDF"),
                 gene_list=perturbed_gene_found,
                 subsample_frac=args.subsample_frac,
                 gene_name_key=args.gene_name_key,
                 data_key=args.data_key,
-                prog_key=args.prog_key
+                prog_key=args.prog_key,
             )
 
-
     # post-loop assembly
-    if args.output_format == 'PDF':
+    if args.output_format == "PDF":
         merge_pdfs_in_folder(args.save_path, output_filename="program.pdf")
-    elif args.output_format == 'SVG':
+    elif args.output_format == "SVG":
         merge_svgs_to_pdf(args.save_path)
     else:  # HTML
         write_share_index(args.save_path, programs_to_plot, args_dict)
@@ -227,6 +377,5 @@ def main():
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
-

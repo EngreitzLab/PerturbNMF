@@ -7,6 +7,7 @@ Provides:
 - Full and filtered (Process/KEGG) CSV construction
 - Enrichment figure download from STRING API
 """
+
 from __future__ import annotations
 
 import json
@@ -31,7 +32,9 @@ def cache_path(cache_dir: Path, program_id: int) -> Path:
     return cache_dir / f"program_{program_id}_enrichment.json"
 
 
-def load_cached_results(cache_dir: Path, program_id: int) -> Optional[List[Dict[str, Any]]]:
+def load_cached_results(
+    cache_dir: Path, program_id: int
+) -> Optional[List[Dict[str, Any]]]:
     cache_file = cache_path(cache_dir, program_id)
     if not cache_file.exists():
         return None
@@ -46,7 +49,9 @@ def load_cached_results(cache_dir: Path, program_id: int) -> Optional[List[Dict[
     return data
 
 
-def write_cached_results(cache_dir: Path, program_id: int, results: List[Dict[str, Any]]) -> None:
+def write_cached_results(
+    cache_dir: Path, program_id: int, results: List[Dict[str, Any]]
+) -> None:
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_path(cache_dir, program_id)
     cache_file.write_text(json.dumps(results, indent=2), encoding="utf-8")
@@ -77,9 +82,13 @@ def call_string_enrichment(
                     data = []
                 return data if isinstance(data, list) else []
             else:
-                logger.warning(f"STRING returned status {response.status_code}: {response.text[:200]}")
+                logger.warning(
+                    f"STRING returned status {response.status_code}: {response.text[:200]}"
+                )
         except requests.RequestException as e:
-            logger.warning(f"HTTP error on STRING request (attempt {attempt+1}/{retries+1}): {e}")
+            logger.warning(
+                f"HTTP error on STRING request (attempt {attempt + 1}/{retries + 1}): {e}"
+            )
 
         attempt += 1
         time.sleep(min(2.0, sleep_between * (attempt + 1)))
@@ -104,9 +113,13 @@ def build_full_csv(program_to_results: Dict[str, List[Dict[str, Any]]]) -> pd.Da
                     "fdr": float(t.get("fdr", float("nan"))),
                     "p_value": float(t.get("p_value", float("nan"))),
                     "number_of_genes": int(t.get("number_of_genes", 0)),
-                    "number_of_genes_in_background": int(t.get("number_of_genes_in_background", 0)),
+                    "number_of_genes_in_background": int(
+                        t.get("number_of_genes_in_background", 0)
+                    ),
                     "ncbiTaxonId": int(t.get("ncbiTaxonId", 0)),
-                    "inputGenes": "|".join(t.get("inputGenes", [])) if t.get("inputGenes") else "",
+                    "inputGenes": "|".join(t.get("inputGenes", []))
+                    if t.get("inputGenes")
+                    else "",
                 }
             )
     df = pd.DataFrame(rows)

@@ -299,7 +299,9 @@ def run_all_genes_union_crt(
     skew_params = None
     if return_skew_normal:
         if not calibrate_skew_normal:
-            raise ValueError("return_skew_normal=True requires calibrate_skew_normal=True.")
+            raise ValueError(
+                "return_skew_normal=True requires calibrate_skew_normal=True."
+            )
         pvals_skew_df, skew_params = _stack_skew_outputs(
             results, gene_list, inputs.program_names
         )

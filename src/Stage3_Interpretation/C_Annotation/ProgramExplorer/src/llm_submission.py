@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass  # dotenv not required if env vars are already set
@@ -34,6 +35,7 @@ except ImportError:
 try:
     from google import genai  # type: ignore
     from google.genai.types import CreateBatchJobConfig, JobState, HttpOptions  # type: ignore
+
     VERTEX_AVAILABLE = True
 except ImportError:
     genai = None  # type: ignore
@@ -47,6 +49,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 try:
     import anthropic
+
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     anthropic = None  # type: ignore
@@ -57,8 +60,12 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 # Set these for your own Google Cloud project; there are no built-in defaults.
-VERTEX_PROJECT_ID = os.environ.get("VERTEX_PROJECT_ID") or os.environ.get("GOOGLE_CLOUD_PROJECT")
-VERTEX_LOCATION = os.environ.get("VERTEX_LOCATION") or os.environ.get("GOOGLE_CLOUD_LOCATION", "us-east5")
+VERTEX_PROJECT_ID = os.environ.get("VERTEX_PROJECT_ID") or os.environ.get(
+    "GOOGLE_CLOUD_PROJECT"
+)
+VERTEX_LOCATION = os.environ.get("VERTEX_LOCATION") or os.environ.get(
+    "GOOGLE_CLOUD_LOCATION", "us-east5"
+)
 VERTEX_BUCKET = os.environ.get("VERTEX_BUCKET")  # e.g. gs://<your-bucket>/batch
 
 VERTEX_MODEL_MAP = {
@@ -77,6 +84,7 @@ MODEL = "claude-sonnet-4-5-20250929"
 # Vertex AI Functions
 # =============================================================================
 
+
 def convert_to_vertex_jsonl(input_path: Path, output_path: Path) -> int:
     """Convert Anthropic batch JSON to JSONL format for Vertex AI.
 
@@ -86,12 +94,12 @@ def convert_to_vertex_jsonl(input_path: Path, output_path: Path) -> int:
     Vertex AI Claude batch format:
         {"custom_id": "...", "request": {"messages": [...], "anthropic_version": "vertex-2023-10-16", "max_tokens": ...}}
     """
-    with open(input_path, 'r', encoding='utf-8') as f:
+    with open(input_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     requests = data.get("requests", [])
 
-    with open(output_path, 'w', encoding='utf-8') as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         for req in requests:
             # Convert from Anthropic format to Vertex AI format
             params = req.get("params", {})
@@ -101,7 +109,7 @@ def convert_to_vertex_jsonl(input_path: Path, output_path: Path) -> int:
                     "messages": params.get("messages", []),
                     "anthropic_version": "vertex-2023-10-16",
                     "max_tokens": params.get("max_tokens", 4096),
-                }
+                },
             }
             # Optionally include system prompt if present
             if "system" in params:
@@ -110,7 +118,9 @@ def convert_to_vertex_jsonl(input_path: Path, output_path: Path) -> int:
             line = json.dumps(vertex_req)
             f.write(line + "\n")
 
-    logger.info(f"Converted {len(requests)} requests to Vertex AI JSONL format: {output_path}")
+    logger.info(
+        f"Converted {len(requests)} requests to Vertex AI JSONL format: {output_path}"
+    )
     return len(requests)
 
 
@@ -132,7 +142,9 @@ def upload_to_gcs(local_path: Path, gcs_uri: str) -> bool:
 def cmd_submit_vertex(args: argparse.Namespace) -> int:
     """Submit a batch job to Vertex AI."""
     if not VERTEX_AVAILABLE:
-        logger.error("google-genai package not installed. Run: pip install google-genai")
+        logger.error(
+            "google-genai package not installed. Run: pip install google-genai"
+        )
         return 1
 
     if not args.batch_file:
@@ -155,7 +167,9 @@ def cmd_submit_vertex(args: argparse.Namespace) -> int:
     # Upload to GCS
     bucket = args.bucket or VERTEX_BUCKET
     if not bucket:
-        logger.error("No GCS bucket: pass --bucket gs://<your-bucket>/batch or set VERTEX_BUCKET.")
+        logger.error(
+            "No GCS bucket: pass --bucket gs://<your-bucket>/batch or set VERTEX_BUCKET."
+        )
         return 1
     gcs_input_uri = f"{bucket}/inputs/{base_name}_{timestamp}.jsonl"
     if not upload_to_gcs(jsonl_path, gcs_input_uri):
@@ -213,7 +227,9 @@ def cmd_submit_vertex(args: argparse.Namespace) -> int:
             print(f"Job did not succeed.")
             return 3
     else:
-        print(f"\nCheck status with: python {__file__} check-vertex --job-name {job.name}")
+        print(
+            f"\nCheck status with: python {__file__} check-vertex --job-name {job.name}"
+        )
 
     return 0
 
@@ -221,7 +237,9 @@ def cmd_submit_vertex(args: argparse.Namespace) -> int:
 def cmd_check_vertex(args: argparse.Namespace) -> int:
     """Check the status of a Vertex AI batch job."""
     if not VERTEX_AVAILABLE:
-        logger.error("google-genai package not installed. Run: pip install google-genai")
+        logger.error(
+            "google-genai package not installed. Run: pip install google-genai"
+        )
         return 1
 
     if not args.job_name:
@@ -235,9 +253,9 @@ def cmd_check_vertex(args: argparse.Namespace) -> int:
     print(f"Job name: {job.name}")
     print(f"Job state: {job.state}")
 
-    if hasattr(job, 'create_time'):
+    if hasattr(job, "create_time"):
         print(f"Created: {job.create_time}")
-    if hasattr(job, 'update_time'):
+    if hasattr(job, "update_time"):
         print(f"Updated: {job.update_time}")
 
     # Check if completed
@@ -263,6 +281,7 @@ def cmd_check_vertex(args: argparse.Namespace) -> int:
 # =============================================================================
 # Anthropic Direct Batch API Commands (Default)
 # =============================================================================
+
 
 def cmd_submit_anthropic(args: argparse.Namespace) -> int:
     """Submit a batch job to Anthropic Batch API (default).
@@ -309,16 +328,20 @@ def cmd_submit_anthropic(args: argparse.Namespace) -> int:
             logger.warning(f"Skipping request {custom_id}: no messages")
             continue
 
-        anthropic_requests.append({
-            "custom_id": custom_id,
-            "params": {
-                "model": model,
-                "max_tokens": max_tokens,
-                "messages": messages,
+        anthropic_requests.append(
+            {
+                "custom_id": custom_id,
+                "params": {
+                    "model": model,
+                    "max_tokens": max_tokens,
+                    "messages": messages,
+                },
             }
-        })
+        )
 
-    logger.info(f"Submitting {len(anthropic_requests)} requests to Anthropic Batch API...")
+    logger.info(
+        f"Submitting {len(anthropic_requests)} requests to Anthropic Batch API..."
+    )
     logger.info(f"  Model: {model}")
     logger.info(f"  Max tokens: {max_tokens}")
 
@@ -327,10 +350,16 @@ def cmd_submit_anthropic(args: argparse.Namespace) -> int:
     auth_token = os.environ.get("ANTHROPIC_AUTH_TOKEN")
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not auth_token and not api_key:
-        logger.error("ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY not found in environment. Set in .env file.")
+        logger.error(
+            "ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY not found in environment. Set in .env file."
+        )
         return 1
 
-    client = anthropic.Anthropic(auth_token=auth_token) if auth_token else anthropic.Anthropic(api_key=api_key)
+    client = (
+        anthropic.Anthropic(auth_token=auth_token)
+        if auth_token
+        else anthropic.Anthropic(api_key=api_key)
+    )
 
     # Submit batch
     batch = client.messages.batches.create(requests=anthropic_requests)
@@ -351,7 +380,9 @@ def cmd_submit_anthropic(args: argparse.Namespace) -> int:
         while batch.processing_status == "in_progress":
             time.sleep(30)
             batch = client.messages.batches.retrieve(batch.id)
-            print(f"  Status: {batch.processing_status} | Completed: {batch.request_counts.succeeded}/{batch.request_counts.processing + batch.request_counts.succeeded}")
+            print(
+                f"  Status: {batch.processing_status} | Completed: {batch.request_counts.succeeded}/{batch.request_counts.processing + batch.request_counts.succeeded}"
+            )
 
         print(f"\nFinal status: {batch.processing_status}")
 
@@ -371,8 +402,12 @@ def cmd_submit_anthropic(args: argparse.Namespace) -> int:
             print(f"Batch did not complete successfully.")
             return 3
     else:
-        print(f"\nCheck status with: python {__file__} check-anthropic --batch-id {batch.id}")
-        print(f"Or retrieve results later with: python {__file__} results-anthropic --batch-id {batch.id}")
+        print(
+            f"\nCheck status with: python {__file__} check-anthropic --batch-id {batch.id}"
+        )
+        print(
+            f"Or retrieve results later with: python {__file__} results-anthropic --batch-id {batch.id}"
+        )
 
     return 0
 
@@ -413,8 +448,7 @@ def cmd_submit_single(args: argparse.Namespace) -> int:
 
     # Determine output path
     output_file = Path(
-        args.output
-        or str(batch_path.with_name(batch_path.stem + "_results.jsonl"))
+        args.output or str(batch_path.with_name(batch_path.stem + "_results.jsonl"))
     )
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -464,14 +498,18 @@ def cmd_submit_single(args: argparse.Namespace) -> int:
         for idx, req in enumerate(requests_list, start=1):
             custom_id = req.get("custom_id", f"request_{idx}")
             if custom_id in completed_ids:
-                logger.info("[%d/%d] %s: skipped (already completed)", idx, total, custom_id)
+                logger.info(
+                    "[%d/%d] %s: skipped (already completed)", idx, total, custom_id
+                )
                 succeeded += 1
                 continue
 
             params = req.get("params", {})
             messages = params.get("messages", [])
             if not messages:
-                logger.warning("[%d/%d] %s: skipped (no messages)", idx, total, custom_id)
+                logger.warning(
+                    "[%d/%d] %s: skipped (no messages)", idx, total, custom_id
+                )
                 continue
 
             try:
@@ -505,7 +543,11 @@ def cmd_submit_single(args: argparse.Namespace) -> int:
                 out_tok = response.usage.output_tokens if response.usage else "?"
                 logger.info(
                     "[%d/%d] %s: succeeded (%sin/%sout)",
-                    idx, total, custom_id, in_tok, out_tok,
+                    idx,
+                    total,
+                    custom_id,
+                    in_tok,
+                    out_tok,
                 )
 
             except Exception as exc:
@@ -541,16 +583,24 @@ def cmd_check_anthropic(args: argparse.Namespace) -> int:
                 batch_id = batch_id_file.read_text(encoding="utf-8").strip()
 
     if not batch_id:
-        logger.error("--batch-id is required (or provide --batch-file with saved .batch_id)")
+        logger.error(
+            "--batch-id is required (or provide --batch-file with saved .batch_id)"
+        )
         return 1
 
     auth_token = os.environ.get("ANTHROPIC_AUTH_TOKEN")
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not auth_token and not api_key:
-        logger.error("ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY not found in environment.")
+        logger.error(
+            "ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY not found in environment."
+        )
         return 1
 
-    client = anthropic.Anthropic(auth_token=auth_token) if auth_token else anthropic.Anthropic(api_key=api_key)
+    client = (
+        anthropic.Anthropic(auth_token=auth_token)
+        if auth_token
+        else anthropic.Anthropic(api_key=api_key)
+    )
     batch = client.messages.batches.retrieve(batch_id)
 
     print(f"Batch ID: {batch.id}")
@@ -589,10 +639,16 @@ def cmd_results_anthropic(args: argparse.Namespace) -> int:
     auth_token = os.environ.get("ANTHROPIC_AUTH_TOKEN")
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not auth_token and not api_key:
-        logger.error("ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY not found in environment.")
+        logger.error(
+            "ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY not found in environment."
+        )
         return 1
 
-    client = anthropic.Anthropic(auth_token=auth_token) if auth_token else anthropic.Anthropic(api_key=api_key)
+    client = (
+        anthropic.Anthropic(auth_token=auth_token)
+        if auth_token
+        else anthropic.Anthropic(api_key=api_key)
+    )
     batch = client.messages.batches.retrieve(batch_id)
 
     if batch.processing_status != "ended":

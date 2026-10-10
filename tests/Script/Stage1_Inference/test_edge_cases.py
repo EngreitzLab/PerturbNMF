@@ -113,12 +113,13 @@ def _assert_basic_outputs(output_dir):
 # Tests
 # ---------------------------------------------------------------------------
 
-class TestEdgeCases:
 
+class TestEdgeCases:
     def test_minibatch_shuffle(self, mini_h5ad_path):
         """Minibatch mode with shuffle=True completes."""
         output_dir = _run_minimal(
-            mini_h5ad_path, "minibatch_shuffle",
+            mini_h5ad_path,
+            "minibatch_shuffle",
             mode="minibatch",
             minibatch_shuffle=True,
             minibatch_size=500,
@@ -132,7 +133,8 @@ class TestEdgeCases:
     def test_minibatch_no_shuffle(self, mini_h5ad_path):
         """Minibatch mode with shuffle=False completes."""
         output_dir = _run_minimal(
-            mini_h5ad_path, "minibatch_no_shuffle",
+            mini_h5ad_path,
+            "minibatch_no_shuffle",
             mode="minibatch",
             minibatch_shuffle=False,
             minibatch_size=500,
@@ -151,7 +153,8 @@ class TestEdgeCases:
         np.save(seeds_path, seeds)
 
         output_dir = _run_minimal(
-            mini_h5ad_path, "custom_seeds",
+            mini_h5ad_path,
+            "custom_seeds",
             nmf_seeds=seeds,
         )
         _assert_basic_outputs(output_dir)
@@ -159,7 +162,8 @@ class TestEdgeCases:
     def test_cpu_only(self, mini_h5ad_path):
         """use_gpu=False falls back to CPU without error."""
         output_dir = _run_minimal(
-            mini_h5ad_path, "cpu_only",
+            mini_h5ad_path,
+            "cpu_only",
             use_gpu=False,
         )
         _assert_basic_outputs(output_dir)
@@ -173,7 +177,9 @@ class TestEdgeCases:
         n_before = adata.n_vars
         adata_filtered = adata[:, mask].copy()
         n_after = adata_filtered.n_vars
-        print(f"  Filtered genes: {n_before} → {n_after} (removed {n_before - n_after} ENSG)")
+        print(
+            f"  Filtered genes: {n_before} → {n_after} (removed {n_before - n_after} ENSG)"
+        )
 
         # Save filtered data
         filtered_dir = os.path.join(OUTPUT_BASE, "remove_noncoding")
@@ -182,14 +188,16 @@ class TestEdgeCases:
         adata_filtered.write(filtered_path)
 
         output_dir = _run_minimal(
-            filtered_path, "remove_noncoding",
+            filtered_path,
+            "remove_noncoding",
         )
         _assert_basic_outputs(output_dir)
 
     def test_minibatch_size_larger_than_data(self, mini_h5ad_path):
         """minibatch_size >> n_cells doesn't crash."""
         output_dir = _run_minimal(
-            mini_h5ad_path, "large_minibatch",
+            mini_h5ad_path,
+            "large_minibatch",
             mode="minibatch",
             minibatch_size=999999,
             minibatch_max_epoch=3,
@@ -202,7 +210,8 @@ class TestEdgeCases:
     def test_numhvgenes_larger_than_total(self, mini_h5ad_path):
         """num_highvar_genes > total genes clamps gracefully."""
         output_dir = _run_minimal(
-            mini_h5ad_path, "large_numhvgenes",
+            mini_h5ad_path,
+            "large_numhvgenes",
             num_highvar_genes=999999,
         )
         _assert_basic_outputs(output_dir)
@@ -210,7 +219,8 @@ class TestEdgeCases:
     def test_densify(self, mini_h5ad_path):
         """densify=True works with dense matrix input."""
         output_dir = _run_minimal(
-            mini_h5ad_path, "densify",
+            mini_h5ad_path,
+            "densify",
             densify=True,
         )
         _assert_basic_outputs(output_dir)
@@ -218,7 +228,8 @@ class TestEdgeCases:
     def test_dataloader_mode_edge(self, mini_h5ad_path):
         """Dataloader mode with small minibatch_size completes."""
         output_dir = _run_minimal(
-            mini_h5ad_path, "dataloader_small_batch",
+            mini_h5ad_path,
+            "dataloader_small_batch",
             mode="dataloader",
             minibatch_size=100,
             minibatch_max_epoch=3,
@@ -270,16 +281,21 @@ class TestEdgeCases:
         for k in EDGE_K:
             for thresh in thresholds:
                 ts = str(thresh).replace(".", "_")
-                usage = os.path.join(inference_dir, f"Inference.usages.k_{k}.dt_{ts}.consensus.txt")
+                usage = os.path.join(
+                    inference_dir, f"Inference.usages.k_{k}.dt_{ts}.consensus.txt"
+                )
                 if not os.path.exists(usage):
                     missing.append(f"usages k={k} thresh={thresh}")
-        assert not missing, f"Missing outputs for thresholds:\n" + "\n".join(f"  {f}" for f in missing)
+        assert not missing, f"Missing outputs for thresholds:\n" + "\n".join(
+            f"  {f}" for f in missing
+        )
         print(f"  All {len(thresholds)} thresholds produced output")
 
     def test_regularization(self, mini_h5ad_path):
         """Non-zero regularization completes without error."""
         output_dir = _run_minimal(
-            mini_h5ad_path, "regularization",
+            mini_h5ad_path,
+            "regularization",
             alpha_usage=0.1,
             alpha_spectra=0.1,
             l1_ratio_usage=0.5,
@@ -290,7 +306,8 @@ class TestEdgeCases:
     def test_double_precision(self, mini_h5ad_path):
         """fp_precision='double' (float64) completes."""
         output_dir = _run_minimal(
-            mini_h5ad_path, "double_precision",
+            mini_h5ad_path,
+            "double_precision",
             fp_precision="double",
         )
         _assert_basic_outputs(output_dir)
@@ -310,7 +327,8 @@ class TestEdgeCases:
                 data_b = np.load(path_b, allow_pickle=True)
 
                 np.testing.assert_array_almost_equal(
-                    data_a['data'], data_b['data'],
+                    data_a["data"],
+                    data_b["data"],
                     decimal=5,
                     err_msg=f"Spectra mismatch for k={k} iter={i}",
                 )

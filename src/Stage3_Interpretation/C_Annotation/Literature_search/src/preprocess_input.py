@@ -9,6 +9,7 @@ Usage:
         --sheet-name "Summary" \
         --Conditions "condA,condB"
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,14 +30,18 @@ def _collect_regulators(row: pd.Series, conditions: List[str]) -> str:
         col = f"Top 5 specific regulators (FDR<0.1) {cond}"
         val = row.get(col, "")
         if pd.notna(val) and str(val).strip():
-            genes = [g.strip() for g in str(val).replace(",", ";").split(";") if g.strip()]
+            genes = [
+                g.strip() for g in str(val).replace(",", ";").split(";") if g.strip()
+            ]
             all_regs.extend(genes)
     # Also check sigfdr columns as fallback
     for cond in conditions:
         col = f"sigfdr0.05_targets_sorted_abslog2fcd_{cond}"
         val = row.get(col, "")
         if pd.notna(val) and str(val).strip() and not all_regs:
-            genes = [g.strip() for g in str(val).replace(",", ";").split(";") if g.strip()]
+            genes = [
+                g.strip() for g in str(val).replace(",", ";").split(";") if g.strip()
+            ]
             all_regs.extend(genes)
     # Deduplicate preserving order
     seen = set()
@@ -118,15 +123,17 @@ def convert_summary_to_lit_input(
         go_enrichment = _safe_str(row.get("top10_enriched_go_terms", ""))
         other_enrichment = _safe_str(row.get("top10_enriched_genesets", ""))
 
-        rows.append({
-            "program_id": prog_id,
-            "top_genes": genes_raw,
-            "regulators": regulators,
-            "day_most_active": day,
-            "cell_types": cell_types,
-            "go_enrichment": go_enrichment,
-            "other_enrichment": other_enrichment,
-        })
+        rows.append(
+            {
+                "program_id": prog_id,
+                "top_genes": genes_raw,
+                "regulators": regulators,
+                "day_most_active": day,
+                "cell_types": cell_types,
+                "go_enrichment": go_enrichment,
+                "other_enrichment": other_enrichment,
+            }
+        )
 
     return pd.DataFrame(rows)
 
@@ -136,37 +143,53 @@ def main(argv=None):
         description="Convert PerturbNMF summary table to literature search input"
     )
     parser.add_argument(
-        "--summary-excel", type=Path, required=True,
-        help="Path to the summary table Excel file"
+        "--summary-excel",
+        type=Path,
+        required=True,
+        help="Path to the summary table Excel file",
     )
     parser.add_argument(
-        "--output", type=Path, required=True,
-        help="Output Excel path for literature search input"
+        "--output",
+        type=Path,
+        required=True,
+        help="Output Excel path for literature search input",
     )
     parser.add_argument(
-        "--sheet-name", type=str, default="Summary",
-        help="Sheet name in the summary Excel (default: Summary)"
+        "--sheet-name",
+        type=str,
+        default="Summary",
+        help="Sheet name in the summary Excel (default: Summary)",
     )
     parser.add_argument(
-        "--top-genes-col", type=str, default="top30_loaded_genes",
-        help="Column name for top loaded genes (default: top30_loaded_genes)"
+        "--top-genes-col",
+        type=str,
+        default="top30_loaded_genes",
+        help="Column name for top loaded genes (default: top30_loaded_genes)",
     )
     parser.add_argument(
-        "--num-genes", type=int, default=None,
-        help="Truncate gene list to this many genes (default: all)"
+        "--num-genes",
+        type=int,
+        default=None,
+        help="Truncate gene list to this many genes (default: all)",
     )
     parser.add_argument(
-        "--Conditions", type=str, required=True,
-        help="Comma-separated condition/sample names (e.g. 'condA,condB')"
+        "--Conditions",
+        type=str,
+        required=True,
+        help="Comma-separated condition/sample names (e.g. 'condA,condB')",
     )
     parser.add_argument(
-        "--programs", type=str, default=None,
-        help="Comma-separated program IDs to include (default: all)"
+        "--programs",
+        type=str,
+        default=None,
+        help="Comma-separated program IDs to include (default: all)",
     )
 
     args = parser.parse_args(argv)
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+    )
 
     if not args.summary_excel.exists():
         parser.error(f"Summary Excel not found: {args.summary_excel}")
@@ -174,9 +197,15 @@ def main(argv=None):
     conditions = [c.strip() for c in args.Conditions.split(",")]
 
     # Load summary table
-    logger.info("Loading summary table from %s (sheet: %s)", args.summary_excel, args.sheet_name)
-    summary_df = pd.read_excel(args.summary_excel, sheet_name=args.sheet_name, index_col=0)
-    logger.info("Loaded %d programs, %d columns", len(summary_df), len(summary_df.columns))
+    logger.info(
+        "Loading summary table from %s (sheet: %s)", args.summary_excel, args.sheet_name
+    )
+    summary_df = pd.read_excel(
+        args.summary_excel, sheet_name=args.sheet_name, index_col=0
+    )
+    logger.info(
+        "Loaded %d programs, %d columns", len(summary_df), len(summary_df.columns)
+    )
 
     # Filter programs if specified
     if args.programs:

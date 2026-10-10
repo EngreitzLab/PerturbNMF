@@ -46,6 +46,7 @@ import numpy as np
 import pandas as pd
 import sys as _sys
 from pathlib import Path as _Path
+
 _sys.path.insert(0, str(_Path(__file__).resolve().parent))
 
 from column_mapper import standardize_regulator_results
@@ -53,6 +54,7 @@ from column_mapper import standardize_regulator_results
 # Load environment variables from .env file
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass  # dotenv not required if env vars are already set
@@ -61,6 +63,7 @@ except ImportError:
 try:
     from google import genai  # type: ignore
     from google.genai.types import CreateBatchJobConfig, JobState, HttpOptions  # type: ignore
+
     VERTEX_AVAILABLE = True
 except ImportError:
     genai = None  # type: ignore
@@ -72,19 +75,24 @@ except ImportError:
 # Anthropic imports (for direct Anthropic Batch API - default)
 try:
     import anthropic
+
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     anthropic = None  # type: ignore
     ANTHROPIC_AVAILABLE = False
 
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 MODEL = "claude-sonnet-4-5-20250929"  # Anthropic model name
 DEFAULT_ANNOTATION_ROLE = "molecular and cell biologist"
 DEFAULT_ANNOTATION_CONTEXT = "a gene program extracted from single-cell Perturb-seq"
-DEFAULT_SEARCH_KEYWORD = "(none specified)"  # set --search-keyword to your cell type / tissue
+DEFAULT_SEARCH_KEYWORD = (
+    "(none specified)"  # set --search-keyword to your cell type / tissue
+)
 
 """
 @description
@@ -149,18 +157,32 @@ def parse_topics_value(value: Optional[object]) -> Optional[List[int]]:
 def apply_test_mode(
     args: argparse.Namespace, config: Dict[str, Any], cli_overrides: Set[str]
 ) -> argparse.Namespace:
-    test_cfg = config.get("test", {}) if isinstance(config.get("test", {}), dict) else {}
+    test_cfg = (
+        config.get("test", {}) if isinstance(config.get("test", {}), dict) else {}
+    )
     enabled = bool(test_cfg.get("enabled") or config.get("test_mode"))
     if not enabled:
         return args
 
-    topics = test_cfg.get("topics") or test_cfg.get("programs") or config.get("test_programs")
-    if hasattr(args, "topics") and "topics" not in cli_overrides and not getattr(args, "topics", None):
+    topics = (
+        test_cfg.get("topics")
+        or test_cfg.get("programs")
+        or config.get("test_programs")
+    )
+    if (
+        hasattr(args, "topics")
+        and "topics" not in cli_overrides
+        and not getattr(args, "topics", None)
+    ):
         if topics is not None:
             args.topics = topics
 
     num_topics = test_cfg.get("num_topics") or test_cfg.get("num_programs")
-    if hasattr(args, "num_topics") and "num_topics" not in cli_overrides and not getattr(args, "num_topics", None):
+    if (
+        hasattr(args, "num_topics")
+        and "num_topics" not in cli_overrides
+        and not getattr(args, "num_topics", None)
+    ):
         if num_topics is not None:
             args.num_topics = num_topics
     return args
@@ -169,7 +191,9 @@ def apply_test_mode(
 def apply_config_overrides(
     args: argparse.Namespace, config: Dict[str, Any], cli_overrides: Set[str]
 ) -> argparse.Namespace:
-    steps_cfg = config.get("steps", {}) if isinstance(config.get("steps", {}), dict) else {}
+    steps_cfg = (
+        config.get("steps", {}) if isinstance(config.get("steps", {}), dict) else {}
+    )
     section_map = {
         "prepare": "batch_prepare",
         "submit-vertex": "vertex_submit",
@@ -187,6 +211,7 @@ def apply_config_overrides(
         if hasattr(args, dest):
             setattr(args, dest, value)
     return args
+
 
 # Global uniqueness score helpers
 """
@@ -247,18 +272,21 @@ def add_global_uniqueness_scores(df: pd.DataFrame) -> pd.DataFrame:
     return updated
 
 
-def ensure_global_uniqueness(
-    df: pd.DataFrame, logger: logging.Logger
-) -> pd.DataFrame:
+def ensure_global_uniqueness(df: pd.DataFrame, logger: logging.Logger) -> pd.DataFrame:
     if "UniquenessScore" in df.columns and not df["UniquenessScore"].isna().all():
         return df
     logger.info("UniquenessScore missing; computing global uniqueness scores.")
     return add_global_uniqueness_scores(df)
 
+
 # Vertex AI Configuration
 # Set these for your own Google Cloud project; there are no built-in defaults.
-VERTEX_PROJECT_ID = os.environ.get("VERTEX_PROJECT_ID") or os.environ.get("GOOGLE_CLOUD_PROJECT")
-VERTEX_LOCATION = os.environ.get("VERTEX_LOCATION") or os.environ.get("GOOGLE_CLOUD_LOCATION", "us-east5")
+VERTEX_PROJECT_ID = os.environ.get("VERTEX_PROJECT_ID") or os.environ.get(
+    "GOOGLE_CLOUD_PROJECT"
+)
+VERTEX_LOCATION = os.environ.get("VERTEX_LOCATION") or os.environ.get(
+    "GOOGLE_CLOUD_LOCATION", "us-east5"
+)
 VERTEX_BUCKET = os.environ.get("VERTEX_BUCKET")  # e.g. gs://<your-bucket>/batch
 
 VERTEX_MODEL_MAP = {
@@ -309,7 +337,10 @@ def load_celltype_annotations(
         summary_path = celltype_file
     else:
         # Try common filenames in the directory
-        for filename in ["celltype_summary.csv", "program_celltype_annotations_summary.csv"]:
+        for filename in [
+            "celltype_summary.csv",
+            "program_celltype_annotations_summary.csv",
+        ]:
             candidate = celltype_dir / filename
             if candidate.exists():
                 summary_path = candidate
@@ -398,7 +429,9 @@ def prepare_enrichment_mapping(
         return {}
 
     df["category"] = df["category"].astype(str).str.strip()
-    df_sorted = df.sort_values(["program_id", "category", "fdr"], ascending=[True, True, True])
+    df_sorted = df.sort_values(
+        ["program_id", "category", "fdr"], ascending=[True, True, True]
+    )
 
     enrichment_by_program: Dict[int, Dict[str, List[dict]]] = {}
     for (pid, cat), sub in df_sorted.groupby(["program_id", "category"], sort=False):  # type: ignore
@@ -414,7 +447,7 @@ def load_ncbi_context(json_path: Optional[Path]) -> Dict[int, Dict[str, Any]]:
         if json_path:
             logger.warning("NCBI file not found: %s", json_path)
         return {}
-    
+
     try:
         data = json.loads(json_path.read_text(encoding="utf-8"))
         # Parse keys as ints (JSON keys are always strings)
@@ -424,13 +457,17 @@ def load_ncbi_context(json_path: Optional[Path]) -> Dict[int, Dict[str, Any]]:
         return {}
 
 
-def format_ncbi_context(ncbi_data: Dict[int, Dict[str, Any]], program_id: int, allowed_genes: Optional[Set[str]] = None) -> str:
+def format_ncbi_context(
+    ncbi_data: Dict[int, Dict[str, Any]],
+    program_id: int,
+    allowed_genes: Optional[Set[str]] = None,
+) -> str:
     ctx = ncbi_data.get(program_id)
     if not ctx:
         return "Literature evidence: None available."
-    
+
     lines = []
-    
+
     # 1. Official Gene Summaries (Filtered by allowed_genes)
     summaries = ctx.get("gene_summaries", {})
     if summaries:
@@ -444,36 +481,36 @@ def format_ncbi_context(ncbi_data: Dict[int, Dict[str, Any]], program_id: int, a
         for gene in sorted_genes:
             if allowed_genes and gene not in allowed_genes:
                 continue
-                
+
             desc = summaries[gene]
             if source == "ncbi":
                 # Remove citations like [provided by ...]
                 desc = re.sub(
-                    r'\s*\[provided by .*?\]\.?',
-                    '',
+                    r"\s*\[provided by .*?\]\.?",
+                    "",
                     desc,
                     flags=re.IGNORECASE,
                 )
             lines.append(f"- {gene}: {desc}")
             count += 1
-        
+
         if count == 0:
-             lines.append("None available for selected genes.")
+            lines.append("None available for selected genes.")
 
     # 2. Aggregated Evidence (Snippets)
     # gene -> list of strings "Statement (PMID:123)"
     ev_map = ctx.get("evidence_snippets", {})
     if ev_map:
         lines.append("\nAggregated Evidence (Contextual sentences from literature):")
-        
+
         # Sort genes to be deterministic
         sorted_ev_genes = sorted(ev_map.keys())
         has_snippets = False
-        
+
         for sym in sorted_ev_genes:
             if allowed_genes and sym not in allowed_genes:
                 continue
-                
+
             s_list = ev_map[sym]
             if s_list:
                 # Robust Deduplication:
@@ -481,27 +518,27 @@ def format_ncbi_context(ncbi_data: Dict[int, Dict[str, Any]], program_id: int, a
                 # 2. Check PMID (Max 1 snippet per PMID per Gene)
                 seen_normalized = set()
                 seen_pmids = set()
-                
+
                 gene_snippets = []
-                
+
                 for s in s_list:
                     # s format: "Sentence text.." (PMID:12345)
                     # Extract PMID using regex
-                    pmid_match = re.search(r'\(PMID:(\d+)\)', s)
+                    pmid_match = re.search(r"\(PMID:(\d+)\)", s)
                     pmid = pmid_match.group(1) if pmid_match else None
-                    
+
                     # Dedup by PMID (One sentence per paper per gene)
                     if pmid:
                         if pmid in seen_pmids:
                             continue
                         seen_pmids.add(pmid)
-                    
+
                     # Dedup by Content (if PMID parsing fails or for safety)
                     norm = s.strip(" .")
                     if norm in seen_normalized:
                         continue
                     seen_normalized.add(norm)
-                    
+
                     # Clean up display string
                     # Remove double periods, ensure single period
                     clean_s = s.strip()
@@ -512,18 +549,19 @@ def format_ncbi_context(ncbi_data: Dict[int, Dict[str, Any]], program_id: int, a
                     # Just ensure it looks nice.
                     if not clean_s.endswith("."):
                         clean_s += "."
-                        
+
                     gene_snippets.append(f"- {sym}: {clean_s}")
-                    
-                    if len(gene_snippets) >= 5: break # Max 5 per gene
-                
+
+                    if len(gene_snippets) >= 5:
+                        break  # Max 5 per gene
+
                 if gene_snippets:
                     has_snippets = True
                     lines.extend(gene_snippets)
 
         if not has_snippets:
-             lines.append("None found.")
-            
+            lines.append("None found.")
+
     return "\n".join(lines)
 
 
@@ -532,7 +570,7 @@ def load_regulator_data(
     significance_threshold: float = 0.05,
 ) -> Dict[int, pd.DataFrame]:
     """Load significant regulators from SCEPTRE results CSV.
-    
+
     Returns a dict mapping program_id -> DataFrame with columns:
     [grna_target, log_2_fold_change, p_value]
     """
@@ -540,14 +578,14 @@ def load_regulator_data(
         if csv_path:
             logger.warning("Regulator file not found: %s", csv_path)
         return {}
-    
+
     try:
         df = pd.read_csv(csv_path)
         df = standardize_regulator_results(
             df, significance_threshold=significance_threshold
         )
         df = df[df["significant"] == True].copy()
-        
+
         # Group by program
         result = {}
         for pid, group in df.groupby("program_id"):
@@ -555,7 +593,7 @@ def load_regulator_data(
             if "adj_p_value" in group.columns:
                 keep_cols.append("adj_p_value")
             result[pid] = group[keep_cols].copy()
-        
+
         logger.info("Loaded regulators for %d programs", len(result))
         return result
     except Exception as e:
@@ -569,34 +607,40 @@ def format_regulator_context(
     top_n: int = 5,
 ) -> str:
     """Format basic regulator context for a program (Perturb-seq stats only).
-    
+
     This is a fallback when no literature validation is available.
     Shows top positive and negative regulators with log2FC.
     """
     reg_df = regulator_data.get(program_id)
     if reg_df is None or len(reg_df) == 0:
         return "Regulator perturbations: None significant."
-    
+
     # Sort by log2FC
     sorted_df = reg_df.sort_values("log_2_fold_change")
-    
+
     # Negative log2FC = positive regulators (knockdown reduces program, so gene activates it)
     positive_regs = sorted_df[sorted_df["log_2_fold_change"] < 0].head(top_n)
     # Positive log2FC = negative regulators (knockdown increases program, so gene represses it)
     negative_regs = sorted_df[sorted_df["log_2_fold_change"] > 0].tail(top_n).iloc[::-1]
-    
-    lines = ["Regulator perturbations (from Perturb-seq; log2FC indicates effect of knockdown on program activity):"]
-    
+
+    lines = [
+        "Regulator perturbations (from Perturb-seq; log2FC indicates effect of knockdown on program activity):"
+    ]
+
     if len(positive_regs) > 0:
         lines.append("\nPositive regulators (activators; knockdown reduces program):")
         for _, row in positive_regs.iterrows():
-            lines.append(f"- {row['grna_target']}: log2FC = {row['log_2_fold_change']:.3f}")
-    
+            lines.append(
+                f"- {row['grna_target']}: log2FC = {row['log_2_fold_change']:.3f}"
+            )
+
     if len(negative_regs) > 0:
         lines.append("\nNegative regulators (repressors; knockdown increases program):")
         for _, row in negative_regs.iterrows():
-            lines.append(f"- {row['grna_target']}: log2FC = {row['log_2_fold_change']:.3f}")
-    
+            lines.append(
+                f"- {row['grna_target']}: log2FC = {row['log_2_fold_change']:.3f}"
+            )
+
     return "\n".join(lines)
 
 
@@ -609,20 +653,20 @@ def format_regulator_analysis_context(
     min_score: int = 400,
 ) -> str:
     """Format comprehensive regulator analysis with compact STRING interactions.
-    
+
     Shows top regulators (by effect size) with STRING interactions in compact format:
     - Gene (log2FC=X): Target1(score), Target2(score), ...
-    
+
     Args:
         min_score: Minimum STRING score to display (default 400 = medium confidence)
     """
     reg_df = regulator_data.get(program_id)
     ctx = ncbi_data.get(program_id, {})
     validation = ctx.get("regulator_validation")
-    
+
     if reg_df is None or len(reg_df) == 0:
         return "### Regulator evidence\nNo significant regulators identified from Perturb-seq."
-    
+
     lines = ["### Regulator evidence"]
     lines.append(
         f"(Top {top_positive_regulators} activators + "
@@ -630,13 +674,13 @@ def format_regulator_analysis_context(
         "STRING-DB interactions shown)"
     )
     lines.append("")
-    
+
     def format_compact_interactions(val: Dict[str, Any]) -> str:
         """Format STRING interactions compactly: Target1(score), Target2(score), ..."""
         string_ints = val.get("string_interactions", [])
         if not string_ints:
             return ""
-        
+
         # Filter by min_score and format compactly
         parts = []
         for si in string_ints:
@@ -644,17 +688,17 @@ def format_regulator_analysis_context(
             score = si.get("score", 0)
             if score >= min_score:
                 parts.append(f"{target}({score})")
-        
+
         if not parts:
             return ""
         return " → " + ", ".join(parts[:8])  # Limit to 8 targets per regulator
-    
+
     # Get validated regulators from ncbi_data (includes all significant)
     activators = validation.get("positive_regulators", []) if validation else []
     repressors = validation.get("negative_regulators", []) if validation else []
     n_activators = min(len(activators), top_positive_regulators)
     n_repressors = min(len(repressors), top_negative_regulators)
-    
+
     # Format activators
     if activators:
         lines.append("#### Activators (knockdown reduces program activity)")
@@ -662,27 +706,27 @@ def format_regulator_analysis_context(
             gene = reg.get("regulator", "")
             log2fc = reg.get("log2fc", 0)
             interactions_str = format_compact_interactions(reg)
-            
+
             if interactions_str:
                 lines.append(f"- **{gene}** (log2FC={log2fc:.3f}){interactions_str}")
             else:
                 lines.append(f"- {gene} (log2FC={log2fc:.3f})")
         lines.append("")
-    
-    # Format repressors  
+
+    # Format repressors
     if repressors:
         lines.append("#### Repressors (knockdown increases program activity)")
         for reg in repressors[:n_repressors]:
             gene = reg.get("regulator", "")
             log2fc = reg.get("log2fc", 0)
             interactions_str = format_compact_interactions(reg)
-            
+
             if interactions_str:
                 lines.append(f"- **{gene}** (log2FC={log2fc:+.3f}){interactions_str}")
             else:
                 lines.append(f"- {gene} (log2FC={log2fc:+.3f})")
         lines.append("")
-    
+
     return "\n".join(lines)
 
 
@@ -722,9 +766,13 @@ def select_program_genes(
     if program_df.empty:
         return [], []
     top_loading_genes = (
-        program_df.sort_values("Score", ascending=False)["Name"].head(top_loading).tolist()  # type: ignore
+        program_df.sort_values("Score", ascending=False)["Name"]
+        .head(top_loading)
+        .tolist()  # type: ignore
     )
-    unique_ranked = program_df.sort_values("UniquenessScore", ascending=False)["Name"].tolist()  # type: ignore
+    unique_ranked = program_df.sort_values("UniquenessScore", ascending=False)[
+        "Name"
+    ].tolist()  # type: ignore
     unique_genes = [gene for gene in unique_ranked if gene not in top_loading_genes]
     return top_loading_genes, unique_genes[:top_unique]
 
@@ -763,9 +811,9 @@ def generate_prompt(
         top_enrichment=top_enrichment,
         genes_per_term=genes_per_term,
     )
-    
+
     celltype_context = format_celltype_context(celltype_map, program_id)
-    
+
     # Build gene context
     gene_context = (
         f"Top-loading genes (top {len(top_loading_genes)}):\n"
@@ -776,10 +824,12 @@ def generate_prompt(
             f"\n\nUnique genes (top {len(unique_genes)} non-overlapping):\n"
             f"{', '.join(unique_genes)}"
         )
-    
+
     allowed_genes = set(top_loading_genes) | set(unique_genes)
-    ncbi_context = format_ncbi_context(ncbi_data, program_id, allowed_genes=allowed_genes)
-    
+    ncbi_context = format_ncbi_context(
+        ncbi_data, program_id, allowed_genes=allowed_genes
+    )
+
     regulator_analysis = format_regulator_analysis_context(
         regulator_data or {},
         ncbi_data,
@@ -886,7 +936,7 @@ def cmd_prepare(args: argparse.Namespace) -> int:
         return 2
 
     program_ids = sorted(gene_df["program_id"].dropna().astype(int).unique().tolist())
-    
+
     # Filter by specific topics if requested
     selected_topics = parse_topics_value(args.topics)
     if selected_topics:
@@ -958,21 +1008,22 @@ def cmd_prepare(args: argparse.Namespace) -> int:
 # Vertex AI Functions
 # =============================================================================
 
+
 def convert_to_vertex_jsonl(input_path: Path, output_path: Path) -> int:
     """Convert Anthropic batch JSON to JSONL format for Vertex AI.
-    
+
     Anthropic direct API format:
         {"custom_id": "...", "params": {"model": "...", "messages": [...], "max_tokens": ...}}
-    
+
     Vertex AI Claude batch format:
         {"custom_id": "...", "request": {"messages": [...], "anthropic_version": "vertex-2023-10-16", "max_tokens": ...}}
     """
-    with open(input_path, 'r', encoding='utf-8') as f:
+    with open(input_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    
+
     requests = data.get("requests", [])
-    
-    with open(output_path, 'w', encoding='utf-8') as f:
+
+    with open(output_path, "w", encoding="utf-8") as f:
         for req in requests:
             # Convert from Anthropic format to Vertex AI format
             params = req.get("params", {})
@@ -982,16 +1033,18 @@ def convert_to_vertex_jsonl(input_path: Path, output_path: Path) -> int:
                     "messages": params.get("messages", []),
                     "anthropic_version": "vertex-2023-10-16",
                     "max_tokens": params.get("max_tokens", 4096),
-                }
+                },
             }
             # Optionally include system prompt if present
             if "system" in params:
                 vertex_req["request"]["system"] = params["system"]
-            
+
             line = json.dumps(vertex_req)
             f.write(line + "\n")
-    
-    logger.info(f"Converted {len(requests)} requests to Vertex AI JSONL format: {output_path}")
+
+    logger.info(
+        f"Converted {len(requests)} requests to Vertex AI JSONL format: {output_path}"
+    )
     return len(requests)
 
 
@@ -999,13 +1052,13 @@ def upload_to_gcs(local_path: Path, gcs_uri: str) -> bool:
     """Upload a local file to GCS using gcloud CLI."""
     cmd = ["gcloud", "storage", "cp", str(local_path), gcs_uri]
     logger.info(f"Uploading {local_path} to {gcs_uri}...")
-    
+
     result = subprocess.run(cmd, capture_output=True, text=True)
-    
+
     if result.returncode != 0:
         logger.error(f"GCS upload failed: {result.stderr}")
         return False
-    
+
     logger.info(f"Upload successful: {gcs_uri}")
     return True
 
@@ -1013,35 +1066,39 @@ def upload_to_gcs(local_path: Path, gcs_uri: str) -> bool:
 def cmd_submit_vertex(args: argparse.Namespace) -> int:
     """Submit a batch job to Vertex AI."""
     if not VERTEX_AVAILABLE:
-        logger.error("google-genai package not installed. Run: pip install google-genai")
+        logger.error(
+            "google-genai package not installed. Run: pip install google-genai"
+        )
         return 1
 
     if not args.batch_file:
         logger.error("batch_file is required (via CLI or config).")
         return 1
-    
+
     batch_path = Path(args.batch_file)
     if not batch_path.exists():
         logger.error(f"Batch file not found: {batch_path}")
         return 1
-    
+
     # Generate timestamp for unique naming
     timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     base_name = batch_path.stem
-    
+
     # Convert to JSONL format
     jsonl_path = batch_path.with_suffix(".jsonl")
     convert_to_vertex_jsonl(batch_path, jsonl_path)
-    
+
     # Upload to GCS
     bucket = args.bucket or VERTEX_BUCKET
     if not bucket:
-        logger.error("No GCS bucket: pass --bucket gs://<your-bucket>/batch or set VERTEX_BUCKET.")
+        logger.error(
+            "No GCS bucket: pass --bucket gs://<your-bucket>/batch or set VERTEX_BUCKET."
+        )
         return 1
     gcs_input_uri = f"{bucket}/inputs/{base_name}_{timestamp}.jsonl"
     if not upload_to_gcs(jsonl_path, gcs_input_uri):
         return 2
-    
+
     # Resolve model name
     model = args.model or "claude-sonnet-4-5"
     if model in VERTEX_MODEL_MAP:
@@ -1050,27 +1107,27 @@ def cmd_submit_vertex(args: argparse.Namespace) -> int:
         model_path = model
     else:
         model_path = f"publishers/anthropic/models/{model}"
-    
+
     gcs_output_prefix = f"{bucket}/outputs/{base_name}_{timestamp}/"
-    
+
     logger.info(f"Submitting batch job to Vertex AI...")
     logger.info(f"  Model: {model_path}")
     logger.info(f"  Input: {gcs_input_uri}")
     logger.info(f"  Output: {gcs_output_prefix}")
-    
+
     client = genai.Client(http_options=HttpOptions(api_version="v1"))  # type: ignore
-    
+
     job = client.batches.create(
         model=model_path,
         src=gcs_input_uri,
         config=CreateBatchJobConfig(dest=gcs_output_prefix),  # type: ignore
     )
-    
+
     print(f"\nJob created!")
     print(f"  Job name: {job.name}")
     print(f"  Job state: {job.state}")
     print(f"  Output: {gcs_output_prefix}")
-    
+
     if args.wait:
         completed_states = {  # type: ignore
             JobState.JOB_STATE_SUCCEEDED,  # type: ignore
@@ -1078,49 +1135,53 @@ def cmd_submit_vertex(args: argparse.Namespace) -> int:
             JobState.JOB_STATE_CANCELLED,  # type: ignore
             JobState.JOB_STATE_PAUSED,  # type: ignore
         }
-        
+
         print("\nWaiting for job completion (checking every 30 seconds)...")
-        
+
         while job.state not in completed_states:
             time.sleep(30)
             job = client.batches.get(name=job.name)
             print(f"  Job state: {job.state}")
-        
+
         print(f"\nFinal state: {job.state}")
-        
+
         if job.state == JobState.JOB_STATE_SUCCEEDED:  # type: ignore
             print(f"SUCCESS! Results available at: {gcs_output_prefix}")
         else:
             print(f"Job did not succeed.")
             return 3
     else:
-        print(f"\nCheck status with: python {__file__} check-vertex --job-name {job.name}")
-    
+        print(
+            f"\nCheck status with: python {__file__} check-vertex --job-name {job.name}"
+        )
+
     return 0
 
 
 def cmd_check_vertex(args: argparse.Namespace) -> int:
     """Check the status of a Vertex AI batch job."""
     if not VERTEX_AVAILABLE:
-        logger.error("google-genai package not installed. Run: pip install google-genai")
+        logger.error(
+            "google-genai package not installed. Run: pip install google-genai"
+        )
         return 1
 
     if not args.job_name:
         logger.error("--job-name is required (via CLI or config).")
         return 1
-    
+
     client = genai.Client(http_options=HttpOptions(api_version="v1"))  # type: ignore
-    
+
     job = client.batches.get(name=args.job_name)
-    
+
     print(f"Job name: {job.name}")
     print(f"Job state: {job.state}")
-    
-    if hasattr(job, 'create_time'):
+
+    if hasattr(job, "create_time"):
         print(f"Created: {job.create_time}")
-    if hasattr(job, 'update_time'):
+    if hasattr(job, "update_time"):
         print(f"Updated: {job.update_time}")
-    
+
     # Check if completed
     completed_states = {  # type: ignore
         JobState.JOB_STATE_SUCCEEDED,  # type: ignore
@@ -1128,7 +1189,7 @@ def cmd_check_vertex(args: argparse.Namespace) -> int:
         JobState.JOB_STATE_CANCELLED,  # type: ignore
         JobState.JOB_STATE_PAUSED,  # type: ignore
     }
-    
+
     if job.state == JobState.JOB_STATE_SUCCEEDED:  # type: ignore
         print(f"\nJob completed successfully!")
         print(f"Download results with:")
@@ -1137,7 +1198,7 @@ def cmd_check_vertex(args: argparse.Namespace) -> int:
         print(f"\nJob ended with state: {job.state}")
     else:
         print(f"\nJob is still processing...")
-    
+
     return 0
 
 
@@ -1145,9 +1206,10 @@ def cmd_check_vertex(args: argparse.Namespace) -> int:
 # Anthropic Direct Batch API Commands (Default)
 # =============================================================================
 
+
 def cmd_submit_anthropic(args: argparse.Namespace) -> int:
     """Submit a batch job to Anthropic Batch API (default).
-    
+
     This is the preferred method - uses Anthropic's native Batch API directly.
     Faster and simpler than Vertex AI for most use cases.
     """
@@ -1158,93 +1220,105 @@ def cmd_submit_anthropic(args: argparse.Namespace) -> int:
     if not args.batch_file:
         logger.error("batch_file is required (via CLI or config).")
         return 1
-    
+
     batch_path = Path(args.batch_file)
     if not batch_path.exists():
         logger.error(f"Batch file not found: {batch_path}")
         return 1
-    
+
     # Load batch request
     with open(batch_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    
+
     requests_list = data.get("requests", [])
     if not requests_list:
         logger.error("No requests found in batch file.")
         return 1
-    
+
     logger.info(f"Loaded {len(requests_list)} requests from {batch_path}")
-    
+
     # Convert to Anthropic Batch API format
     # Anthropic expects: {"custom_id": "...", "params": {"model": ..., "max_tokens": ..., "messages": [...]}}
     anthropic_requests = []
     model = args.model or MODEL
     max_tokens = args.max_tokens or 8192
-    
+
     for req in requests_list:
         custom_id = req.get("custom_id", f"request_{len(anthropic_requests)}")
         params = req.get("params", {})
         messages = params.get("messages", [])
-        
+
         if not messages:
             logger.warning(f"Skipping request {custom_id}: no messages")
             continue
-        
-        anthropic_requests.append({
-            "custom_id": custom_id,
-            "params": {
-                "model": model,
-                "max_tokens": max_tokens,
-                "messages": messages,
+
+        anthropic_requests.append(
+            {
+                "custom_id": custom_id,
+                "params": {
+                    "model": model,
+                    "max_tokens": max_tokens,
+                    "messages": messages,
+                },
             }
-        })
-    
-    logger.info(f"Submitting {len(anthropic_requests)} requests to Anthropic Batch API...")
+        )
+
+    logger.info(
+        f"Submitting {len(anthropic_requests)} requests to Anthropic Batch API..."
+    )
     logger.info(f"  Model: {model}")
     logger.info(f"  Max tokens: {max_tokens}")
-    
+
     # Create Anthropic client (supports ANTHROPIC_AUTH_TOKEN for Bearer auth
     # or ANTHROPIC_API_KEY for x-api-key auth)
     auth_token = os.environ.get("ANTHROPIC_AUTH_TOKEN")
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not auth_token and not api_key:
-        logger.error("ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY not found in environment. Set in .env file.")
+        logger.error(
+            "ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY not found in environment. Set in .env file."
+        )
         return 1
 
-    client = anthropic.Anthropic(auth_token=auth_token) if auth_token else anthropic.Anthropic(api_key=api_key)
-    
+    client = (
+        anthropic.Anthropic(auth_token=auth_token)
+        if auth_token
+        else anthropic.Anthropic(api_key=api_key)
+    )
+
     # Submit batch
     batch = client.messages.batches.create(requests=anthropic_requests)
-    
+
     print(f"\nBatch created!")
     print(f"  Batch ID: {batch.id}")
     print(f"  Status: {batch.processing_status}")
     print(f"  Requests: {batch.request_counts}")
-    
+
     # Save batch ID for later retrieval
     batch_id_file = batch_path.with_suffix(".batch_id")
     batch_id_file.write_text(batch.id, encoding="utf-8")
     logger.info(f"Saved batch ID to {batch_id_file}")
-    
+
     if args.wait:
         print("\nWaiting for batch completion (checking every 30 seconds)...")
-        
+
         while batch.processing_status == "in_progress":
             time.sleep(30)
             batch = client.messages.batches.retrieve(batch.id)
-            print(f"  Status: {batch.processing_status} | Completed: {batch.request_counts.succeeded}/{batch.request_counts.processing + batch.request_counts.succeeded}")
-        
+            print(
+                f"  Status: {batch.processing_status} | Completed: {batch.request_counts.succeeded}/{batch.request_counts.processing + batch.request_counts.succeeded}"
+            )
+
         print(f"\nFinal status: {batch.processing_status}")
-        
+
         if batch.processing_status == "ended":
             # Download results
             output_file = batch_path.with_name(f"{batch_path.stem}_results.jsonl")
             logger.info(f"Downloading results to {output_file}...")
-            
+
             with open(output_file, "w", encoding="utf-8") as f:
                 for result in client.messages.batches.results(batch.id):
                     f.write(json.dumps(result.model_dump()) + "\n")
-            
+
             print(f"SUCCESS! Results saved to: {output_file}")
             print(f"  Succeeded: {batch.request_counts.succeeded}")
             print(f"  Errored: {batch.request_counts.errored}")
@@ -1252,9 +1326,13 @@ def cmd_submit_anthropic(args: argparse.Namespace) -> int:
             print(f"Batch did not complete successfully.")
             return 3
     else:
-        print(f"\nCheck status with: python {__file__} check-anthropic --batch-id {batch.id}")
-        print(f"Or retrieve results later with: python {__file__} results-anthropic --batch-id {batch.id}")
-    
+        print(
+            f"\nCheck status with: python {__file__} check-anthropic --batch-id {batch.id}"
+        )
+        print(
+            f"Or retrieve results later with: python {__file__} results-anthropic --batch-id {batch.id}"
+        )
+
     return 0
 
 
@@ -1294,8 +1372,7 @@ def cmd_submit_single(args: argparse.Namespace) -> int:
 
     # Determine output path
     output_file = Path(
-        args.output
-        or str(batch_path.with_name(batch_path.stem + "_results.jsonl"))
+        args.output or str(batch_path.with_name(batch_path.stem + "_results.jsonl"))
     )
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1345,14 +1422,18 @@ def cmd_submit_single(args: argparse.Namespace) -> int:
         for idx, req in enumerate(requests_list, start=1):
             custom_id = req.get("custom_id", f"request_{idx}")
             if custom_id in completed_ids:
-                logger.info("[%d/%d] %s: skipped (already completed)", idx, total, custom_id)
+                logger.info(
+                    "[%d/%d] %s: skipped (already completed)", idx, total, custom_id
+                )
                 succeeded += 1
                 continue
 
             params = req.get("params", {})
             messages = params.get("messages", [])
             if not messages:
-                logger.warning("[%d/%d] %s: skipped (no messages)", idx, total, custom_id)
+                logger.warning(
+                    "[%d/%d] %s: skipped (no messages)", idx, total, custom_id
+                )
                 continue
 
             try:
@@ -1386,7 +1467,11 @@ def cmd_submit_single(args: argparse.Namespace) -> int:
                 out_tok = response.usage.output_tokens if response.usage else "?"
                 logger.info(
                     "[%d/%d] %s: succeeded (%sin/%sout)",
-                    idx, total, custom_id, in_tok, out_tok,
+                    idx,
+                    total,
+                    custom_id,
+                    in_tok,
+                    out_tok,
                 )
 
             except Exception as exc:
@@ -1420,18 +1505,26 @@ def cmd_check_anthropic(args: argparse.Namespace) -> int:
             batch_id_file = Path(args.batch_file).with_suffix(".batch_id")
             if batch_id_file.exists():
                 batch_id = batch_id_file.read_text(encoding="utf-8").strip()
-    
+
     if not batch_id:
-        logger.error("--batch-id is required (or provide --batch-file with saved .batch_id)")
+        logger.error(
+            "--batch-id is required (or provide --batch-file with saved .batch_id)"
+        )
         return 1
-    
+
     auth_token = os.environ.get("ANTHROPIC_AUTH_TOKEN")
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not auth_token and not api_key:
-        logger.error("ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY not found in environment.")
+        logger.error(
+            "ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY not found in environment."
+        )
         return 1
 
-    client = anthropic.Anthropic(auth_token=auth_token) if auth_token else anthropic.Anthropic(api_key=api_key)
+    client = (
+        anthropic.Anthropic(auth_token=auth_token)
+        if auth_token
+        else anthropic.Anthropic(api_key=api_key)
+    )
     batch = client.messages.batches.retrieve(batch_id)
 
     print(f"Batch ID: {batch.id}")
@@ -1442,11 +1535,11 @@ def cmd_check_anthropic(args: argparse.Namespace) -> int:
     print(f"  Succeeded: {batch.request_counts.succeeded}")
     print(f"  Errored: {batch.request_counts.errored}")
     print(f"  Canceled: {batch.request_counts.canceled}")
-    
+
     if batch.processing_status == "ended":
         print(f"\nBatch completed! Retrieve results with:")
         print(f"  python {__file__} results-anthropic --batch-id {batch.id}")
-    
+
     return 0
 
 
@@ -1462,36 +1555,42 @@ def cmd_results_anthropic(args: argparse.Namespace) -> int:
             batch_id_file = Path(args.batch_file).with_suffix(".batch_id")
             if batch_id_file.exists():
                 batch_id = batch_id_file.read_text(encoding="utf-8").strip()
-    
+
     if not batch_id:
         logger.error("--batch-id is required")
         return 1
-    
+
     auth_token = os.environ.get("ANTHROPIC_AUTH_TOKEN")
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not auth_token and not api_key:
-        logger.error("ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY not found in environment.")
+        logger.error(
+            "ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY not found in environment."
+        )
         return 1
 
-    client = anthropic.Anthropic(auth_token=auth_token) if auth_token else anthropic.Anthropic(api_key=api_key)
+    client = (
+        anthropic.Anthropic(auth_token=auth_token)
+        if auth_token
+        else anthropic.Anthropic(api_key=api_key)
+    )
     batch = client.messages.batches.retrieve(batch_id)
 
     if batch.processing_status != "ended":
         logger.error(f"Batch is still processing: {batch.processing_status}")
         return 1
-    
+
     output_file = Path(args.output or f"batch_{batch_id}_results.jsonl")
-    
+
     logger.info(f"Downloading results to {output_file}...")
-    
+
     with open(output_file, "w", encoding="utf-8") as f:
         for result in client.messages.batches.results(batch_id):
             f.write(json.dumps(result.model_dump()) + "\n")
-    
+
     print(f"Results saved to: {output_file}")
     print(f"  Succeeded: {batch.request_counts.succeeded}")
     print(f"  Errored: {batch.request_counts.errored}")
-    
+
     return 0
 
 
@@ -1612,43 +1711,40 @@ def build_parser() -> argparse.ArgumentParser:
             help="Adjusted p-value threshold used when the regulator file has no 'significant' column",
         )
 
-    p_prepare = subparsers.add_parser("prepare", help="Build the batch request JSON only")
+    p_prepare = subparsers.add_parser(
+        "prepare", help="Build the batch request JSON only"
+    )
     add_shared_options(p_prepare)
     p_prepare.set_defaults(func=cmd_prepare)
 
     # =========================================================================
     # Anthropic Direct API Commands (Default - Recommended)
     # =========================================================================
-    
+
     # Anthropic submit command (DEFAULT)
     p_submit = subparsers.add_parser(
-        "submit",
-        help="Submit batch to Anthropic Batch API (default, recommended)"
+        "submit", help="Submit batch to Anthropic Batch API (default, recommended)"
     )
     p_submit.add_argument(
-        "batch_file",
-        nargs="?",
-        help="Path to the prepared batch JSON file"
+        "batch_file", nargs="?", help="Path to the prepared batch JSON file"
     )
     p_submit.add_argument(
         "--config",
         help="Path to config file (YAML or JSON)",
     )
     p_submit.add_argument(
-        "--model",
-        default=MODEL,
-        help=f"Model to use (default: {MODEL})"
+        "--model", default=MODEL, help=f"Model to use (default: {MODEL})"
     )
     p_submit.add_argument(
         "--max-tokens",
         type=int,
         default=8192,
-        help="Max tokens for response (default: 8192)"
+        help="Max tokens for response (default: 8192)",
     )
     p_submit.add_argument(
         "--wait",
         action="store_true",
-        help="Wait for job completion and download results"
+        help="Wait for job completion and download results",
     )
     p_submit.set_defaults(func=cmd_submit_anthropic)
 
@@ -1684,17 +1780,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_submit_single.set_defaults(func=cmd_submit_single)
 
     # Anthropic check command
-    p_check = subparsers.add_parser(
-        "check",
-        help="Check status of Anthropic batch job"
-    )
+    p_check = subparsers.add_parser("check", help="Check status of Anthropic batch job")
+    p_check.add_argument("--batch-id", help="Anthropic batch ID")
     p_check.add_argument(
-        "--batch-id",
-        help="Anthropic batch ID"
-    )
-    p_check.add_argument(
-        "--batch-file",
-        help="Path to batch JSON (will read .batch_id file)"
+        "--batch-file", help="Path to batch JSON (will read .batch_id file)"
     )
     p_check.add_argument(
         "--config",
@@ -1704,21 +1793,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     # Anthropic results command
     p_results = subparsers.add_parser(
-        "results",
-        help="Download results from completed Anthropic batch"
+        "results", help="Download results from completed Anthropic batch"
     )
+    p_results.add_argument("--batch-id", help="Anthropic batch ID")
     p_results.add_argument(
-        "--batch-id",
-        help="Anthropic batch ID"
+        "--batch-file", help="Path to batch JSON (will read .batch_id file)"
     )
-    p_results.add_argument(
-        "--batch-file",
-        help="Path to batch JSON (will read .batch_id file)"
-    )
-    p_results.add_argument(
-        "--output",
-        help="Output JSONL file path"
-    )
+    p_results.add_argument("--output", help="Output JSONL file path")
     p_results.add_argument(
         "--config",
         help="Path to config file (YAML or JSON)",
@@ -1731,13 +1812,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     # Vertex AI submit command
     p_submit_vertex = subparsers.add_parser(
-        "submit-vertex",
-        help="Submit a prepared batch JSON to Vertex AI"
+        "submit-vertex", help="Submit a prepared batch JSON to Vertex AI"
     )
     p_submit_vertex.add_argument(
-        "batch_file",
-        nargs="?",
-        help="Path to the prepared batch JSON file"
+        "batch_file", nargs="?", help="Path to the prepared batch JSON file"
     )
     p_submit_vertex.add_argument(
         "--config",
@@ -1746,28 +1824,28 @@ def build_parser() -> argparse.ArgumentParser:
     p_submit_vertex.add_argument(
         "--model",
         default="claude-sonnet-4-5",
-        help="Model to use (default: claude-sonnet-4-5). Options: " + ", ".join(VERTEX_MODEL_MAP.keys())
+        help="Model to use (default: claude-sonnet-4-5). Options: "
+        + ", ".join(VERTEX_MODEL_MAP.keys()),
     )
     p_submit_vertex.add_argument(
         "--bucket",
         default=VERTEX_BUCKET,
-        help=f"GCS bucket prefix (default: {VERTEX_BUCKET})"
+        help=f"GCS bucket prefix (default: {VERTEX_BUCKET})",
     )
     p_submit_vertex.add_argument(
         "--wait",
         action="store_true",
-        help="Wait for job completion instead of returning immediately"
+        help="Wait for job completion instead of returning immediately",
     )
     p_submit_vertex.set_defaults(func=cmd_submit_vertex)
 
     # Vertex AI check command
     p_check_vertex = subparsers.add_parser(
-        "check-vertex",
-        help="Check status of a Vertex AI batch job"
+        "check-vertex", help="Check status of a Vertex AI batch job"
     )
     p_check_vertex.add_argument(
         "--job-name",
-        help="Full job name from Vertex AI (e.g., projects/.../batchPredictionJobs/...)"
+        help="Full job name from Vertex AI (e.g., projects/.../batchPredictionJobs/...)",
     )
     p_check_vertex.add_argument(
         "--config",

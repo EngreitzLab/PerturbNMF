@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 MODEL = "claude-sonnet-4-5-20250929"  # Anthropic model name
 DEFAULT_ANNOTATION_ROLE = "molecular and cell biologist"
 DEFAULT_ANNOTATION_CONTEXT = "a gene program extracted from single-cell Perturb-seq"
-DEFAULT_SEARCH_KEYWORD = "(none specified)"  # set --search-keyword to your cell type / tissue
+DEFAULT_SEARCH_KEYWORD = (
+    "(none specified)"  # set --search-keyword to your cell type / tissue
+)
 
 PROMPT_TEMPLATE = """
 ## Edited prompt (evidence-first, low-speculation)
@@ -140,9 +142,7 @@ def _add_global_uniqueness_scores(df: pd.DataFrame) -> pd.DataFrame:
     return updated
 
 
-def _ensure_global_uniqueness(
-    df: pd.DataFrame, log: logging.Logger
-) -> pd.DataFrame:
+def _ensure_global_uniqueness(df: pd.DataFrame, log: logging.Logger) -> pd.DataFrame:
     if "UniquenessScore" in df.columns and not df["UniquenessScore"].isna().all():
         return df
     log.info("UniquenessScore missing; computing global uniqueness scores.")
@@ -193,7 +193,10 @@ def load_celltype_annotations(
         summary_path = celltype_file
     else:
         # Try common filenames in the directory
-        for filename in ["celltype_summary.csv", "program_celltype_annotations_summary.csv"]:
+        for filename in [
+            "celltype_summary.csv",
+            "program_celltype_annotations_summary.csv",
+        ]:
             candidate = celltype_dir / filename
             if candidate.exists():
                 summary_path = candidate
@@ -282,7 +285,9 @@ def prepare_enrichment_mapping(
         return {}
 
     df["category"] = df["category"].astype(str).str.strip()
-    df_sorted = df.sort_values(["program_id", "category", "fdr"], ascending=[True, True, True])
+    df_sorted = df.sort_values(
+        ["program_id", "category", "fdr"], ascending=[True, True, True]
+    )
 
     enrichment_by_program: Dict[int, Dict[str, List[dict]]] = {}
     for (pid, cat), sub in df_sorted.groupby(["program_id", "category"], sort=False):  # type: ignore
@@ -308,7 +313,11 @@ def load_ncbi_context(json_path: Optional[Path]) -> Dict[int, Dict[str, Any]]:
         return {}
 
 
-def format_ncbi_context(ncbi_data: Dict[int, Dict[str, Any]], program_id: int, allowed_genes: Optional[Set[str]] = None) -> str:
+def format_ncbi_context(
+    ncbi_data: Dict[int, Dict[str, Any]],
+    program_id: int,
+    allowed_genes: Optional[Set[str]] = None,
+) -> str:
     ctx = ncbi_data.get(program_id)
     if not ctx:
         return "Literature evidence: None available."
@@ -333,8 +342,8 @@ def format_ncbi_context(ncbi_data: Dict[int, Dict[str, Any]], program_id: int, a
             if source == "ncbi":
                 # Remove citations like [provided by ...]
                 desc = re.sub(
-                    r'\s*\[provided by .*?\]\.?',
-                    '',
+                    r"\s*\[provided by .*?\]\.?",
+                    "",
                     desc,
                     flags=re.IGNORECASE,
                 )
@@ -342,7 +351,7 @@ def format_ncbi_context(ncbi_data: Dict[int, Dict[str, Any]], program_id: int, a
             count += 1
 
         if count == 0:
-             lines.append("None available for selected genes.")
+            lines.append("None available for selected genes.")
 
     # 2. Aggregated Evidence (Snippets)
     # gene -> list of strings "Statement (PMID:123)"
@@ -371,7 +380,7 @@ def format_ncbi_context(ncbi_data: Dict[int, Dict[str, Any]], program_id: int, a
                 for s in s_list:
                     # s format: "Sentence text.." (PMID:12345)
                     # Extract PMID using regex
-                    pmid_match = re.search(r'\(PMID:(\d+)\)', s)
+                    pmid_match = re.search(r"\(PMID:(\d+)\)", s)
                     pmid = pmid_match.group(1) if pmid_match else None
 
                     # Dedup by PMID (One sentence per paper per gene)
@@ -399,14 +408,15 @@ def format_ncbi_context(ncbi_data: Dict[int, Dict[str, Any]], program_id: int, a
 
                     gene_snippets.append(f"- {sym}: {clean_s}")
 
-                    if len(gene_snippets) >= 5: break # Max 5 per gene
+                    if len(gene_snippets) >= 5:
+                        break  # Max 5 per gene
 
                 if gene_snippets:
                     has_snippets = True
                     lines.extend(gene_snippets)
 
         if not has_snippets:
-             lines.append("None found.")
+            lines.append("None found.")
 
     return "\n".join(lines)
 
@@ -469,17 +479,23 @@ def format_regulator_context(
     # Positive log2FC = negative regulators (knockdown increases program, so gene represses it)
     negative_regs = sorted_df[sorted_df["log_2_fold_change"] > 0].tail(top_n).iloc[::-1]
 
-    lines = ["Regulator perturbations (from Perturb-seq; log2FC indicates effect of knockdown on program activity):"]
+    lines = [
+        "Regulator perturbations (from Perturb-seq; log2FC indicates effect of knockdown on program activity):"
+    ]
 
     if len(positive_regs) > 0:
         lines.append("\nPositive regulators (activators; knockdown reduces program):")
         for _, row in positive_regs.iterrows():
-            lines.append(f"- {row['grna_target']}: log2FC = {row['log_2_fold_change']:.3f}")
+            lines.append(
+                f"- {row['grna_target']}: log2FC = {row['log_2_fold_change']:.3f}"
+            )
 
     if len(negative_regs) > 0:
         lines.append("\nNegative regulators (repressors; knockdown increases program):")
         for _, row in negative_regs.iterrows():
-            lines.append(f"- {row['grna_target']}: log2FC = {row['log_2_fold_change']:.3f}")
+            lines.append(
+                f"- {row['grna_target']}: log2FC = {row['log_2_fold_change']:.3f}"
+            )
 
     return "\n".join(lines)
 
@@ -606,9 +622,13 @@ def select_program_genes(
     if program_df.empty:
         return [], []
     top_loading_genes = (
-        program_df.sort_values("Score", ascending=False)["Name"].head(top_loading).tolist()  # type: ignore
+        program_df.sort_values("Score", ascending=False)["Name"]
+        .head(top_loading)
+        .tolist()  # type: ignore
     )
-    unique_ranked = program_df.sort_values("UniquenessScore", ascending=False)["Name"].tolist()  # type: ignore
+    unique_ranked = program_df.sort_values("UniquenessScore", ascending=False)[
+        "Name"
+    ].tolist()  # type: ignore
     unique_genes = [gene for gene in unique_ranked if gene not in top_loading_genes]
     return top_loading_genes, unique_genes[:top_unique]
 
@@ -662,7 +682,9 @@ def generate_prompt(
         )
 
     allowed_genes = set(top_loading_genes) | set(unique_genes)
-    ncbi_context = format_ncbi_context(ncbi_data, program_id, allowed_genes=allowed_genes)
+    ncbi_context = format_ncbi_context(
+        ncbi_data, program_id, allowed_genes=allowed_genes
+    )
 
     regulator_analysis = format_regulator_analysis_context(
         regulator_data or {},
