@@ -1,5 +1,7 @@
 import numpy as np
 import scipy
+import scipy.linalg
+import scipy.optimize
 import pandas as pd
 import scanpy as sc
 import argparse
@@ -44,16 +46,54 @@ def computeVarianceExplained(X, H, Var_X, i):
     float
         Fraction of variance explained by component i
     """
+    # Project X onto the program's unit direction h/||h||: prediction = (X h/||h||)(h/||h||)^T
     if not isinstance(H, (pd.DataFrame)):
-        B_k = X @ H[i,:].T / np.sqrt((np.asarray(H[i,:])**2).sum())
-        numerator = compute_Var(X - np.outer(B_k, H[i,:]))
+        nrm = np.sqrt((np.asarray(H[i,:])**2).sum())
+        B_k = X @ H[i,:].T / nrm
+        numerator = compute_Var(X - np.outer(B_k, H[i,:] / nrm))
     else:
-        B_k = X @ H.iloc[i,:] / np.sqrt((H.iloc[i,:]**2).sum())
-        numerator = compute_Var(X - np.outer(B_k, H.iloc[i,:]))
+        nrm = np.sqrt((H.iloc[i,:]**2).sum())
+        B_k = X @ H.iloc[i,:] / nrm
+        numerator = compute_Var(X - np.outer(B_k, H.iloc[i,:] / nrm))
     return (1 - numerator / Var_X)
 
 
-def compute_explained_variance(cnmf_obj, X, k, output_folder, program_name = range(1, 51), thre = '2.0'):
+def refit_usage_nnls(X, H):
+    """
+    Fit non-negative usages W minimizing ||X - W H^T||_F with spectra H held fixed,
+    solving one exact NNLS problem (scipy.optimize.nnls) per cell.
+
+    Each cell's problem min_w ||x - H w||^2 is reduced to a K x K one using the Cholesky
+    factor of the Gram matrix (H^T H = L L^T), which has the same solution:
+    ||x - H w||^2 = ||L^T w - L^{-1} H^T x||^2 + const.
+
+    Parameters
+    ----------
+    X : array-like or sparse matrix
+        Normalized gene expression matrix (cells x genes)
+    H : np.ndarray
+        Gene program matrix (genes x programs)
+
+    Returns
+    -------
+    np.ndarray
+        Refit usage matrix (cells x programs)
+    """
+    try:
+        L = np.linalg.cholesky(H.T @ H)
+    except np.linalg.LinAlgError:
+        raise ValueError("Spectra Gram matrix is singular (duplicated or all-zero programs); "
+                         "cannot refit usages by NNLS")
+    A = L.T
+    B = np.asarray(X @ H)                                    # cells x programs, H^T x per cell
+    B = scipy.linalg.solve_triangular(L, B.T, lower=True).T  # rows are L^{-1} H^T x
+    W = np.empty_like(B)
+    for c in range(B.shape[0]):
+        W[c], _ = scipy.optimize.nnls(A, B[c])
+    return W
+
+
+def compute_explained_variance(cnmf_obj, X, k, output_folder, program_name = range(1, 51), thre = '2.0', usage_source = 'nnls'):
     """
     Compute explained variance for all gene programs in a cNMF factorization.
     
@@ -70,30 +110,61 @@ def compute_explained_variance(cnmf_obj, X, k, output_folder, program_name = ran
     thre : str, default '2.0'
         Threshold parameter for consensus matrices
     program_name: list
-        List of program names 
-        
+        List of program names
+    usage_source : {'nnls', 'provided'}, default 'nnls'
+        'nnls' refits usages against X with the consensus spectra fixed and saves them as
+        {k}_consensus_usages_norm.txt in output_folder; 'provided' reads the
+        *.consensus_median.txt usages saved by cNMF consensus
+
     Returns
     -------
     None
         Saves variance metrics to TSV files in output_folder
     """
 
-    # Convert sparse matrix to dense if needed 
-    if hasattr(X, 'toarray'):
-        X = X.toarray()
-
-    # Load consensus gene program matrices (W: usage, H: spectra)
+    # Load consensus gene program matrix (H: spectra, genes x programs)
     thre_name = str(thre).replace('.', '_')
     H_path = cnmf_obj.paths['consensus_spectra__txt'] % (k, thre_name) ## median_spectra_file
     H_df = pd.read_csv(H_path, sep='\t', index_col=0).T
     H = H_df.to_numpy()
     H = (H/H.sum(0))
 
-    W_path = cnmf_obj.paths['consensus_usages__txt'] % (k, thre_name) ## median_spectra_file
-    W_df = pd.read_csv(W_path, sep='\t', index_col=0)
-    W = W_df.to_numpy()
-    W = (W/W.sum(0))
+    if X.shape[1] != H.shape[0]:
+        raise ValueError(f"X has {X.shape[1]} genes but consensus spectra have {H.shape[0]}; "
+                         "X must be the run's cnmf_tmp norm_counts matrix")
 
+    X = X.astype(np.float64)
+    W_path = cnmf_obj.paths['consensus_usages__txt'] % (k, thre_name)
+
+    if usage_source == 'nnls':
+        # The saved consensus usages are refit against std-scaled HVG TPM (refit_usage=True in
+        # cNMF consensus), so they are not on X's scale. Refit W against X with H fixed (NNLS),
+        # the same step cNMF uses to fit usages to norm_counts.
+        W = refit_usage_nnls(X, H)
+
+        # Save the norm_counts-refit usages to output_folder (the inference consensus usages are
+        # left untouched), with cell IDs taken from the saved consensus usages (both are in
+        # norm_counts.obs order)
+        cell_index = pd.read_csv(W_path, sep='\t', index_col=0, usecols=[0]).index
+        if len(cell_index) != W.shape[0]:
+            raise ValueError(f"X has {W.shape[0]} cells but {W_path} has {len(cell_index)}")
+        pd.DataFrame(W, index=cell_index, columns=H_df.columns).to_csv(os.path.join(output_folder, f"{k}_consensus_usages_nnls.txt"), sep="\t")
+
+    elif usage_source == 'provided':
+        # Use the usages cNMF consensus fit to norm_counts with the median spectra
+        # (*.consensus_median.txt, written next to *.consensus.txt)
+        W_path = W_path.replace('.consensus.txt', '.consensus_median.txt')
+        W_df = pd.read_csv(W_path, sep='\t', index_col=0)
+        W = W_df.to_numpy()
+        if W.shape != (X.shape[0], H.shape[1]):
+            raise ValueError(f"Usages in {W_path} have shape {W.shape}, expected {(X.shape[0], H.shape[1])}")
+
+    else:
+        raise ValueError(f"usage_source must be 'nnls' or 'provided', got {usage_source!r}")
+
+    # Convert sparse matrix to dense if needed
+    if hasattr(X, 'toarray'):
+        X = X.toarray()
 
     WH = W @ H.T
     diff = X - WH
