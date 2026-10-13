@@ -6,8 +6,7 @@ from matplotlib import gridspec
 import scanpy as sc
 from pathlib import Path
 import anndata
-import muon 
-from torch_cnmf import cNMF
+import muon
 import os
 import sys
 import mygene
@@ -28,6 +27,8 @@ def run_cnmf_consensus(cnmf_obj=None, output_dir=None, name=None,
         density_thresholds: List of density threshold values for consensus
     """
     if cnmf_obj is None:
+        # Imported lazily so the sk-cNMF env (which passes its own cnmf_obj) needs no torch
+        from torch_cnmf import cNMF
         cnmf_obj = cNMF(output_dir=output_dir, name=name)
 
     for k in tqdm(components, desc='Running cNMF'):
@@ -250,10 +251,10 @@ def compile_results(output_directory, run_name, sel_threshs = [2.0], components 
  gene_names_key = None ):
     """
     Compile cNMF results into correct format for downstream evaluation pipeline.
-    
+
     Processes cNMF output files and reorganizes them into standardized formats
     including scores, loadings, and AnnData objects for further analysis.
-    
+
     Args:
         output_directory: Base directory containing cNMF results
         run_name: Name of the cNMF run

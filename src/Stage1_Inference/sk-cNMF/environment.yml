@@ -4,9 +4,13 @@ channels:
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
+  - array-api-compat=1.11.2=pyh29332c3_0
   - asttokens=3.0.0=pyhd8ed1ab_1
   - bzip2=1.0.8=h4bc722e_7
-  - ca-certificates=2025.8.3=hbd8a1cb_0
+  - c-ares=1.34.5=hb9d3cd8_0
+  - ca-certificates=2025.11.12=hbd8a1cb_0
+  - cached-property=1.5.2=hd8ed1ab_1
+  - cached_property=1.5.2=pyha770c72_1
   - cairo=1.18.4=h3394656_0
   - chardet=5.2.0=pyhd8ed1ab_3
   - comm=0.2.3=pyhe01879c_0
@@ -24,6 +28,8 @@ dependencies:
   - fonts-conda-forge=1=0
   - freetype=2.14.1=ha770c72_0
   - freetype-py=2.3.0=pyhd8ed1ab_0
+  - h5py=3.14.0=nompi_py39h63168ba_100
+  - hdf5=1.14.6=nompi_h6e4c0c1_103
   - icu=75.1=he02047a_0
   - importlib-metadata=8.7.0=pyhe01879c_1
   - ipykernel=6.30.1=pyh82676e8_0
@@ -36,23 +42,35 @@ dependencies:
   - lcms2=2.17=h717163a_0
   - ld_impl_linux-64=2.44=h1423503_1
   - lerc=4.0.0=h0aef613_1
+  - libaec=1.1.4=h3f801dc_0
+  - libblas=3.11.0=2_h4a7cf45_openblas
+  - libcblas=3.11.0=2_h0358290_openblas
+  - libcurl=8.17.0=h4e3cde8_0
   - libdeflate=1.24=h86f0d12_0
   - libedit=3.1.20250104=pl5321h7949ede_0
+  - libev=4.33=hd590300_2
   - libexpat=2.7.1=hecca717_0
   - libffi=3.4.6=h2dba641_1
   - libfreetype=2.14.1=ha770c72_0
   - libfreetype6=2.14.1=h73754d4_0
   - libgcc=15.1.0=h767d61c_4
   - libgcc-ng=15.1.0=h69a702a_4
+  - libgfortran=15.1.0=h69a702a_5
+  - libgfortran-ng=15.1.0=h69a702a_5
+  - libgfortran5=15.1.0=hcea5267_5
   - libglib=2.86.0=h1fed272_0
   - libgomp=15.1.0=h767d61c_4
   - libiconv=1.18=h3b78370_2
   - libjpeg-turbo=3.1.0=hb9d3cd8_0
+  - liblapack=3.11.0=2_h47877c9_openblas
   - liblzma=5.8.1=hb9d3cd8_2
+  - libnghttp2=1.67.0=had1ee68_0
   - libnsl=2.0.1=hb9d3cd8_1
+  - libopenblas=0.3.30=pthreads_h94d23a6_4
   - libpng=1.6.50=h421ea60_1
   - libsodium=1.0.20=h4ab18f5_0
   - libsqlite=3.50.4=h0c1763c_0
+  - libssh2=1.11.1=hcf80075_0
   - libstdcxx=15.1.0=h8f9b012_4
   - libstdcxx-ng=15.1.0=h4852527_4
   - libtiff=4.7.1=h8261f1e_0
@@ -65,11 +83,14 @@ dependencies:
   - libzlib=1.3.1=hb9d3cd8_2
   - lxml=6.0.0=py39h3820f57_0
   - matplotlib-inline=0.1.7=pyhd8ed1ab_1
+  - natsort=8.4.0=pyh29332c3_1
   - ncurses=6.5=h2d0b736_3
   - nest-asyncio=1.6.0=pyhd8ed1ab_1
+  - numpy=2.0.2=py39h9cb892a_1
   - openjpeg=2.5.4=h55fea9a_0
-  - openssl=3.5.4=h26f9b46_0
+  - openssl=3.6.0=h26f9b46_0
   - packaging=25.0=pyh29332c3_1
+  - pandas=2.3.1=py39h1b6b32d_0
   - parso=0.8.4=pyhd8ed1ab_1
   - pcre2=10.46=h1321c63_0
   - pexpect=4.9.0=pyhd8ed1ab_1
@@ -87,11 +108,14 @@ dependencies:
   - pygments=2.19.2=pyhd8ed1ab_0
   - python=3.9.23=hc30ae73_0_cpython
   - python-dateutil=2.9.0.post0=pyhe01879c_2
+  - python-tzdata=2025.2=pyhd8ed1ab_0
   - python_abi=3.9=8_cp39
+  - pytz=2025.2=pyhd8ed1ab_0
   - pyzmq=27.0.1=py39haa5fa38_0
   - readline=8.2=h8c095d6_2
   - reportlab=4.4.1=py39h8cd3c5a_0
   - rlpycairo=0.2.0=pyhd8ed1ab_0
+  - scipy=1.13.1=py39haf93ffa_0
   - setuptools=80.9.0=pyhff2d567_0
   - six=1.17.0=pyhe01879c_1
   - stack_data=0.6.3=pyhd8ed1ab_1
@@ -117,6 +141,7 @@ dependencies:
   - zstd=1.5.7=hb8e6e7a_2
   - pip:
       - adjusttext==1.3.0
+      - anndata==0.9.0
       - anyio==4.10.0
       - biothings-client==0.4.1
       - certifi==2025.8.3
@@ -127,7 +152,6 @@ dependencies:
       - idna==3.10
       - matplotlib==3.9.4
       - mygene==3.2.2
-      - numpy==2.0.2
       - palettable==3.3.3
       - pyparsing==3.2.3
       - pypdf2==3.0.1
