@@ -19,7 +19,11 @@ def _flatten_pvals_any(obj) -> np.ndarray:
     elif isinstance(obj, Mapping):
         parts = []
         for df in obj.values():
-            a = df.to_numpy() if isinstance(df, (pd.DataFrame, pd.Series)) else np.asarray(df)
+            a = (
+                df.to_numpy()
+                if isinstance(df, (pd.DataFrame, pd.Series))
+                else np.asarray(df)
+            )
             parts.append(np.asarray(a, dtype=np.float64).ravel())
         arr = np.concatenate(parts) if parts else np.empty(0, dtype=np.float64)
     else:
@@ -39,7 +43,7 @@ def _qq_xy(pvals: np.ndarray):
     return x, y
 
 
-def qq_plot_real_vs_null(real_pvals, null_pvals, ax=None, title=None):
+def qq_plot_real_vs_null(real_pvals, null_pvals, ax=None, title=None, font_size=14):
     """
     QQ plot comparing real perturbation p-values against fake/null (NTC) p-values,
     mirroring the U-test's plot_qq_comparison input style (pass the two p-value
@@ -49,6 +53,7 @@ def qq_plot_real_vs_null(real_pvals, null_pvals, ax=None, title=None):
         array, or a mapping of DataFrames).
     null_pvals: fake/negative-control p-values, e.g. the NTC group ensemble
         (mapping like ntc_group_pvals_ens), a DataFrame, Series, or array.
+    font_size: font size (pt) for the title, axis labels, tick labels and legend.
 
     Well-calibrated null p-values track the y=x diagonal; real points rising
     above it indicate true perturbation signal.
@@ -61,18 +66,56 @@ def qq_plot_real_vs_null(real_pvals, null_pvals, ax=None, title=None):
     if ax is None:
         import matplotlib.pyplot as plt
 
-        _, ax = plt.subplots(figsize=(6, 5))
+        _, ax = plt.subplots(figsize=(6, 6))
 
-    # Fixed CRT style/colors: real = purple ("All observed"), null = blue (NTC).
-    xmax = max(float(x_real.max()), float(x_null.max()))
-    ax.plot([0.0, xmax], [0.0, xmax], color="#333333", linewidth=1.0, label="y = x (null)")
-    ax.scatter(x_null, y_null, label="Null (NTC / fake)", color="#1f77b4",
-               marker=".", s=14.0, alpha=0.6)
-    ax.scatter(x_real, y_real, label="Real (perturbations)", color="#9467bd",
-               marker=".", s=14.0, alpha=0.6)
+    # Fixed CRT style/colors: real = purple ("All observed"), null = gray (NTC).
+    # Both axes share one range so the y = x diagonal sits at 45 degrees in a
+    # square plot.
+    axis_max = 1.02 * max(
+        float(x_real.max()),
+        float(x_null.max()),
+        float(y_real.max()),
+        float(y_null.max()),
+    )
+    ax.plot(
+        [0.0, axis_max],
+        [0.0, axis_max],
+        color="#333333",
+        linewidth=1.0,
+        linestyle="--",
+        alpha=0.5,
+        label="y = x (null)",
+    )
+    ax.scatter(
+        x_null,
+        y_null,
+        label="Null (NTC / fake)",
+        color="gray",
+        marker=".",
+        s=14.0,
+        alpha=0.6,
+    )
+    ax.scatter(
+        x_real,
+        y_real,
+        label="Real (perturbations)",
+        color="#9467bd",
+        marker=".",
+        s=14.0,
+        alpha=0.6,
+    )
 
-    ax.set_xlabel("Expected -log10(p)")
-    ax.set_ylabel("Observed -log10(p)")
-    ax.set_title(title if title is not None else "CRT QQ plot: real vs null (NTC) p-values")
-    ax.legend()
+    ax.set_xlim(0.0, axis_max)
+    ax.set_ylim(0.0, axis_max)
+    ax.set_aspect("equal", adjustable="box")
+    ax.spines[["top", "right"]].set_visible(False)
+
+    ax.set_xlabel("Expected -log10(p)", fontsize=font_size)
+    ax.set_ylabel("Observed -log10(p)", fontsize=font_size)
+    ax.set_title(
+        title if title is not None else "CRT QQ plot: real vs null (NTC) p-values",
+        fontsize=font_size,
+    )
+    ax.tick_params(labelsize=font_size)
+    ax.legend(fontsize=font_size)
     return ax
