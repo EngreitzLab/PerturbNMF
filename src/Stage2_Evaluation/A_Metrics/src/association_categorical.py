@@ -365,7 +365,7 @@ def compute_categorical_association(
 
     # If test = 'pearsonr' with mode = 'one_vs_all' we are going to do something special until we can more properly integrate this
     if test=='pearsonr' and mode=='one_vs_all':
-        logging.info('Running jamboree specific version of posthoc with pearsonr, this is not yet integrated into the main pipeline')
+        logging.info('Running a one-vs-all pearsonr version of posthoc, this is not yet integrated into the main pipeline')
         res = []        
         # Run posthoc-tests and append results
         Parallel(n_jobs=n_jobs,

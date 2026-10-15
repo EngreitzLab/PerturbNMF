@@ -14,7 +14,7 @@ Important: IGVF guide modalities store **raw guide UMI counts in X** and the cal
 **binary assignment in layers['guide_assignment']**. This script uses the layer; using
 X would treat ambient guide reads as perturbations.
 
-Generalises the one-off ``Convert_file_adata.py`` written for IGVF_Gersbach_iHep.
+Generalises a one-off ``Convert_file_adata.py`` written for a single IGVF dataset.
 """
 
 import argparse
