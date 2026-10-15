@@ -136,6 +136,8 @@ python3 "${PIPELINE_ROOT}/src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cn
         #--minibatch_usage_tol 0.005
         #--minibatch_spectra_tol 0.005
         #--minibatch_shuffle
+        #--no-minibatch_rescale
+        #--minibatch_patience 0   # 0 = original stopping rule (default 10)
         #--fp_precision "float"
         #--sk_cd_refit
         #--num_gene 300

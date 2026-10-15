@@ -114,6 +114,8 @@ python3 "${PIPELINE_ROOT}/src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cn
         --minibatch_usage_tol 0.005 \
         --minibatch_spectra_tol 0.005 \
         --minibatch_shuffle \
+        --minibatch_rescale \
+        --minibatch_patience 10 \
         --numiter 100 \
         --species "human" \
         --use_gpu \

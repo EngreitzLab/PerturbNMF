@@ -102,6 +102,14 @@ def main():
     parser.add_argument('--minibatch_spectra_tol', type=float, default=0.005)
     parser.add_argument('--minibatch_shuffle', action='store_true',
                         help="Shuffle cells in minibatch mode (default: off)")
+    parser.add_argument('--minibatch_rescale', action=argparse.BooleanOptionalAction, default=True,
+                        help="Rescale spectra rows to unit norm after each epoch in minibatch/dataloader mode, "
+                             "so drifting rows cannot overflow float32 (default: on; --no-minibatch_rescale to turn off). "
+                             "Ignored when regularization is on.")
+    parser.add_argument('--minibatch_patience', type=int, default=10,
+                        help="Epochs without a new best loss before stopping in minibatch/dataloader mode; the loss is "
+                             "checked every epoch and W/H are restored to the best epoch (default: 10). "
+                             "0 = original rule: loss every 10 epochs, stop on the first increase.")
 
     # Precision
     parser.add_argument('--fp_precision', type=str, default='float',
@@ -267,6 +275,8 @@ def main():
         minibatch_size=args.minibatch_size,
         minibatch_max_iter=args.minibatch_max_iter,
         minibatch_shuffle=args.minibatch_shuffle,
+        minibatch_rescale=args.minibatch_rescale,
+        minibatch_patience=args.minibatch_patience,
         sk_cd_refit=args.sk_cd_refit,
         nmf_seeds=nmf_seeds,
     )
