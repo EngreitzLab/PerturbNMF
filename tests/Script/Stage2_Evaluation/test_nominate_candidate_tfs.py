@@ -166,6 +166,7 @@ def test_nomination_perturbation_column_rename_and_missing(toy):
         nct.nominate_candidate_tfs(motif, scores, renamed, n_top_genes=3)
 
 
+@pytest.mark.skipif(not os.path.exists(PLOTS_PATH), reason="Stage 3 motif plot module not present")
 def test_nomination_columns_cover_plot_module_candidate_columns():
     source = open(PLOTS_PATH).read()
     start = source.index("CANDIDATE_COLUMNS = [")
