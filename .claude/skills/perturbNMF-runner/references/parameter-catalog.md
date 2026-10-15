@@ -178,6 +178,8 @@ Same as sk-cNMF except:
 |-----------|------|---------|-------------|
 | `--fp_precision` | str | `float` | Floating point: `float` (32-bit) or `double` (64-bit) |
 | `--minibatch_shuffle` | flag | False | Shuffle cells in minibatch mode |
+| `--minibatch_rescale` | flag | True | Rescale spectra rows to unit norm each epoch (minibatch/dataloader); `--no-minibatch_rescale` turns it off. Ignored with regularization |
+| `--minibatch_patience` | int | 10 | Epochs without a new best loss before stopping (minibatch/dataloader); loss checked every epoch, W/H restored to best. 0 = original rule (stop on first increase) |
 | `--sk_cd_refit` | flag | False | Use sklearn coordinate descent for refitting |
 | `--remove_noncoding` | flag | False | Remove non-coding genes. With `--gtf_path`, keeps only `protein_coding` genes from the GTF (matched by Ensembl ID); otherwise falls back to the Ensembl-prefix heuristic |
 | `--ensembl_prefix` | str | `ENSG` | Prefix used by the (fallback) prefix-based non-coding filter |

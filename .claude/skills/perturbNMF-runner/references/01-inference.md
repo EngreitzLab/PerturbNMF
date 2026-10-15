@@ -96,6 +96,8 @@ Present a summary and ask if user wants to change any. Defaults are fine for mos
 | `--l1_ratio_usage` | `0.0` | L1 vs L2 ratio for usage (0=L2, 1=L1) |
 | `--l1_ratio_spectra` | `0.0` | L1 vs L2 ratio for spectra |
 | `--minibatch_shuffle` | off | Shuffle cells in minibatch mode |
+| `--minibatch_rescale` / `--no-minibatch_rescale` | on | Rescale spectra rows to unit norm each epoch (minibatch/dataloader); prevents float32 overflow. Ignored with regularization |
+| `--minibatch_patience` | 10 | Epochs without a new best loss before stopping (minibatch/dataloader); loss checked every epoch, W/H restored to best. 0 = original rule (stop on first increase) |
 | `--sk_cd_refit` | off | Use sklearn coordinate descent for refitting |
 
 #### torch-cNMF batch/minibatch/dataloader mode
