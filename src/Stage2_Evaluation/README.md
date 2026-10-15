@@ -14,7 +14,11 @@ Runs 9 evaluation criteria per program:
 
 - **Categorical association** — does the program differ across batches / conditions?
 - **Perturbation sensitivity** — does it shift under direct perturbation of its top genes?
-- **Motif enrichment** — are top genes co-regulated by shared TFs (HOCOMOCO)?
+- **Motif enrichment** — are the top genes' promoters / enhancers enriched for a TF motif (FIMO with
+  MotifCompendium-Database-Human clusters by default, or HOCOMOCO v11; and/or ChromBPNet Fi-NeMo hits; grouped by motif family; Welch t-test as in Schnitzler et al. 2024, or loading
+  correlation)? Also nominates candidate TFs (enriched + expressed / knockdown regulates the program).
+  Driver `A_Metrics/Slurm_Version/run_motif_enrichment.py` or `cNMF_evaluation_pipeline.py --Perform_motif`;
+  method, defaults, resource downloads and validation in [`A_Metrics/README.md#motif-enrichment`](A_Metrics/README.md#motif-enrichment).
 - **Trait enrichment** — Fisher's test vs OpenTargets GWAS L2G
 - **GO + gene-set enrichment** — GSEA against GO and MSigDB/Enrichr
 - **Explained variance / Reconstruction error / Stability** — overall fit and reproducibility
@@ -36,7 +40,11 @@ that diagnose calibration. See [`B_Calibration/README.md`](B_Calibration/README.
 ## Shared resources
 
 [`Resources/`](Resources/) holds reference files used across substages:
-HOCOMOCO motif file, OpenTargets L2G GWAS table, hg38 genome FASTA.
+HOCOMOCO motif file, OpenTargets L2G GWAS table, hg38 genome FASTA. Motif enrichment scans
+MotifCompendium-Database-Human (kundajelab; its metadata / TF lists are bundled in `A_Metrics/src/motif_databases/`)
+or HOCOMOCO v11 (`--motif_db hocomoco_v11`); pass the MEME file, genome FASTA and GTF as flags or via
+`$PERTURBNMF_MOTIFCOMPENDIUM_MEME`, `$PERTURBNMF_GENOME_FASTA`, `$PERTURBNMF_GENE_ANNOTATION`. Enhancer links and
+Fi-NeMo files are per cell type (see `A_Metrics/src/find_regulatory_resources.py`).
 
 ## Conda environments
 
