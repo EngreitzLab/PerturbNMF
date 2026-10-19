@@ -333,8 +333,8 @@ def compute_fake_perturbation_tests(
                 selected_guides = np.random.choice(guide_target_[guide_names_key], number_guide, replace=False)
                 guide_target_.loc[guide_target_.guide_names.isin(selected_guides),'type'] = 'targeting' # type is a col with targeting / non-targeting
 
-                # Filter to only non-targeting guides that exist in both datasets
-                valid_guide_mask = np.isin(mdata[prog_key].uns[guide_names_key],guide_target_[guide_names_key].values)
+                # Filter to cells with non-targeting guides that exist in both datasets
+                valid_guide_mask = np.isin(mdata[prog_key].uns[guide_names_key], guide_target_[guide_names_key].values)
                 valid_indices = np.where(valid_guide_mask)[0]
 
                 print(f"  Found {len(valid_indices)} valid non-targeting guides out of " f"{len(mdata[prog_key].uns[guide_names_key])} total")

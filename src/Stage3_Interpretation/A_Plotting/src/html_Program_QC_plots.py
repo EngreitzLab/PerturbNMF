@@ -313,8 +313,11 @@ def _build_heatmap(perturb_path_base, mdata, target_program, sample,
     pp = sub.pivot(columns=plot_col_name, index="sample", values="adj_pval")
     pv = pv.reindex(sample)
     pp = pp.reindex(sample)
-    expr = compute_program_expression_by_condition(mdata, target_program, groupby=groupby, data_key=data_key, prog_key=prog_key)
-    expr_vals = [float(expr.get(c, 0.0)) for c in pv.index]
+    if mdata is None:   # expression is not drawn by _make_heatmap_fig; callers without an h5mu skip it
+        expr_vals = []
+    else:
+        expr = compute_program_expression_by_condition(mdata, target_program, groupby=groupby, data_key=data_key, prog_key=prog_key)
+        expr_vals = [float(expr.get(c, 0.0)) for c in pv.index]
     return {
         "conditions": list(map(str, pv.index)),
         "regulators": list(map(str, pv.columns)),

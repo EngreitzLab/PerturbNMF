@@ -8,7 +8,7 @@ skipped instead of crashing, and the required arguments are validated up front.
 
 Usage:
     eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking
-    cd /oak/stanford/groups/engreitz/Users/ymo/Tools/PerturbNMF
+    cd <repo root>
     python -m pytest tests/Script/Stage3_Interpretation/A_Plotting/program_html/test_html_program_no_perturb.py -v
 """
 
