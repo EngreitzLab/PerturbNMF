@@ -1,8 +1,7 @@
 """Render the AGeneTic program JSONs as one self-contained HTML report.
 
 Reads '<info_dir>/P<k>.json' (Gene_info_extended_PerturbNMF_Info: gene_info from MyGene /
-NCBI / UniProt, gene_interactions.OmniPath, optionally gene_interactions.Literature from
-2.Evidence_curation) and writes one HTML page with a program rail. Per program:
+NCBI / UniProt, gene_interactions.OmniPath, optionally gene_interactions.Literature) and writes one HTML page with a program rail. Per program:
 
   * an interactive graph (Cytoscape.js, inlined so the file works offline) of the top
     regulators x top program genes; edges = OmniPath interactions (solid, colored by sign,

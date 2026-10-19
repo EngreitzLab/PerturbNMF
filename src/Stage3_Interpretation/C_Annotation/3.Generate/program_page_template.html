@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>__PAGE_TITLE__</title>
+    <style>
+        /* palette and type ported from gene-program-interpreter (gpi/html_report.py, design A) */
+        :root {
+            --bg: #f6f7f8; --surface: #ffffff; --surface-soft: #f3f5f5;
+            --text: #14201d; --text-soft: #43504c; --muted: #6b7672;
+            --border: #e4e7e6; --border-strong: #d2d7d5; --shadow-soft: 0 1px 2px rgba(16,32,28,.05);
+            --accent: #0d9488; --accent-soft: #e6f6f3; --accent-text: #0b6b61;
+            --up: #b8615a; --up-soft: #f4ebe9; --down: #3d7d9e; --down-soft: #e8eff2;
+            --radius: 12px; --maxw: 1080px;
+        }
+        html[data-theme="dark"] {
+            --bg: #0c0f0e; --surface: #141917; --surface-soft: #1a201e;
+            --text: #e8ecea; --text-soft: #b7c0bc; --muted: #8a938f;
+            --border: #262d2a; --border-strong: #333b37; --shadow-soft: none;
+            --accent-soft: #0e2a27; --accent-text: #5eead4;
+            --up: #d98e86; --up-soft: #271815; --down: #7fb0c9; --down-soft: #13222a;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+            background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: var(--accent-text); }
+        .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+        .topbar { position: sticky; top: 0; z-index: 60; display: flex; align-items: center; gap: 14px; padding: 10px 20px;
+            background: color-mix(in srgb, var(--surface) 88%, transparent);
+            backdrop-filter: saturate(1.4) blur(8px); border-bottom: 1px solid var(--border); }
+        .brand { display: flex; align-items: baseline; gap: 8px; font-weight: 700; letter-spacing: -.01em; color: var(--text); text-decoration: none; }
+        .brand .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); display: inline-block; }
+        .brand .sub { font-weight: 500; font-size: 12px; color: var(--muted); }
+        .topbar .spacer { flex: 1; }
+        .iconbtn { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; text-decoration: none;
+            border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+        .iconbtn:hover { border-color: var(--border-strong); }
+        .iconbtn.off { opacity: .35; pointer-events: none; }
+
+        .canvas { padding: 32px clamp(18px, 3vw, 40px) 64px; }
+        .wrap { max-width: var(--maxw); margin: 0 auto; }
+        .hero { margin-bottom: 28px; }
+        .kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700;
+            letter-spacing: .07em; text-transform: uppercase; color: var(--accent-text); margin-bottom: 12px; }
+        .kicker .pid { background: var(--accent); color: #fff; padding: 2px 9px; border-radius: 999px; letter-spacing: .02em; }
+        .kicker .crumb { color: var(--muted); font-weight: 600; }
+        h1.title { font-size: clamp(26px, 3.3vw, 37px); line-height: 1.13; letter-spacing: -.018em; font-weight: 760; margin-bottom: 14px; text-wrap: balance; }
+        .lead { font-size: 16.5px; line-height: 1.62; color: var(--text-soft); text-wrap: pretty; }
+
+        .group { margin-top: 8px; }
+        .ghead { font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+            padding-bottom: 8px; margin-bottom: 14px; border-bottom: 1px solid var(--border);
+            cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; user-select: none; }
+        .ghead::-webkit-details-marker { display: none; }
+        .ghead::before { content: "\25B8"; font-size: 12px; transition: transform .18s ease; }
+        .group[open] > .ghead::before { transform: rotate(90deg); }
+        .ghead:hover { color: var(--text); }
+        .group:not([open]) > .ghead { margin-bottom: 0; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+        .section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+            box-shadow: var(--shadow-soft); padding: 18px 20px 20px; }
+        .section h2 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 4px; }
+        .section .hmeta { font-size: 12.5px; color: var(--muted); margin-bottom: 12px; }
+
+        .genes { display: flex; flex-wrap: wrap; gap: 6px; }
+        .gene { font-size: 12.5px; font-weight: 550; font-family: ui-monospace, "SF Mono", Menlo, monospace; text-decoration: none;
+            padding: 2px 8px; border-radius: 6px; background: var(--surface-soft); border: 1px solid var(--border); color: var(--text-soft); }
+        a.gene:hover { border-color: var(--accent); }
+        .gene.uniq { background: var(--accent-soft); border-color: transparent; color: var(--accent-text); font-weight: 600; }
+
+        table.regs { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+        table.regs th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
+            font-weight: 700; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+        table.regs td { padding: 7px 8px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+        table.regs tr:last-child td { border-bottom: 0; }
+        .badge { font-size: 11.5px; font-weight: 650; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+        .badge.act { background: var(--down-soft); color: var(--down); }
+        .badge.rep { background: var(--up-soft); color: var(--up); }
+        .empty { color: var(--muted); font-size: 13.5px; }
+
+        ol.go { padding-left: 22px; font-size: 14px; color: var(--text-soft); }
+        ol.go li { padding: 2px 0; }
+
+        .plist { display: grid; gap: 12px; }
+        a.pcard { display: block; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 14px 18px; box-shadow: var(--shadow-soft); }
+        a.pcard:hover { border-color: var(--accent); }
+        a.pcard .pname { font-weight: 700; font-size: 16px; margin: 2px 0 4px; }
+        a.pcard .pdesc { font-size: 13.5px; color: var(--text-soft); }
+        .group + .group { margin-top: 28px; }
+        .gnote { margin: -6px 0 14px; }
+        .dhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 2px; }
+        .dhead .gene { font-size: 14px; }
+        .badge.sup { background: var(--accent-soft); color: var(--accent-text); }
+        .badge.mix { background: var(--up-soft); color: var(--up); }
+        .reason { font-size: 14px; color: var(--text); margin-bottom: 10px; }
+        ul.papers { list-style: none; display: grid; gap: 8px; }
+        ul.papers li { border-left: 2px solid var(--border-strong); padding-left: 10px; }
+        .ptitle { font-size: 13px; font-weight: 600; line-height: 1.4; }
+        .ptitle a { text-decoration: none; }
+        .ptitle a:hover { text-decoration: underline; }
+        .pex { font-size: 12.5px; color: var(--text-soft); }
+        .pmeta { font-size: 11.5px; color: var(--muted); }
+        .notexp { margin: 12px 0 0; }
+        .hmeta.ctype { margin: 12px 0 0; }
+        .badge.ns { background: var(--surface-soft); color: var(--muted); border: 1px solid var(--border); }
+        details.group.sub { margin-top: 18px; }
+        details.group.sub > .ghead { font-size: 11px; }
+        details.more { margin-top: 12px; }
+        .stack { display: grid; gap: 16px; }
+        .vrow { display: grid; grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); gap: 12px; }
+        @media (max-width: 1100px) { .vrow { grid-template-columns: repeat(min(var(--n, 1), 2), minmax(0, 1fr)); } }
+        @media (max-width: 760px) { .vrow { grid-template-columns: 1fr; } }
+        .vhead { font-size: 12.5px; color: var(--text-soft); margin-bottom: 2px; }
+        .frow + .frow { margin-top: 12px; }
+        .fhead { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        .group > details.more { margin: 12px 0 0; }
+        details.more > summary { font-size: 12.5px; font-weight: 600; color: var(--accent-text); cursor: pointer; list-style: none; }
+        details.more > summary::-webkit-details-marker { display: none; }
+        details.more > summary::before { content: "\25B8  "; }
+        details.more[open] > summary::before { content: "\25BE  "; }
+        .psub { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 10px 0 6px; }
+        .pmeta .badge { font-size: 10.5px; padding: 1px 6px; margin-left: 2px; }
+        .footer { margin-top: 36px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 14px; }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <a class="brand" href="__HOME_HREF__"><span class="dot"></span>Program reports<span class="sub">__BRAND_SUB__</span></a>
+        <div class="spacer"></div>
+        __NAV__
+        <button class="iconbtn" id="themebtn" onclick="toggleTheme()">Dark</button>
+    </header>
+    <main class="canvas"><div class="wrap">
+__CONTENT__
+        <div class="footer">__FOOTER__</div>
+    </div></main>
+    <script>
+        function setTheme(t){ document.documentElement.dataset.theme = t; document.getElementById("themebtn").textContent = t === "dark" ? "Light" : "Dark"; }
+        function toggleTheme(){ const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark"; localStorage.setItem("theme", t); setTheme(t); }
+        setTheme(localStorage.getItem("theme") || "light");
+    </script>
+</body>
+</html>

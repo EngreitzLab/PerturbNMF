@@ -1,0 +1,154 @@
+# study.yaml — what "interesting" means for THIS screen.
+#
+# The skill drafts this from the analysis repo's README / spec and shows it to you before
+# anything else runs. Nothing here can be inferred from the data alone.
+#
+# Copy into the analysis directory and commit it. The Generator reads `questions`; the Ranker
+# scores interest against them; the Writer takes the subtitle, sign convention and caveats.
+
+study:
+  name: ""                       # e.g. "Kidney organoid Perturb-seq, K=40"
+  system: ""                     # e.g. "human iPSC-derived kidney organoids, 2 x 2 untreated/cisplatin x day 7/14"
+  assay: ""                      # e.g. "CRISPRi Perturb-seq, 1,200 guides / 400 TSS / 300 genes"
+  run_path: ""                   # the PerturbNMF run directory, exactly
+  k: null                        # number of cNMF programs
+  conditions: []                 # e.g. [untreated_d7, untreated_d14, cisplatin_d7, cisplatin_d14]
+
+# ---------------------------------------------------------------------------
+# The questions. Everything in the report is ranked against these. 1-3 of them.
+# Quote the repo's own framing where it exists rather than paraphrasing.
+# ---------------------------------------------------------------------------
+questions:
+  - ""
+  - ""
+
+# ---------------------------------------------------------------------------
+# Sign convention. Goes into the report preamble verbatim, and the two words are
+# italicised everywhere in the prose. This single definition is most of what makes
+# the report readable by someone who has never seen the screen.
+# ---------------------------------------------------------------------------
+sign_convention:
+  positive: "brake — knockdown raises the program"
+  negative: "driver — knockdown lowers the program"
+
+# ---------------------------------------------------------------------------
+# Significance. Filled by the Explorer, AFTER reading the run's own README and calibration
+# report. If you cannot fill `basis`, exploration is not finished.
+# ---------------------------------------------------------------------------
+significance:
+  pvalue_column: ""              # e.g. "p-value_raw"
+  adj_pvalue_column: ""          # e.g. "adj_pval_raw"
+  threshold: 0.05
+  min_conditions: 2              # significant in >= this many independent conditions/strata
+  null_arm: ""                   # path to the matched NTC / pseudo-gene tables
+  basis: ""                      # why this column: what the run's docs say, and what the NTC
+                                 # arm shows the empirical FPR to be at this threshold
+
+# ---------------------------------------------------------------------------
+# Technical programs: CNV / aneuploidy / cell-cycle / ambient factors, excluded from every
+# breadth, selectivity and neighbour denominator. A DESIGN FACT, so it belongs here -- but
+# identify them FROM THE DATA (their loadings, their chromosomal coherence, their
+# correlation with QC covariates), not from a paper's program table.
+#
+# Which programs are "protective" vs "risk" is a BIOLOGICAL CONCLUSION and does NOT belong
+# here -- see references/novelty.md section 5. If a predecessor paper assigned those
+# directions, that assignment is answer_key material: the blind run should reach it, or
+# not, on its own. Recording it up front turns "the screen recovers the protective axis"
+# from a result into a restatement of the input.
+# ---------------------------------------------------------------------------
+technical_programs: []
+
+# ---------------------------------------------------------------------------
+# Program annotation sources. Carry all of them, label each in the report.
+# ---------------------------------------------------------------------------
+annotation_sources:
+  - name: ""                     # e.g. "screen author's term ranking"
+    path: ""
+  - name: ""                     # e.g. "GPE thesisFlow (LLM, cell-type context)"
+    path: ""
+  - name: ""                     # e.g. "GO / geneset enrichment"
+    path: ""
+
+# Optional. A RegulatorGroupAnnotator run on THIS screen: groups of regulators whose knockdowns
+# move the programs together, each annotated with a shared function, a coherence rating and a role
+# per member. Point at the dispatch directory holding the per-group answer.json files. It seeds the
+# `unexplained_member` and `complex_function` tags (evidence-classes.md). Leave empty if none
+# exists -- this skill reads that output, it does not run the annotator.
+regulator_group_annotation: ""
+
+# ---------------------------------------------------------------------------
+# RUN BLIND. No known pathway, gene list, or mechanism goes here.
+#
+# The point of the method is what it recovers WITHOUT prior information. Prior art is
+# DERIVED by the Literature agent from literature and databases, and that derivation is
+# part of what is being evaluated. See references/novelty.md section 5.
+#
+# The line is: design facts in, biological conclusions out.
+# ---------------------------------------------------------------------------
+
+# How the library's targets were chosen. This is a property of the EXPERIMENT, not of the
+# biology, and it must be recorded -- because a report that presents the inclusion rule as
+# a finding is circular. e.g. "240 of 300 targets are hits from a prior marker-sorting
+# differentiation screen", so "gene X affects differentiation" is the selection criterion.
+target_selection:
+  criterion: ""
+  n_selected_by_criterion: null
+  n_total: null
+  barred_claim: ""              # the sentence this makes circular, which the report may not assert
+
+# Topics where the FIELD is contested, so a novelty claim is indefensible whatever the
+# screen shows. A constraint on what can be claimed -- not a hint about what is true.
+novelty_embargo:
+  - ""                          # e.g. "<drug class> effects in this cell type -- the field
+                                #       attributes the clinical effect to another tissue"
+
+# ---------------------------------------------------------------------------
+# The loop. See SKILL.md and references/agent-roles.md.
+# ---------------------------------------------------------------------------
+loop:
+  n_hypotheses: 10               # size of the final list. Never padded: fewer survive, fewer ship
+  effort: medium                 # low / medium / high -> candidates_per_hypothesis 2 / 3 / 9. Ask the user
+  candidates_per_hypothesis: null  # set only to override effort; the Generator proposes n_hypotheses x this
+  max_rounds: 3                  # Reviser actions per candidate (+1 for a Critic Major)
+  human_steer_after_round_1: false  # true: stop after round 1's tests are designed for your kill/push marks
+  analyst_reruns: 2              # runs in all (original + fresh reruns) of the counter-example test each
+                                 # would-be survivor rests on; nothing else is rerun
+  external_screens: []           # genome-wide screens in other cell types for the specificity check,
+                                 # e.g. "Replogle 2022 K562 genome-wide Perturb-seq (path or URL)"
+
+# Study-specific interests. The Generator spreads candidates across these; the Ranker scores
+# interest against them and the questions. Free text.
+special_interest:
+  - ""                           # e.g. "treatment- or timepoint-specific effects"
+  - ""                           # e.g. "genes at kidney-function GWAS loci never functionally studied"
+
+# ---------------------------------------------------------------------------
+# Output
+# ---------------------------------------------------------------------------
+report:
+  audience_tier: B               # A lay / B adjacent-field collaborator (default) / C in-field PI
+  path: ""                       # e.g. "report/<study>_top10_hypotheses.qmd"
+  killed_appendix_path: ""       # e.g. "report/<study>_killed_hypotheses.qmd"
+
+# Blind-run scoring does NOT live here. The answer key and held-out terms stay outside the run
+# directory; see references/blind-evaluation.md.
+
+# ---------------------------------------------------------------------------
+# Standing caveats. Printed under "Caveats that apply to every hypothesis" (five at most),
+# and repeated beside any claim they touch.
+# Preprocessing gaps, unstable program numbering, miscalibrated strata, embargoes.
+# ---------------------------------------------------------------------------
+caveats:
+  - ""                           # e.g. "Ambient RNA and doublet removal not yet applied;
+                                 #       effect sizes provisional, KD percentages lower bounds"
+  - ""                           # e.g. "Program indices are threshold-local: few keep
+                                 #       their number between density thresholds"
+
+# ---------------------------------------------------------------------------
+# Confidentiality. If any input is unpublished, the report opens with a callout naming
+# every lab whose data it depends on — not just ours.
+# ---------------------------------------------------------------------------
+confidentiality:
+  unpublished: false
+  owning_labs: []
+  note: ""

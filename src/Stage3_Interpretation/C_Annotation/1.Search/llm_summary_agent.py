@@ -3,10 +3,11 @@
   Summarize_Agent              free-text summary of one abstract (used by 1.1.Search_literature/search_*.py when a
                                mini_handler is passed)
   Summarize_GeneRIF_Agent      a gene's GeneRIF papers -> claim + experimental context per paper
-  Summarize_Interaction_Agent  papers found for a regulator-gene pair -> relationship, direction, stance
-  Summarize_Query_Agent        papers found for a literature_plan query -> stance on its hypothesis
+  Summarize_GeneFunction_Agent a gene's PubMed function papers -> claim + role per paper, 1-3 function categories
+  LiteratureSearchResult       output schema of the run_literature_search.py agent: the papers it found, each
+                               read (PDF via read_pdf, else abstract) and summarized, plus an overall summary
 
-The structured agents take papers as {pmid, title, year, journal, study_type, abstract, fulltext}
+Summarize_GeneRIF_Agent / Summarize_GeneFunction_Agent take papers as {pmid, title, year, journal, study_type, abstract, fulltext}
 and a handler from api/LLM_interface.claude_api; they return a dict, or None when the call failed.
 """
 from typing import Literal, Optional
@@ -37,9 +38,6 @@ def Summarize_Agent(text, handler):
 # shared
 EvidenceType = Literal["knockout", "knockdown", "CRISPR_screen", "overexpression", "mutation", "binding",
                        "structural", "expression_correlation", "genetic_association", "clinical", "review", "other"]
-# mirrors 2.Evidence_curation/qa.py CATEGORIES (paper-qa / GeneProgramExplorer vocabulary)
-Relationship = Literal["physical_interaction", "enzymatic_modification", "transcriptional_regulation",
-                       "same_pathway", "same_cellular_phenotype", "same_disease", "none"]
 
 
 class ExperimentalContext(BaseModel):
@@ -106,91 +104,75 @@ def Summarize_GeneRIF_Agent(gene, gene_desc, papers, cell_type, handler, effort=
     return _ask(handler, GENERIF_SYSTEM, prompt, GeneRIFSummary, effort, max_tokens)
 
 
-# gene-gene interactions (papers found for a regulator-gene pair)
-class InteractionPaper(ExperimentalContext):
-    relationship: Relationship = Field(description="Most direct relationship between the two genes this paper shows; bare co-mention is 'none'.")
-    source_gene: Optional[str] = Field(description="Upstream gene when the paper shows a direction, else null.")
-    target_gene: Optional[str] = Field(description="Downstream gene when the paper shows a direction, else null.")
-    directed: bool
-    sign: Literal["activates", "represses", "unclear"] = Field(description="Effect of source on target.")
-    mechanism: Optional[str] = Field(description="One sentence: how the two genes are linked (e.g. m6A methylation stabilizes the mRNA).")
-    stance: Literal["supports", "contradicts", "context_only"] = Field(description="Does the paper support a link between the two genes, argue against one, or only give background?")
+# gene function categorization (1.1.Search_literature/search_gene_function.py)
+FunctionCategory = Literal["transcription_regulation", "chromatin_epigenetics", "RNA_processing_translation",
+                           "signaling", "cell_cycle_DNA_repair", "apoptosis_survival", "metabolism",
+                           "protein_homeostasis", "trafficking_transport", "cytoskeleton_motility", "adhesion_ECM",
+                           "immune_inflammation", "development_differentiation", "angiogenesis_vascular",
+                           "stress_response", "unknown"]
 
 
-class InteractionSummary(BaseModel):
-    papers: list[InteractionPaper]
-    best_relationship: Relationship = Field(description="Most direct relationship supported across the papers ('none' if no paper supports one).")
-    summary: str = Field(description="2-3 sentences on how the two genes are related, from these papers only.")
-    evidence_in_cell_type: bool = Field(description="True if a supporting paper is in the target cell type or a closely related one.")
-    consistent_with_perturbation: Literal["yes", "no", "unclear"] = Field(description="Does the literature direction agree with the observed knockdown effect on the gene's program?")
+class GeneFunctionPaper(ExperimentalContext):
+    claim: str = Field(description="One sentence: what this paper shows the gene does.")
+    function_role: str = Field(description="One sentence: the gene's molecular / cellular role in this paper (e.g. 'kinase phosphorylating SMAD2 downstream of TGF-beta').")
 
 
-INTERACTION_SYSTEM = f"""You are a molecular biologist curating gene-gene interaction evidence for a CRISPR perturbation screen.
-A regulator was knocked down and a program containing the gene changed. For each paper you receive, classify how
-the two genes are related, in which direction, by what mechanism, and in which experimental context.
-Prefer the most direct relationship the paper actually shows.
+class GeneFunctionSummary(BaseModel):
+    papers: list[GeneFunctionPaper]
+    categories: list[FunctionCategory] = Field(description="1-3 function categories supported by these papers, most supported first; ['unknown'] if none.")
+    primary_category: FunctionCategory = Field(description="The single best-supported category (first of categories).")
+    function_summary: str = Field(description="2-3 sentences: the gene's function from these papers only, noting the target cell type when studied.")
+    evidence_in_cell_type: bool = Field(description="True if at least one paper studies the gene in the target cell type or a closely related one.")
+
+
+GENE_FUNCTION_SYSTEM = f"""You are a molecular biologist categorizing gene function for a CRISPR perturbation screen.
+For each paper you receive, extract what it shows the gene does and the experimental context; then assign the gene
+1-3 function categories that these papers support (use 'unknown' only when they support none).
 {PAPER_RULES}"""
 
 
-def Summarize_Interaction_Agent(gene, regulator, gene_desc, regulator_desc, papers, cell_type, regulator_stats,
-                                handler, effort="medium", max_tokens=16000):
-    """Relationship / direction / mechanism / stance for the papers found for a regulator-gene pair.
+def Summarize_GeneFunction_Agent(gene, gene_desc, papers, cell_type, handler, effort="medium", max_tokens=16000):
+    """Per-paper claim / role / context and gene-level function categories for a gene's PubMed papers.
 
     Args:
-        gene (str): Program gene symbol.
-        regulator (str): Perturbed regulator symbol.
-        gene_desc, regulator_desc (str): src.describe_gene text of each.
+        gene (str): Gene symbol.
+        gene_desc (str): Names/aliases and database function text (src.describe_gene).
         papers (list[dict]): {pmid, title, year, journal, study_type, abstract, fulltext}.
-        cell_type (str): The screen's cell type.
-        regulator_stats (dict): {condition: {log2fc, adj_pval}} of the regulator on the program.
+        cell_type (str): The screen's cell type ("same_cell_type" is judged against it).
         handler: api/LLM_interface.claude_api.
 
     Returns:
-        dict | None: InteractionSummary as a dict, or None when the call failed.
+        dict | None: GeneFunctionSummary as a dict, or None when the call failed.
     """
-    effect = "; ".join(f"{c}: log2FC={s.get('log2fc')}, adj_p={s.get('adj_pval')}"
-                       for c, s in (regulator_stats or {}).items()) or "not given"
-    prompt = (f"Program gene:\n{gene_desc}\n\nPerturbed regulator:\n{regulator_desc}\n\n"
-              f"Knockdown effect of {regulator} on the program containing {gene}: {effect}\n"
-              f"Target cell type: {cell_type or 'unspecified'}\n\n" + _format_papers(papers))
-    return _ask(handler, INTERACTION_SYSTEM, prompt, InteractionSummary, effort, max_tokens)
+    prompt = (f"Gene:\n{gene_desc}\n\nTarget cell type: {cell_type or 'unspecified'}\n\n" + _format_papers(papers))
+    return _ask(handler, GENE_FUNCTION_SYSTEM, prompt, GeneFunctionSummary, effort, max_tokens)
 
 
-# literature_plan queries (papers found for one hypothesis)
-class HypothesisPaper(ExperimentalContext):
-    stance: Literal["supports", "contradicts", "mixed", "context_only"] = Field(description="The paper's stance on the hypothesis.")
-    finding: str = Field(description="One sentence: what the paper shows that bears on the hypothesis.")
-    genes_mentioned: list[str] = Field(description="Genes of the hypothesis that the paper studies.")
+# run_literature_search.py agent output (papers found, read and summarized for one search task)
+class PaperSummary(ExperimentalContext):
+    pmid: Optional[str] = Field(description="PMID exactly as a search tool returned it; null if none.")
+    title: str
+    doi: Optional[str] = Field(description="DOI as a search tool returned it; null if none.")
+    url: Optional[str]
+    pdf_file: Optional[str] = Field(description="File name of the downloaded PDF (as listed by read_pdf); null if no PDF.")
+    read_from: Literal["fulltext", "abstract"] = Field(description="fulltext if you read the PDF with read_pdf, else abstract.")
+    summary: str = Field(description="2-4 sentences: genes studied, what they were shown to do, and how (assay, model).")
+    finding: str = Field(description="One sentence: what the paper shows that bears on the search goal.")
+    stance: Literal["supports", "contradicts", "mixed", "context_only"] = Field(description="The paper's stance on the hypothesis / goal.")
+    genes_mentioned: list[str] = Field(description="Genes from the task that the paper studies.")
 
 
-class HypothesisSummary(BaseModel):
-    papers: list[HypothesisPaper]
-    verdict: Literal["supported", "contradicted", "mixed", "insufficient"]
-    summary: str = Field(description="2-3 sentences weighing the evidence, from these papers only.")
+class WebHit(BaseModel):
+    title: str
+    url: str
+    snippet: Optional[str]
+
+
+class LiteratureSearchResult(BaseModel):
+    queries: list[str] = Field(description="Every query you ran, in order.")
+    rung_reached: Optional[int] = Field(description="plan mode: 1-based ladder rung that first returned relevant papers; null otherwise.")
+    papers: list[PaperSummary]
+    web_hits: list[WebHit]
+    summary: str = Field(description="3-5 sentences weighing what these papers establish for the search goal, from these papers only.")
     open_questions: list[str] = Field(description="Gaps the papers leave open that a follow-up search could target.")
-
-
-QUERY_SYSTEM = f"""You are a molecular biologist weighing literature evidence for one hypothesis about a gene program
-from a CRISPR perturbation screen. For each paper you receive, judge whether it supports or contradicts the hypothesis
-and record its experimental context. Contradicting evidence counts as much as supporting evidence; papers that only
-give background are context_only. Give the verdict 'insufficient' when no paper tests the hypothesis directly.
-{PAPER_RULES}"""
-
-
-def Summarize_Query_Agent(query, papers, gene_descs, cell_type, handler, effort="medium", max_tokens=16000):
-    """Stance / finding / context per paper and an overall verdict for one literature_plan query.
-
-    Args:
-        query (dict): A literature_plan query (llm_query_agent.py): hypothesis, question_type, genes.
-        papers (list[dict]): {pmid, title, year, journal, study_type, abstract, fulltext}.
-        gene_descs (dict): {gene: src.describe_gene text} for the query's genes.
-        cell_type (str): The screen's cell type.
-        handler: api/LLM_interface.claude_api.
-
-    Returns:
-        dict | None: HypothesisSummary as a dict, or None when the call failed.
-    """
-    genes = "\n".join(gene_descs.get(g, f"- {g}") for g in query.get("genes", []))
-    prompt = (f"Hypothesis ({query.get('question_type')}): {query['hypothesis']}\n\nGenes:\n{genes}\n\n"
-              f"Target cell type: {cell_type or 'unspecified'}\n\n" + _format_papers(papers))
-    return _ask(handler, QUERY_SYSTEM, prompt, HypothesisSummary, effort, max_tokens)
+    notes: str

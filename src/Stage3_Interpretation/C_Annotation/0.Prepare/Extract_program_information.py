@@ -199,6 +199,13 @@ def build_research_brief(label, organism, cell_type, conditions, has_regulators,
         "",
         f"You are a {role}. Determine the shared biological function of this program's genes.",
         "",
+        "A gene program is a set of genes whose expression co-varies across cells. Co-variation has many \
+        possible causes and only some of them are pathways. So you work in two passes: first rule out \
+        the confounders that masquerade as biology, then read the remaining biology in layers — what \
+        triggers the program, what makes these particular genes move together, and what the cells end \
+        up doing. Those layers are usually all true at once; do not choose between them. Then give one \
+        plain, evidence-anchored label that reconciles them.",
+        "",
         f"Research the genes in `program_genes` and `distinctive_genes`{reg_clause}, guided by "
         "the enriched GO terms listed in `GO`. Land on 1-3 coherent functional themes, each "
         "supported by several genes and specific retrieved papers.",
@@ -284,7 +291,7 @@ def build_parser():
 
     # context info
     p.add_argument("--programs", type=int, nargs="+", help="Program ids, space separated (e.g. 1 2 3). Default: all.")
-    p.add_argument("--cell_type", default="", help="Cell type, e.g. 'teloHAEC aortic endothelial cell'.")
+    p.add_argument("--cell_type", default="", help="Cell type, e.g. 'aortic endothelial cell'.")
     p.add_argument("--organism", default="human")
 
     # select top items of the program

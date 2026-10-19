@@ -7,7 +7,7 @@ plus either the bundle's research_brief or --question, and returns:
 
   queries             one per hypothesis, each with a specificity ladder of PubMed-syntax and
                       plain-text queries (run by run_literature_search.py --mode plan)
-  curation_questions  the questions 2.Evidence_curation puts to paper-qa over the PDFs found
+  curation_questions  questions to put to paper-qa over the PDFs found (2.Evidence_curation/query_paper.py)
 
 Stored in '<out_dir>/P<k>.json' -> literature_plan[<plan_name>] (other plans kept) + meta_QueryAgent.json.
 

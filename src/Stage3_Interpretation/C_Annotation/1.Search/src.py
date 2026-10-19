@@ -1,4 +1,4 @@
-"""Shared helpers for the literature scripts (search_generif.py, llm_query_agent.py,
+"""Shared helpers for the literature scripts (search_generif.py, search_gene_function.py, llm_query_agent.py,
 run_literature_search.py).
 
 Every step reads the 1.0.Search_database output ('Gene_info_extended_PerturbNMF_Info/P<k>.json')
@@ -74,6 +74,12 @@ def make_handler(model):
     if not key:
         raise SystemExit("ANTHROPIC_API_KEY not set (export it or add it to AGeneTic/.env)")
     return claude_api(api_key=key, model=model)
+
+
+def pair_key(gene_a, gene_b):
+    """Order-independent folder key for a gene pair, e.g. ('SMAD2','ACVR2B') -> 'ACVR2B__SMAD2'."""
+    a, b = sorted([gene_a.strip().upper(), gene_b.strip().upper()])
+    return f"{a}__{b}"
 
 
 # genes

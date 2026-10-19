@@ -6,4 +6,4 @@ qa:
   embedding: "text-embedding-3-small"
   temperature: 0.0
   max_concurrent_requests: 1
-  evidence_k: 5
+  evidence_k: 10
