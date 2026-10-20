@@ -141,6 +141,7 @@ python3 "${PIPELINE_ROOT}/src/Stage1_Inference/torch-cNMF/Slurm_Version/torch_cn
         #--minibatch_shuffle
         #--no-minibatch_rescale
         #--minibatch_patience 0   # 0 = original stopping rule (default 10)
+        #--no-minibatch_persistent_stats   # original per-epoch A/B reset (default: persistent)
         #--fp_precision "float"
         #--sk_cd_refit
         #--sel_threshs 2.0

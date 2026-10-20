@@ -110,6 +110,11 @@ def main():
                         help="Epochs without a new best loss before stopping in minibatch/dataloader mode; the loss is "
                              "checked every epoch and W/H are restored to the best epoch (default: 10). "
                              "0 = original rule: loss every 10 epochs, stop on the first increase.")
+    parser.add_argument('--minibatch_persistent_stats', action=argparse.BooleanOptionalAction, default=True,
+                        help="Keep the spectra sufficient statistics (HᵀH, HᵀX) over all cells across epochs in "
+                             "minibatch/dataloader HALS, so the solver reaches the batch-HALS fixed point "
+                             "(default: on; --no-minibatch_persistent_stats for the original per-epoch reset, "
+                             "which biases spectra toward the first mini-batches).")
 
     # Precision
     parser.add_argument('--fp_precision', type=str, default='float',
@@ -277,6 +282,7 @@ def main():
         minibatch_shuffle=args.minibatch_shuffle,
         minibatch_rescale=args.minibatch_rescale,
         minibatch_patience=args.minibatch_patience,
+        minibatch_persistent_stats=args.minibatch_persistent_stats,
         sk_cd_refit=args.sk_cd_refit,
         nmf_seeds=nmf_seeds,
     )

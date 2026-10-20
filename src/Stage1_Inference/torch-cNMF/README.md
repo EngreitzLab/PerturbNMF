@@ -65,6 +65,7 @@
 | minibatch_shuffle | flag | False | Enable shuffling of samples across mini-batches each epoch |
 | minibatch_rescale | flag | True | Rescale spectra rows to unit norm after each epoch (minibatch/dataloader HALS), preventing float32 overflow; `--no-minibatch_rescale` turns it off. Ignored when regularization is on |
 | minibatch_patience | int | 10 | Epochs without a new best loss before stopping (minibatch/dataloader HALS); loss is checked every epoch and W/H restored to the best epoch. 0 = original rule (stop on first increase) |
+| minibatch_persistent_stats | flag | True | Keep the spectra sufficient statistics (HᵀH, HᵀX) over all cells across epochs (minibatch/dataloader HALS), so the result matches batch HALS; `--no-minibatch_persistent_stats` restores the original per-epoch reset |
 
 ## Refit Parameters
 
