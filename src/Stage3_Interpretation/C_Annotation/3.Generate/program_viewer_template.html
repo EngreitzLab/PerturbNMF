@@ -114,7 +114,23 @@ ol.go { margin: 4px 0 0; padding-left: 22px; }
 .motif-table td { vertical-align: middle; padding: 2px 8px; }
 .motif-table td.num { white-space: nowrap; }
 svg.logo { display: block; background: #fff; border-radius: 3px; }
+.gtool { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.gtool button { border: 1px solid var(--border); background: var(--surface); color: var(--text-soft);
+  border-radius: 8px; padding: 3px 9px; cursor: pointer; font: inherit; font-size: 12.5px; }
+.gtool button:hover { background: var(--surface-soft); }
+.gtool .gcount { margin-left: auto; }
+.gwrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; }
+.gbox { position: relative; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+#cy { width: 100%; height: 520px; }
+.gempty { position: absolute; inset: auto 0 14px 0; text-align: center; font-size: 12px; color: var(--muted); pointer-events: none; }
+.ginfo { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; height: 522px; overflow-y: auto; font-size: 12.5px; }
+.ginfo h4 { margin: 0 0 2px; font-family: var(--mono); font-size: 15px; }
+.ginfo .inter { border-top: 1px solid var(--border); padding: 6px 0; }
+.sw.line { height: 0; border-radius: 0; border-top: 3px solid; }
+.sw.line.dash { border-top-style: dashed; }
+@media (max-width: 1100px) { .gwrap { grid-template-columns: 1fr; } .ginfo { height: auto; max-height: 360px; } }
 </style>
+__CYTOSCAPE_TAG__
 </head>
 <body>
 <div class="top">
@@ -485,6 +501,145 @@ function screenCard(p) {
     <p class="small muted">Gene families and marker sets enriched among the top ${s.n_top} genes, against this run's gene universe; chromosome holding more top genes than expected (binomial test).</p></div>`;
 }
 
+// ---- regulator-gene interactions ----------------------------------------------------------
+// Cytoscape.js graph of the top regulators x top / unique genes; edges and their records come from html_report.py
+let cy = null, showUnlinked = false;
+const EDGE_VAR = {activation: "--good", inhibition: "--critical", mixed: "--muted", literature: "--warning"};
+const NET_HINT = `<p class="muted">Hover a node or an edge for a summary; click it for the interactions and their references. Drag nodes to rearrange; scroll to zoom.</p>`;
+const pmidLinks = ids => (ids || []).map(x => `<a href="https://pubmed.ncbi.nlm.nih.gov/${esc(x)}/" target="_blank" rel="noopener">${esc(x)}</a>`).join(", ");
+const words = s => esc(String(s ?? "").replace(/_/g, " "));
+
+function networkCard(p) {
+  const n = p.network;
+  if (!n) return "";
+  const nReg = n.nodes.filter(x => x.kind === "regulator").length;
+  const sw = (v, label, dash) => `<span><span class="sw line${dash ? " dash" : ""}" style="border-color:var(${v})"></span>${label}</span>`;
+  const empty = !n.edges.length ? `<div class="gempty">${n.has_omnipath ? "No interaction found between these regulators and genes." : "No OmniPath results for this program (run search_OmniPath.py)."}</div>` : "";
+  return `<div class="card"><h3>Regulator–gene interactions</h3>
+    <div class="gtool"><button onclick="layoutNetwork(true)">Re-layout</button><button onclick="cy && cy.fit(cy.elements(':visible'), 40)">Fit</button>
+      <button onclick="showUnlinked=!showUnlinked;render(currentId,true)">${showUnlinked ? "Hide" : "Show"} genes without interactions</button>
+      <button onclick="networkPNG()">PNG</button>
+      <span class="gcount small muted">${n.edges.length} interaction${n.edges.length === 1 ? "" : "s"} · ${nReg} regulators · ${n.nodes.length - nReg} genes${n.has_omnipath ? ` · ${n.n_found} of ${n.n_tested} OmniPath pairs found` : ""}</span></div>
+    <div class="legend"><span><span class="sw" style="border-radius:50%;background:var(--div-neg)"></span>regulator, −log2FC (activator)</span>
+      <span><span class="sw" style="border-radius:50%;background:var(--div-pos)"></span>regulator, +log2FC (repressor)</span>
+      <span><span class="sw" style="background:var(--accent)"></span>top gene (darker = higher loading)</span>
+      <span><span class="sw" style="background:var(--surface-soft);border:1.5px dashed var(--text-soft)"></span>unique gene</span>
+      ${sw("--good", "activation")}${sw("--critical", "inhibition")}${sw("--muted", "mixed / unknown sign")}${n.has_literature ? sw("--warning", "literature (paper-qa)", true) : ""}</div>
+    <div class="gwrap"><div class="gbox"><div id="cy"></div>${empty}</div><div class="ginfo" id="ginfo">${NET_HINT}</div></div>
+    <p class="small muted" style="margin:8px 0 0">The top ${nReg} regulators shown above × the top and unique genes. Every edge is an interaction found between a regulator and a gene: OmniPath (search_OmniPath.py; arrow = direction, width = number of references)${n.has_literature ? "; dashed = paper-qa relation from the downloaded literature" : ""}. Pairs without an edge were not found. A database interaction does not show that the regulator acts on the program in these cells.</p></div>`;
+}
+
+function networkElements(p) {
+  const n = p.network, text = cssVar("--text");
+  const regs = n.nodes.filter(x => x.kind === "regulator");
+  const scale = Math.max(...regs.map(r => Math.abs(r.log2fc || 0)), 1e-9);
+  const nTop = n.nodes.filter(x => x.kind === "gene").length;
+  const nodes = n.nodes.map(x => {
+    const d = {...x, w: Math.round(x.label.length * (x.kind === "regulator" ? 8.2 : 7.4) + (x.kind === "regulator" ? 30 : 16)), ink: text};
+    if (x.kind === "regulator") {
+      d.fill = divColor(x.log2fc || 0, scale);
+      if (Math.abs(x.log2fc || 0) / scale > 0.55) d.ink = "#ffffff";
+    } else if (x.kind === "gene") {
+      d.fill = mix(cssVar("--surface-soft"), cssVar("--accent"), 0.1 + 0.45 * (1 - (x.rank - 1) / Math.max(nTop - 1, 1)));
+    } else d.fill = cssVar("--surface-soft");
+    return {group: "nodes", data: d};
+  });
+  const edges = n.edges.map(e => ({group: "edges", data: {...e, col: cssVar(EDGE_VAR[e.sign] || "--muted")}}));
+  return [...nodes, ...edges];
+}
+
+function drawNetwork(p) {
+  const box = document.getElementById("cy");
+  if (!box || !p.network) return;
+  if (typeof cytoscape === "undefined") { box.innerHTML = `<p class="muted" style="padding:40px;text-align:center">Cytoscape.js is missing from this file.</p>`; return; }
+  const text = cssVar("--text"), soft = cssVar("--text-soft");
+  cy = cytoscape({container: box, elements: networkElements(p), minZoom: 0.3, maxZoom: 3, layout: {name: "preset"}, style: [
+    {selector: "node", style: {label: "data(label)", shape: "round-rectangle", width: "data(w)", height: 24,
+      "background-color": "data(fill)", color: "data(ink)", "border-width": 1.5, "border-color": soft,
+      "font-size": 11.5, "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace", "font-weight": 600,
+      "text-valign": "center", "text-halign": "center"}},
+    {selector: "node[kind = 'regulator']", style: {shape: "ellipse", height: 34, "border-width": 2.5, "border-color": text, "font-weight": 800}},
+    {selector: "node[kind = 'distinctive']", style: {"border-style": "dashed"}},
+    {selector: "edge", style: {"curve-style": "bezier", width: "data(width)", "line-color": "data(col)", "line-style": "data(lstyle)",
+      "target-arrow-shape": "data(tarrow)", "source-arrow-shape": "data(sarrow)", "target-arrow-color": "data(col)",
+      "source-arrow-color": "data(col)", "arrow-scale": 1.1, opacity: 0.85}},
+    {selector: "node:selected", style: {"overlay-color": cssVar("--accent"), "overlay-opacity": 0.2, "overlay-padding": 6}},
+    {selector: "edge:selected", style: {width: 5, opacity: 1, "z-index": 99}},
+    {selector: ".faded", style: {opacity: 0.12}},
+    {selector: ".hidden", style: {display: "none"}},
+  ]});
+  cy.nodes().forEach(nd => nd.toggleClass("hidden", !showUnlinked && nd.data("kind") !== "regulator" && !nd.connectedEdges().length));
+  layoutNetwork(false);
+
+  const showTip = (s, ev) => { tip.textContent = s; tip.style.opacity = 1; moveTip(ev); };
+  const moveTip = ev => { const o = ev.originalEvent; if (!o) return;
+    tip.style.left = Math.min(o.clientX + 12, window.innerWidth - 330) + "px"; tip.style.top = (o.clientY + 14) + "px"; };
+  cy.on("mouseover", "node", ev => { const d = ev.target.data(), name = (p.genes[d.label] || {}).name;
+    showTip(`${d.label}${name ? ": " + name : ""} — ` + (d.kind === "regulator" ? `regulator, log2FC ${signed(d.log2fc)}, adj p ${d.adj_p} (${d.condition})`
+      : `${d.kind === "gene" ? "top gene" : "unique gene"} #${d.rank}`) + ` · ${ev.target.connectedEdges().length} interaction(s)`, ev); });
+  cy.on("mouseover", "edge", ev => { const e = ev.target.data();
+    showTip(`${e.regulator} – ${e.gene}: ` + (e.kind === "literature" ? `literature, ${String(e.category).replace(/_/g, " ")}`
+      : `${e.sign}, ${(e.categories || []).map(c => String(c).replace(/_/g, " ")).join(", ")}, ${e.n_references} reference(s)`), ev); });
+  cy.on("mousemove", "node, edge", moveTip);
+  cy.on("mouseout", "node, edge", () => { tip.style.opacity = 0; });
+  cy.on("tap", "node", ev => { const nd = ev.target;
+    cy.elements().removeClass("faded");
+    if (nd.connectedEdges().length) cy.elements().not(nd.closedNeighborhood()).addClass("faded");
+    document.getElementById("ginfo").innerHTML = nodeInfo(p, nd); });
+  cy.on("tap", "edge", ev => { const e = ev.target;
+    cy.elements().removeClass("faded"); cy.elements().not(e.union(e.connectedNodes())).addClass("faded");
+    document.getElementById("ginfo").innerHTML = edgeInfo(e.data()); });
+  cy.on("tap", ev => { if (ev.target === cy) { cy.elements().removeClass("faded"); document.getElementById("ginfo").innerHTML = NET_HINT; } });
+}
+
+function layoutNetwork(animate) {
+  if (!cy) return;
+  // regulators on an inner ring, genes on an outer ring; cose then relaxes from there
+  const vis = cy.nodes(":visible"), regs = vis.filter("[kind = 'regulator']"), genes = vis.not(regs);
+  regs.forEach((nd, i) => { const a = 2 * Math.PI * i / Math.max(regs.length, 1); nd.position({x: 90 * Math.cos(a), y: 90 * Math.sin(a)}); });
+  genes.forEach((nd, i) => { const a = 2 * Math.PI * i / Math.max(genes.length, 1); nd.position({x: 300 * Math.cos(a), y: 220 * Math.sin(a)}); });
+  cy.elements(":visible").layout({name: "cose", animate: !!animate, animationDuration: 450, randomize: false, padding: 40,
+    nodeRepulsion: () => 9000, idealEdgeLength: () => 110, gravity: 0.35, fit: true}).run();
+}
+
+function nodeInfo(p, nd) {
+  const d = nd.data(), name = (p.genes[d.label] || {}).name;
+  const role = d.kind === "regulator" ? `Regulator${d.in_program ? " (also a shown gene)" : ""} · log2FC ${signed(d.log2fc)} · adj p ${esc(d.adj_p)} · ${esc(d.condition)}`
+    : `${d.kind === "gene" ? "Top gene" : "Unique gene"} #${d.rank}`;
+  const rows = nd.connectedEdges().map(e => { const x = e.data(), other = x.regulator === d.label ? x.gene : x.regulator;
+    return `<div class="inter"><b class="chip">${esc(other)}</b> <span style="color:${x.col}">${words(x.kind === "literature" ? "literature: " + x.category : x.sign)}</span>
+      ${x.kind === "omnipath" ? `<span class="muted"> · ${(x.categories || []).map(words).join(", ")} · ${x.n_references} ref.</span>` : ""}</div>`; }).join("");
+  return `<h4><a href="${esc(geneHref(p, d.label))}" target="_blank" rel="noopener">${esc(d.label)}</a></h4>
+    ${name ? `<div class="muted">${esc(name)}</div>` : ""}<p style="margin:4px 0 8px">${role}</p>
+    ${rows || `<p class="muted">No interaction with the shown ${d.kind === "regulator" ? "genes" : "regulators"}.</p>`}`;
+}
+
+function edgeInfo(e) {
+  const head = `<h4>${esc(e.regulator)} – ${esc(e.gene)}</h4>`;
+  if (e.kind === "literature") {
+    const c = e.citation || {}, href = c.url || (c.doi ? `https://doi.org/${c.doi}` : "");
+    return `${head}<p class="muted" style="margin:2px 0 8px">Literature (paper-qa over ${esc(e.n_pdfs)} PDF${e.n_pdfs === 1 ? "" : "s"}) · ${words(e.category)}</p>
+      ${e.short_excerpt ? `<p style="font-style:italic">${esc(e.short_excerpt)}</p>` : ""}
+      ${c.title ? `<p>${href ? `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(c.title)}</a>` : esc(c.title)}${c.year ? ` (${esc(c.year)})` : ""}</p>` : ""}
+      ${(c.pmids || []).length ? `<p>PMID ${pmidLinks(c.pmids)}</p>` : ""}`;
+  }
+  const inter = (e.interactions || []).map(i => `<div class="inter"><b>${esc(i.source)} → ${esc(i.target)}</b>
+      <span style="color:${cssVar(EDGE_VAR[i.sign] || "--muted")}">${words(i.sign)}</span> · ${words(i.type)}
+      ${(i.mechanisms || []).length ? `<div>mechanism: ${i.mechanisms.map(esc).join(", ")}</div>` : ""}
+      <div class="muted">${words(i.direction)} · curation effort ${esc(i.curation_effort)}${(i.dorothea_level || []).length ? ` · DoRothEA ${i.dorothea_level.map(esc).join("")}` : ""}</div>
+      <div class="muted">${(i.resources || []).map(esc).join(", ")}</div>
+      ${(i.pmids || []).length ? `<div>PMID ${pmidLinks(i.pmids)}</div>` : ""}</div>`).join("");
+  return `${head}<p class="muted" style="margin:2px 0 6px">OmniPath · ${words(e.sign)} · ${(e.directions || []).map(words).join(", ")} · ${e.n_references} reference${e.n_references === 1 ? "" : "s"} · ${(e.resources || []).length} resources</p>${inter}`;
+}
+
+function networkPNG() {
+  if (!cy) return;
+  const a = document.createElement("a");
+  a.href = cy.png({full: true, scale: 2, bg: cssVar("--surface")});
+  a.download = `P${currentId}_regulator_gene_interactions.png`;
+  a.click();
+}
+
 // ---- page ---------------------------------------------------------------------------------
 function render(id, keepScroll) {
   const p = PROGRAMS[id]; if (!p) return;
@@ -495,6 +650,7 @@ function render(id, keepScroll) {
   history.replaceState(null, "", "#program-" + id);
   if (!keepScroll) window.scrollTo(0, 0);
   const wasOpen = keepScroll ? [...document.querySelectorAll("#main details")].map(x => x.open) : null;
+  if (cy) { cy.destroy(); cy = null; }
   const d = p.drivers, hits = new Set(d ? d.driving.map(g => g.gene) : []);
   const supported = d ? d.driving.length : 0, searched = d ? d.n_searched : 0;
   const topN = META.membership_top ? `top ${META.membership_top} ` : "";
@@ -517,12 +673,14 @@ function render(id, keepScroll) {
       <details style="margin-top:8px"><summary class="small" style="cursor:pointer">Table view — ${DAYS.length > 1 ? "log2FC of every significant regulator in every condition" : "significant regulators"}</summary>${regulatorGrid(p)}</details>` : ""}
       <details style="margin-top:8px"><summary class="small" style="cursor:pointer">List view — top regulators given to the annotator</summary>
       <p class="small muted" style="margin:4px 0">Program usage log2FC on CRISPRi knockdown; best adj p over conditions</p>${regulatorTable(p)}</details></div>
+    ${networkCard(p)}
     ${driversCard(p)}
     ${motifCard(p)}
     ${interpretationCards(p)}
     ${screenCard(p)}
     <p class="small muted">Built ${esc(META.built)} · name and summary by ${esc(p.label_model)}${d ? ` · driving genes: paper-qa evidence, verdicts by ${esc(d.judge_model)}` : ""} · source ${esc(p.source)}</p>`;
   if (wasOpen) document.querySelectorAll("#main details").forEach((x, i) => { if (i < wasOpen.length) x.open = wasOpen[i]; });
+  drawNetwork(p);
 }
 
 function prev() { const i = IDS.indexOf(currentId); if (i > 0) render(IDS[i-1]); }
@@ -532,7 +690,8 @@ document.addEventListener("keydown", e => { if (/input|textarea/i.test(e.target.
 
 // hover tooltips for chart marks and genes
 const tip = document.getElementById("tip");
-document.addEventListener("mousemove", e => { const t = e.target.closest("[data-tip]");
+document.addEventListener("mousemove", e => { if (e.target.closest("#cy")) return;   // the graph sets its own tips
+  const t = e.target.closest("[data-tip]");
   if (!t) { tip.style.opacity = 0; return; }
   tip.textContent = t.dataset.tip; tip.style.opacity = 1;
   tip.style.left = Math.min(e.clientX + 12, window.innerWidth - 330) + "px"; tip.style.top = (e.clientY + 14) + "px"; });

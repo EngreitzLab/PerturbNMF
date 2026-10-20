@@ -10,7 +10,10 @@ Per program, in page order: the name and one-sentence function; program activity
 when 2.Evidence_curation/query_driver_gene.py has run for the current label (verdict, why, supporting
 papers, other literature searched); significant regulators (an
 inline SVG volcano per condition and a regulator x condition log2FC table, with --perturbation_path_base;
-then the top regulators given to the annotator); TF motif enrichment (with --motif_enrichment_path: per
+then the top regulators given to the annotator); regulator-gene interactions (an interactive Cytoscape.js graph,
+inlined, of the top regulators x top and unique genes; edges = every OmniPath interaction found between them by
+search_OmniPath.py, plus paper-qa literature relations, read from the bundle's gene_interactions block or, when
+it has none, from --interaction_dir); TF motif enrichment (with --motif_enrichment_path: per
 element type and motif source, the top significant motif families with logos and candidate TFs, selected
 by motif_selection.py); confounder rule-outs, layered interpretation and modules when
 program_interpretation.py has run for the current label; top GO terms; the pre-annotation screen when
@@ -29,7 +32,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from html_report import _js_safe, gene_card, gene_entries, gene_name, load_bundles, select_regulators  # noqa: E402
+from html_report import (CYTOSCAPE_PATH, _js_safe, gene_card, gene_entries, gene_name, literature_edge,  # noqa: E402
+                         load_bundles, omnipath_edge, select_regulators)
 from program_site import (CELL_TYPE_TEXT, PUBMED, driver_block, driver_records, family_name,  # noqa: E402
                           gene_paper_meta, load_labels, other_paper_records, paper_records)
 
@@ -148,6 +152,51 @@ def regulator_plots(pid, tables, names, index, args):
     return volcano, rows
 
 
+def attach_interactions(bundles, interaction_dir):
+    """Copy gene_interactions from '<interaction_dir>/P<k>.json' into the bundles that have none (the search_OmniPath.py
+    output folder can differ from --info_dir). Returns the programs still without one."""
+    missing = []
+    for pid, bundle in bundles.items():
+        if bundle.get("gene_interactions"):
+            continue
+        path = Path(interaction_dir) / f"P{pid}.json"
+        gi = json.loads(path.read_text()).get("gene_interactions") if path.exists() else None
+        if gi:
+            bundle["gene_interactions"] = gi
+        else:
+            missing.append(f"P{pid}")
+    return missing
+
+
+def interaction_network(bundle, regs, genes, uniq):
+    """Nodes = the shown top regulators, top genes and unique genes; edges = every found OmniPath pair and paper-qa
+    relation between a regulator and one of these genes (html_report's edge records). None without gene_interactions."""
+    gi = bundle.get("gene_interactions") or {}
+    omnipath, literature = gi.get("OmniPath"), gi.get("Literature")
+    if not omnipath and not literature:
+        return None
+    reg_names = [r["gene"] for r in regs]
+    kind = {g: "gene" for g in genes}
+    for g in uniq:
+        kind.setdefault(g, "distinctive")
+    nodes = [{"id": f"n_{r['gene']}", "label": r["gene"], "kind": "regulator", "log2fc": r["log2fc"],
+              "adj_p": "" if r.get("adj_pval") is None else f"{r['adj_pval']:.2g}", "condition": r["condition"],
+              "in_program": r["gene"] in kind} for r in regs]
+    for g, k in kind.items():
+        if g not in reg_names:   # a regulator that is also a shown gene is drawn once, as a regulator
+            nodes.append({"id": f"n_{g}", "label": g, "kind": k, "rank": (genes if k == "gene" else uniq).index(g) + 1})
+
+    included = [p for p in ((omnipath or {}).get("pairs") or {}).values()
+                if p["regulator"] in reg_names and p["gene"] in kind]
+    edges = [omnipath_edge(p) for p in included if p["found"]]
+    edges += [literature_edge(p) for p in ((literature or {}).get("pairs") or {}).values()
+              if p.get("source") == "paper-qa" and p.get("category")
+              and p["regulator"] in reg_names and p["gene"] in kind]
+    return {"nodes": nodes, "edges": edges, "has_omnipath": omnipath is not None,
+            "has_literature": literature is not None,
+            "n_tested": len(included), "n_found": sum(p["found"] for p in included)}
+
+
 def program_motifs(pid, motif_tables):
     """motif_selection.select_program_motifs for this program; None without motif tables."""
     if not motif_tables:
@@ -203,6 +252,7 @@ def program_data(pid, bundle, label, args, tables, names, index, motif_tables=No
         "go": [re.sub(r"\s*\(GO:\d+\)", "", t) for t in bundle.get("GO", [])],
         "screen": screen, "drivers": drivers,
         "volcano": volcano, "grid": grid, "n_sig_by_condition": [sum(v["s"]) for v in volcano],
+        "network": interaction_network(bundle, regs, genes, uniq),
         "activity": (bundle.get("program_specificity") or {}).get("per_condition") or {},
         "motifs": program_motifs(pid, motif_tables),
         "interpretation": interpretation,
@@ -218,6 +268,7 @@ def build_parser():
     p.add_argument("--info_dir", required=True, help="Folder of P<k>.json bundles (Literature_info_extended_PerturbNMF_Info recommended).")
     p.add_argument("--label_dir", default=None, help="program_label.py output. Default: <info_dir>/../Program_label.")
     p.add_argument("--interpretation_dir", default=None, help="program_interpretation.py output (confounder rule-outs, layered interpretation, modules); shown when present. Default: <info_dir>/../Program_interpretation.")
+    p.add_argument("--interaction_dir", default=None, help="search_OmniPath.py output folder, read for the programs whose --info_dir bundle has no gene_interactions block; adds the regulator-gene interaction graph. Default: <info_dir>/../Gene_info_extended_PerturbNMF_Info.")
     p.add_argument("--out", default=None, help="Output HTML. Default: <info_dir>/../Report/program_viewer.html.")
 
     # context info
@@ -259,6 +310,12 @@ def main():
     if not labels:
         raise SystemExit("No program has a label; nothing to write.")
 
+    interaction_dir = Path(args.interaction_dir or Path(args.info_dir).resolve().parent / "Gene_info_extended_PerturbNMF_Info")
+    no_net = attach_interactions({pid: bundles[pid] for pid in labels}, interaction_dir)
+    if no_net:
+        print(f"  [warn] no gene_interactions for {no_net} in --info_dir or {interaction_dir} "
+              f"(run search_OmniPath.py); no interaction graph for them")
+
     first = bundles[next(iter(labels))]
     conditions = args.conditions or first.get("conditions") or []
     tables = load_associations(args.perturbation_path_base, conditions, args) if args.perturbation_path_base else {}
@@ -269,7 +326,9 @@ def main():
     names, index, programs = [], {}, {}
     for pid in labels:
         programs[pid] = program_data(pid, bundles[pid], labels[pid], args, tables, names, index, motif_tables)
-        print(f"  P{pid}: {labels[pid]['program_name']}")
+        net = programs[pid]["network"]
+        print(f"  P{pid}: {labels[pid]['program_name']}"
+              + (f" ({len(net['edges'])} regulator-gene interactions)" if net else ""))
 
     counts = {}
     for p in programs.values():
@@ -289,10 +348,18 @@ def main():
     }
     out = Path(args.out or Path(args.info_dir).resolve().parent / "Report" / "program_viewer.html")
     out.parent.mkdir(parents=True, exist_ok=True)
+    cyto = ""
+    if any(p["network"] for p in programs.values()):   # inline Cytoscape.js only when a graph is drawn
+        lib = CYTOSCAPE_PATH.read_text()
+        if "</script" in lib.lower():
+            raise ValueError(f"{CYTOSCAPE_PATH} contains '</script'; cannot inline it")
+        cyto = f"<script>{lib}</script>"
+    # small placeholders first, then the data and library blobs (never re-scanned)
     html = (TEMPLATE_PATH.read_text()
             .replace("__PAGE_TITLE__", args.dataset_name.replace("&", "&amp;").replace("<", "&lt;"))
             .replace("__META_JSON__", _js_safe(json.dumps(meta, separators=(",", ":"))))
             .replace("__PROGRAMS_JSON__", _js_safe(json.dumps(programs, separators=(",", ":")))))
+    html = html.replace("__CYTOSCAPE_TAG__", cyto, 1)
     out.write_text(html)
     print(f"[done] {len(programs)} program(s) -> {out} ({out.stat().st_size / 1e6:.1f} MB)")
     return 0

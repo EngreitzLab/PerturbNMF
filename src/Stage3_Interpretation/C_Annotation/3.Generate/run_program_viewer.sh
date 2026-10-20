@@ -14,7 +14,8 @@
 #   label + function sentence, program activity per condition, top genes + unique genes,
 #   driving genes (when query_driver_gene.py ran for the current label),
 #   significant regulators (inline SVG volcano per condition + log2FC table with --perturbation_path_base;
-#   top regulators given to the annotator), TF motif enrichment (with --motif_enrichment_path: Stage 2
+#   top regulators given to the annotator), regulator-gene interaction graph (OmniPath pairs found by
+#   Scripts/run_OmniPath.sh between the top regulators and the top / unique genes), TF motif enrichment (with --motif_enrichment_path: Stage 2
 #   run_motif_enrichment.py outputs; families, logos, candidate TFs), confounder rule-outs, layered
 #   interpretation and modules (when run_program_interpretation.sh ran), top GO terms, pre-annotation screen
 #   (when 0.Prepare/build_confounder_screens.py ran).
@@ -34,6 +35,7 @@ python $SCRIPT_DIR/program_viewer.py \
   --info_dir $RESULT/Interpretation/AGeneTic_test/Literature_info_extended_PerturbNMF_Info \
   --label_dir $RESULT/Interpretation/AGeneTic_test/Program_label \
   --interpretation_dir $RESULT/Interpretation/AGeneTic_test/Program_interpretation \
+  --interaction_dir $RESULT/Interpretation/AGeneTic_test/Gene_info_extended_PerturbNMF_Info \
   --out $RESULT/Interpretation/AGeneTic_test/Report/program_viewer.html \
   --dataset_name "<dataset name>" \
   --top_gene 15 \
