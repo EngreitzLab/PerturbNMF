@@ -58,6 +58,9 @@ def main():
     parser.add_argument('--guide_assignment_key', help='Key in .obsm to access guide assignment matrix (default: guide_assignment)', type=str, default="guide_assignment")
     parser.add_argument('--organism', help='Organism/species for analysis (default: human)', type=str, default="human")
     parser.add_argument('--FDR_method', help='Method for FDR correction in real perturbation tests (default: StoreyQ)', type=str, default="StoreyQ")
+    parser.add_argument('--reference_mode', help="Reference cells for the real and fake U-tests: 'ntc_only' = cells whose guides are all control guides, 'complement' = all other cells. Each target's own cells are always removed from its reference (default: complement)", type=str, choices=['ntc_only', 'complement'], default="complement")
+    parser.add_argument('--balanced', help="If set, subsample each target's reference cells to the target's cell count in the real and fake U-tests (all reference cells are kept if there are fewer)", action="store_true")
+    parser.add_argument('--balanced_seed', help='Random seed for the --balanced reference subsample (default: 0)', type=int, default=0)
 
     # check format
     parser.add_argument('--check_format', help='If set, validate MuData format and check for all necessary keys before running calibration', action="store_true")
@@ -68,6 +71,7 @@ def main():
     parser.add_argument('--compute_real_perturbation_tests', help='If set, compute perturbation association tests on real targeting guides', action="store_true")
     parser.add_argument('--compute_fake_perturbation_tests', help='If set, compute perturbation association tests on fake targeting guides (calibration null distribution)', action="store_true")
     parser.add_argument('--visualizations', help='If set, generate and save QQ plots and violin plots comparing real vs null distributions', action="store_true")
+    parser.add_argument('--qq_per_program', help='With --visualizations, also save a QQ plot with one panel per program (U_test_perturbation_association_qqplot_per_program.png)', action="store_true")
     parser.add_argument('--skip_existing', help='If set, skip per-(K, sel_thresh, sample) computations whose output files already exist. Existing outputs are loaded into the accumulator so visualizations still work. Useful for resuming preempted jobs.', action="store_true")
 
     args = parser.parse_args()
@@ -111,6 +115,9 @@ def main():
             guide_annotation_key=args.guide_annotation_key,
             FDR_method=args.FDR_method,
             skip_existing=args.skip_existing,
+            reference_mode=args.reference_mode,
+            balanced=args.balanced,
+            balanced_seed=args.balanced_seed,
         )
 
     # Compute fake perturbation tests (per-(K, sel_thresh, sample) files saved inside)
@@ -132,6 +139,9 @@ def main():
             number_guide=args.number_guide,
             FDR_method=args.FDR_method,
             skip_existing=args.skip_existing,
+            reference_mode=args.reference_mode,
+            balanced=args.balanced,
+            balanced_seed=args.balanced_seed,
         )
 
     # Load Merge datasets for visualizations
@@ -161,6 +171,7 @@ def main():
 
         plot_qq_comparison(
             test_stats_dfs, out_dir=args.out_dir, run_name=args.run_name, K=args.K, sel_threshs=args.sel_threshs,
+            per_program=args.qq_per_program,
         )
 
     print("\nPipeline finished.")

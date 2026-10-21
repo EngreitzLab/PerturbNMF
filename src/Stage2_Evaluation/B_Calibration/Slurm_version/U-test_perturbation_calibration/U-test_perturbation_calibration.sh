@@ -75,6 +75,10 @@ python3 "${PIPELINE_ROOT}/src/Stage2_Evaluation/B_Calibration/Slurm_version/U-te
         # Reference flags (uncomment + add to the python invocation above to enable):
         #--compute_real_perturbation_tests
         #--visualizations
+        #--qq_per_program
+        #--reference_mode complement   # complement | ntc_only
+        #--balanced                    # subsample reference to target size
+        #--balanced_seed 0
         #--skip_existing
         #--guide_annotation_path "/path/to/guide_metadata.tsv"
         #--reference_gtf_path "/path/to/reference.gtf.gz"

@@ -14,7 +14,8 @@ Steps:
 - `load_real_perturbation_tests`     : reload pre-computed real results
 - `load_fake_perturbation_tests`     : reload pre-computed fake results
 - `plot_calibration_comparison`      : violin plot of -ln(p) real vs null
-- `plot_qq_comparison`               : QQ plot real vs null
+- `plot_qq_comparison`               : QQ plot real vs null (all programs pooled;
+                                       per_program=True adds one panel per program)
 """
 
 import os
@@ -27,7 +28,6 @@ import muon as mu
 
 import seaborn as sns
 from matplotlib import pyplot as plt
-from qmplot import qqplot
 
 # Make the repo `src` root importable so we can reach the Stage2 metrics package
 # regardless of the caller's own sys.path setup.
@@ -92,6 +92,9 @@ def compute_real_perturbation_tests(
     guide_annotation_key=("non-targeting",),
     FDR_method="StoreyQ",
     skip_existing=False,
+    reference_mode="complement",
+    balanced=False,
+    balanced_seed=0,
 ):
     """Compute perturbation association tests on real data.
 
@@ -100,6 +103,12 @@ def compute_real_perturbation_tests(
     `compute_perturbation_association` per (K, sel_thresh, sample) and writes
     `{K}_perturbation_association_results_{sample}.txt` into each Evaluation
     folder.
+
+    reference_mode ('ntc_only' or 'complement') picks the reference cells;
+    each target's own cells are always removed from its reference (see
+    `compute_perturbation_association`).
+    balanced subsamples each target's reference to its cell count
+    (balanced_seed seeds the draw).
     """
 
     # Load guide annotations and extract non-targeting guides or use the name of non-targeting
@@ -181,6 +190,9 @@ def compute_real_perturbation_tests(
                         collapse_targets=True,
                         pseudobulk=False,
                         reference_targets=reference_targets,
+                        reference_mode=reference_mode,
+                        balanced=balanced,
+                        balanced_seed=balanced_seed,
                         FDR_method=FDR_method,
                         n_jobs=-1,
                         inplace=False
@@ -222,12 +234,22 @@ def compute_fake_perturbation_tests(
     number_guide=6,
     FDR_method="StoreyQ",
     skip_existing=False,
+    reference_mode="complement",
+    balanced=False,
+    balanced_seed=0,
 ):
     """Calibrate tests using fake target guides.
 
     For each (K, sel_thresh) and `number_run` iterations, randomly relabels
     `number_guide` non-targeting guides as "targeting" and reruns the U-test,
     writing `{K}_fake_perturbation_association_results_{sample}.txt` per sample.
+
+    The fake test keeps the full guide matrix: the chosen guides are relabeled
+    'targeting', the other control guides 'non-targeting', real-target guides keep
+    their targets, and only 'targeting' is tested (test_targets). The reference
+    therefore follows the same reference_mode rule as the real test:
+    'complement' (all cells without the fake guides) or 'ntc_only' (cells whose
+    guides are all control guides), with the fake target's cells removed.
     """
 
     # read guide annotation file to find non-targeting guide names and targets
@@ -324,14 +346,24 @@ def compute_fake_perturbation_tests(
                         test_stats_fake_dfs.append(samp_df)
                     continue
 
+            # full guide labels for the fake runs: control guides -> 'non-targeting', real guides keep their target
+            all_guide_names = np.asarray(mdata[prog_key].uns[guide_names_key])
+            base_targets = np.asarray(mdata[prog_key].uns[guide_targets_key]).astype(object).copy()
+            is_ntc = np.zeros(base_targets.size, dtype=bool)
+            is_ntc[non_targeting_idx] = True
+            clash = set(base_targets[~is_ntc]) & {'targeting', 'non-targeting'}
+            if clash:
+                raise ValueError(f"Real targets named {sorted(clash)} clash with the fake-test labels "
+                                 f"'targeting' / 'non-targeting'; add them to guide_annotation_key.")
+            base_targets[is_ntc] = 'non-targeting'
+
             test_stats_fake_dfs_temp = []
             for i in range(number_run):
                 print(f"  Running iteration {i+1}/{number_run}")
 
-                # Randomly make number_guide non-targeting guides "targeting"
+                # Randomly pick number_guide non-targeting guides to act as the fake "targeting" target
                 guide_target_ = guide_target.copy()
                 selected_guides = np.random.choice(guide_target_[guide_names_key], number_guide, replace=False)
-                guide_target_.loc[guide_target_.guide_names.isin(selected_guides),'type'] = 'targeting' # type is a col with targeting / non-targeting
 
                 # Filter to cells with non-targeting guides that exist in both datasets
                 valid_guide_mask = np.isin(mdata[prog_key].uns[guide_names_key], guide_target_[guide_names_key].values)
@@ -342,10 +374,11 @@ def compute_fake_perturbation_tests(
                 if len(valid_indices) == 0:
                     raise ValueError("No valid guides found")
 
+                # keep every guide column; only the chosen control guides become the fake 'targeting' target
+                fake_targets = base_targets.copy()
+                fake_targets[is_ntc & np.isin(all_guide_names, selected_guides)] = 'targeting'
                 _mdata = mdata.copy()
-                _mdata[prog_key].obsm[guide_assignment_key] = mdata[prog_key].obsm[guide_assignment_key][:, non_targeting_idx]
-                _mdata[prog_key].uns[guide_names_key] = mdata[prog_key].uns[guide_names_key][non_targeting_idx]
-                _mdata[prog_key].uns[guide_targets_key] = guide_target_.loc[guide_target_.guide_names.isin(mdata[prog_key].uns[guide_names_key]),'type'].values
+                _mdata[prog_key].uns[guide_targets_key] = fake_targets
 
                 # Run perturbation association for each sample
                 for samp in _mdata[data_key].obs[categorical_key].unique():
@@ -357,6 +390,10 @@ def compute_fake_perturbation_tests(
                         collapse_targets=True,
                         pseudobulk=False,
                         reference_targets=['non-targeting'],
+                        reference_mode=reference_mode,
+                        balanced=balanced,
+                        balanced_seed=balanced_seed,
+                        test_targets=['targeting'],
                         FDR_method=FDR_method,
                         n_jobs=-1,
                         inplace=False
@@ -493,8 +530,40 @@ def plot_calibration_comparison(test_stats_dfs, out_dir, run_name, K, sel_thresh
             plt.close(fig)
 
 
-def plot_qq_comparison(test_stats_dfs, out_dir, run_name, K, sel_threshs):
-    """Save a QQ plot comparing real and null distributions for each (K, sel_thresh) into its own folder."""
+def _qq_points(ax, pvals, label, color):
+    """Scatter -log10 sorted p against -log10 Uniform quantiles (i - 0.5) / n."""
+    p = np.sort(np.asarray(pvals, dtype=np.float64))
+    p = p[np.isfinite(p) & (p > 0)]
+    if p.size == 0:
+        return
+    expected = (np.arange(1, p.size + 1) - 0.5) / p.size
+    ax.scatter(-np.log10(expected), -np.log10(p), s=4, color=color, label=label, rasterized=True, lw=0)
+
+
+def _qq_axes(ax, n_max):
+    """y = x line; x spans the expected range only, so a few huge real -log10 p do not squash the null."""
+    x_max = 1.05 * -np.log10(0.5 / max(n_max, 1))
+    ax.plot([0, x_max], [0, x_max], color='k', lw=0.8, ls='--')
+    ax.set_xlim(0, x_max)
+    ax.set_ylim(0, max(ax.get_ylim()[1], x_max))
+
+
+def _null_frac(pvals, alpha=0.05):
+    pvals = np.asarray(pvals, dtype=np.float64)
+    return float(np.mean(pvals < alpha)) if pvals.size else float('nan')
+
+
+def plot_qq_comparison(test_stats_dfs, out_dir, run_name, K, sel_threshs, per_program=False, n_cols=6):
+    """Save QQ plots comparing real and null U-test p-values for each (K, sel_thresh) into its own folder.
+
+    Real tests are red, null (fake targeting) tests are grey, against Uniform(0, 1);
+    the title gives the null's fraction of p < 0.05 (expected 0.05 when calibrated).
+
+    Writes, in {out_dir}/{run_name}/Evaluation/{K}_{thresh}/:
+    - U_test_perturbation_association_qqplot.png: all programs pooled.
+    - U_test_perturbation_association_qqplot_per_program.png (per_program=True):
+      one panel per program (``program_name``), n_cols panels per row.
+    """
 
     for sel_thresh in sel_threshs:
         for k in K:
@@ -502,42 +571,65 @@ def plot_qq_comparison(test_stats_dfs, out_dir, run_name, K, sel_threshs):
             output_folder = f"{out_dir}/{run_name}/Evaluation/{k}_{thresh_str}"
             os.makedirs(output_folder, exist_ok=True)
 
-            real_pvals = test_stats_dfs.loc[
+            real_df = test_stats_dfs.loc[
                 (test_stats_dfs.K == k) &
                 (test_stats_dfs.sel_thresh == sel_thresh) &
-                (test_stats_dfs.real == True),
-                'pval'
+                (test_stats_dfs.real == True)
             ]
 
-            null_pvals = test_stats_dfs.loc[
+            null_df = test_stats_dfs.loc[
                 (test_stats_dfs.K == k) &
                 (test_stats_dfs.sel_thresh == sel_thresh) &
                 (test_stats_dfs.real == False) &
-                (test_stats_dfs.target_name == 'targeting'),
-                'pval'
+                (test_stats_dfs.target_name == 'targeting')
             ]
 
-            if len(real_pvals) == 0 and len(null_pvals) == 0:
+            if len(real_df) == 0 and len(null_df) == 0:
                 print(f"  Skipping K={k}, sel_thresh={sel_thresh}: no data")
                 continue
 
-            fig, ax = plt.subplots(figsize=(6, 5))
+            # pooled over programs
+            fig, ax = plt.subplots(figsize=(5, 5))
+            _qq_points(ax, real_df['pval'], f'Real ({len(real_df):,} tests)', 'tab:red')
+            _qq_points(ax, null_df['pval'], f'Null ({len(null_df):,} tests)', '0.4')
+            _qq_axes(ax, max(len(real_df), len(null_df)))
+            ax.set_xlabel('expected -log10 p (Uniform)')
+            ax.set_ylabel('observed -log10 p')
+            ax.set_title(f'U-test QQ: K={k}, sel_thresh={sel_thresh}\n'
+                         f'null frac p<0.05 = {_null_frac(null_df["pval"]):.3f}', fontsize=9)
+            ax.legend(frameon=False, fontsize=8, loc='upper left')
+            fig.tight_layout()
+            fig.savefig(f'{output_folder}/U_test_perturbation_association_qqplot.png', dpi=150)
+            plt.close(fig)
 
-            qqplot(data=real_pvals, ax=ax, color='blue', label='Real')
-            qqplot(data=null_pvals, ax=ax, color='red', label='Null')
+            if not per_program:
+                continue
 
-            lines = ax.get_lines()
-            all_x = np.concatenate([line.get_xdata() for line in lines])
-            all_y = np.concatenate([line.get_ydata() for line in lines])
-            padding = 0.05
-            x_range = all_x.max() - all_x.min()
-            y_range = all_y.max() - all_y.min()
-            ax.set_xlim(all_x.min() - padding * x_range, all_x.max() + padding * x_range)
-            ax.set_ylim(all_y.min() - padding * y_range, all_y.max() + padding * y_range)
+            # one panel per program
+            programs = list(pd.unique(pd.concat([real_df['program_name'], null_df['program_name']])))
+            try:  # natural order (e.g. 1, 2, ..., 10) when program names are numeric
+                programs = sorted(programs, key=lambda x: float(x))
+            except (TypeError, ValueError):
+                programs = sorted(programs, key=str)
+            real_by = dict(tuple(real_df.groupby('program_name')['pval']))
+            null_by = dict(tuple(null_df.groupby('program_name')['pval']))
+            n_max = max([len(v) for v in list(real_by.values()) + list(null_by.values())] or [1])
 
-            ax.set_title(f'K={k}, sel_thresh={sel_thresh}')
-            ax.legend()
-
-            plt.tight_layout()
-            plt.savefig(f'{output_folder}/U_test_perturbation_association_qqplot.png', dpi=100)
+            n_rows = int(np.ceil(len(programs) / n_cols))
+            fig, axes = plt.subplots(n_rows, n_cols, figsize=(2.6 * n_cols, 2.5 * n_rows), squeeze=False)
+            for i, ax in enumerate(axes.flat):
+                if i >= len(programs):
+                    ax.axis('off')
+                    continue
+                prog = programs[i]
+                p_null = null_by.get(prog, pd.Series(dtype=float))
+                _qq_points(ax, real_by.get(prog, pd.Series(dtype=float)), 'Real', 'tab:red')
+                _qq_points(ax, p_null, 'Null', '0.4')
+                _qq_axes(ax, n_max)
+                ax.set_title(f'{prog}  null p<0.05: {_null_frac(p_null):.3f}', fontsize=7)
+                ax.tick_params(labelsize=6)
+            fig.suptitle(f'U-test QQ per program: K={k}, sel_thresh={sel_thresh}  '
+                         f'(red = real, grey = null; x = expected, y = observed -log10 p)', fontsize=10)
+            fig.tight_layout(rect=(0, 0, 1, 0.98))
+            fig.savefig(f'{output_folder}/U_test_perturbation_association_qqplot_per_program.png', dpi=150)
             plt.close(fig)

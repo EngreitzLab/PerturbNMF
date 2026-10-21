@@ -42,6 +42,8 @@ The evaluation pipeline tests cNMF programs against various criteria to assess t
 | gwas_data_path | str | None | Path to GWAS data file for trait enrichment (required when --Perform_trait is set) |
 | organism | str | "human" | Organism/species for enrichment analysis |
 | FDR_method | str | "StoreyQ" | FDR correction method for perturbation association |
+| balanced | flag | off | Subsample each target's reference cells to the target's cell count before the perturbation U-test (all reference cells kept if fewer) |
+| balanced_seed | int | 0 | Random seed for the `--balanced` subsample |
 | n_top | int | 300 | Number of top loaded genes to use for enrichment tests |
 | guide_annotation_key | list of str | ["non-targeting"] | Name(s) of non-targeting guide target labels |
 

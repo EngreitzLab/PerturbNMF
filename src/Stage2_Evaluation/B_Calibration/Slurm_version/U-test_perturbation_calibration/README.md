@@ -50,4 +50,8 @@ This Python pipeline performs Mann-Whitney U-test on program scores to identify 
 | --compute_real_perturbation_tests | Compute perturbation association tests on real targeting guides |
 | --compute_fake_perturbation_tests | Compute perturbation association tests on fake targeting guides (calibration null) |
 | --visualizations | Generate QQ plots and violin plots comparing real vs null distributions |
+| --reference_mode | Reference cells for the real and fake tests: `complement` (default) = all other cells; `ntc_only` = cells whose guides are all control guides. Each target's own cells are always removed from its reference |
+| --balanced | Subsample each target's reference cells (real and fake tests) to the target's cell count; all reference cells are kept if there are fewer |
+| --balanced_seed | Random seed for the `--balanced` subsample (default 0) |
+| --qq_per_program | With --visualizations, also save a QQ plot with one panel per program (`U_test_perturbation_association_qqplot_per_program.png`) |
 | --skip_existing | Skip per-(K, sel_thresh, sample) computations whose output files already exist; existing outputs are loaded into the accumulator so visualizations still work. Useful for resuming preempted jobs |

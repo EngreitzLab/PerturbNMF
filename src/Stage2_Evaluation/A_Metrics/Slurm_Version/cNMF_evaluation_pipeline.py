@@ -107,6 +107,9 @@ def main():
 
     parser.add_argument('--organism', help='Organism/species for enrichment analysis (default: human)', type=str, default="human")
     parser.add_argument('--FDR_method', help='Method for FDR correction in perturbation association (default: StoreyQ)', type=str, default="StoreyQ")
+    parser.add_argument('--reference_mode', help="Reference cells for the perturbation association U-test: 'ntc_only' = cells whose guides are all control guides, 'complement' = all other cells. Each target's own cells are always removed from its reference (default: ntc_only)", type=str, choices=['ntc_only', 'complement'], default="ntc_only")
+    parser.add_argument('--balanced', action="store_true", help="If set, subsample each target's reference cells to the target's cell count before the perturbation association U-test (all reference cells are kept if there are fewer)")
+    parser.add_argument('--balanced_seed', type=int, help='Random seed for the --balanced reference subsample (default: 0)', default=0)
     parser.add_argument('--n_top', type = int, help='Number of top loaded genes use to perform enrichment test(default: 300)',  default=300)
     parser.add_argument('--use_cache', action="store_true", help='If set, load gene set libraries from cached JSON in Resources/ instead of downloading. Falls back to download if cache not found, and saves a cache copy after download.')
     parser.add_argument('--skip_existing', action="store_true", help='If set, skip metric computations whose output files already exist. Useful for resuming jobs that were preempted mid-batch.')
@@ -262,6 +265,8 @@ def main():
                                                                     collapse_targets=True,
                                                                     pseudobulk=False,
                                                                     reference_targets=reference_targets,
+                                                                    reference_mode=args.reference_mode,
+                                                                    balanced=args.balanced, balanced_seed=args.balanced_seed,
                                                                     n_jobs=-1, inplace=False, FDR_method = args.FDR_method)
                     test_stats_df.to_csv(out_pert, sep='\t', index=False)
 

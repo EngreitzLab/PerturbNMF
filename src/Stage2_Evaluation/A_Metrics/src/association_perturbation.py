@@ -53,15 +53,12 @@ def compute_perturbation_association_(
     program: str,
     level_name: str,
     test_stats_df: List[List],
-    balanced: bool = False
 ):
     # Get perturbation data
     test_data_ = test_data[:, program].X.toarray()
 
-    # TODO: Resample reference data to match number of obs
+    # reference is already balanced per target by the caller (balanced=True)
     reference_data_ = reference_data[:, program].X.toarray()
-    if balanced:
-        reference_data_ = reference_data_[np.random.choice(reference_data_.shape[0], test_data_.shape[0], replace=False)]
 
     # Calculate log2FC
     ref_mean = np.mean(reference_data_)
@@ -85,7 +82,10 @@ def compute_perturbation_association(
     collapse_targets: bool = True,
     pseudobulk: bool = False,
     reference_targets: Union[str, List[str]] = ['non-targeting'],
+    reference_mode: Literal['ntc_only', 'complement'] = 'complement',
+    test_targets: Optional[List[str]] = None,
     balanced: bool = False,
+    balanced_seed: Optional[int] = 0,
     n_jobs: int = 1,
     inplace: bool = True,
     FDR_method: Literal['BH', 'StoreyQ'] = 'StoreyQ'
@@ -112,8 +112,23 @@ def compute_perturbation_association(
         Mutually exclusive with collapse_targets.
     reference_targets : tuple
         List of target values to use as reference distribution.
+    reference_mode : str (default: 'complement')
+        Which cells form the reference group for each tested target (single-cell
+        tests; ignored with pseudobulk). In both modes, cells carrying any guide of
+        the tested target (or guide) are removed from its reference first.
+        'ntc_only'   cells whose guides are all reference_targets guides (no other target's guide).
+        'complement' all other cells (any guides or none), as in the high-MOI CRT.
+    test_targets : list, optional
+        Only test these targets (collapse_targets) or the guides of these targets
+        (per-guide tests); None tests every non-reference target. The reference
+        cells are still chosen from all guides, e.g. the calibration null tests
+        only its fake target while keeping every real-target guide in the matrix.
     balanced : bool (default: False)
-        If True, resample reference data to match number of observations in test
+        If True, subsample each test's reference cells (without replacement) to the
+        number of test cells, or keep all reference cells if there are fewer. One
+        subsample per target (or guide) is shared by all programs.
+    balanced_seed : int, optional (default: 0)
+        Seed for the balanced subsample; None draws a different subsample each run.
     n_jobs: int (default: 1)
         number of threads to run processes on.
     inplace: Bool (default: True)
@@ -181,14 +196,40 @@ def compute_perturbation_association(
 
     # Otherwise, grab a MuData for all those guides assigned to the reference targets
     else:
-        reference_guide_idx = guide_metadata.index.get_indexer(guide_metadata.loc[guide_metadata.Target.isin(reference_targets)].index.values)
         assign_mat = mdata[prog_key].obsm[guide_assignments_key]
         if sparse.issparse(assign_mat):
             assign_mat = assign_mat.toarray()
-        reference_data = mdata[prog_key][np.any(assign_mat[:,reference_guide_idx].astype(bool), axis=1)]
+        assign_mat = np.asarray(assign_mat).astype(bool)
+
+        # candidate reference cells; each test below also drops its own test cells from them
+        is_ref_guide = guide_metadata.Target.isin(reference_targets).to_numpy()
+        has_ref = assign_mat[:, is_ref_guide].any(axis=1)
+        has_other = assign_mat[:, ~is_ref_guide].any(axis=1)
+        if reference_mode == 'ntc_only':
+            reference_mask = has_ref & ~has_other
+        elif reference_mode == 'complement':
+            reference_mask = np.ones(assign_mat.shape[0], dtype=bool)
+        else:
+            raise ValueError(f"reference_mode must be 'ntc_only' or 'complement'; got {reference_mode!r}.")
+        if not reference_mask.any():
+            raise ValueError(f"No reference cells for reference_mode={reference_mode!r} and reference_targets={reference_targets}.")
+        rng = np.random.default_rng(balanced_seed)
+
+        def _reference_mask_for(test_mask):
+            # reference minus the test cells, subsampled to the test size if balanced
+            ref_mask = reference_mask & ~test_mask
+            if balanced:
+                ref_idx = np.flatnonzero(ref_mask)
+                n_test = int(test_mask.sum())
+                if ref_idx.size > n_test:
+                    ref_mask = np.zeros_like(ref_mask)
+                    ref_mask[rng.choice(ref_idx, n_test, replace=False)] = True
+            return ref_mask
 
     # Get the rest of the guides to test against the reference
     test_guides = guide_metadata.loc[~guide_metadata.Target.isin(reference_targets)].index.values
+    if test_targets is not None:
+        test_guides = guide_metadata.loc[guide_metadata.Target.isin(test_targets) & ~guide_metadata.Target.isin(reference_targets)].index.values
 
     # Run tests
     test_stats_df = []
@@ -201,11 +242,15 @@ def compute_perturbation_association(
 
         # Run tests for each target (with multiple guides)
         targets_no_ref = [targ for targ in guide_metadata['Target'].unique() if targ not in reference_targets]
+        if test_targets is not None:
+            targets_no_ref = [targ for targ in targets_no_ref if targ in set(test_targets)]
         for target in tqdm(targets_no_ref, desc='Testing perturbation association', unit='targets'):
 
             # Grab data for the current target
             test_guide_idx = guide_metadata.index.get_indexer(guide_metadata.index[guide_metadata['Target']==target])
-            test_data = mdata[prog_key][assign_mat[:,test_guide_idx].any(-1).astype(bool)]
+            test_mask = assign_mat[:, test_guide_idx].any(-1)
+            test_data = mdata[prog_key][test_mask]
+            reference_data = mdata[prog_key][_reference_mask_for(test_mask)]   # drop this target's cells from the reference
 
             # Run test for every program
             Parallel(n_jobs=n_jobs, backend='threading')(delayed(compute_perturbation_association_)(
@@ -213,8 +258,7 @@ def compute_perturbation_association(
                 reference_data, 
                 program, 
                 target, 
-                test_stats_df,
-                balanced) for program in mdata[prog_key].var_names)
+                test_stats_df) for program in mdata[prog_key].var_names)
 
     else:
 
@@ -231,7 +275,9 @@ def compute_perturbation_association(
             else:
                 # Grab data for the current guide
                 test_guide_idx = guide_metadata.index.get_loc(guide)
-                test_data = mdata[prog_key][assign_mat[:,test_guide_idx].astype(bool)]
+                test_mask = assign_mat[:, test_guide_idx]
+                test_data = mdata[prog_key][test_mask]
+                reference_data = mdata[prog_key][_reference_mask_for(test_mask)]   # drop this guide's cells from the reference
 
                 # Run test for every program
                 Parallel(n_jobs=n_jobs, backend='threading')(delayed(compute_perturbation_association_)(
@@ -239,8 +285,7 @@ def compute_perturbation_association(
                     reference_data, 
                     program, 
                     guide, 
-                    test_stats_df,
-                    balanced) for program in mdata[prog_key].var_names)
+                    test_stats_df) for program in mdata[prog_key].var_names)
     
     # Create DataFrame
     test_stats_df = pd.DataFrame(test_stats_df, columns=['{}_name'.format(level_key), 'program_name', 'ref_mean', 'test_mean', 'log2FC', 'stat', 'pval'])

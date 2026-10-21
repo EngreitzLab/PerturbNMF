@@ -109,6 +109,9 @@ python3 "${PIPELINE_ROOT}/src/Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_eva
 
         # Reference flags (uncomment + add to the python invocation above to enable):
         #--n_top 300
+        #--reference_mode ntc_only     # ntc_only | complement
+        #--balanced                    # subsample U-test reference to target size
+        #--balanced_seed 0
         #--skip_existing
         #--guide_names_key "guide_names"
         #--guide_targets_key "guide_targets"
