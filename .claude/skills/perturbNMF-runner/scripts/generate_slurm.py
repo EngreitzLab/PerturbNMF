@@ -251,6 +251,14 @@ def generate_script(args, passthrough_args):
             'export PYTHONNOUSERSITE=1',
         ])
 
+    # CRT parallelizes over genes with --n_jobs; one BLAS thread per worker
+    if args.stage == 'crt-calibration':
+        lines.extend([
+            '',
+            '# One BLAS thread per worker (parallelism comes from --n_jobs)',
+            'export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1',
+        ])
+
     lines.extend([
         '',
         'echo "Active env: $CONDA_DEFAULT_ENV"',

@@ -429,10 +429,10 @@ U-test reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns[
 
 ## 8. CRT Calibration
 
-**Script**: `src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/CRT.py`
-**Conda**: `NMF_Benchmarking` (was `programDE`; switched because that env's Python 3.14 / newer pandas raises `NotImplementedError` when `AnnData.copy()` deepcopies the categorical `cNMF.uns['var_names']`)
+**Script**: `src/Stage2_Evaluation/B_Calibration/Slurm_version/CRT/CRT.py` (package: `B_Calibration/src/CRT/`; full docs: `Slurm_version/CRT/README.md`)
+**Conda**: `NMF_Benchmarking` (was `programDE`; switched because that env's Python 3.14 / newer pandas raises `NotImplementedError` when `AnnData.copy()` deepcopies the categorical `cNMF.uns['var_names']`). Needs `numba`, `scipy`, `statsmodels`, `scikit-learn`, `mudata`, `multipy` (StoreyQ).
 
-CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) directly from the cNMF modality of each `cNMF_<K>_<thresh>.h5mu` — no separate guide path required.
+CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['guide_targets']`) and covariates directly from the `--prog_key` modality of each `cNMF_<K>_<thresh>.h5mu` — no separate guide path required. It loops over K × sel_thresh and runs separately per condition (`--categorical_key`). The `.sh` sets `OMP/MKL/OPENBLAS_NUM_THREADS=1`; parallelism comes from `--n_jobs` (over genes).
 
 ### Required
 
@@ -441,28 +441,71 @@ CRT reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns['gu
 | `--out_dir` | str | Directory containing cNMF output |
 | `--run_name` | str | cNMF run name |
 
-### Optional
+### Optional — IO / keys
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `--K` | int (nargs=\*) | `[30, 50, 70, 80, 100, 200, 300]` | K values (formerly named `--components`) |
 | `--sel_threshs` | float (nargs=\*) | `[0.2, 2.0]` | Density thresholds |
-| `--categorical_key` | str | `sample` | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor) |
+| `--save_dir` | str | None | Base dir under which `{K}_{thresh}/` subdirs are created (default: `<out_dir>/<run_name>/Evaluation/`) |
+| `--skip_existing` | flag | off | Reuse the per-(K, sel_thresh, condition) `{K}_CRT_*.txt` / `{K}_CRT_fake_*.txt` tables already in the output folder instead of recomputing; tables and QQ plots are rewritten. Cached tables must come from the same settings (null guide sets are checked). Resume a preempted job |
+| `--prog_key` | str | `cNMF` | Modality with program usage (`.X`), guide assignment, guide names/targets and covariates |
+| `--categorical_key` | str | `sample` | Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); one CRT per condition |
+| `--n_jobs` | int | `$SLURM_CPUS_PER_TASK` or 1 | Parallel workers over genes |
+
+### Optional — covariates
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
 | `--covariates` | str (nargs=\*) | None | Covariate keys in obs (used as-is) |
 | `--log_covariates` | str (nargs=\*) | None | Covariate keys to log1p-transform |
-| `--number_guide` | int | `6` | Fake targeting guides per iteration |
-| `--number_permutations` | int | `1024` | CRT permutations |
-| `--guide_annotation_key` | str (nargs=\*) | `non-targeting` | Non-targeting label (accepts multiple values) |
+| `--numeric_as_category_threshold` | int | `20` | Numeric covariates with ≤ this many unique values are one-hot encoded |
+| `--check_covariate` | flag | off | Run the covariate independence diagnostic (correlation heatmap + VIF) first; writes `<Evaluation>/covariate_check/` |
+
+### Optional — model
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--moi` | str | `high` | `high`: CRT (Bernoulli resampling from a per-gene propensity model, controls = all other cells); `low`: permutation test vs control-guide cells within covariate strata |
+| `--normalization` | str | `row_normalize` | Outcome: per-cell usage share (`row_normalize`) or CLR (`clr`, old behaviour). Sets how log2FC is derived from beta |
+| `--eps` | float | `1e-3` | Share floor before CLR (`clr` only) |
+| `--propensity_penalty` | str | `none` | moi=high propensity model: `none` (unpenalized MLE, as sceptre), `l2`, or `old_perturbnmf` (comparison only) |
+| `--control_group` | str | `all` | Controls per gene: `all` other cells, `ntc_cells` (cells with a control guide; moi=high), or `matched` (propensity-matched) |
+| `--matching_ratio` | int | `4` | `matched`: controls per treated cell |
+| `--matching_caliper` | float | None | `matched`: caliper in SDs of the distance |
+| `--matching_distance` | str | `propensity` | `matched`: match on `propensity` or `logit` |
+
+### Optional — resampling / p-values
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--number_permutations` | int | `4999` | Stage-1 resampling rounds per gene |
+| `--extra_resampled_rounds` | int | `49999` | Stage-2 rounds for programs with stage-1 p < `--extra_rounds_p_threshold`; `0` disables |
+| `--extra_rounds_p_threshold` | float | `0.05` | Stage-1 p below which a program gets stage-2 rounds and the skew-normal fit |
+| `--pvalue_method` | str | `skew_normal` | Final p: `skew_normal` (sceptre-style tail fit for flagged programs, empirical elsewhere) or `empirical` = (1 + #extreme)/(1 + rounds) |
 | `--FDR_method` | str | `BH` | `BH` or `StoreyQ` (choices enforced) |
-| `--save_dir` | str | None | Custom save directory (default: `<out_dir>/<run_name>/Evaluation/<K>_<sel_thresh>/`) |
-| `--skip_existing` | flag | off | Skip the CRT recompute for a (K, sel_thresh, condition) when **both** its real and fake `.txt` exist, and regenerate the QQ `.png` from the cached raw p-values (resume a preempted job or re-plot without recomputing) |
+| `--seed` | int | `123` | Base seed; gene g uses `crc32(g) ^ seed` |
 
-**Null calibration:** CRT builds NTC (non-targeting control) pseudo-gene groups of size `--number_guide`, frequency-matched to real genes, and compares them to real targets on a real-vs-NTC QQ plot (one `.png` per K/sel_thresh/condition). `--number_guide` therefore controls the null group size (no longer hardcoded to 6). Ensemble count / bin count / seeds are set inside the vendored `src/CRT/` package, not exposed as flags.
+### Optional — NTC null / calibration
 
-**Output files** (covariate token = `--covariates` then `log_`-prefixed `--log_covariates` joined by `_`, or `no_covariates` when none):
-- `{K}_CRT_<covariate_token>_{condition}.txt` — real results: `target_name, program_name, log2FC, p-value` (skew), `adj_pval`, `p-value_raw`, `adj_pval_raw`.
-- `{K}_CRT_fake_<covariate_token>_{condition}.txt` — fake/NTC null: `ensemble, target_name` (NTC pseudo-gene id), `program_name, p-value_raw, adj_pval_raw` (raw p-values only).
-- `{K}_CRT_<covariate_token>_{condition}.png` — real-vs-NTC QQ plot. Real and null use raw p-values so they're directly comparable.
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `--guide_annotation_key` | str (nargs=\*) | `non-targeting` | Control target label(s) in `uns['guide_targets']` (accepts multiple values) |
+| `--number_guide` | int | `6` | NTC guides per fake (null) gene |
+| `--null_method` | str | `frequency` | `frequency`: NTC groups matched to real genes' guide-frequency bins; `random`: sceptre-style random NTC sets |
+| `--n_bins` | int | `10` | `frequency`: guide-frequency bins |
+| `--n_ensemble` | int | `10` | `frequency`: number of random NTC partitions |
+| `--skip_null` | flag | off | Real genes only; no NTC null, fake file or QQ plots |
+| `--qq_per_program` | flag | off | Also save per-program QQ grids |
+
+**Null calibration:** NTC fake genes (`null_<i>`, `--number_guide` NTC guides each) run through the same CRT as the real genes and are compared on real-vs-NTC QQ plots.
+
+**Output files** in `<save_dir>/{K}_{thresh}/` (covariate token = `--covariates` then `log_`-prefixed `--log_covariates` joined by `_`, or `no_covariates` when none):
+- `{K}_CRT_<covariate_token>_{condition}.txt` — real results (Stage-3 format): `target_name, program_name` (1-based int), `log2FC, p-value` (**final**: `pval_skewnorm` where the skew-normal was fit, else `pval_empirical`), `adj_pval` (FDR of final), `pval_empirical` (resampling p), `adj_pval_empirical, pval_skewnorm` (NaN where not fit), `beta, n_treated, n_control, control_mean, n_resampled`. log2FC: `clr` → beta·K/(K-1)/ln2; `row_normalize` → log2((control_mean+beta)/control_mean).
+- `{K}_CRT_fake_<covariate_token>_{condition}.txt` — NTC null: `target_name` (`null_<i>`), same columns as the real table, plus `guides` (`;`-joined NTC guides). No `ensemble` column; no `p-value_raw` / `adj_pval_raw` (now `pval_empirical` / `adj_pval_empirical`).
+- `{K}_CRT_<covariate_token>_{condition}_qq_empirical.pdf` / `_qq_skew_normal.pdf` — square QQ plots, real (red) vs NTC null (gray), y = x dashed, gray dotted line at p = 0.05, blue dash-dot line at the empirical p floor 1/(1 + all rounds); `--qq_per_program` adds per-program grids.
+- Stage 3 `--perturb_path_base`: `<save_dir>/{K}_{thresh}/{K}_CRT_<covariate_token>` (Stage 3 appends `_{condition}.txt`).
+- `config_<jobid>.yml` in the save dir.
 
 ---
 

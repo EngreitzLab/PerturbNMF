@@ -22,15 +22,15 @@ LOG_DIR="tests/output/calibration_logs"
 mkdir -p "$LOG_DIR"
 
 eval "$(conda shell.bash hook)"
-conda activate programDE
+conda activate NMF_Benchmarking
 
-echo "=== CRT calibration unit tests (programDE env) ==="
+echo "=== CRT calibration unit tests (NMF_Benchmarking env) ==="
 echo "Node: $(hostname)"
 echo "Python: $(which python)"
 echo "Date: $(date)"
 echo ""
 
-python -m pytest tests/Script/Stage2_Evaluation/test_crt.py::TestCRTReformat -v --tb=short 2>&1 | tee "${LOG_DIR}/test_crt.out"
+python -m pytest tests/Script/Stage2_Evaluation/test_crt.py -v --tb=short 2>&1 | tee "${LOG_DIR}/test_crt.out"
 
 echo ""
 echo "=== CRT tests done ==="

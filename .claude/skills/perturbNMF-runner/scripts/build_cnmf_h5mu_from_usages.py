@@ -5,7 +5,7 @@ Some cNMF runs are only available as their published artifacts: a consensus usag
 matrix (cells x K) next to the raw IGVF input mudata (``gene`` + ``guide`` modalities).
 Stage 2b (CRT, U-test) and Stage 3 plotting all expect
 ``<out_dir>/<run_name>/Inference/adata/cNMF_<K>_<thresh>.h5mu`` with a ``cNMF`` modality
-carrying the usages in ``X`` plus the guide metadata that ``reformat_data_for_CRT``
+carrying the usages in ``X`` plus the guide metadata that CRT (``CRT.py``)
 reads (``obsm['guide_assignment']``, ``uns['guide_names']``, ``uns['guide_targets']``).
 
 This script builds exactly that. Pass ``--gene_spectra_score`` to also carry the gene
