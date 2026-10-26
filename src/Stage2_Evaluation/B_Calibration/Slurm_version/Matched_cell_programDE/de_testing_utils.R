@@ -449,9 +449,11 @@ fit_linear_model_robust <- function(y, X_df, perturbation_col, max_control_cells
             robust_se <- coeftest(model, vcov. = vcovHC(model, type = "HC3"))
         }
 
-        se <- robust_se[perturb_idx, "Std. Error"]
-        t_stat <- robust_se[perturb_idx, "t value"]
-        p_value <- robust_se[perturb_idx, "Pr(>|t|)"]
+        # Index by name: coeftest drops aliased (NA) coefficients, e.g. nested factors like lane + run,
+        # so positions from coef(model) no longer line up with its rows
+        se <- robust_se[perturb_col, "Std. Error"]
+        t_stat <- robust_se[perturb_col, "t value"]
+        p_value <- robust_se[perturb_col, "Pr(>|t|)"]
     } else {
         # Skip SE calculation (will use bootstrap SE instead)
         se <- NA
