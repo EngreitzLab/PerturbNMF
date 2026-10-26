@@ -37,30 +37,36 @@ This folder contains three statistical tests for evaluating perturbation effects
 ---
 
 ### 2. CRT (Conditional Randomization Test)
-**Location:** `JupterNote_Version/ProgramDE.ipynb` and `Slurm_version/CRT/`
+**Location:** `JupterNote_Version/CRT.ipynb` and `Slurm_version/CRT/` (package: `src/CRT/`; full docs in `Slurm_version/CRT/README.md`)
 
-**Description:** Uses SCEPTRE-inspired methodology with conditional randomization tests (CRT) to test perturbation effects on gene programs while accounting for technical covariates.
+**Description:** Uses SCEPTRE-style conditional randomization tests (CRT) to test perturbation effects on gene programs while accounting for technical covariates. Runs separately per condition (`--categorical_key`). The notebook mirrors `CRT.py` step by step for one condition.
 
 **Method:**
-- Employs conditional randomization tests (CRT) to generate null distributions
-- Groups non-targeting controls (NTC) to create ensemble null models
-- Performs permutation-based testing (default: 1023 permutations)
-- Accounts for covariates (e.g., batch effects, cell cycle)
+- Per-program OLS of the program usage share (`--normalization row_normalize`, default) or CLR (`clr`) on the guide indicator + covariates (one-hot / z-scored, with an intercept)
+- `--moi high` (default): CRT — treated sets resampled Bernoulli(p) from a per-gene unpenalized logistic propensity model; controls = all other cells (or `--control_group ntc_cells|matched`)
+- `--moi low`: permutation test against control-guide cells within covariate strata
+- Two-stage resampling: `--number_permutations` stage-1 rounds (default 4999), plus `--extra_resampled_rounds` (default 49999) for programs with stage-1 p < 0.05; skew-normal tail p-value for those programs (`--pvalue_method skew_normal`, default)
+- NTC null: fake genes of `--number_guide` non-targeting guides, frequency-matched to real genes (`--null_method frequency`) or random, run through the same test
 
 **Key Features:**
-- Robust to covariates through permutation framework
-- Controls for multiple testing through ensemble NTC groups
-- Provides empirical null distributions
-- More computationally intensive but statistically rigorous
+- Robust to covariates through the conditional randomization framework
+- Calibration checked on a QQ plot of real vs NTC-null p-values
+- Skew-normal fit resolves p-values below the empirical floor 1/(1 + rounds)
+- More computationally intensive (parallelized over genes with `--n_jobs`) but statistically rigorous
 
-**Parameters:**
-- `--number_permutations`: Number of calibration iterations (default: 1024)
-- `--number_guide`: Number of non-targeting guides per calibration iteration (default: 6)
+**Parameters (main ones; see `Slurm_version/CRT/README.md` for all):**
+- `--number_permutations`: Stage-1 resampling rounds per gene (default: 4999)
+- `--extra_resampled_rounds`: Stage-2 rounds for programs with stage-1 p < 0.05 (default: 49999; 0 disables)
+- `--number_guide`: NTC guides per fake (null) gene (default: 6)
+- `--moi`: `high` (CRT) or `low` (permutation) (default: high)
+- `--normalization`: `row_normalize` or `clr` (default: row_normalize)
+- `--pvalue_method`: `skew_normal` or `empirical` (default: skew_normal)
 - `--covariates`: Covariate keys in .obs to include as-is
 - `--log_covariates`: Covariate keys in .obs to log1p-transform before inclusion
 - `--guide_annotation_key`: Name(s) of non-targeting guide target labels (default: "non-targeting")
 - `--FDR_method`: FDR correction method: "BH" or "StoreyQ" (default: "BH")
-- `--save_dir`: Directory to save results and figures (defaults to `<out_dir>/<run_name>/Evaluation/<K>_<sel_thresh>/`)
+- `--n_jobs`: Parallel workers over genes (default: `$SLURM_CPUS_PER_TASK` or 1)
+- `--save_dir`: Base directory for the `{K}_{thresh}/` result folders (defaults to `<out_dir>/<run_name>/Evaluation/`)
 
 ---
 
@@ -130,10 +136,12 @@ Plus visualization outputs at `<out_dir>/<run_name>/`:
 ### CRT
 ```
 Evaluation/
-└── {k}_{sel_thresh}/CRT_{covariate_names}/
-    ├── config_{job_id}.yml
-    ├── {k}_CRT_{condition}.txt                (one per condition)
-    └── CRT_{condition}.png                    (QQ plot per condition)
+├── config_{job_id}.yml
+└── {k}_{sel_thresh}/
+    ├── {k}_CRT_{covar_tag}_{condition}.txt                    (real results, one per condition)
+    ├── {k}_CRT_fake_{covar_tag}_{condition}.txt               (NTC null)
+    ├── {k}_CRT_{covar_tag}_{condition}_qq_empirical.pdf       (QQ plots, real vs NTC null)
+    └── {k}_CRT_{covar_tag}_{condition}_qq_skew_normal.pdf
 ```
 
 ### Matched Cell ProgramDE
@@ -152,7 +160,7 @@ Evaluation/
 - Need fast, non-parametric testing
 - Want to assess overall calibration properties
 
-**Use ProgramDE when:**
+**Use CRT when:**
 - Need robust covariate adjustment
 - Want permutation-based statistical rigor
 - Have sufficient computational resources for permutation tests

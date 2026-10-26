@@ -121,7 +121,7 @@ def run_check(covar_df, save_path, prefix, threshold, corr_flag=0.8, vif_flag=5.
     """One-hot encode, compute correlation + VIF, write outputs, print a summary."""
     encoded = encode_categorical_covariates(
         covar_df,
-        drop_first=True,
+        drop_original=True,   # drop one level per categorical (get_dummies drop_first)
         numeric_as_category_threshold=threshold,
     )
     # get_dummies emits bool columns; cast so corr/VIF treat them numerically.

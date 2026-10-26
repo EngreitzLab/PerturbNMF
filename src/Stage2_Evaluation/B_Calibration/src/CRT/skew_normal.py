@@ -1,200 +1,144 @@
 """
-Skew-normal moment-matching utilities used for null calibration.
+Skew-normal tail p-values for the CRT null (sceptre's resampling approximation).
+Its a port of ceptre's fit_and_evaluate_skew_normal. For one program:
+
+1. Standardize the null betas: z = (beta - mean) / sd.
+2. Fit a skew-normal (xi, omega, alpha) to z by the method of moments.
+3. Accept the fit only if the null has no extreme outliers and the fitted tail
+   matches the empirical tail at the 90.0-99.5% quantiles within a factor of 2,
+   on the side where the observed z lies.
+4. Two-sided p = 2 x fitted tail beyond z_obs on that side (capped at 1,
+   floored at 1e-250).
+
+A rejected fit gives NaN, so the caller can fall back to the empirical p.
 """
 
-import warnings
+from typing import Sequence, Tuple
 
 import numba as nb
 import numpy as np
 from scipy.stats import skewnorm
 
+MAX_SKEWNESS = 0.995      # |skewness| a skew-normal can reach is < 0.9953
+P_FLOOR = 1e-250
 
-@nb.njit
-def _fit_skew_normal_numba_impl(y: np.ndarray) -> np.ndarray:
+
+@nb.njit(cache=True)
+def fit_skew_normal(y): 
     """
-    Numba implementation of skew-normal moment-matching.
+    Method-of-moments skew-normal fit.
+
+    Args:
+        y: 1-D float64 sample.
+
+    Returns:
+        [xi, omega, alpha, mean, sd]: skew-normal location, scale and shape, plus
+        the sample mean and sd. |skewness| above MAX_SKEWNESS is set to
+        0.9 * MAX_SKEWNESS (keeping its sign), as in sceptre.
     """
     n = y.size
-    n_doub = float(n)
-
-    s_1 = 0.0
-    s_2 = 0.0
+    mean = 0.0
     for i in range(n):
-        s_1 += y[i]
-        s_2 += y[i] * y[i]
-    m_y = s_1 / n_doub
-    sd_y = np.sqrt(s_2 / n_doub - m_y * m_y)
-
-    s_3 = 0.0
+        mean += y[i]
+    mean /= n
+    var = 0.0
+    m3 = 0.0
     for i in range(n):
-        diff = y[i] - m_y
-        s_3 += diff * diff * diff
-    gamma1 = s_3 / (n_doub * (sd_y * sd_y * sd_y))
-
-    max_gamma_1 = 0.995
-    if np.abs(gamma1) > max_gamma_1:
-        gamma1 = np.copysign(0.9 * max_gamma_1, gamma1)
+        d = y[i] - mean
+        var += d * d
+        m3 += d * d * d
+    var /= n
+    sd = np.sqrt(var)
+    gamma1 = (m3 / n) / (sd * sd * sd)
+    if np.abs(gamma1) > MAX_SKEWNESS:
+        gamma1 = np.copysign(0.9 * MAX_SKEWNESS, gamma1)
 
     b = np.sqrt(2.0 / np.pi)
-    r = np.copysign(1.0, gamma1) * np.power(
-        2.0 * np.abs(gamma1) / (4.0 - np.pi), 1.0 / 3.0
-    )
+    r = np.copysign(1.0, gamma1) * np.power(2.0 * np.abs(gamma1) / (4.0 - np.pi), 1.0 / 3.0)
     delta = r / (b * np.sqrt(1.0 + r * r))
     alpha = delta / np.sqrt(1.0 - delta * delta)
     mu_z = b * delta
-    sd_z = np.sqrt(1.0 - mu_z * mu_z)
-    omega = sd_y / sd_z
-    xi = m_y - omega * mu_z
+    omega = sd / np.sqrt(1.0 - mu_z * mu_z)
+    xi = mean - omega * mu_z
 
-    out = np.empty(5, dtype=np.float64)
+    out = np.empty(5)
     out[0] = xi
     out[1] = omega
     out[2] = alpha
-    out[3] = m_y
-    out[4] = sd_y
+    out[3] = mean
+    out[4] = sd
     return out
 
 
-def fit_skew_normal(y: np.ndarray) -> np.ndarray:
-    """
-    Public wrapper for the numba implementation.
-    """
-    return _fit_skew_normal_numba_impl(np.asarray(y, dtype=np.float64))
+def _outliers_ok(z_sorted: np.ndarray, mean: float, sd: float, ratio_thresh: float = 1.5) -> bool:
+    """False if the null's max or min is far beyond mean +/- sd * sqrt(2 log B) (sceptre's check)."""
+    spread = sd * np.sqrt(2.0 * np.log(z_sorted.size))
+    return (z_sorted[-1] / (mean + spread) <= ratio_thresh) and (z_sorted[0] / (mean - spread) <= ratio_thresh)
 
 
-def fit_skew_normal_funct_numba(y: np.ndarray) -> np.ndarray:
+def _tail_ok(z_sorted: np.ndarray, xi: float, omega: float, alpha: float, ratio_thresh: float = 2.0) -> bool:
     """
-    Deprecated: use fit_skew_normal instead.
+    False if, at any of the 90.0, 90.5, ..., 99.0% quantiles of the null, the
+    empirical right-tail mass exceeds the fitted one by more than ratio_thresh.
     """
-    warnings.warn(
-        "fit_skew_normal_funct_numba is deprecated; use fit_skew_normal instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return fit_skew_normal(y)
-
-
-def compute_empirical_p_value(
-    null_statistics: np.ndarray, z_orig: float, side: int
-) -> float:
-    """
-    Empirical p-value with +1 smoothing (side: -1 left, 0 two-sided, 1 right).
-    """
-    null_statistics = np.asarray(null_statistics, dtype=np.float64)
-    B = float(null_statistics.size)
-    if side in (-1, 1):
-        if side == -1:
-            counter = np.sum(z_orig >= null_statistics)
-        else:
-            counter = np.sum(z_orig <= null_statistics)
-        return (1.0 + counter) / (1.0 + B)
-    return 2.0 * min(
-        compute_empirical_p_value(null_statistics, z_orig, -1),
-        compute_empirical_p_value(null_statistics, z_orig, 1),
-    )
-
-
-def check_sn_tail(
-    y_sorted: np.ndarray,
-    xi_hat: float,
-    omega_hat: float,
-    alpha_hat: float,
-    ratio_thresh: float = 2.0,
-) -> bool:
-    """
-    Validate skew-normal fit in the right tail using quantile ratios.
-    """
-    y_sorted = np.asarray(y_sorted, dtype=np.float64)
-    n = y_sorted.size
-    if n == 0:
+    n = z_sorted.size
+    probs = np.arange(180, 199) / 200.0
+    idx = np.minimum(np.ceil(n * probs).astype(np.int64), n - 1)
+    fitted_tail = skewnorm.sf(z_sorted[idx], alpha, loc=xi, scale=omega)
+    if np.any(fitted_tail <= 0.0):
         return False
-
-    dist = skewnorm(alpha_hat, loc=xi_hat, scale=omega_hat)
-    for i in range(180, 199):
-        p = i / 200.0
-        idx = int(np.ceil(n * p))
-        if idx >= n:
-            idx = n - 1
-        quantile = y_sorted[idx]
-        sn_tail_prob = dist.sf(quantile)
-        if sn_tail_prob <= 0.0:
-            return False
-        ratio = (1.0 - p) / sn_tail_prob
-        if ratio > ratio_thresh:
-            return False
-    return True
+    return bool(np.all((1.0 - probs) / fitted_tail <= ratio_thresh))
 
 
-def check_for_outliers(
-    null_sorted: np.ndarray,
-    mu: float,
-    sd: float,
-    ratio_thresh: float = 1.5,
-) -> bool:
+def skew_normal_pvals(
+    beta_obs: np.ndarray,
+    beta_null: np.ndarray,
+    programs: Sequence[int],
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Detect extreme tail outliers using max/min ratios.
+    Two-sided skew-normal p-values for the given programs.
+
+    Args:
+        beta_obs: length-K observed betas.
+        beta_null: n_rounds x K null betas; NaN rounds (empty or collinear
+            draws) are ignored.
+        programs: column indexes to evaluate.
+
+    Returns:
+        pvals_sn: length K; NaN for programs not evaluated or whose fit was
+            rejected (too few rounds, sd = 0, outliers, or tail mismatch).
+        skew_params: K x 3 (xi, omega, alpha) on the standardized scale z;
+            NaN where pvals_sn is NaN.
     """
-    null_sorted = np.asarray(null_sorted, dtype=np.float64)
-    if null_sorted.size == 0:
-        return False
+    n_programs = beta_obs.shape[0]
+    pvals_sn = np.full(n_programs, np.nan)
+    skew_params = np.full((n_programs, 3), np.nan)
 
-    min_z = null_sorted[0]
-    max_z = null_sorted[-1]
-    B = float(null_sorted.size)
-    denom = sd * np.sqrt(2.0 * np.log(B))
-    R_max = max_z / (mu + denom)
-    R_min = min_z / (mu - denom)
-    return (R_max <= ratio_thresh) and (R_min <= ratio_thresh)
+    for k in programs:
+        null = beta_null[:, k]
+        null = null[np.isfinite(null)]
+        if null.size < 10 or not np.isfinite(beta_obs[k]):
+            continue
+        mean, sd = null.mean(), null.std()
+        if not np.isfinite(sd) or sd <= 0.0:
+            continue
+        z_sorted = np.sort((null - mean) / sd)
+        z_obs = (beta_obs[k] - mean) / sd
 
+        xi, omega, alpha, z_mean, z_sd = fit_skew_normal(z_sorted)
+        if not np.all(np.isfinite([xi, omega, alpha])) or not _outliers_ok(z_sorted, z_mean, z_sd):
+            continue
 
-def fit_and_evaluate_skew_normal(
-    z_orig: float,
-    null_statistics: np.ndarray,
-    side_code: int,
-) -> np.ndarray:
-    """
-    Fit skew-normal to nulls, check fit, and return [xi, omega, alpha, p].
-    """
-    p_val = -1.0
-    fitted_params = fit_skew_normal(np.asarray(null_statistics, dtype=np.float64))
-    if np.all(np.isfinite(fitted_params)):
-        null_sorted = np.asarray(null_statistics, dtype=np.float64).copy()
-        null_sorted.sort()
+        right_tail = z_obs >= z_sorted[(z_sorted.size - 1) // 2]
+        if right_tail:
+            ok = _tail_ok(z_sorted, xi, omega, alpha)
+            tail = skewnorm.sf(z_obs, alpha, loc=xi, scale=omega)
+        else:   # mirror so the left tail is checked like a right tail
+            ok = _tail_ok(-z_sorted[::-1], -xi, omega, -alpha)
+            tail = skewnorm.cdf(z_obs, alpha, loc=xi, scale=omega)
+        if not ok or not np.isfinite(tail):
+            continue
 
-        median_idx = (null_sorted.size - 1) // 2
-        median = null_sorted[median_idx]
-        check_right_tail = z_orig >= median
-
-        outlier_ok = check_for_outliers(null_sorted, fitted_params[3], fitted_params[4])
-        fit_ok = False
-        if outlier_ok:
-            if check_right_tail:
-                fit_ok = check_sn_tail(
-                    null_sorted, fitted_params[0], fitted_params[1], fitted_params[2]
-                )
-            else:
-                null_left = -null_sorted[::-1]
-                fit_ok = check_sn_tail(
-                    null_left, -fitted_params[0], fitted_params[1], -fitted_params[2]
-                )
-
-        use_sn = outlier_ok and fit_ok
-        if use_sn:
-            dist = skewnorm(
-                fitted_params[2], loc=fitted_params[0], scale=fitted_params[1]
-            )
-            if side_code == 0:
-                p_tail = dist.sf(z_orig) if check_right_tail else dist.cdf(z_orig)
-                p_val = 2.0 * p_tail
-            elif side_code == 1:
-                p_val = dist.sf(z_orig)
-            else:
-                p_val = dist.cdf(z_orig)
-
-            if p_val <= 1.0e-250:
-                p_val = 1.0e-250
-
-    return np.array(
-        [fitted_params[0], fitted_params[1], fitted_params[2], p_val],
-        dtype=np.float64,
-    )
+        pvals_sn[k] = min(1.0, max(2.0 * tail, P_FLOOR))
+        skew_params[k] = (xi, omega, alpha)
+    return pvals_sn, skew_params
