@@ -223,6 +223,8 @@ Same as sk-cNMF except:
 | `--guide_annotation_path` | str | None | Guide annotation TSV |
 | `--organism` | str | `human` | Species for enrichment |
 | `--FDR_method` | str | `StoreyQ` | FDR method: `StoreyQ` or `BH` |
+| `--balanced` | flag | off | Subsample each target's U-test reference to the target's cell count |
+| `--balanced_seed` | int | `0` | Seed for the `--balanced` subsample |
 | `--n_top` | int | `300` | Top genes for enrichment tests |
 | `--gene_names_key` | str | `symbol` | Column in data_guide["rna"].var with gene names |
 | `--guide_annotation_key` | str (nargs=\*) | `["non-targeting"]` | Non-targeting guide identifiers (accepts multiple values) |
@@ -405,6 +407,10 @@ U-test reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns[
 | `--compute_real_perturbation_tests` | Run real perturbation tests |
 | `--compute_fake_perturbation_tests` | Run calibration null distribution |
 | `--visualizations` | Generate QQ and violin plots |
+| `--reference_mode` | Reference cells (`complement` default / `ntc_only`); each target's own cells are removed from its reference |
+| `--qq_per_program` | With `--visualizations`, also save a per-program QQ plot |
+| `--balanced` | Subsample each target's reference (real and fake tests) to the target's cell count |
+| `--balanced_seed` | Seed for the `--balanced` subsample (default `0`) |
 | `--check_format` | Validate format first |
 | `--skip_existing` | Skip per-(K, sel_thresh, sample) computations whose output files already exist; existing outputs are loaded for visualizations |
 

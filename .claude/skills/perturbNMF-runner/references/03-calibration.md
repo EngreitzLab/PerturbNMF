@@ -142,6 +142,10 @@ U-test reads guide info (`obsm['guide_assignment']`, `uns['guide_names']`, `uns[
 | `--compute_real_perturbation_tests` | flag | Compute perturbation association on real targeting guides |
 | `--compute_fake_perturbation_tests` | flag | Compute perturbation association on fake targeting guides (null) |
 | `--visualizations` | flag | Generate QQ plots and violin plots comparing real vs null distributions |
+| `--reference_mode` | str (default `complement`) | Reference cells for the real and fake tests: `complement` = all other cells, `ntc_only` = only control guides; each target's own cells are always removed from its reference |
+| `--qq_per_program` | flag | With `--visualizations`, also save a QQ plot with one panel per program |
+| `--balanced` | flag | Subsample each target's reference (real and fake tests) to the target's cell count; all reference cells kept if fewer |
+| `--balanced_seed` | int (default `0`) | Seed for the `--balanced` subsample |
 | `--check_format` | flag | Validate MuData format + required keys before running calibration |
 | `--skip_existing` | flag | Resume preempted jobs by skipping per-(K, sel_thresh, sample) outputs that already exist on disk; visualizations still work via on-disk loads |
 
