@@ -61,7 +61,9 @@ def main():
     parser.add_argument('--densify', action='store_true',
                         help="Densify sparse matrix before factorization")
     parser.add_argument('--tpm_fn', type=str, default=None,
-                        help="Pre-computed TPM file path")
+                        help="Pre-computed TPM file path. Default: this run's own "
+                             "cnmf_tmp/Inference.tpm.h5ad if a previous run finished writing it, "
+                             "else computed from --counts_fn")
     parser.add_argument('--numhvgenes', type=int, default=2000,
                         help="Number of highly variable genes")
     parser.add_argument('--genes_file', type=str, default=None,
@@ -248,6 +250,16 @@ def main():
     # Initialise cNMF (torch_cnmf)
     # ======================================================================
     cnmf_obj = cNMF(output_dir=run_dir, name='Inference')
+
+    # reuse normalized h5ad 
+    if args.tpm_fn is None:
+        default_tpm = cnmf_obj.paths['tpm']
+        if os.path.exists(default_tpm) and os.path.exists(cnmf_obj.paths['tpm_stats']):
+            args.tpm_fn = default_tpm
+    elif not os.path.exists(args.tpm_fn):
+        print(f"WARNING: --tpm_fn {args.tpm_fn} does not exist; computing TPM from --counts_fn")
+        args.tpm_fn = None
+    print(f"TPM: reusing {args.tpm_fn}" if args.tpm_fn else "TPM: computing from --counts_fn")
 
     # --- Prepare ---
     cnmf_obj.prepare(
