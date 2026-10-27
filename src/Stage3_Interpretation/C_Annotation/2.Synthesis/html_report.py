@@ -1,7 +1,7 @@
-"""Render the AGeneTic program JSONs as one self-contained HTML report.
+"""Render the run's programs as one self-contained HTML report of regulator-gene interaction graphs.
 
-Reads '<info_dir>/P<k>.json' (Gene_info_extended_PerturbNMF_Info: gene_info from MyGene /
-NCBI / UniProt, gene_interactions.OmniPath, optionally gene_interactions.Literature) and writes one HTML page with a program rail. Per program:
+Reads the program folders (<run_dir>/Programs/P<k>/: gene_info.jsonl from MyGene / NCBI / UniProt, interactions.jsonl
+from OmniPath, through program_bundle.load_run) and writes one HTML page with a program rail. Per program:
 
   * an interactive graph (Cytoscape.js, inlined so the file works offline) of the top
     regulators x top program genes; edges = OmniPath interactions (solid, colored by sign,
@@ -58,23 +58,6 @@ def text_on(rgb):
 
 
 # loaders
-def load_bundles(info_dir, programs=None):
-    """{program number: bundle}; all P<k>.json in info_dir (numeric order) when programs is None."""
-    info_dir = Path(info_dir)
-    if not info_dir.is_dir():
-        raise FileNotFoundError(f"Input not found: {info_dir}")
-    if programs is None:
-        found = [p for p in info_dir.glob("P*.json") if re.fullmatch(r"P\d+", p.stem)]
-        programs = sorted(int(p.stem[1:]) for p in found)
-    paths = {pid: info_dir / f"P{pid}.json" for pid in dict.fromkeys(programs)}
-    missing = [str(p) for p in paths.values() if not p.exists()]
-    if missing:
-        raise FileNotFoundError(f"No program JSON for {len(missing)} program(s): {missing}")
-    if not paths:
-        raise FileNotFoundError(f"No P<k>.json in {info_dir}")
-    return {pid: json.loads(p.read_text()) for pid, p in paths.items()}
-
-
 def gene_name(entry):
     return entry if isinstance(entry, str) else entry["gene"]
 
@@ -328,11 +311,11 @@ def build_parser():
     p = argparse.ArgumentParser(description="Write an HTML report with per-program regulator-gene interaction graphs.")
 
     # IO
-    p.add_argument("--info_dir", required=True, help="Gene_info_extended_PerturbNMF_Info folder (P<k>.json).")
-    p.add_argument("--out", default=None, help="Output HTML. Default: <info_dir>/../Report/AGeneTic_report.html.")
+    p.add_argument("--run_dir", required=True, help="Annotation run folder (Programs/P<k>/).")
+    p.add_argument("--out", default=None, help="Output HTML. Default: <run_dir>/Report/interaction_report.html.")
 
     # context info
-    p.add_argument("--programs", type=int, nargs="+", default=None, help="Program ids, space separated (e.g. 1 2 3). Default: every P<k>.json in --info_dir.")
+    p.add_argument("--programs", type=int, nargs="+", default=None, help="Program ids, space separated (e.g. 1 2 3). Default: every program folder.")
     p.add_argument("--dataset_name", default="", help="Dataset label shown in the top bar and hero.")
 
     # graph
@@ -344,16 +327,17 @@ def build_parser():
 
 def main():
     args = build_parser().parse_args()
-    bundles = load_bundles(args.info_dir, args.programs)
+    from program_bundle import load_run
+    bundles, _, _ = load_run(args.run_dir, args.programs, top_gene=args.top_gene)
     programs = [build_program(pid, b, args.top_regulator, args.top_gene) for pid, b in bundles.items()]
     for p in programs:
         g = p["graph"]
         n_reg = sum(n["kind"] == "regulator" for n in g["nodes"])
-        note = "" if g["has_omnipath"] else "  [warn] no OmniPath block (run OmniPath.py); graph has no edges"
+        note = "" if g["has_omnipath"] else "  [warn] no OmniPath block (no interactions.jsonl); graph has no edges"
         print(f"  {p['label']}: regulators={n_reg} genes={len(g['nodes']) - n_reg} "
               f"edges={len(g['edges'])}{note}")
 
-    out = Path(args.out or Path(args.info_dir).resolve().parent / "Report" / "AGeneTic_report.html")
+    out = Path(args.out or Path(args.run_dir) / "Report" / "interaction_report.html")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(render_html(programs, args.dataset_name, not args.cdn,
                                args.top_regulator, args.top_gene))

@@ -1,4 +1,4 @@
-"""Deterministic confounder screens per program, added to the Extract_program_information.py bundles.
+"""Deterministic confounder screens per program, written to <run_dir>/Programs/P<k>/confounder_screens.json.
 
 Ported from ProgramAnnotatorV3/scripts/build_confounder_screens.py (branch annotation-v3-annotator-viewer).
 The screens answer "is there a non-biological or non-specific reason these genes co-vary?" from the data
@@ -6,12 +6,12 @@ alone, before any LLM sees the program. Every screen reports an observed count, 
 and a p-value, because "12 of the top 50 genes are ribosomal" means nothing without "and ribosomal genes
 are 4% of the background".
 
-    python build_confounder_screens.py --info_dir <out_dir>/PerturbNMF_Info --gtf_path genes.gtf.gz
+    python build_confounder_screens.py --run_dir <out_dir>/<run_name>/Annotation --gtf_path genes.gtf.gz
 
-Reads '<info_dir>/meta.json' (h5mu, perturbation files, keys and membership_top / fdr of the extract run)
-and '<info_dir>/P<k>.json', and writes into every P<k>.json
+Reads <run_dir>/Programs/meta.json (h5mu, perturbation files, keys, membership_top and fdr of
+prepare_programs.py) and writes, per program folder, confounder_screens.json
 
-    confounder_screens: {label: {families, primary_family, positional_flag, ...}, screens: {...}, params}
+    {label: {families, primary_family, positional_flag, ...}, screens: {...}, params}
 
   screens.symbol_families   7 symbol-prefix families (ribosomal, mitochondrial, histone, snoRNA, ...)
   screens.marker_sets       6 marker sets (cell cycle S / G2M, heat shock, ISR, UPR, interferon)
@@ -21,8 +21,7 @@ and '<info_dir>/P<k>.json', and writes into every P<k>.json
 The top genes are the program's top --top_n_genes by loading; the background is the run's own gene universe
 (every program's top membership_top genes), not the genome. A family or marker set is called when at least
 --min_genes top genes hit it with hypergeometric p <= --max_p; primary_family is the most significant one.
---also_update patches the same block into P<k>.json that already exist in later folders (e.g.
-Gene_info_extended_PerturbNMF_Info), touching only that key.
+The confounder_screens step of each program's plan.md is ticked once the file passes its checks.
 """
 import argparse
 import gzip
@@ -39,10 +38,9 @@ from scipy.stats import binomtest, hypergeom
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from Extract_program_information import (load_cell_usage, load_condition,  # noqa: E402
-                                         load_gene_spectra, load_perturbation)
+from program_inputs import load_cell_usage, load_condition, load_gene_spectra, load_perturbation  # noqa: E402
 
-KEY = "confounder_screens"
+from program_dir import list_programs, mark_done  # noqa: E402
 
 # Tirosh/Seurat cell-cycle sets, with both the legacy and current symbols for the four genes
 # that were renamed (MLF1IP/CENPU, FAM64A/PIMREG, HN1/JPT1) so a symbol change cannot silently
@@ -272,10 +270,10 @@ def label_program(screens, args):
 
 
 # inputs
-def load_meta(info_dir):
-    path = Path(info_dir) / "meta.json"
+def load_meta(run_dir):
+    path = Path(run_dir) / "Programs" / "meta.json"
     if not path.exists():
-        raise FileNotFoundError(f"{path} not found: run Extract_program_information.py first")
+        raise FileNotFoundError(f"{path} not found: run prepare_programs.py first")
     return json.loads(path.read_text())
 
 
@@ -293,18 +291,17 @@ def load_condition_markers(path):
 
 
 def build_parser():
-    p = argparse.ArgumentParser(description="Confounder screens (symbol families, marker sets, chromosome position) per program, added to the PerturbNMF_Info bundles.")
+    p = argparse.ArgumentParser(description="Confounder screens (symbol families, marker sets, chromosome position) per program, written to each program folder.")
 
     # IO
-    p.add_argument("--info_dir", required=True, help="PerturbNMF_Info folder of Extract_program_information.py (P<k>.json + meta.json); P<k>.json are updated in place.")
+    p.add_argument("--run_dir", required=True, help="Annotation run folder of prepare_programs.py (Programs/meta.json, Programs/P<k>/).")
     coords = p.add_mutually_exclusive_group(required=True)
     coords.add_argument("--gtf_path", help="GTF (.gtf or .gtf.gz) used for alignment; its 'gene' rows give chromosome, position and gene_type.")
     coords.add_argument("--gene_coordinates", help="Instead of --gtf_path: TSV without header, name chrom start end strand gene_type.")
     p.add_argument("--condition_markers", default=None, help="JSON {condition: {description, genes}} of canonical marker genes per condition; adds the condition_composition screen. Default: off.")
-    p.add_argument("--also_update", nargs="*", default=[], help="Later bundle folders (e.g. Gene_info_extended_PerturbNMF_Info) whose existing P<k>.json get the same block.")
 
     # context info
-    p.add_argument("--programs", type=int, nargs="+", default=None, help="Program ids, space separated (e.g. 1 2 3). Default: every P<k>.json in --info_dir.")
+    p.add_argument("--programs", type=int, nargs="+", default=None, help="Program ids, space separated (e.g. 1 2 3). Default: every program folder.")
 
     # screen
     p.add_argument("--top_n_genes", type=int, default=50, help="Top genes per program (by loading) that are screened.")
@@ -317,8 +314,8 @@ def build_parser():
 
 def main():
     args = build_parser().parse_args()
-    info_dir = Path(args.info_dir)
-    meta = load_meta(info_dir)
+    run_dir = Path(args.run_dir)
+    meta = load_meta(run_dir)
     keys, params = meta["keys"], meta["params"]
     fdr, membership_top = params.get("fdr", 0.05), params.get("membership_top", 300)
 
@@ -343,13 +340,13 @@ def main():
         labels, _ = load_condition(prog_adata, keys["categorical_key"])
         condition_means = load_cell_usage(prog_adata).groupby(labels.values).mean()   # conditions x programs
 
-    found = sorted(int(m.group(1)) for f in info_dir.glob("P*.json") if (m := re.fullmatch(r"P(\d+)\.json", f.name)))
-    programs = list(dict.fromkeys(args.programs or found))
-    summary, n_patched = {}, 0
+    folders = {int(d.name[1:]): d for d in list_programs(run_dir)}
+    programs = list(dict.fromkeys(args.programs or folders))
+    summary = {}
     for pid in programs:
-        path = info_dir / f"P{pid}.json"
-        if not path.exists():
-            print(f"  P{pid}: no bundle in {info_dir}; skipped")
+        d = folders.get(pid)
+        if d is None:
+            print(f"  P{pid}: no program folder in {run_dir / 'Programs'}; skipped")
             continue
         top_genes = spectra.loc[pid].sort_values(ascending=False).index[:args.top_n_genes].tolist()
         screens = screen_program(top_genes, background, coordinates, background_chroms, n_located, screen_targets,
@@ -359,23 +356,18 @@ def main():
         block = {"label": label_program(screens, args), "screens": screens,
                  "params": {k: getattr(args, k) for k in ("top_n_genes", "window_bp", "min_genes", "max_p", "min_fold")}
                            | {"membership_top": membership_top, "fdr": fdr, "n_background": len(background)}}
-        for folder in [info_dir, *map(Path, args.also_update)]:
-            target = folder / f"P{pid}.json"
-            if target.exists():
-                bundle = json.loads(target.read_text())
-                bundle[KEY] = block
-                target.write_text(json.dumps(bundle, indent=2))
-                n_patched += folder != info_dir
+        (d / "confounder_screens.json").write_text(json.dumps(block, indent=2))
+        errors = mark_done(d, "confounder_screens", by="build_confounder_screens.py")
         lab = block["label"]
         summary[f"P{pid}"] = {"primary_family": lab["primary_family"], "families": lab["families"],
                               "positional_flag": lab["positional_flag"]}
         print(f"  P{pid}: primary={lab['primary_family']} families={lab['families'] or '-'} "
-              f"positional={lab['positional_flag'] or '-'}")
+              f"positional={lab['positional_flag'] or '-'}" + (f"  [FAILED: {errors}]" if errors else ""))
 
-    (info_dir / "meta_confounder_screens.json").write_text(json.dumps({
+    (run_dir / "Programs" / "meta_confounder_screens.json").write_text(json.dumps({
         "created": datetime.now().isoformat(timespec="seconds"),
-        "inputs": {"info_dir": str(info_dir), "gtf_path": args.gtf_path, "gene_coordinates": args.gene_coordinates,
-                   "condition_markers": args.condition_markers, "also_update": args.also_update},
+        "inputs": {"run_dir": str(run_dir), "gtf_path": args.gtf_path, "gene_coordinates": args.gene_coordinates,
+                   "condition_markers": args.condition_markers},
         "params": {k: getattr(args, k) for k in ("top_n_genes", "window_bp", "min_genes", "max_p", "min_fold")}
                   | {"membership_top": membership_top, "fdr": fdr},
         "n_background": len(background),
@@ -383,8 +375,7 @@ def main():
     }, indent=2))
     n_family = sum(v["primary_family"] != "none" for v in summary.values())
     n_pos = sum(bool(v["positional_flag"]) for v in summary.values())
-    print(f"[done] {len(summary)} program(s): {n_family} with a family, {n_pos} positional; "
-          f"{n_patched} later bundle(s) patched -> {info_dir}")
+    print(f"[done] {len(summary)} program(s): {n_family} with a family, {n_pos} positional -> {run_dir / 'Programs'}")
     return 0
 
 

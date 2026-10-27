@@ -36,6 +36,10 @@ a { color: var(--accent-text); }
 .top button { border: 1px solid var(--border); background: var(--surface); color: var(--text-soft);
   border-radius: 8px; padding: 5px 10px; cursor: pointer; font: inherit; font-size: 13px; }
 .top button:hover { background: var(--surface-soft); }
+.top .homebtn { border: 1px solid var(--border); background: var(--surface); color: var(--text-soft); white-space: nowrap;
+  border-radius: 8px; padding: 5px 10px; font-size: 13px; text-decoration: none; }
+.top .homebtn:hover { background: var(--surface-soft); color: var(--text); }
+.top .homebtn[hidden] { display: none; }
 .spacer { flex: 1; }
 .shell { display: grid; grid-template-columns: 290px minmax(0, 1fr); }
 .rail { position: sticky; top: 53px; align-self: start; height: calc(100vh - 53px); overflow-y: auto;
@@ -128,12 +132,14 @@ svg.logo { display: block; background: #fff; border-radius: 3px; }
 .ginfo .inter { border-top: 1px solid var(--border); padding: 6px 0; }
 .sw.line { height: 0; border-radius: 0; border-top: 3px solid; }
 .sw.line.dash { border-top-style: dashed; }
+.sw.line.dot { border-top-style: dotted; }
 @media (max-width: 1100px) { .gwrap { grid-template-columns: 1fr; } .ginfo { height: auto; max-height: 360px; } }
 </style>
 __CYTOSCAPE_TAG__
 </head>
 <body>
 <div class="top">
+  <a class="homebtn" id="homeBtn" href="__HOME_URL__" title="Back to every project on this site"__HOME_HIDDEN__>&larr; All projects</a>
   <div class="brand" id="brand"></div>
   <input id="search" type="search" placeholder="Search labels, summaries, genes, regulators, GO terms…" oninput="filterRail()">
   <div class="spacer"></div>
@@ -204,7 +210,7 @@ function filterRail() {
     let el = h.nextElementSibling, any = false;
     while (el && el.tagName === "A") { if (el.style.display !== "none") any = true; el = el.nextElementSibling; }
     h.style.display = any ? "" : "none"; });
-  document.getElementById("meta").textContent = q ? `${shown} of ${IDS.length} programs` : `${IDS.length} programs · ${META.built}`;
+  document.getElementById("meta").textContent = q ? `${shown} of ${IDS.length} programs` : "";
 }
 
 // ---- genes --------------------------------------------------------------------------------
@@ -363,16 +369,25 @@ function otherPapers(o, wrap) {
                (o.literature.length ? `<div class="psub">Program literature search</div>${paperList(o.literature)}` : "");
   return wrap ? `<details class="more"><summary>Other literature searched (${n})</summary>${body}</details>` : body;
 }
+// STRING database supports of a driving gene, in the citation-pass format: badge, source, term, FDR
+function stringSupports(g) {
+  if (!(g.string || []).length) return "";
+  const badge = g.string_used
+    ? `<span class="flag" style="color:var(--good)" title="The judge's reason uses this STRING evidence">◆ used by judge</span>`
+    : `<span class="flag" style="color:var(--accent-text)" title="Shown to the judge as supporting context; not part of its reason">◆ context</span>`;
+  return `<div class="psub">Database (STRING enrichment)</div>` + g.string.map(x =>
+    `<div class="small" style="margin-bottom:4px">${badge} <b>${esc(x.source)}</b>: ${esc(String(x.term).slice(0, 160))} <span class="muted">${esc(x.id)}</span> (FDR ${Number(x.fdr).toExponential(1)})</div>`).join("");
+}
 function driversCard(p) {
   const d = p.drivers;
   if (!d) return "";
   const hits = new Set(d.driving.map(g => g.gene));
   const rows = d.driving.map(g => `<tr><td>${chip(p, g.gene, true)}</td><td>${verdictCell(g.verdict)}</td>
       <td>${esc(g.why)}${g.cell_type ? `<div class="small muted" style="margin-top:4px">${esc(g.cell_type)}</div>` : ""}</td>
-      <td style="min-width:320px">${g.supporting.length ? paperList(g.supporting) : `<span class="muted small">No supporting paper listed.</span>`}${otherPapers(g.other, true)}</td></tr>`).join("");
+      <td style="min-width:320px">${g.supporting.length ? paperList(g.supporting) : `<span class="muted small">No supporting paper listed.</span>`}${stringSupports(g)}${otherPapers(g.other, true)}</td></tr>`).join("");
   return `<details class="card" open><summary>Driving genes (${d.driving.length}) — with support</summary>
-    ${rows ? `<table><tr><th>Gene</th><th>Verdict</th><th>Why</th><th>Supporting papers</th></tr>${rows}</table>` : `<p class="muted">No gene's literature explains this label.</p>`}
-    <p class="small muted">Genes whose own papers explain the label (paper-qa evidence${d.judge_model ? ", verdicts by " + esc(d.judge_model) : ""}), supported before mixed.</p></details>`;
+    ${rows ? `<table><tr><th>Gene</th><th>Verdict</th><th>Why</th><th>Supporting evidence</th></tr>${rows}</table>` : `<p class="muted">No gene's literature explains this label.</p>`}
+    <p class="small muted">Genes whose own papers explain the label (paper-qa evidence${d.judge_model ? ", verdicts by " + esc(d.judge_model) : ""}), supported before mixed. Database lines are the gene's STRING terms enriched among the program's top genes, shown to the judge as supporting context: <b>◆ used by judge</b> = the verdict's reason relies on them; a STRING term never makes a gene supported on its own.</p></details>`;
 }
 
 // ---- TF motif enrichment ------------------------------------------------------------------
@@ -466,7 +481,7 @@ function slotCard(p, title, s) {
     ${s.mechanism_kind ? `<p class="small muted" style="margin:4px 0 0">Mechanism kind: ${esc(s.mechanism_kind)}</p>` : ""}
     ${(s.pmids || []).length ? `<p class="small" style="margin:4px 0 0">${s.pmids.map(pmidLink).join(", ")}</p>` : ""}</div>`;
 }
-function interpretationCards(p) {
+function interpretationCards(p, beforeModules = "") {
   const it = p.interpretation;
   if (!it) return "";
   const confRows = it.confounders.map(c => `<tr><td>${esc(pretty(c.confounder))}</td><td>${statusCell(c.status)}</td><td>${esc(c.evidence)}</td></tr>`).join("");
@@ -478,33 +493,53 @@ function interpretationCards(p) {
     <div class="card"><h3>Layered interpretation <span class="muted small" style="font-weight:400">· coherence: ${esc(it.coherence)}</span></h3><div class="grid3">
       ${slotCard(p, "Upstream trigger", it.interpretation.upstream_trigger)}${slotCard(p, "Co-regulation mechanism", it.interpretation.coregulation_mechanism)}${slotCard(p, "Cellular output", it.interpretation.cellular_output)}</div>
       <p class="small muted" style="margin:8px 0 0">Outlined chips = knockdown regulators; plain chips = program genes.</p></div>
+    ${beforeModules}
     <details class="card"><summary>Modules (${it.modules.length})</summary>
       <p class="small muted">A module is a subset of this program's genes grouped under a narrower process or mechanism than the label. Strength says how well the genes and terms back it: supported, suggestive or speculative.</p>${modules || '<p class="muted">None.</p>'}${note}</details>`;
 }
 
-// ---- pre-annotation screen ----------------------------------------------------------------
-function screenCard(p) {
-  const s = p.screen;
-  if (!s) return "";
-  const dot = (t, c) => `<span class="status"><span class="dot" style="background:${c}"></span>${t}</span>`;
-  const fam = s.families.map(f => `<tr><td>Family: <b>${esc(f.name)}</b></td><td>${f.primary ? dot("Primary", "var(--warning)") : dot("Called", "var(--serious)")}</td>
-      <td>${f.n_overlap} of ${s.n_top} top genes (expected ${f.expected}), p = ${esc(f.p_value)}<div style="margin-top:4px">${chips(p, f.genes)}</div></td></tr>`).join("")
-    || `<tr><td>Family label</td><td>${dot("None", "var(--good)")}</td><td>No family or marker set has ≥ ${s.min_genes} of the top ${s.n_top} genes at p ≤ ${s.max_p}.</td></tr>`;
-  const c = s.chrom;
-  let chrom;
-  if (c && c.p < 0.05) chrom = `<tr><td>Chromosome: <b>${esc(c.top_chromosome)}</b></td><td>${c.flag ? dot("Flagged", "var(--critical)") : dot("Enriched", "var(--warning)")}</td>
-      <td>${c.genes_on_top_chromosome} of ${c.n_genes_located} located top genes (expected ${c.expected_on_top_chromosome}, fold ${c.fold_enrichment}), binomial p = ${esc(c.binomial_p)}<div style="margin-top:4px">${chips(p, c.top_chromosome_genes)}</div></td></tr>`;
-  else chrom = `<tr><td>Chromosome enrichment</td><td>${dot(c ? "None" : "Cannot assess", c ? "var(--good)" : "var(--muted)")}</td>
-      <td>No chromosome enriched at p &lt; 0.05${c ? ` (most genes on ${esc(c.top_chromosome)}: ${c.genes_on_top_chromosome} vs ${c.expected_on_top_chromosome} expected, p = ${esc(c.binomial_p)})` : ""}.</td></tr>`;
-  return `<div class="card"><h3>Pre-annotation screen</h3><table><tr><th>Screen</th><th>Status</th><th>Evidence</th></tr>${fam}${chrom}</table>
-    ${s.all_genes.length ? `<details class="more"><summary>All ${s.all_genes.length} screened genes</summary><div>${chips(p, s.all_genes)}</div></details>` : ""}
-    <p class="small muted">Gene families and marker sets enriched among the top ${s.n_top} genes, against this run's gene universe; chromosome holding more top genes than expected (binomial test).</p></div>`;
+// ---- GO enrichment ------------------------------------------------------------------------
+// horizontal bars of -log10 adjusted p per GO term (bundle order = most significant first); list without stats
+function goBars(p) {
+  const st = p.go_stats;
+  if (!st || !st.some(Boolean)) return `<ol class="go">${p.go.map(t => `<li>${esc(t)}</li>`).join("")}</ol>`;
+  // drawn like the volcano panel, left-aligned; each term's name (then its adj p) sits right of its bar
+  const rows = p.go.map((t, i) => ({t, s: st[i]}));
+  const val = r => r.s ? -Math.log10(Math.max(r.s.adj_p, 1e-300)) : 0;
+  const thr = -Math.log10(0.05), xmax = Math.max(1.5, ...rows.map(val)) * 1.05;
+  const W = 760, BW = 230, RH = 21, m = {l: 8, t: 34, b: 30}, H = m.t + rows.length * RH + m.b;
+  const sx = v => m.l + v / xmax * BW, CH = 6.3;   // CH: approximate px per character at 11 px
+  const step = xmax > 24 ? 10 : xmax > 10 ? 5 : xmax > 5 ? 2 : 1;
+  const ticks = []; for (let v = 0; v <= xmax; v += step) ticks.push(v);
+  const bars = rows.map((r, i) => {
+    const y = m.t + i * RH, s = r.s, end = sx(val(r)), pv = s ? ` · ${fmtP(s.adj_p)}` : "";
+    const room = Math.floor((W - end - 8) / CH) - pv.length;
+    const name = r.t.length > room ? r.t.slice(0, Math.max(8, room - 1)) + "…" : r.t;
+    const tip = s ? `${r.t}: adj p ${fmtP(s.adj_p)}, p ${fmtP(s.p)}, ${s.n}/${s.of} genes` +
+      (s.genes.length ? ` (${s.genes.slice(0, 15).join(", ")}${s.genes.length > 15 ? ", …" : ""})` : "") : `${r.t}: no statistics`;
+    return `<g data-tip="${esc(tip)}"><rect x="${m.l}" y="${y}" width="${W - m.l}" height="${RH - 1}" fill="transparent"/>
+      <rect x="${m.l}" y="${y + 4}" width="${Math.max(1, end - m.l).toFixed(1)}" height="${RH - 8}" rx="2" fill="var(--bar)"/>
+      <text x="${(end + 6).toFixed(1)}" y="${y + 14}" font-size="11" fill="var(--text)">${esc(name + pv)}</text></g>`;
+  }).join("");
+  const axis = `<line x1="${m.l}" x2="${m.l + BW}" y1="${H - m.b}" y2="${H - m.b}" stroke="var(--border)"/>
+    <line x1="${m.l}" x2="${m.l}" y1="${m.t - 4}" y2="${H - m.b}" stroke="var(--border)"/>
+    <line x1="${sx(thr)}" x2="${sx(thr)}" y1="${m.t - 4}" y2="${H - m.b}" stroke="var(--muted)" stroke-dasharray="3,3"/>
+    <text x="${sx(thr) + 3}" y="${m.t - 6}" font-size="9.5" fill="var(--muted)">adj p = 0.05</text>
+    ${ticks.map(v => `<text x="${sx(v)}" y="${H - m.b + 12}" font-size="10" text-anchor="middle" fill="var(--text-soft)">${v}</text>`).join("")}
+    <text x="${m.l + BW / 2}" y="${H - 4}" font-size="10" text-anchor="middle" fill="var(--text-soft)">−log10 adj p</text>
+    <text x="${m.l}" y="13" font-size="11.5" font-weight="700" fill="var(--text)">GO enrichment</text>
+    <text x="${m.l + BW}" y="13" font-size="10.5" text-anchor="end" fill="var(--text-soft)">top ${rows.length} terms by adj p</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="GO term adjusted p-values" style="max-width:100%;display:block">${axis}${bars}</svg>
+    <p class="small muted">Benjamini–Hochberg adjusted p per GO term (after the name); hover a row for the raw p, overlap and genes.</p>`;
 }
 
 // ---- regulator-gene interactions ----------------------------------------------------------
 // Cytoscape.js graph of the top regulators x top / unique genes; edges and their records come from html_report.py
 let cy = null, showUnlinked = false;
-const EDGE_VAR = {activation: "--good", inhibition: "--critical", mixed: "--muted", literature: "--warning"};
+const EDGE_VAR = {activation: "--good", inhibition: "--critical", mixed: "--muted", literature: "--warning",
+  experimental: "--accent", curated: "--bar", predicted: "--text-soft"};   // the last three: STRING regulator links
+const STRING_TYPE = {experimental: "an assay detected it", curated: "a pathway / complex database lists it",
+  predicted: "text mining, co-expression or genomic context only"};
 const NET_HINT = `<p class="muted">Hover a node or an edge for a summary; click it for the interactions and their references. Drag nodes to rearrange; scroll to zoom.</p>`;
 const pmidLinks = ids => (ids || []).map(x => `<a href="https://pubmed.ncbi.nlm.nih.gov/${esc(x)}/" target="_blank" rel="noopener">${esc(x)}</a>`).join(", ");
 const words = s => esc(String(s ?? "").replace(/_/g, " "));
@@ -513,20 +548,35 @@ function networkCard(p) {
   const n = p.network;
   if (!n) return "";
   const nReg = n.nodes.filter(x => x.kind === "regulator").length;
-  const sw = (v, label, dash) => `<span><span class="sw line${dash ? " dash" : ""}" style="border-color:var(${v})"></span>${label}</span>`;
+  const nGeneEdges = n.edges.filter(e => e.kind !== "string").length, nRegEdges = n.edges.length - nGeneEdges;
+  const sw = (v, label, style) => `<span><span class="sw line${style ? " " + style : ""}" style="border-color:var(${v})"></span>${label}</span>`;
   const empty = !n.edges.length ? `<div class="gempty">${n.has_omnipath ? "No interaction found between these regulators and genes." : "No OmniPath results for this program (run search_OmniPath.py)."}</div>` : "";
-  return `<div class="card"><h3>Regulator–gene interactions</h3>
+  return `<div class="card"><h3>Regulator–gene and regulator–regulator interactions</h3>
     <div class="gtool"><button onclick="layoutNetwork(true)">Re-layout</button><button onclick="cy && cy.fit(cy.elements(':visible'), 40)">Fit</button>
       <button onclick="showUnlinked=!showUnlinked;render(currentId,true)">${showUnlinked ? "Hide" : "Show"} genes without interactions</button>
       <button onclick="networkPNG()">PNG</button>
-      <span class="gcount small muted">${n.edges.length} interaction${n.edges.length === 1 ? "" : "s"} · ${nReg} regulators · ${n.nodes.length - nReg} genes${n.has_omnipath ? ` · ${n.n_found} of ${n.n_tested} OmniPath pairs found` : ""}</span></div>
+      <span class="gcount small muted">${nGeneEdges} regulator–gene interaction${nGeneEdges === 1 ? "" : "s"}${n.has_string ? ` · ${nRegEdges} regulator–regulator STRING link${nRegEdges === 1 ? "" : "s"}` : ""} · ${nReg} regulators · ${n.nodes.length - nReg} genes${n.has_omnipath ? ` · ${n.n_found} of ${n.n_tested} OmniPath pairs found` : ""}</span></div>
     <div class="legend"><span><span class="sw" style="border-radius:50%;background:var(--div-neg)"></span>regulator, −log2FC (activator)</span>
       <span><span class="sw" style="border-radius:50%;background:var(--div-pos)"></span>regulator, +log2FC (repressor)</span>
       <span><span class="sw" style="background:var(--accent)"></span>top gene (darker = higher loading)</span>
       <span><span class="sw" style="background:var(--surface-soft);border:1.5px dashed var(--text-soft)"></span>unique gene</span>
-      ${sw("--good", "activation")}${sw("--critical", "inhibition")}${sw("--muted", "mixed / unknown sign")}${n.has_literature ? sw("--warning", "literature (paper-qa)", true) : ""}</div>
+      ${sw("--good", "activation")}${sw("--critical", "inhibition")}${sw("--muted", "mixed / unknown sign")}${n.has_literature ? sw("--warning", "literature (paper-qa)", "dash") : ""}
+      ${n.has_string ? sw("--accent", "STRING experimental", "dot") + sw("--bar", "STRING curated", "dot") + sw("--text-soft", "STRING predicted", "dot") : ""}</div>
     <div class="gwrap"><div class="gbox"><div id="cy"></div>${empty}</div><div class="ginfo" id="ginfo">${NET_HINT}</div></div>
-    <p class="small muted" style="margin:8px 0 0">The top ${nReg} regulators shown above × the top and unique genes. Every edge is an interaction found between a regulator and a gene: OmniPath (search_OmniPath.py; arrow = direction, width = number of references)${n.has_literature ? "; dashed = paper-qa relation from the downloaded literature" : ""}. Pairs without an edge were not found. A database interaction does not show that the regulator acts on the program in these cells.</p></div>`;
+    <p class="small muted" style="margin:8px 0 0">The top ${nReg} regulators shown above × the top and unique genes. Every edge is an interaction found between a regulator and a gene: OmniPath (search_OmniPath.py; arrow = direction, width = number of references)${n.has_literature ? "; dashed = paper-qa relation from the downloaded literature" : ""}${n.has_string ? "; dotted = STRING link between two shown regulators (combined score ≥ 0.7; width = score; colour = the strongest evidence type: experimental, curated database, or predicted only)" : ""}. Pairs without an edge were not found. A database interaction does not show that the regulator acts on the program in these cells.</p>
+    ${regulatorLinks(n)}</div>`;
+}
+
+function regulatorLinks(n) {
+  if (!n.has_string) return "";
+  const links = n.regulator_links || [], q = n.regulator_ppi || {};
+  const ppi = q.p_value == null ? "" : ` · ${esc(q.number_of_edges)} links vs ${esc(q.expected_number_of_edges)} expected among the ${esc(q.n_mapped)} regulators in STRING, PPI enrichment p = ${Number(q.p_value).toPrecision(2)} (background: ${esc(q.background)})`;
+  const rows = links.map(e => `<tr><td><b>${esc(e.a)}</b> – <b>${esc(e.b)}</b></td>
+      <td><span class="status"><span class="dot" style="background:var(${EDGE_VAR[e.type] || "--muted"})"></span>${esc(e.type)}</span></td>
+      <td>${Number(e.score).toFixed(3)}</td><td class="muted">${(e.channels || []).map(c => `${esc(c)} ${Number((e.channel_scores || {})[c]).toFixed(2)}`).join(", ")}</td></tr>`).join("");
+  return `<details style="margin-top:8px"><summary class="small" style="cursor:pointer">STRING links among all significant regulators — ${links.length}${ppi}</summary>
+    ${links.length ? `<table class="small"><thead><tr><th>Regulators</th><th>Type</th><th>Score</th><th>Channels (score ≥ 0.3)</th></tr></thead><tbody>${rows}</tbody></table>`
+      : `<p class="muted small">No STRING link at combined score ≥ 0.7 among the significant regulators.</p>`}</details>`;
 }
 
 function networkElements(p) {
@@ -579,6 +629,7 @@ function drawNetwork(p) {
       : `${d.kind === "gene" ? "top gene" : "unique gene"} #${d.rank}`) + ` · ${ev.target.connectedEdges().length} interaction(s)`, ev); });
   cy.on("mouseover", "edge", ev => { const e = ev.target.data();
     showTip(`${e.regulator} – ${e.gene}: ` + (e.kind === "literature" ? `literature, ${String(e.category).replace(/_/g, " ")}`
+      : e.kind === "string" ? `STRING ${e.sign} link, score ${Number(e.score).toFixed(3)}, ${(e.channels || []).join(", ")}`
       : `${e.sign}, ${(e.categories || []).map(c => String(c).replace(/_/g, " ")).join(", ")}, ${e.n_references} reference(s)`), ev); });
   cy.on("mousemove", "node, edge", moveTip);
   cy.on("mouseout", "node, edge", () => { tip.style.opacity = 0; });
@@ -607,7 +658,8 @@ function nodeInfo(p, nd) {
   const role = d.kind === "regulator" ? `Regulator${d.in_program ? " (also a shown gene)" : ""} · log2FC ${signed(d.log2fc)} · adj p ${esc(d.adj_p)} · ${esc(d.condition)}`
     : `${d.kind === "gene" ? "Top gene" : "Unique gene"} #${d.rank}`;
   const rows = nd.connectedEdges().map(e => { const x = e.data(), other = x.regulator === d.label ? x.gene : x.regulator;
-    return `<div class="inter"><b class="chip">${esc(other)}</b> <span style="color:${x.col}">${words(x.kind === "literature" ? "literature: " + x.category : x.sign)}</span>
+    return `<div class="inter"><b class="chip">${esc(other)}</b> <span style="color:${x.col}">${words(x.kind === "literature" ? "literature: " + x.category : x.kind === "string" ? "STRING " + x.sign : x.sign)}</span>
+      ${x.kind === "string" ? `<span class="muted"> · score ${Number(x.score).toFixed(3)} · ${(x.channels || []).map(words).join(", ")}</span>` : ""}
       ${x.kind === "omnipath" ? `<span class="muted"> · ${(x.categories || []).map(words).join(", ")} · ${x.n_references} ref.</span>` : ""}</div>`; }).join("");
   return `<h4><a href="${esc(geneHref(p, d.label))}" target="_blank" rel="noopener">${esc(d.label)}</a></h4>
     ${name ? `<div class="muted">${esc(name)}</div>` : ""}<p style="margin:4px 0 8px">${role}</p>
@@ -616,6 +668,12 @@ function nodeInfo(p, nd) {
 
 function edgeInfo(e) {
   const head = `<h4>${esc(e.regulator)} – ${esc(e.gene)}</h4>`;
+  if (e.kind === "string") {
+    const ch = (e.channels || []).map(c => `<div class="inter">${esc(c)} <span class="muted">${Number((e.channel_scores || {})[c]).toFixed(3)}</span></div>`).join("");
+    return `${head}<p class="muted" style="margin:2px 0 8px">STRING regulator–regulator link · ${esc(e.sign)}: ${esc(STRING_TYPE[e.sign] || "")} · combined score ${Number(e.score).toFixed(3)}</p>
+      ${ch || `<p class="muted">No single channel scores ≥ 0.3.</p>`}
+      <p class="small muted">Both are significant regulators of this program. A link says they are associated in STRING, not that they act together in these cells.</p>`;
+  }
   if (e.kind === "literature") {
     const c = e.citation || {}, href = c.url || (c.doi ? `https://doi.org/${c.doi}` : "");
     return `${head}<p class="muted" style="margin:2px 0 8px">Literature (paper-qa over ${esc(e.n_pdfs)} PDF${e.n_pdfs === 1 ? "" : "s"}) · ${words(e.category)}</p>
@@ -667,18 +725,15 @@ function render(id, keepScroll) {
       <p class="small muted" style="margin:10px 0 4px">Top unique genes: high in this program, low in others${META.membership_top ? ` among ${topN}loaded genes` : ""}</p><div>${chips(p, p.distinctive, hits)}</div>
       <p class="small muted" style="margin:6px 0 0">The annotator saw these same genes. Click a gene for its NCBI Gene page.</p></div>
     <div class="card"><h3>Top GO terms</h3><p class="small muted" style="margin:0 0 4px">Gene ontology enrichment of ${topN}program genes</p>
-      ${p.go.length ? `<ol class="go">${p.go.map(t => `<li>${esc(t)}</li>`).join("")}</ol>` : `<p class="muted">No enriched GO term.</p>`}</div>
+      ${p.go.length ? goBars(p) : `<p class="muted">No enriched GO term.</p>`}</div>
     <div class="card"><h3>${DAYS.length > 1 ? "Regulators by condition" : "Significant regulators"}</h3>
       ${p.volcano.length ? `${volcanoes(p)}
       <details style="margin-top:8px"><summary class="small" style="cursor:pointer">Table view — ${DAYS.length > 1 ? "log2FC of every significant regulator in every condition" : "significant regulators"}</summary>${regulatorGrid(p)}</details>` : ""}
       <details style="margin-top:8px"><summary class="small" style="cursor:pointer">List view — top regulators given to the annotator</summary>
       <p class="small muted" style="margin:4px 0">Program usage log2FC on CRISPRi knockdown; best adj p over conditions</p>${regulatorTable(p)}</details></div>
-    ${networkCard(p)}
     ${driversCard(p)}
     ${motifCard(p)}
-    ${interpretationCards(p)}
-    ${screenCard(p)}
-    <p class="small muted">Built ${esc(META.built)} · name and summary by ${esc(p.label_model)}${d ? ` · driving genes: paper-qa evidence, verdicts by ${esc(d.judge_model)}` : ""} · source ${esc(p.source)}</p>`;
+    ${p.interpretation ? interpretationCards(p, networkCard(p)) : networkCard(p)}`;
   if (wasOpen) document.querySelectorAll("#main details").forEach((x, i) => { if (i < wasOpen.length) x.open = wasOpen[i]; });
   drawNetwork(p);
 }

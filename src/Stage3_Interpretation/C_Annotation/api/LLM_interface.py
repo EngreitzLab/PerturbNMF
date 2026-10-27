@@ -18,6 +18,7 @@ class claude_api:
         self.model = model
         # optional spend cap (api/budget.attach): budget.ProgramBudget, step name, USD left for later steps
         self.budget, self.budget_step, self.budget_reserve = None, "", 0.0
+        self.last_error = None   # why the latest get_json returned None (for the step's run record)
 
     def _fits(self, system_prompt, prompt, max_tokens):
         """False (and recorded as skipped) when the call's worst case does not fit the program's budget."""
@@ -57,7 +58,9 @@ class claude_api:
             return None
 
     def get_json(self, system_prompt, prompt, schema_model, effort="medium", max_tokens=4000):
+        self.last_error = None
         if not self._fits(system_prompt, prompt, max_tokens):
+            self.last_error = "skipped: worst-case cost does not fit the program budget"
             return None
         try: 
             msg = self.client.messages.parse(
@@ -71,19 +74,23 @@ class claude_api:
 
         except ValidationError as e:
             print("Validation failed:", e)
+            self.last_error = f"answer does not match the schema: {e}"[:500]
             return None
 
         except anthropic.APIError as e:
             print("API error:", e)
+            self.last_error = f"API error: {e}"[:500]
             return None
 
         self._charge(msg)   # billed even when cut off or refused
         if msg.stop_reason == "max_tokens":
             print("Warning: answer was cut off")
+            self.last_error = "answer cut off at max_tokens"
             return None
 
         if msg.stop_reason == "refusal":
             print("Claude refused this request")
+            self.last_error = "refused"
             return None
 
 

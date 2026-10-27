@@ -95,9 +95,17 @@ class ProgramBudget:
 
 def add_budget_args(p, reserve_default):
     """--budget_dir / --budget_usd / --budget_reserve_usd on a step's parser."""
-    p.add_argument("--budget_dir", default=None, help="Per-program API spend ledgers (P<k>.json) shared by every step; with it, calls stop once a program would pass --budget_usd. Default: no cap.")
-    p.add_argument("--budget_usd", type=float, default=2.0, help="Spend cap per program in USD, over all steps (needs --budget_dir).")
+    p.add_argument("--budget_dir", default=None, help="Per-program API spend ledgers (P<k>.json) shared by every step; calls stop once a program would pass --budget_usd. Default: <run folder>/Budget, the folder next to the bundle folders.")
+    p.add_argument("--budget_usd", type=float, default=2.0, help="Spend cap per program in USD, over all steps.")
     p.add_argument("--budget_reserve_usd", type=float, default=reserve_default, help="USD of the cap this step leaves for the program's later steps.")
+    p.add_argument("--no_budget", action="store_true", help="No ledger and no cap (not recommended).")
+
+
+def resolve_budget_dir(args, run_dir):
+    """--budget_dir, else <run_dir>/Budget; None with --no_budget. run_dir is the folder holding the bundle folders."""
+    args.budget_dir = None if args.no_budget else Path(args.budget_dir or Path(run_dir) / "Budget")
+    if args.budget_dir:
+        print(f"[budget] ledgers in {args.budget_dir} (cap ${args.budget_usd:.2f} per program)")
 
 
 def attach(handler, args, program, step):

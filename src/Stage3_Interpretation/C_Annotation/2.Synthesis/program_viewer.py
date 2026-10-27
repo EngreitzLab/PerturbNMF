@@ -1,41 +1,45 @@
 """Write one self-contained HTML viewer of every labeled program (no external files or libraries).
 
-Reads '<info_dir>/P<k>.json' (AGeneTic bundle) and '<label_dir>/P<k>.json' (program_label.py) and writes one
+Reads the run's program folders (<run_dir>/Programs/P<k>/, through program_bundle.load_run) and writes one
 file: a top bar (search, previous / next, light / dark theme), a rail of programs grouped by the
 pre-annotation family label, and one program at a time. The content is the same as program_site.py's pages
 (it shares their selection helpers); the layout follows the single-file annotation viewer.
 
 Per program, in page order: the name and one-sentence function; program activity per condition
 (program_specificity); top genes (outlined = driving gene) and top unique (distinctive) genes; driving genes
-when 2.Evidence_curation/query_driver_gene.py has run for the current label (verdict, why, supporting
-papers, other literature searched); significant regulators (an
+when the optional driver_genes step has run for the current label (verdict, why, supporting
+papers, the gene's STRING terms shown to the judge, other literature searched); significant regulators (an
 inline SVG volcano per condition and a regulator x condition log2FC table, with --perturbation_path_base;
-then the top regulators given to the annotator); regulator-gene interactions (an interactive Cytoscape.js graph,
-inlined, of the top regulators x top and unique genes; edges = every OmniPath interaction found between them by
-search_OmniPath.py, plus paper-qa literature relations, read from the bundle's gene_interactions block or, when
-it has none, from --interaction_dir); TF motif enrichment (with --motif_enrichment_path: per
+then the top regulators given to the annotator); TF motif enrichment (with --motif_enrichment_path: per
 element type and motif source, the top significant motif families with logos and candidate TFs, selected
-by motif_selection.py); confounder rule-outs, layered interpretation and modules when
-program_interpretation.py has run for the current label; top GO terms; the pre-annotation screen when
-0.Prepare/build_confounder_screens.py has run. A regulator with negative log2FC on knockdown is an
+by motif_selection.py); confounder rule-outs and layered interpretation when interpretation.json was made
+for the current label; regulator-gene interactions (an interactive Cytoscape.js graph, inlined, of the top
+regulators x top and unique genes; edges = every OmniPath interaction found between them, from interactions.jsonl,
+and the STRING links among the shown regulators, dotted and colored by type, with a table of the links among all
+significant regulators, from string_genes.json); the interpretation's modules; top GO terms (a bar plot of -log10 adjusted p per term
+from the GO enrichment table, --GO_path or the run's Programs/meta.json). A regulator with negative log2FC on knockdown is an
 activator (knocking it down lowers the program); positive is a repressor.
-Programs without a label file are skipped. Without --perturbation_path_base / --motif_enrichment_path only
+With --home_url the top bar links back to every project (publish_viewer.py sets it).
+Programs without label.json are skipped. Without --perturbation_path_base / --motif_enrichment_path only
 the standard library is needed (pandas otherwise).
 """
 import argparse
+import csv
 import json
 import math
 import re
 import sys
 from datetime import datetime
+from html import escape
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from html_report import (CYTOSCAPE_PATH, _js_safe, gene_card, gene_entries, gene_name, literature_edge,  # noqa: E402
-                         load_bundles, omnipath_edge, select_regulators)
+                         omnipath_edge, select_regulators)
+from program_bundle import load_run  # noqa: E402
 from program_site import (CELL_TYPE_TEXT, PUBMED, driver_block, driver_records, family_name,  # noqa: E402
-                          gene_paper_meta, load_labels, other_paper_records, paper_records)
+                          gene_paper_meta, other_paper_records, paper_records)
 
 TEMPLATE_PATH = HERE / "program_viewer_template.html"
 NO_SCREEN, NO_FAMILY = "Not screened", "No family label"
@@ -55,6 +59,20 @@ def other_papers(gene, shown, paper_meta, bundle):
             "literature": [paper(t, text, m, same) for t, text, m, same in lit]}
 
 
+STRING_SOURCE = {"Process": "STRING Process", "Function": "STRING Function", "Component": "STRING Component",
+                 "KEGG": "STRING KEGG", "RCTM": "STRING Reactome", "WikiPathways": "STRING WikiPathways"}
+
+
+def string_supports(bundle, gene, max_terms=8):
+    """The gene's enriched STRING terms the driver-gene judge saw (search_STRING.py, most significant first), as
+    database supports {source, term, fdr}; [] without a STRING block."""
+    s = (bundle.get("program_enrichment") or {}).get("STRING") or {}
+    g = (s.get("genes") or {}).get(gene) or {}
+    terms = {t["term"]: t for t in s.get("enrichment", [])}
+    return [{"source": STRING_SOURCE.get(t["category"], "STRING " + t["category"]), "term": t["description"],
+             "id": t["term"], "fdr": t["fdr"]} for t in (terms[x] for x in g.get("terms", []) if x in terms)][:max_terms]
+
+
 def driver_data(dg, paper_meta, bundle, min_score=5):
     """Driving genes (the explained genes, with supporting and other papers) and how many genes were searched."""
     genes, others = driver_records(dg)
@@ -69,36 +87,12 @@ def driver_data(dg, paper_meta, bundle, min_score=5):
         records, shown = paper_records(a, paper_meta.get(g, {}), min_score)
         driving.append({"gene": g, "verdict": a.get("verdict") or "", "why": why(a),
                         "cell_type": CELL_TYPE_TEXT.get(a.get("cell_type_evidence"), ""),
+                        "string": string_supports(bundle, g),
+                        "string_used": bool((a.get("judge") or {}).get("uses_string")),
                         "supporting": [paper(t, f, m) for t, f, m in records],
                         "other": other_papers(g, shown, paper_meta.get(g, {}), bundle)})
     return {"driving": driving, "n_searched": len(genes) + len(others),
             "judge_model": (dg.get("params") or {}).get("judge_model") or ""}
-
-
-def screen_data(bundle):
-    """Family label and chromosome enrichment from build_confounder_screens.py (numbers as screen_section)."""
-    cs = bundle.get("confounder_screens")
-    if not cs:
-        return None
-    lab, sc, prm = cs["label"], cs["screens"], cs.get("params", {})
-    families = []
-    for d in lab.get("family_details", []):
-        fam = d["family"]
-        hit = sc["symbol_families"].get(fam) or sc["marker_sets"].get(fam) or {}
-        families.append({"name": family_name(fam), "primary": fam == lab.get("primary_family"),
-                         "n_overlap": str(hit.get("n_overlap")), "expected": str(hit.get("expected")),
-                         "p_value": str(hit.get("p_value")), "genes": hit.get("genes", [])})
-    pos = sc.get("positional", {})
-    chrom = None
-    if pos.get("assessable"):
-        chrom = {k: str(pos.get(k)) for k in ("top_chromosome", "genes_on_top_chromosome", "n_genes_located",
-                                              "expected_on_top_chromosome", "fold_enrichment", "binomial_p")}
-        chrom["top_chromosome_genes"] = pos.get("top_chromosome_genes", [])
-        chrom["p"] = float(pos["binomial_p"])
-        chrom["flag"] = bool(lab.get("positional_flag"))
-    return {"n_top": sc.get("n_top_genes_screened"), "families": families, "chrom": chrom,
-            "min_genes": prm.get("min_genes", 3), "max_p": prm.get("max_p", 1e-3),
-            "all_genes": sc.get("top_genes") or []}
 
 
 def rail_group(bundle):
@@ -152,28 +146,23 @@ def regulator_plots(pid, tables, names, index, args):
     return volcano, rows
 
 
-def attach_interactions(bundles, interaction_dir):
-    """Copy gene_interactions from '<interaction_dir>/P<k>.json' into the bundles that have none (the search_OmniPath.py
-    output folder can differ from --info_dir). Returns the programs still without one."""
-    missing = []
-    for pid, bundle in bundles.items():
-        if bundle.get("gene_interactions"):
-            continue
-        path = Path(interaction_dir) / f"P{pid}.json"
-        gi = json.loads(path.read_text()).get("gene_interactions") if path.exists() else None
-        if gi:
-            bundle["gene_interactions"] = gi
-        else:
-            missing.append(f"P{pid}")
-    return missing
+def string_edge(e):
+    """One STRING link between two regulators (undirected, unsigned; sign = its interaction type)."""
+    return {"id": f"e_st_{e['a']}_{e['b']}", "source": f"n_{e['a']}", "target": f"n_{e['b']}",
+            "kind": "string", "sign": e["type"], "tarrow": "none", "sarrow": "none", "lstyle": "dotted",
+            "width": round(1.2 + 3 * max(e["score"] - 0.7, 0) / 0.3, 2), "regulator": e["a"], "gene": e["b"],
+            "score": e["score"], "channels": e.get("channels", []), "channel_scores": e.get("channel_scores", {})}
 
 
 def interaction_network(bundle, regs, genes, uniq):
     """Nodes = the shown top regulators, top genes and unique genes; edges = every found OmniPath pair and paper-qa
-    relation between a regulator and one of these genes (html_report's edge records). None without gene_interactions."""
+    relation between a regulator and one of these genes (html_report's edge records), and the STRING links among the
+    shown regulators. regulator_links = the STRING links among all significant regulators (the card's table). None
+    without gene_interactions or a STRING regulator network."""
     gi = bundle.get("gene_interactions") or {}
     omnipath, literature = gi.get("OmniPath"), gi.get("Literature")
-    if not omnipath and not literature:
+    rn = ((bundle.get("program_enrichment") or {}).get("STRING") or {}).get("regulator_network")
+    if not omnipath and not literature and not rn:
         return None
     reg_names = [r["gene"] for r in regs]
     kind = {g: "gene" for g in genes}
@@ -192,9 +181,42 @@ def interaction_network(bundle, regs, genes, uniq):
     edges += [literature_edge(p) for p in ((literature or {}).get("pairs") or {}).values()
               if p.get("source") == "paper-qa" and p.get("category")
               and p["regulator"] in reg_names and p["gene"] in kind]
+    links = (rn or {}).get("edges") or []
+    edges += [string_edge(e) for e in links if e["a"] in reg_names and e["b"] in reg_names]
     return {"nodes": nodes, "edges": edges, "has_omnipath": omnipath is not None,
-            "has_literature": literature is not None,
-            "n_tested": len(included), "n_found": sum(p["found"] for p in included)}
+            "has_literature": literature is not None, "has_string": rn is not None,
+            "n_tested": len(included), "n_found": sum(p["found"] for p in included),
+            "regulator_links": links,
+            "regulator_ppi": {**((rn or {}).get("ppi_enrichment") or {}), "background": (rn or {}).get("background"),
+                              "n_mapped": (rn or {}).get("n_mapped")} if rn else None}
+
+
+def load_go_table(path):
+    """{program number: {term without its parenthesized GO id: row}} from a GO enrichment table (program_name, Term,
+    P-value, Adjusted P-value, Genes, overlap_numerator, overlap_denominator); the lowest adjusted p wins on ties."""
+    table = {}
+    with open(path, newline="") as fh:
+        for row in csv.DictReader(fh, delimiter="\t"):
+            term = re.sub(r"\s*\([^)]*\)", "", row["Term"]).strip()   # as prepare_programs.significant_go
+            prog = table.setdefault(int(row["program_name"]), {})
+            if term not in prog or float(row["Adjusted P-value"]) < float(prog[term]["Adjusted P-value"]):
+                prog[term] = row
+    return table
+
+
+def go_stats(pid, terms, go_table):
+    """Per shown GO term (bundle order): adjusted p, p, overlap and genes; None when the table has no row for it."""
+    if not go_table:
+        return None
+    rows = go_table.get(pid, {})
+    out = []
+    for t in terms:
+        r = rows.get(t)
+        out.append(None if r is None else {
+            "adj_p": float(r["Adjusted P-value"]), "p": float(r["P-value"]),
+            "n": int(float(r.get("overlap_numerator") or 0)), "of": int(float(r.get("overlap_denominator") or 0)),
+            "genes": [g for g in (r.get("Genes") or "").split(";") if g]})
+    return out
 
 
 def program_motifs(pid, motif_tables):
@@ -205,25 +227,24 @@ def program_motifs(pid, motif_tables):
     return select_program_motifs(pid, *motif_tables)
 
 
-def load_interpretation(interpretation_dir, pid, label):
-    """program_interpretation.py output when it was made for this label, else None."""
-    path = Path(interpretation_dir) / f"P{pid}.json"
+def load_interpretation(run_dir, pid, label):
+    """Programs/P<k>/interpretation.json when it was made for this label, else None."""
+    path = Path(run_dir) / "Programs" / f"P{pid}" / "interpretation.json"
     if not path.exists():
         return None
     it = json.loads(path.read_text())
     if it.get("label") != label["program_name"]:
         print(f"  [warn] P{pid}: interpretation was made for \"{it.get('label')}\", not the current label; not shown")
         return None
-    return {k: it[k] for k in ("confounders", "interpretation", "modules", "coherence", "model")}
+    return {k: it.get(k) for k in ("confounders", "interpretation", "modules", "coherence", "model")}
 
 
-def program_data(pid, bundle, label, args, tables, names, index, motif_tables=None):
+def program_data(pid, bundle, label, args, tables, names, index, motif_tables=None, go_table=None):
     cards = {g: gene_card(e) for g, e in gene_entries(bundle).items()}
     dg = driver_block(bundle, label)
     genes = [gene_name(e) for e in bundle.get("program_genes", [])][:args.top_gene]
     uniq = [gene_name(e) for e in bundle.get("distinctive_genes", [])]
     regs = select_regulators(bundle, args.top_regulator)
-    screen = screen_data(bundle)
     if dg and any((g.get("judge") or {}).get("error") for g in dg.get("genes", {}).values() if g.get("judge")):
         print(f"  [warn] P{pid}: driving-gene judge verdicts still pending; section not shown")
         dg = None
@@ -231,14 +252,11 @@ def program_data(pid, bundle, label, args, tables, names, index, motif_tables=No
     shown_genes = set(genes) | set(uniq) | {r["gene"] for r in regs}
     if drivers:
         shown_genes |= {d["gene"] for d in drivers["driving"]}
-    if screen:
-        shown_genes |= {g for f in screen["families"] for g in f["genes"]} | set(screen["all_genes"])
-        shown_genes |= set((screen["chrom"] or {}).get("top_chromosome_genes") or [])
-    interpretation = load_interpretation(args.interpretation_dir, pid, label)
+    interpretation = load_interpretation(args.run_dir, pid, label)
     if interpretation:
         shown_genes |= {g for s in interpretation["interpretation"].values() if s
-                        for g in s["support_genes"] + s["support_regulators"]}
-        shown_genes |= {g for m in interpretation["modules"] for g in m["genes"]}
+                        for g in s.get("support_genes", []) + s.get("support_regulators", [])}
+        shown_genes |= {g for m in interpretation["modules"] for g in m.get("genes", [])}
     volcano, grid = regulator_plots(pid, tables, names, index, args) if tables else ([], [])
     cs = bundle.get("confounder_screens") or {}
     return {
@@ -249,15 +267,16 @@ def program_data(pid, bundle, label, args, tables, names, index, motif_tables=No
                       "symbol": cards[g].get("symbol") or ""} for g in shown_genes if g in cards},
         "regulators": [{**{k: r[k] for k in ("gene", "log2fc", "condition")},
                         "adj_p": "" if r.get("adj_pval") is None else f"{r['adj_pval']:.2g}"} for r in regs],
-        "go": [re.sub(r"\s*\(GO:\d+\)", "", t) for t in bundle.get("GO", [])],
-        "screen": screen, "drivers": drivers,
+        "go": (go := [re.sub(r"\s*\(GO:\d+\)", "", t) for t in bundle.get("GO", [])]),
+        "go_stats": go_stats(pid, go, go_table),
+        "drivers": drivers,
         "volcano": volcano, "grid": grid, "n_sig_by_condition": [sum(v["s"]) for v in volcano],
         "network": interaction_network(bundle, regs, genes, uniq),
         "activity": (bundle.get("program_specificity") or {}).get("per_condition") or {},
         "motifs": program_motifs(pid, motif_tables),
         "interpretation": interpretation,
         "label_model": label.get("model", ""),
-        "source": f"{Path(args.info_dir).name}/P{pid}.json",
+        "source": f"{Path(args.run_dir).resolve().name}/Programs/P{pid}",
     }
 
 
@@ -265,19 +284,18 @@ def build_parser():
     p = argparse.ArgumentParser(description="Write one self-contained HTML viewer of every labeled program.")
 
     # IO
-    p.add_argument("--info_dir", required=True, help="Folder of P<k>.json bundles (Literature_info_extended_PerturbNMF_Info recommended).")
-    p.add_argument("--label_dir", default=None, help="program_label.py output. Default: <info_dir>/../Program_label.")
-    p.add_argument("--interpretation_dir", default=None, help="program_interpretation.py output (confounder rule-outs, layered interpretation, modules); shown when present. Default: <info_dir>/../Program_interpretation.")
-    p.add_argument("--interaction_dir", default=None, help="search_OmniPath.py output folder, read for the programs whose --info_dir bundle has no gene_interactions block; adds the regulator-gene interaction graph. Default: <info_dir>/../Gene_info_extended_PerturbNMF_Info.")
-    p.add_argument("--out", default=None, help="Output HTML. Default: <info_dir>/../Report/program_viewer.html.")
+    p.add_argument("--run_dir", required=True, help="Annotation run folder (Programs/P<k>/ with label.json, interpretation.json, ...).")
+    p.add_argument("--out", default=None, help="Output HTML. Default: <run_dir>/Report/program_viewer.html.")
 
     # context info
     p.add_argument("--dataset_name", required=True, help="Dataset label shown in the top bar.")
-    p.add_argument("--programs", type=int, nargs="+", default=None, help="Program ids, space separated (e.g. 1 2 3). Default: every P<k>.json in --info_dir.")
+    p.add_argument("--programs", type=int, nargs="+", default=None, help="Program ids, space separated (e.g. 1 2 3). Default: every program folder with a label.")
+    p.add_argument("--home_url", default="", help="Link of the 'All projects' button in the top bar (e.g. ../index.html, the site root of publish_viewer.py). Default: no button; publish_viewer.py turns it on.")
 
     # content
     p.add_argument("--top_gene", type=int, default=15, help="Top-loading program genes shown.")
     p.add_argument("--top_regulator", type=int, default=6, help="Regulators shown (best adj_pval over conditions).")
+    p.add_argument("--GO_path", default=None, help="GO enrichment table (Evaluation/<K>_<thr>/<K>_GO_term_enrichment.txt) for the GO bar plot (-log10 adjusted p per term). Default: the GO_path recorded in <run_dir>/Programs/meta.json; without one the GO terms are listed.")
     p.add_argument("--membership_top", type=int, default=None, help="Top-loaded genes per program used for GO enrichment and unique genes (0.Prepare membership_top); shown in the card captions.")
 
     # regulator-program association plots (optional)
@@ -300,21 +318,12 @@ def build_parser():
 
 def main():
     args = build_parser().parse_args()
-    bundles = load_bundles(args.info_dir, args.programs)
-    label_dir = Path(args.label_dir or Path(args.info_dir).resolve().parent / "Program_label")
-    args.interpretation_dir = args.interpretation_dir or Path(args.info_dir).resolve().parent / "Program_interpretation"
-    labels = load_labels(label_dir, bundles)
+    bundles, labels, _ = load_run(args.run_dir, args.programs, top_gene=args.top_gene)
     skipped = [f"P{p}" for p in bundles if p not in labels]
     if skipped:
-        print(f"  [warn] no label in {label_dir} for {skipped} (run program_label.py); skipped")
+        print(f"  [warn] no label.json for {skipped}; skipped")
     if not labels:
         raise SystemExit("No program has a label; nothing to write.")
-
-    interaction_dir = Path(args.interaction_dir or Path(args.info_dir).resolve().parent / "Gene_info_extended_PerturbNMF_Info")
-    no_net = attach_interactions({pid: bundles[pid] for pid in labels}, interaction_dir)
-    if no_net:
-        print(f"  [warn] no gene_interactions for {no_net} in --info_dir or {interaction_dir} "
-              f"(run search_OmniPath.py); no interaction graph for them")
 
     first = bundles[next(iter(labels))]
     conditions = args.conditions or first.get("conditions") or []
@@ -323,12 +332,20 @@ def main():
     if args.motif_enrichment_path:   # pandas only when motif results are shown
         from motif_selection import read_motif_logos, read_motif_tables, read_motif_test, shown_logos
         motif_tables = read_motif_tables(args.motif_enrichment_path, args.candidate_tfs_path)
+    go_path = args.GO_path
+    meta_path = Path(args.run_dir) / "Programs" / "meta.json"
+    if not go_path and meta_path.exists():
+        go_path = json.loads(meta_path.read_text()).get("inputs", {}).get("GO_path")
+    go_table = load_go_table(go_path) if go_path and Path(go_path).exists() else None
+    if not go_table:
+        print("  [warn] no GO enrichment table (--GO_path); GO terms are listed without a bar plot")
     names, index, programs = [], {}, {}
     for pid in labels:
-        programs[pid] = program_data(pid, bundles[pid], labels[pid], args, tables, names, index, motif_tables)
+        programs[pid] = program_data(pid, bundles[pid], labels[pid], args, tables, names, index, motif_tables, go_table)
         net = programs[pid]["network"]
         print(f"  P{pid}: {labels[pid]['program_name']}"
-              + (f" ({len(net['edges'])} regulator-gene interactions)" if net else ""))
+              + (f" ({sum(e['kind'] != 'string' for e in net['edges'])} regulator-gene interactions, "
+                 f"{len(net['regulator_links'])} regulator-regulator STRING links)" if net else ""))
 
     counts = {}
     for p in programs.values():
@@ -346,7 +363,7 @@ def main():
                         if motif_tables and args.motif_logos_path else {}),
         "motif_source": args.motif_source_label,
     }
-    out = Path(args.out or Path(args.info_dir).resolve().parent / "Report" / "program_viewer.html")
+    out = Path(args.out or Path(args.run_dir) / "Report" / "program_viewer.html")
     out.parent.mkdir(parents=True, exist_ok=True)
     cyto = ""
     if any(p["network"] for p in programs.values()):   # inline Cytoscape.js only when a graph is drawn
@@ -357,6 +374,8 @@ def main():
     # small placeholders first, then the data and library blobs (never re-scanned)
     html = (TEMPLATE_PATH.read_text()
             .replace("__PAGE_TITLE__", args.dataset_name.replace("&", "&amp;").replace("<", "&lt;"))
+            .replace("__HOME_URL__", escape(args.home_url, quote=True))
+            .replace("__HOME_HIDDEN__", "" if args.home_url else " hidden")
             .replace("__META_JSON__", _js_safe(json.dumps(meta, separators=(",", ":"))))
             .replace("__PROGRAMS_JSON__", _js_safe(json.dumps(programs, separators=(",", ":")))))
     html = html.replace("__CYTOSCAPE_TAG__", cyto, 1)

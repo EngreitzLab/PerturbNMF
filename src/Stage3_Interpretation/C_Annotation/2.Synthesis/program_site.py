@@ -1,6 +1,6 @@
 """Write a static website with one page per program (e.g. for GitHub Pages).
 
-Reads '<info_dir>/P<k>.json' (AGeneTic bundle) and '<label_dir>/P<k>.json' (program_label.py) and writes
+Reads the run's program folders (<run_dir>/Programs/P<k>/, through program_bundle.load_run) and writes
 
     <site_dir>/index.html               every dataset folder in site_dir (from its site.json)
     <site_dir>/<slug>/index.html        program list: name + one-sentence function
@@ -13,14 +13,14 @@ Per program, in page order: the name and one-sentence function; PerturbNMF input
 (distinctive) genes, top regulators with their sign, top GO terms); the pre-annotation screen when
 0.Prepare/build_confounder_screens.py has run (family label with its genes, enriched chromosome at p < 0.05);
 driving genes when
-2.Evidence_curation/query_driver_gene.py has run for the current label (a card per gene whose own papers
+the optional driver_genes step has run for the current label (a card per gene whose own papers
 explain the label: verdict, why, supporting papers, other literature searched; the other genes searched in a
 collapsed group); program interactive plots (Plotly, built with A_Plotting/src/html_Program_QC_plots.py; needs
 pandas + plotly): with --perturbation_path_base a regulator volcano per condition and a regulator x condition
 log2FC heatmap, with --mdata_path and --groupby a program activity violin per level of that obs column (e.g. day).
 A regulator with negative log2FC on knockdown is
 an activator (knocking it down lowers the program); positive is a repressor.
-Programs without a label file are skipped. Without --perturbation_path_base / --mdata_path only the standard
+Programs without label.json are skipped. Without --perturbation_path_base / --mdata_path only the standard
 library is needed.
 """
 import argparse
@@ -34,7 +34,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from html_report import gene_card, gene_entries, gene_name, load_bundles, select_regulators  # noqa: E402
+from html_report import gene_card, gene_entries, gene_name, select_regulators  # noqa: E402
 
 TEMPLATE_PATH = HERE / "program_page_template.html"
 PLOTTING_DIR = HERE.parents[1] / "A_Plotting"   # src/ package with html_Program_QC_plots
@@ -46,16 +46,6 @@ CELL_TYPE_TEXT = {"same": "evidence in this cell type", "related": "evidence in 
 
 def slugify(name):
     return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "dataset"
-
-
-def load_labels(label_dir, programs):
-    """{program number: label} for the programs with a label file."""
-    labels = {}
-    for pid in programs:
-        path = Path(label_dir) / f"P{pid}.json"
-        if path.exists():
-            labels[pid] = json.loads(path.read_text())
-    return labels
 
 
 def page(title, brand_sub, home_href, content, footer, nav=""):
@@ -452,13 +442,12 @@ def build_parser():
     p = argparse.ArgumentParser(description="Write a static website with one page per program.")
 
     # IO
-    p.add_argument("--info_dir", required=True, help="Folder of P<k>.json bundles (Literature_info_extended_PerturbNMF_Info recommended).")
-    p.add_argument("--label_dir", default=None, help="program_label.py output. Default: <info_dir>/../Program_label.")
+    p.add_argument("--run_dir", required=True, help="Annotation run folder (Programs/P<k>/ with label.json, ...).")
     p.add_argument("--site_dir", required=True, help="Website root (e.g. a GitHub Pages repo clone).")
 
     # context info
     p.add_argument("--dataset_name", required=True, help="Dataset label; its slug names the dataset folder.")
-    p.add_argument("--programs", type=int, nargs="+", default=None, help="Program ids, space separated (e.g. 1 2 3). Default: every P<k>.json in --info_dir.")
+    p.add_argument("--programs", type=int, nargs="+", default=None, help="Program ids, space separated (e.g. 1 2 3). Default: every program folder with a label.")
 
     # content
     p.add_argument("--top_gene", type=int, default=15, help="Top-loading program genes shown.")
@@ -485,12 +474,11 @@ def build_parser():
 
 def main():
     args = build_parser().parse_args()
-    bundles = load_bundles(args.info_dir, args.programs)
-    label_dir = Path(args.label_dir or Path(args.info_dir).resolve().parent / "Program_label")
-    labels = load_labels(label_dir, bundles)
+    from program_bundle import load_run
+    bundles, labels, _ = load_run(args.run_dir, args.programs, top_gene=args.top_gene)
     skipped = [f"P{p}" for p in bundles if p not in labels]
     if skipped:
-        print(f"  [warn] no label in {label_dir} for {skipped} (run program_label.py); skipped")
+        print(f"  [warn] no label.json for {skipped}; skipped")
     if not labels:
         raise SystemExit("No program has a label; nothing to write.")
 
@@ -518,7 +506,7 @@ def main():
         judged = (f" &middot; driving genes: paper-qa evidence, verdicts by "
                   f"{escape((dg.get('params') or {}).get('judge_model') or '')}") if dg else ""
         footer = (f"Generated {today} &middot; name and summary by {escape(labels[pid].get('model', ''))}{judged} "
-                  f"&middot; source {escape(Path(args.info_dir).name)}/P{pid}.json")
+                  f"&middot; source Programs/P{pid}/")
         html = page(f"P{pid} {labels[pid]['program_name']} — {args.dataset_name}", args.dataset_name, "../index.html",
                     program_content(pid, bundles[pid], labels[pid], args.dataset_name, args.top_gene, args.top_regulator,
                                     args.membership_top, extra),
