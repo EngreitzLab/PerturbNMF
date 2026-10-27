@@ -3,16 +3,22 @@
 # Precompute PCA/UMAP into a cNMF h5mu so Stage 3b/3c plotting jobs skip it.
 #
 # Usage (self-sizing -- run it, do NOT sbatch it):
-#   export PIPELINE_ROOT=/path/to/PerturbNMF   # optional: ADD_UMAP_LOG_DIR (default ./add_umap_logs)
+#   export PIPELINE_ROOT=/path/to/PerturbNMF   # required
+#   export SLURM_PARTITION=<partition>         # required
+#   export SLURM_MAIL_USER=<your_email>        # optional; no mail if unset
+#   export ADD_UMAP_LOG_DIR=/path/to/logs      # optional; default ./add_umap_logs
 #   ./run_add_umap.sh <h5mu_path> [extra add_umap_to_h5mu.py flags...]
 #
 # Run directly and it measures the h5mu, derives --mem/--time/--cpus-per-task, and
 # re-submits itself with those overrides. Do NOT prefix it with sbatch -- if you do,
 # that job just re-submits a correctly sized one and exits, costing an extra hop.
-# To pin resources yourself, set ADD_UMAP_INJOB to skip the sizing path entirely:
-#   ADD_UMAP_INJOB=1 sbatch --mem=64G --time=06:00:00 run_add_umap.sh <h5mu>
+# To pin resources yourself, set ADD_UMAP_INJOB to skip the sizing path entirely
+# (Slurm does not create the log directory, so make it first):
+#   mkdir -p add_umap_logs
+#   PIPELINE_ROOT=/path/to/PerturbNMF ADD_UMAP_INJOB=1 \
+#       sbatch --partition=<partition> --mem=64G --time=06:00:00 run_add_umap.sh <h5mu>
 # The static #SBATCH directives below only apply on that manual path; they are
-# sized for the largest input in the table below.
+# sized for the largest input in the table below and log to ./add_umap_logs.
 #
 # Sizing basis (measured 2026-09-15). Peak RSS is driven by the expression matrix
 # and, in the dense case, by the temporary numpy allocates for X.var(axis=0) inside
@@ -29,16 +35,13 @@
 # writes (48 GB for example A).
 
 #SBATCH --job-name=add_umap
-#SBATCH --output=/path/to/add_umap_logs/%j.out   # edit: SLURM does not expand variables here
-#SBATCH --error=/path/to/add_umap_logs/%j.err   # edit: SLURM does not expand variables here
-#SBATCH --partition=<partition>
+#SBATCH --output=add_umap_logs/%j.out   # relative to the submit dir
+#SBATCH --error=add_umap_logs/%j.err
 #SBATCH --time=16:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=192G
-#SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --mail-user=<your_email>
 
 set -o pipefail
 
@@ -61,8 +64,8 @@ fi
 # Self-sizing submit path.
 #
 # The guard is the ADD_UMAP_INJOB sentinel this script sets on its own sbatch
-# call -- NOT $SLURM_JOB_ID. On some clusters an OnDemand/code-server session is itself
-# a Slurm allocation that exports SLURM_JOB_ID (and SLURM_CPUS_PER_TASK=2), so a
+# call -- NOT $SLURM_JOB_ID. On clusters where an OnDemand/code-server session is
+# itself a Slurm allocation that exports SLURM_JOB_ID (and SLURM_CPUS_PER_TASK=2), a
 # SLURM_JOB_ID check reads as "already in a batch job" from any interactive shell
 # there and silently runs the whole UMAP in that 2-CPU session instead of queuing.
 # ---------------------------------------------------------------------------
@@ -84,6 +87,13 @@ if [ -z "$ADD_UMAP_INJOB" ]; then
 
     if [ "$SIZE_GB" -lt 8 ]; then CPUS=8; else CPUS=16; fi
 
+    # Partition is site-specific, so it must come from the caller; mail is optional.
+    : "${SLURM_PARTITION:?set SLURM_PARTITION to the Slurm partition to submit to}"
+    MAIL_ARGS=()
+    if [ -n "$SLURM_MAIL_USER" ]; then
+        MAIL_ARGS=(--mail-type=BEGIN,END,FAIL --mail-user="$SLURM_MAIL_USER")
+    fi
+
     echo "h5mu:  $MDATA_PATH"
     echo "size:  ${SIZE_GB} GB"
     echo "sized: --mem=${MEM_GB}G --time=${TIME_H}:00:00 --cpus-per-task=${CPUS}"
@@ -91,12 +101,14 @@ if [ -z "$ADD_UMAP_INJOB" ]; then
     # Absolute self-reference so this works regardless of the caller's cwd.
     # ADD_UMAP_INJOB=1 is what makes the submitted copy run the workload instead of
     # re-submitting again; --export=ALL keeps the rest of the environment.
-    exec sbatch --mem="${MEM_GB}G" \
+    exec sbatch --partition="$SLURM_PARTITION" \
+                "${MAIL_ARGS[@]}" \
+                --mem="${MEM_GB}G" \
                 --time="${TIME_H}:00:00" \
                 --cpus-per-task="${CPUS}" \
                 --output="$LOG_DIR/%j.out" \
                 --error="$LOG_DIR/%j.err" \
-                --export=ALL,ADD_UMAP_INJOB=1,ADD_UMAP_LOG_DIR="$LOG_DIR" \
+                --export=ALL,ADD_UMAP_INJOB=1 \
                 "$SCRIPT_DIR/run_add_umap.sh" "$@"
 fi
 
@@ -120,8 +132,6 @@ echo "Partition: $SLURM_JOB_PARTITION"
 echo "h5mu: $MDATA_PATH"
 echo "Size: $(du -h "$MDATA_PATH" | cut -f1)"
 echo "Extra args: ${EXTRA_ARGS[*]}"
-
-mkdir -p "$LOG_DIR"
 
 echo "Activating conda environment: NMF_Benchmarking"
 eval "$(conda shell.bash hook)"

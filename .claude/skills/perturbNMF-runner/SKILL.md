@@ -131,6 +131,28 @@ eval "$(conda shell.bash hook)" && conda activate sk-cNMF && python3 SKILL_DIR/s
 Then guide the user through remaining stages in pipeline order:
 1. **Evaluation** (2a) -> 2. **Calibration** (2b) -> 3. **K-selection** (3a) -> 4. **Program analysis** (3b) -> 5. **Perturbed gene** (3c) -> 6. **Annotation** (3d) -> 7. **Excel summary** (3e)
 
+### Optional: precompute UMAP before program analysis / perturbed gene plots
+
+`SKILL_DIR/scripts/run_add_umap.sh` writes PCA/UMAP into the h5mu so the 3b/3c plotting jobs skip recomputing it. It sizes the job from the file and submits itself, so run it directly — never `sbatch` it.
+
+**Before running it, ask the user for every value below** and show the resolved values back for confirmation. Do not reuse a value from an earlier stage unless the user confirms it applies here.
+
+| Value | Env var | Required |
+|---|---|---|
+| PerturbNMF checkout | `PIPELINE_ROOT` | yes (the confirmed session value) |
+| h5mu to process | first argument | yes |
+| Slurm partition | `SLURM_PARTITION` | yes — the script exits if unset |
+| Notification email | `SLURM_MAIL_USER` | no — no mail if unset |
+| Log directory | `ADD_UMAP_LOG_DIR` | no — default `./add_umap_logs` in the current directory; suggest `<out_dir>/<run_name>/Plots/logs/` |
+| Write mode | `--output <new.h5mu>` or `--in_place` | no — default is in place; this rewrites the h5mu and needs free disk for a second copy, so confirm |
+
+Then run:
+```bash
+PIPELINE_ROOT=<...> SLURM_PARTITION=<...> [SLURM_MAIL_USER=<...>] [ADD_UMAP_LOG_DIR=<...>] \
+    bash ${PIPELINE_ROOT}/.claude/skills/perturbNMF-runner/scripts/run_add_umap.sh <h5mu> [--output <new.h5mu> | --in_place] [--force]
+```
+Report the sized `--mem/--time/--cpus-per-task` it prints and the job ID.
+
 ## Important Notes
 
 - All generated SLURM scripts go into `<project_root>/Script/` — sibling of `Result/`, NOT inside it.
