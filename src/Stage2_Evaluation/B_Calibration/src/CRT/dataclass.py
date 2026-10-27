@@ -20,6 +20,9 @@ class CRT_gene_result:
     control_means: Optional[np.ndarray] = None  # K mean Usage_norm in control cells
     n_resampled: int = 0                        # resampling rounds used (stage 1, or stage 1 + 2)
     n_control: int = 0                          # control cells in the regression (see CRT_obj.control_group)
+    propensity_n_iter: float = np.nan           # lbfgs iterations of the propensity fit (0 = intercept-only, no fit;
+                                                # NaN = no propensity model, moi="low" or untestable gene)
+    propensity_sum_ratio: float = np.nan        # sum(p) / n_treated; 1 at a converged fit (NaN as above)
 
 
 @dataclass

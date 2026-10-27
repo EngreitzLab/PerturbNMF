@@ -173,17 +173,21 @@ def conditional_randomized_test_per_gene(
 
     # null treated-set sampler for this gene
     seed = (zlib.crc32(gene.encode()) ^ CRT_obj.seed) & 0xFFFFFFFF   # per-gene seed, stable across runs (unlike hash())
+    propensity_n_iter, propensity_sum_ratio = np.nan, np.nan
     if CRT_obj.moi == "low":
         strata = CRT_obj.covariate_strata[analysis_idx]
         stratum_cells, stratum_ptr, stratum_n_treated = _strata_layout(strata, treated_mask)
         def draw(n_rounds, stage_seed):
             return _permutation_rounds(stratum_cells, stratum_ptr, stratum_n_treated, n_rounds, stage_seed)
     else:
-        p, _ = propensity_model(Covariates, treated_mask, has_intercept=CRT_obj.has_intercept,
-                                penalty=CRT_obj.propensity_penalty, C=CRT_obj.propensity_C,
-                                # getattr: CRT_obj pickled before these fields existed
-                                tol=getattr(CRT_obj, "propensity_tol", None),
-                                max_iter=getattr(CRT_obj, "propensity_max_iter", None))
+        p, model = propensity_model(Covariates, treated_mask, has_intercept=CRT_obj.has_intercept,
+                                    penalty=CRT_obj.propensity_penalty, C=CRT_obj.propensity_C,
+                                    # getattr: CRT_obj pickled before these fields existed
+                                    tol=getattr(CRT_obj, "propensity_tol", None),
+                                    max_iter=getattr(CRT_obj, "propensity_max_iter", None))
+        # convergence record: n_iter == max_iter means lbfgs hit its cap; sum(p) / n_treated is 1 at the MLE
+        propensity_n_iter = 0.0 if model is None else float(np.max(model.n_iter_))   # float: NaN when no fit
+        propensity_sum_ratio = float(p.sum()) / n_treated
         def draw(n_rounds, stage_seed):
             return _bernoulli_rounds(p, n_rounds, stage_seed)
 
@@ -230,6 +234,8 @@ def conditional_randomized_test_per_gene(
         control_means=control_means,
         n_resampled=beta_null.shape[0],
         n_control=int(n_analysis - n_treated),
+        propensity_n_iter=propensity_n_iter,
+        propensity_sum_ratio=propensity_sum_ratio,
     )
 
 

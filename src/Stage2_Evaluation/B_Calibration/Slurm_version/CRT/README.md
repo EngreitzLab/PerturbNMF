@@ -244,7 +244,7 @@ The p-values of these fake genes are the **NTC null p-values** written to `{K}_C
 
 | File | Contents |
 |------|----------|
-| `{K}_CRT_{covar_tag}_{condition}.txt` | **Real** perturbation results (TSV, read by Stage 3) — columns: `target_name, program_name` (1-based integer), `log2FC, p-value` (final: `pval_skewnorm` where fit, else `pval_empirical`), `adj_pval` (FDR of final), `pval_empirical, adj_pval_empirical, pval_skewnorm` (NaN where not fit), `beta, n_treated, n_control, control_mean, n_resampled` |
+| `{K}_CRT_{covar_tag}_{condition}.txt` | **Real** perturbation results (TSV, read by Stage 3) — columns: `target_name, program_name` (1-based integer), `log2FC, p-value` (final: `pval_skewnorm` where fit, else `pval_empirical`), `adj_pval` (FDR of final), `pval_empirical, adj_pval_empirical, pval_skewnorm` (NaN where not fit), `beta, n_treated, n_control, control_mean, n_resampled`, `propensity_n_iter, propensity_sum_ratio` (high-MOI propensity fit: lbfgs iterations, = max_iter means it hit the cap; sum(p)/n_treated, 1 when converged; NaN for low MOI) |
 | `{K}_CRT_fake_{covar_tag}_{condition}.txt` | **Fake / NTC null** — columns: `target_name` (fake gene id, e.g. `null_3`), same columns as the real table, plus `guides` (`;`-joined NTC guides). The old `ensemble` column is gone |
 | `{K}_CRT_{covar_tag}_{condition}_qq_empirical.pdf` | QQ plot of real (red) vs NTC-null (grey) empirical p-values |
 | `{K}_CRT_{covar_tag}_{condition}_qq_skew_normal.pdf` | Same for the final p (skew-normal where fit); only with `--pvalue_method skew_normal` |

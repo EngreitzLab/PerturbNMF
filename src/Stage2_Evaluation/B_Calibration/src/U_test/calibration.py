@@ -357,6 +357,13 @@ def compute_fake_perturbation_tests(
                                  f"'targeting' / 'non-targeting'; add them to guide_annotation_key.")
             base_targets[is_ntc] = 'non-targeting'
 
+            # compute_perturbation_association only reads mdata[prog_key], so keep just that modality
+            # and the per-cell condition labels, then drop the full mdata (incl. the large rna matrix)
+            prog_mdata = mu.MuData({prog_key: mdata[prog_key].copy()})
+            cell_conditions = mdata[data_key].obs[categorical_key].loc[prog_mdata[prog_key].obs_names].values
+            conditions_k = mdata[data_key].obs[categorical_key].unique()
+            del mdata
+
             test_stats_fake_dfs_temp = []
             for i in range(number_run):
                 print(f"  Running iteration {i+1}/{number_run}")
@@ -366,10 +373,10 @@ def compute_fake_perturbation_tests(
                 selected_guides = np.random.choice(guide_target_[guide_names_key], number_guide, replace=False)
 
                 # Filter to cells with non-targeting guides that exist in both datasets
-                valid_guide_mask = np.isin(mdata[prog_key].uns[guide_names_key], guide_target_[guide_names_key].values)
+                valid_guide_mask = np.isin(all_guide_names, guide_target_[guide_names_key].values)
                 valid_indices = np.where(valid_guide_mask)[0]
 
-                print(f"  Found {len(valid_indices)} valid non-targeting guides out of " f"{len(mdata[prog_key].uns[guide_names_key])} total")
+                print(f"  Found {len(valid_indices)} valid non-targeting guides out of " f"{len(all_guide_names)} total")
 
                 if len(valid_indices) == 0:
                     raise ValueError("No valid guides found")
@@ -377,12 +384,12 @@ def compute_fake_perturbation_tests(
                 # keep every guide column; only the chosen control guides become the fake 'targeting' target
                 fake_targets = base_targets.copy()
                 fake_targets[is_ntc & np.isin(all_guide_names, selected_guides)] = 'targeting'
-                _mdata = mdata.copy()
-                _mdata[prog_key].uns[guide_targets_key] = fake_targets
+                # overwritten every iteration; compute_perturbation_association(inplace=False) never mutates it
+                prog_mdata[prog_key].uns[guide_targets_key] = fake_targets
 
                 # Run perturbation association for each sample
-                for samp in _mdata[data_key].obs[categorical_key].unique():
-                    mdata_samp = _mdata[_mdata[data_key].obs[categorical_key] == samp]
+                for samp in conditions_k:
+                    mdata_samp = prog_mdata[cell_conditions == samp]
 
                     test_stats_df = compute_perturbation_association(
                         mdata_samp,

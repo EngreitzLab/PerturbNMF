@@ -208,7 +208,7 @@ def log2fc_from_beta(beta: np.ndarray, control_mean: np.ndarray, normalization: 
 # Results table columns (PerturbNMF format, read by Stage 3)
 RESULTS_COLUMNS = ["target_name", "program_name", "log2FC", "p-value", "adj_pval", "pval_empirical",
                    "adj_pval_empirical", "pval_skewnorm", "beta", "n_treated", "n_control", "control_mean",
-                   "n_resampled"]
+                   "n_resampled", "propensity_n_iter", "propensity_sum_ratio"]
 
 
 def format_results_table(obj, fdr_method: str = "BH", include_guides: bool = False) -> pd.DataFrame:
@@ -229,6 +229,9 @@ def format_results_table(obj, fdr_method: str = "BH", include_guides: bool = Fal
         n_treated, n_control: cells in the gene's regression.
         control_mean: mean normalized usage in the control cells.
         n_resampled: resampling rounds used.
+        propensity_n_iter: lbfgs iterations of the gene's propensity fit (moi="high"); equal to
+            max_iter means the fit hit its cap; 0 = intercept-only (no fit); NaN = no propensity model.
+        propensity_sum_ratio: sum(p) / n_treated of that fit; 1 at a converged (unpenalized-intercept) fit.
         guides (include_guides=True, for the non-targeting fake genes): the gene's
             guide names, ";"-joined.
     """
@@ -240,9 +243,11 @@ def format_results_table(obj, fdr_method: str = "BH", include_guides: bool = Fal
         control_means = r.control_means if r.control_means is not None else nan
         for k, program in enumerate(obj.selected_program_names):
             rows.append((gene, program, r.betas[k], r.pvalue[k], pval_empirical[k], pval_skewnorm[k],
-                         r.n_treated, r.n_control, control_means[k], r.n_resampled))
+                         r.n_treated, r.n_control, control_means[k], r.n_resampled,
+                         r.propensity_n_iter, r.propensity_sum_ratio))
     table = pd.DataFrame(rows, columns=["target_name", "program_name", "beta", "p-value", "pval_empirical",
-                                        "pval_skewnorm", "n_treated", "n_control", "control_mean", "n_resampled"])
+                                        "pval_skewnorm", "n_treated", "n_control", "control_mean", "n_resampled",
+                                        "propensity_n_iter", "propensity_sum_ratio"])
     table["log2FC"] = log2fc_from_beta(table["beta"], table["control_mean"], obj.normalization,
                                        len(obj.selected_program_names))
     table["adj_pval"] = adjust_pvalues(table["p-value"].to_numpy(), fdr_method)
@@ -313,5 +318,9 @@ def load_results_table(obj, path: str):
             control_means=rows["control_mean"].to_numpy(dtype=np.float64),
             n_resampled=int(rows["n_resampled"].iloc[0]),
             n_control=int(rows["n_control"].iloc[0]),
+            # tables written before these columns existed: NaN
+            propensity_n_iter=float(rows["propensity_n_iter"].iloc[0]) if "propensity_n_iter" in rows else np.nan,
+            propensity_sum_ratio=(float(rows["propensity_sum_ratio"].iloc[0])
+                                  if "propensity_sum_ratio" in rows else np.nan),
         )
     return obj
