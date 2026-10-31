@@ -70,17 +70,25 @@ def propensity_model(
     """
     y = np.asarray(Cell_treatment_indicator, dtype=np.int8)
     if penalty not in (None, "l2", "old_perturbnmf"):
-        raise ValueError(f'penalty must be None, "l2" or "old_perturbnmf"; got {penalty!r}.')
+        raise ValueError(
+            f'penalty must be None, "l2" or "old_perturbnmf"; got {penalty!r}.'
+        )
 
     if penalty == "old_perturbnmf":
         # PerturbNMF B_Calibration/src/CRT/propensity.py fit_propensity_logistic (its settings unless tol / max_iter given)
-        model = LogisticRegression(penalty="l2", C=C, solver="lbfgs", max_iter=200 if max_iter is None else max_iter,
-                                   tol=1e-4 if tol is None else tol, **kwargs)
+        model = LogisticRegression(
+            penalty="l2",
+            C=C,
+            solver="lbfgs",
+            max_iter=200 if max_iter is None else max_iter,
+            tol=1e-4 if tol is None else tol,
+            **kwargs,
+        )
         model.fit(Covariates, y)
         p = np.clip(model.predict_proba(Covariates)[:, 1], 1e-6, 1 - 1e-6)
         return p, model
 
-    check_sum = tol is None                 # explicit tol = tolerance test, no convergence check
+    check_sum = tol is None  # explicit tol = tolerance test, no convergence check
     tol = 1e-10 if tol is None else tol
     max_iter = 10_000 if max_iter is None else max_iter
 
@@ -94,12 +102,25 @@ def propensity_model(
     if penalty == "l2":
         # penalize covariates only: sklearn's own intercept is not penalized
         X = Covariates[:, 1:] if has_intercept else Covariates
-        model = LogisticRegression(penalty="l2", C=C, fit_intercept=True, solver="lbfgs",
-                                   max_iter=max_iter, tol=tol, **kwargs)
+        model = LogisticRegression(
+            penalty="l2",
+            C=C,
+            fit_intercept=True,
+            solver="lbfgs",
+            max_iter=max_iter,
+            tol=tol,
+            **kwargs,
+        )
     else:
         X = Covariates
-        model = LogisticRegression(penalty=None, fit_intercept=not has_intercept, solver="lbfgs",
-                                   max_iter=max_iter, tol=tol, **kwargs)
+        model = LogisticRegression(
+            penalty=None,
+            fit_intercept=not has_intercept,
+            solver="lbfgs",
+            max_iter=max_iter,
+            tol=tol,
+            **kwargs,
+        )
     model.fit(X, y)
     p = model.predict_proba(X)[:, 1]
     if check_sum and not np.isclose(p.sum(), y.sum(), rtol=1e-3):

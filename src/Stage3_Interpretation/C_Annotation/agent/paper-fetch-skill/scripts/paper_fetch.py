@@ -9,6 +9,7 @@
 
 Reads one JSON object on stdin and writes one JSON object on stdout (see ../SKILL.md).
 """
+
 import sys
 from pathlib import Path
 
@@ -23,24 +24,42 @@ def find_row(rows, req):
     """Index of the literature row matching req's pmid, else doi, else title."""
     for key in ("pmid", "doi"):
         if req.get(key):
-            hits = [i for i, r in enumerate(rows) if str(r.get(key) or "").lower() == str(req[key]).lower()]
+            hits = [
+                i
+                for i, r in enumerate(rows)
+                if str(r.get(key) or "").lower() == str(req[key]).lower()
+            ]
             if hits:
                 return hits[0]
     if req.get("title"):
-        hits = [i for i, r in enumerate(rows) if str(r.get("title", "")).casefold() == req["title"].casefold()]
+        hits = [
+            i
+            for i, r in enumerate(rows)
+            if str(r.get("title", "")).casefold() == req["title"].casefold()
+        ]
         if hits:
             return hits[0]
-    raise SkillError("not_found", "no literature row matches the given pmid / doi / title")
+    raise SkillError(
+        "not_found", "no literature row matches the given pmid / doi / title"
+    )
 
 
 def fetch(req):
     out_dir = Path(require_str(req, "out_dir"))
     out_dir.mkdir(parents=True, exist_ok=True)
     if not any(req.get(k) for k in ("pmid", "pmcid", "doi", "pdf_urls")):
-        raise SkillError("invalid_input", "give at least one of pmid, pmcid, doi, pdf_urls")
+        raise SkillError(
+            "invalid_input", "give at least one of pmid, pmcid, doi, pdf_urls"
+        )
     name = req.get("name") or req.get("pmcid") or req.get("pmid") or req.get("doi")
-    path, message = download_paper(out_dir, name, pmid=req.get("pmid"), pmcid=req.get("pmcid"), doi=req.get("doi"),
-                                   pdf_urls=req.get("pdf_urls") or ())
+    path, message = download_paper(
+        out_dir,
+        name,
+        pmid=req.get("pmid"),
+        pmcid=req.get("pmcid"),
+        doi=req.get("doi"),
+        pdf_urls=req.get("pdf_urls") or (),
+    )
     out = {"pdf_path": str(Path(path).resolve()) if path else None, "message": message}
     if path and req.get("literature"):
         rows = read_jsonl(req["literature"])
@@ -53,6 +72,7 @@ def fetch(req):
 
 def read(req):
     import pymupdf
+
     path = Path(require_str(req, "pdf_path"))
     if not path.is_file():
         raise SkillError("not_found", f"no PDF at {path}")
@@ -62,8 +82,13 @@ def read(req):
     with pymupdf.open(str(path)) as doc:
         last = min(doc.page_count, start + n - 1)
         text = "\n".join(doc[i].get_text() for i in range(start - 1, last))
-        return {"pdf_path": str(path), "page_count": doc.page_count, "pages": [start, last],
-                "text": text[:max_chars], "truncated": len(text) > max_chars}
+        return {
+            "pdf_path": str(path),
+            "page_count": doc.page_count,
+            "pages": [start, last],
+            "text": text[:max_chars],
+            "truncated": len(text) > max_chars,
+        }
 
 
 def note(req):
@@ -80,22 +105,34 @@ def note(req):
         if stance not in STANCES:
             raise SkillError("invalid_input", f"`stance` must be one of {STANCES}")
         update["stance"] = stance
-        update["read_from"] = req.get("read_from", "fulltext" if rows[i].get("pdf_path") else "abstract")
+        update["read_from"] = req.get(
+            "read_from", "fulltext" if rows[i].get("pdf_path") else "abstract"
+        )
         if req.get("context"):
             update["context"] = req["context"]
         if req.get("genes"):
-            update["genes"] = list(dict.fromkeys([*rows[i].get("genes", []), *req["genes"]]))
+            update["genes"] = list(
+                dict.fromkeys([*rows[i].get("genes", []), *req["genes"]])
+            )
     rows[i].update(update)
     write_jsonl(lit, rows)
-    return {"literature": lit, "row": {k: rows[i].get(k) for k in ("pmid", "doi", "title", "status", "stance",
-                                                                   "finding", "genes")}}
+    return {
+        "literature": lit,
+        "row": {
+            k: rows[i].get(k)
+            for k in ("pmid", "doi", "title", "status", "stance", "finding", "genes")
+        },
+    }
 
 
 def handle(req):
     action = req.get("action")
     if action not in ("fetch", "read", "note"):
         raise SkillError("invalid_input", "`action` must be fetch, read or note")
-    return {"action": action, **{"fetch": fetch, "read": read, "note": note}[action](req)}
+    return {
+        "action": action,
+        **{"fetch": fetch, "read": read, "note": note}[action](req),
+    }
 
 
 if __name__ == "__main__":

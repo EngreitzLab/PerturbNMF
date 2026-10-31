@@ -23,6 +23,7 @@ The top genes are the program's top --top_n_genes by loading; the background is 
 --min_genes top genes hit it with hypergeometric p <= --max_p; primary_family is the most significant one.
 The confounder_screens step of each program's plan.md is ticked once the file passes its checks.
 """
+
 import argparse
 import gzip
 import json
@@ -38,7 +39,12 @@ from scipy.stats import binomtest, hypergeom
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from program_inputs import load_cell_usage, load_condition, load_gene_spectra, load_perturbation  # noqa: E402
+from program_inputs import (
+    load_cell_usage,
+    load_condition,
+    load_gene_spectra,
+    load_perturbation,
+)  # noqa: E402
 
 from program_dir import list_programs, mark_done  # noqa: E402
 
@@ -96,8 +102,15 @@ def load_gene_coordinates(path):
     with Path(path).open() as handle:
         for line in handle:
             name, chrom, start, end, _strand, gene_type = line.rstrip("\n").split("\t")
-            coordinates.setdefault(name, {"chrom": chrom, "start": int(start), "end": int(end),
-                                          "gene_type": gene_type})
+            coordinates.setdefault(
+                name,
+                {
+                    "chrom": chrom,
+                    "start": int(start),
+                    "end": int(end),
+                    "gene_type": gene_type,
+                },
+            )
     return coordinates
 
 
@@ -119,13 +132,21 @@ def load_gtf_coordinates(path):
             attrs = dict(_ATTR.findall(fields[8]))
             name = attrs.get("gene_name")
             if name and name not in coordinates:
-                coordinates[name] = {"chrom": fields[0], "start": int(fields[3]), "end": int(fields[4]),
-                                     "gene_type": attrs.get("gene_type") or attrs.get("gene_biotype") or "unknown"}
+                coordinates[name] = {
+                    "chrom": fields[0],
+                    "start": int(fields[3]),
+                    "end": int(fields[4]),
+                    "gene_type": attrs.get("gene_type")
+                    or attrs.get("gene_biotype")
+                    or "unknown",
+                }
     return coordinates
 
 
 # screens (branch code)
-def score_positional_concentration(genes, coordinates, background, n_background, window_bp):
+def score_positional_concentration(
+    genes, coordinates, background, n_background, window_bp
+):
     """Do the top genes pile up on one chromosome, or inside one window of one chromosome?
 
     Two numbers, because they catch different things: a whole-arm excess is aneuploidy or a
@@ -139,7 +160,9 @@ def score_positional_concentration(genes, coordinates, background, n_background,
     per_chrom = Counter(info["chrom"] for _, info in located)
     top_chrom, top_chrom_count = per_chrom.most_common(1)[0]
     expected_fraction = background[top_chrom] / n_background if n_background else 0.0
-    binomial = binomtest(top_chrom_count, len(located), expected_fraction, alternative="greater")
+    binomial = binomtest(
+        top_chrom_count, len(located), expected_fraction, alternative="greater"
+    )
 
     best_window = {"chrom": None, "count": 0, "start": None, "end": None, "genes": []}
     by_chrom = defaultdict(list)
@@ -150,17 +173,28 @@ def score_positional_concentration(genes, coordinates, background, n_background,
         for i, (start, _) in enumerate(entries):
             window = [g for s, g in entries[i:] if s - start <= window_bp]
             if len(window) > best_window["count"]:
-                best_window = {"chrom": chrom, "count": len(window), "start": start,
-                               "end": start + window_bp, "genes": window}
+                best_window = {
+                    "chrom": chrom,
+                    "count": len(window),
+                    "start": start,
+                    "end": start + window_bp,
+                    "genes": window,
+                }
 
     return {
         "assessable": True,
         "n_genes_located": len(located),
         "top_chromosome": top_chrom,
         "genes_on_top_chromosome": top_chrom_count,
-        "top_chromosome_genes": [g for _, g in sorted(by_chrom[top_chrom])],   # in position order
+        "top_chromosome_genes": [
+            g for _, g in sorted(by_chrom[top_chrom])
+        ],  # in position order
         "expected_on_top_chromosome": round(expected_fraction * len(located), 1),
-        "fold_enrichment": round((top_chrom_count / len(located)) / expected_fraction, 2) if expected_fraction else None,
+        "fold_enrichment": round(
+            (top_chrom_count / len(located)) / expected_fraction, 2
+        )
+        if expected_fraction
+        else None,
         "binomial_p": f"{binomial.pvalue:.2e}",
         "densest_window": best_window,
     }
@@ -176,14 +210,22 @@ def score_gene_set_overlap(genes, gene_set, background):
     # The marker sets and prefix patterns are human symbols; compare upper-cased so a mouse
     # screen (Mki67, Rpl13, mt-Co1) is screened too instead of silently scoring zero.
     upper_background = {g.upper(): g for g in background}
-    set_in_background = {upper_background[g.upper()] for g in gene_set if g.upper() in upper_background}
+    set_in_background = {
+        upper_background[g.upper()] for g in gene_set if g.upper() in upper_background
+    }
     overlap = sorted(set(genes) & set_in_background)
     if not set_in_background:
         return {"n_overlap": 0, "genes": [], "expected": 0.0, "p_value": None}
     expected = len(genes) * len(set_in_background) / len(background)
-    p_value = hypergeom.sf(len(overlap) - 1, len(background), len(set_in_background), len(genes))
-    return {"n_overlap": len(overlap), "genes": overlap, "expected": round(expected, 2),   # every hit (<= top_n_genes)
-            "p_value": f"{p_value:.2e}" if len(overlap) else None}
+    p_value = hypergeom.sf(
+        len(overlap) - 1, len(background), len(set_in_background), len(genes)
+    )
+    return {
+        "n_overlap": len(overlap),
+        "genes": overlap,
+        "expected": round(expected, 2),  # every hit (<= top_n_genes)
+        "p_value": f"{p_value:.2e}" if len(overlap) else None,
+    }
 
 
 def score_condition_composition(by_condition, top_genes, condition_markers, background):
@@ -202,22 +244,42 @@ def score_condition_composition(by_condition, top_genes, condition_markers, back
     ranked = by_condition.sort_values(ascending=False)
     second = float(ranked.iloc[1]) if len(ranked) > 1 else 0.0
     lowest = float(ranked.iloc[-1])
-    markers = {c: score_gene_set_overlap(top_genes, set(e["genes"]), background) | {"description": e["description"]}
-               for c, e in condition_markers.items()}
+    markers = {
+        c: score_gene_set_overlap(top_genes, set(e["genes"]), background)
+        | {"description": e["description"]}
+        for c, e in condition_markers.items()
+    }
     return {
         "condition_order": order,
         "mean_score": {c: round(float(v), 5) for c, v in by_condition.items()},
-        "share_of_total": {c: round(float(v) / total, 3) if total else None for c, v in by_condition.items()},
+        "share_of_total": {
+            c: round(float(v) / total, 3) if total else None
+            for c, v in by_condition.items()
+        },
         "peak_condition": str(by_condition.idxmax()),
         "peak_share": round(float(by_condition.max()) / total, 3) if total else None,
-        "peak_over_second": round(float(by_condition.max()) / second, 2) if second else None,
-        "peak_over_lowest": round(float(by_condition.max()) / lowest, 2) if lowest else None,
+        "peak_over_second": round(float(by_condition.max()) / second, 2)
+        if second
+        else None,
+        "peak_over_lowest": round(float(by_condition.max()) / lowest, 2)
+        if lowest
+        else None,
         "marker_overlap": markers,
     }
 
 
-def screen_program(top_genes, background, coordinates, background_chroms, n_located, screen_targets,
-                   reg_counts, condition_mean, condition_markers, args):
+def screen_program(
+    top_genes,
+    background,
+    coordinates,
+    background_chroms,
+    n_located,
+    screen_targets,
+    reg_counts,
+    condition_mean,
+    condition_markers,
+    args,
+):
     """Every screen for one program (branch build_screens body; prefix families also get a p-value)."""
     family_hits = {}
     for family, pattern in PREFIX_FAMILIES.items():
@@ -227,11 +289,19 @@ def screen_program(top_genes, background, coordinates, background_chroms, n_loca
     screens = {
         "n_top_genes_screened": len(top_genes),
         "top_genes": top_genes,
-        "positional": score_positional_concentration(top_genes, coordinates, background_chroms, n_located,
-                                                     args.window_bp),
-        "gene_biotypes": dict(Counter(coordinates[g]["gene_type"] for g in top_genes if g in coordinates).most_common()),
+        "positional": score_positional_concentration(
+            top_genes, coordinates, background_chroms, n_located, args.window_bp
+        ),
+        "gene_biotypes": dict(
+            Counter(
+                coordinates[g]["gene_type"] for g in top_genes if g in coordinates
+            ).most_common()
+        ),
         "symbol_families": family_hits,
-        "marker_sets": {name: score_gene_set_overlap(top_genes, s, background) for name, s in NAMED_SETS.items()},
+        "marker_sets": {
+            name: score_gene_set_overlap(top_genes, s, background)
+            for name, s in NAMED_SETS.items()
+        },
         "cis_targets_in_top_genes": {
             "n_overlap": len(cis),
             "genes": cis[:15],
@@ -240,8 +310,9 @@ def screen_program(top_genes, background, coordinates, background_chroms, n_loca
         "regulators": reg_counts,
     }
     if condition_mean is not None and condition_markers:
-        screens["condition_composition"] = score_condition_composition(condition_mean, top_genes,
-                                                                       condition_markers, background)
+        screens["condition_composition"] = score_condition_composition(
+            condition_mean, top_genes, condition_markers, background
+        )
     return screens
 
 
@@ -251,21 +322,38 @@ def label_program(screens, args):
     hits = []
     for group in ("symbol_families", "marker_sets"):
         for name, s in screens[group].items():
-            if s["n_overlap"] >= args.min_genes and s["p_value"] is not None and float(s["p_value"]) <= args.max_p:
+            if (
+                s["n_overlap"] >= args.min_genes
+                and s["p_value"] is not None
+                and float(s["p_value"]) <= args.max_p
+            ):
                 hits.append((float(s["p_value"]), name, s["n_overlap"]))
     hits.sort()
     pos = screens["positional"]
-    flagged = (pos.get("assessable") and float(pos["binomial_p"]) <= args.max_p
-               and (pos.get("fold_enrichment") or 0) >= args.min_fold)
+    flagged = (
+        pos.get("assessable")
+        and float(pos["binomial_p"]) <= args.max_p
+        and (pos.get("fold_enrichment") or 0) >= args.min_fold
+    )
     return {
         "families": [name for _, name, _ in hits],
-        "family_details": [{"family": name, "n_genes": n, "p_value": f"{p:.2e}"} for p, name, n in hits],
+        "family_details": [
+            {"family": name, "n_genes": n, "p_value": f"{p:.2e}"} for p, name, n in hits
+        ],
         "primary_family": hits[0][1] if hits else "none",
         "positional_flag": pos["top_chromosome"] if flagged else None,
-        "positional_detail": ({"chrom": pos["top_chromosome"], "n_genes": pos["genes_on_top_chromosome"],
-                               "expected": pos["expected_on_top_chromosome"], "fold": pos["fold_enrichment"],
-                               "binomial_p": pos["binomial_p"], "densest_window": pos["densest_window"]}
-                              if flagged else None),
+        "positional_detail": (
+            {
+                "chrom": pos["top_chromosome"],
+                "n_genes": pos["genes_on_top_chromosome"],
+                "expected": pos["expected_on_top_chromosome"],
+                "fold": pos["fold_enrichment"],
+                "binomial_p": pos["binomial_p"],
+                "densest_window": pos["densest_window"],
+            }
+            if flagged
+            else None
+        ),
     }
 
 
@@ -280,35 +368,88 @@ def load_meta(run_dir):
 def regulator_counts(assoc_by_cond, pid, fdr):
     """Perturbed genes tested against the program and significant (adj_pval < fdr) in any condition."""
     rows = pd.concat([df[df["program_name"] == pid] for df in assoc_by_cond.values()])
-    return {"n_tested": int(rows["target_name"].nunique()),
-            "n_significant": int(rows.loc[rows["adj_pval"] < fdr, "target_name"].nunique())}
+    return {
+        "n_tested": int(rows["target_name"].nunique()),
+        "n_significant": int(rows.loc[rows["adj_pval"] < fdr, "target_name"].nunique()),
+    }
 
 
 def load_condition_markers(path):
     if not path:
         return None
-    return {k: v for k, v in json.loads(Path(path).read_text()).items() if not k.startswith("_")}
+    return {
+        k: v
+        for k, v in json.loads(Path(path).read_text()).items()
+        if not k.startswith("_")
+    }
 
 
 def build_parser():
-    p = argparse.ArgumentParser(description="Confounder screens (symbol families, marker sets, chromosome position) per program, written to each program folder.")
+    p = argparse.ArgumentParser(
+        description="Confounder screens (symbol families, marker sets, chromosome position) per program, written to each program folder."
+    )
 
     # IO
-    p.add_argument("--run_dir", required=True, help="Annotation run folder of prepare_programs.py (Programs/meta.json, Programs/P<k>/).")
+    p.add_argument(
+        "--run_dir",
+        required=True,
+        help="Annotation run folder of prepare_programs.py (Programs/meta.json, Programs/P<k>/).",
+    )
     coords = p.add_mutually_exclusive_group(required=True)
-    coords.add_argument("--gtf_path", help="GTF (.gtf or .gtf.gz) used for alignment; its 'gene' rows give chromosome, position and gene_type.")
-    coords.add_argument("--gene_coordinates", help="Instead of --gtf_path: TSV without header, name chrom start end strand gene_type.")
-    p.add_argument("--condition_markers", default=None, help="JSON {condition: {description, genes}} of canonical marker genes per condition; adds the condition_composition screen. Default: off.")
+    coords.add_argument(
+        "--gtf_path",
+        help="GTF (.gtf or .gtf.gz) used for alignment; its 'gene' rows give chromosome, position and gene_type.",
+    )
+    coords.add_argument(
+        "--gene_coordinates",
+        help="Instead of --gtf_path: TSV without header, name chrom start end strand gene_type.",
+    )
+    p.add_argument(
+        "--condition_markers",
+        default=None,
+        help="JSON {condition: {description, genes}} of canonical marker genes per condition; adds the condition_composition screen. Default: off.",
+    )
 
     # context info
-    p.add_argument("--programs", type=int, nargs="+", default=None, help="Program ids, space separated (e.g. 1 2 3). Default: every program folder.")
+    p.add_argument(
+        "--programs",
+        type=int,
+        nargs="+",
+        default=None,
+        help="Program ids, space separated (e.g. 1 2 3). Default: every program folder.",
+    )
 
     # screen
-    p.add_argument("--top_n_genes", type=int, default=50, help="Top genes per program (by loading) that are screened.")
-    p.add_argument("--window_bp", type=int, default=10_000_000, help="Window size of the densest-window positional screen.")
-    p.add_argument("--min_genes", type=int, default=3, help="Min top genes in a family / marker set to call it.")
-    p.add_argument("--max_p", type=float, default=1e-3, help="Max hypergeometric (families) / binomial (chromosome) p to call a hit.")
-    p.add_argument("--min_fold", type=float, default=2.0, help="Min top-chromosome fold enrichment for positional_flag.")
+    p.add_argument(
+        "--top_n_genes",
+        type=int,
+        default=50,
+        help="Top genes per program (by loading) that are screened.",
+    )
+    p.add_argument(
+        "--window_bp",
+        type=int,
+        default=10_000_000,
+        help="Window size of the densest-window positional screen.",
+    )
+    p.add_argument(
+        "--min_genes",
+        type=int,
+        default=3,
+        help="Min top genes in a family / marker set to call it.",
+    )
+    p.add_argument(
+        "--max_p",
+        type=float,
+        default=1e-3,
+        help="Max hypergeometric (families) / binomial (chromosome) p to call a hit.",
+    )
+    p.add_argument(
+        "--min_fold",
+        type=float,
+        default=2.0,
+        help="Min top-chromosome fold enrichment for positional_flag.",
+    )
     return p
 
 
@@ -324,21 +465,38 @@ def main():
     print(f"[load] spectra: {spectra.shape[0]} programs x {spectra.shape[1]} genes")
     ranks = spectra.rank(axis=1, ascending=False, method="first")
     background = set(spectra.columns[(ranks <= membership_top).any(axis=0).values])
-    print(f"[load] gene universe: {len(background):,} genes (union of every program's top {membership_top})")
+    print(
+        f"[load] gene universe: {len(background):,} genes (union of every program's top {membership_top})"
+    )
 
-    coordinates = load_gtf_coordinates(args.gtf_path) if args.gtf_path else load_gene_coordinates(args.gene_coordinates)
-    background_chroms = Counter(coordinates[g]["chrom"] for g in background if g in coordinates)
+    coordinates = (
+        load_gtf_coordinates(args.gtf_path)
+        if args.gtf_path
+        else load_gene_coordinates(args.gene_coordinates)
+    )
+    background_chroms = Counter(
+        coordinates[g]["chrom"] for g in background if g in coordinates
+    )
     n_located = sum(background_chroms.values())
-    print(f"[load] coordinates: {len(coordinates):,} genes; {n_located:,} of the universe located")
+    print(
+        f"[load] coordinates: {len(coordinates):,} genes; {n_located:,} of the universe located"
+    )
 
-    assoc_by_cond = {c: load_perturbation(path) for c, path in meta["inputs"]["perturbation_path"].items()}
-    screen_targets = set(pd.concat(assoc_by_cond.values())["target_name"].dropna().astype(str))
+    assoc_by_cond = {
+        c: load_perturbation(path)
+        for c, path in meta["inputs"]["perturbation_path"].items()
+    }
+    screen_targets = set(
+        pd.concat(assoc_by_cond.values())["target_name"].dropna().astype(str)
+    )
 
     condition_markers = load_condition_markers(args.condition_markers)
     condition_means = None
     if condition_markers:
         labels, _ = load_condition(prog_adata, keys["categorical_key"])
-        condition_means = load_cell_usage(prog_adata).groupby(labels.values).mean()   # conditions x programs
+        condition_means = (
+            load_cell_usage(prog_adata).groupby(labels.values).mean()
+        )  # conditions x programs
 
     folders = {int(d.name[1:]): d for d in list_programs(run_dir)}
     programs = list(dict.fromkeys(args.programs or folders))
@@ -348,34 +506,83 @@ def main():
         if d is None:
             print(f"  P{pid}: no program folder in {run_dir / 'Programs'}; skipped")
             continue
-        top_genes = spectra.loc[pid].sort_values(ascending=False).index[:args.top_n_genes].tolist()
-        screens = screen_program(top_genes, background, coordinates, background_chroms, n_located, screen_targets,
-                                 regulator_counts(assoc_by_cond, pid, fdr),
-                                 condition_means[pid] if condition_means is not None else None,
-                                 condition_markers, args)
-        block = {"label": label_program(screens, args), "screens": screens,
-                 "params": {k: getattr(args, k) for k in ("top_n_genes", "window_bp", "min_genes", "max_p", "min_fold")}
-                           | {"membership_top": membership_top, "fdr": fdr, "n_background": len(background)}}
+        top_genes = (
+            spectra.loc[pid]
+            .sort_values(ascending=False)
+            .index[: args.top_n_genes]
+            .tolist()
+        )
+        screens = screen_program(
+            top_genes,
+            background,
+            coordinates,
+            background_chroms,
+            n_located,
+            screen_targets,
+            regulator_counts(assoc_by_cond, pid, fdr),
+            condition_means[pid] if condition_means is not None else None,
+            condition_markers,
+            args,
+        )
+        block = {
+            "label": label_program(screens, args),
+            "screens": screens,
+            "params": {
+                k: getattr(args, k)
+                for k in ("top_n_genes", "window_bp", "min_genes", "max_p", "min_fold")
+            }
+            | {
+                "membership_top": membership_top,
+                "fdr": fdr,
+                "n_background": len(background),
+            },
+        }
         (d / "confounder_screens.json").write_text(json.dumps(block, indent=2))
         errors = mark_done(d, "confounder_screens", by="build_confounder_screens.py")
         lab = block["label"]
-        summary[f"P{pid}"] = {"primary_family": lab["primary_family"], "families": lab["families"],
-                              "positional_flag": lab["positional_flag"]}
-        print(f"  P{pid}: primary={lab['primary_family']} families={lab['families'] or '-'} "
-              f"positional={lab['positional_flag'] or '-'}" + (f"  [FAILED: {errors}]" if errors else ""))
+        summary[f"P{pid}"] = {
+            "primary_family": lab["primary_family"],
+            "families": lab["families"],
+            "positional_flag": lab["positional_flag"],
+        }
+        print(
+            f"  P{pid}: primary={lab['primary_family']} families={lab['families'] or '-'} "
+            f"positional={lab['positional_flag'] or '-'}"
+            + (f"  [FAILED: {errors}]" if errors else "")
+        )
 
-    (run_dir / "Programs" / "meta_confounder_screens.json").write_text(json.dumps({
-        "created": datetime.now().isoformat(timespec="seconds"),
-        "inputs": {"run_dir": str(run_dir), "gtf_path": args.gtf_path, "gene_coordinates": args.gene_coordinates,
-                   "condition_markers": args.condition_markers},
-        "params": {k: getattr(args, k) for k in ("top_n_genes", "window_bp", "min_genes", "max_p", "min_fold")}
-                  | {"membership_top": membership_top, "fdr": fdr},
-        "n_background": len(background),
-        "programs": summary,
-    }, indent=2))
+    (run_dir / "Programs" / "meta_confounder_screens.json").write_text(
+        json.dumps(
+            {
+                "created": datetime.now().isoformat(timespec="seconds"),
+                "inputs": {
+                    "run_dir": str(run_dir),
+                    "gtf_path": args.gtf_path,
+                    "gene_coordinates": args.gene_coordinates,
+                    "condition_markers": args.condition_markers,
+                },
+                "params": {
+                    k: getattr(args, k)
+                    for k in (
+                        "top_n_genes",
+                        "window_bp",
+                        "min_genes",
+                        "max_p",
+                        "min_fold",
+                    )
+                }
+                | {"membership_top": membership_top, "fdr": fdr},
+                "n_background": len(background),
+                "programs": summary,
+            },
+            indent=2,
+        )
+    )
     n_family = sum(v["primary_family"] != "none" for v in summary.values())
     n_pos = sum(bool(v["positional_flag"]) for v in summary.values())
-    print(f"[done] {len(summary)} program(s): {n_family} with a family, {n_pos} positional -> {run_dir / 'Programs'}")
+    print(
+        f"[done] {len(summary)} program(s): {n_family} with a family, {n_pos} positional -> {run_dir / 'Programs'}"
+    )
     return 0
 
 

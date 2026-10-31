@@ -15,7 +15,14 @@ import anndata as ad
 import mudata as mu
 import cnmf
 
-from .conftest import TEST_K, TEST_NUMITER, TEST_NUMHVGENES, TEST_SEL_THRESH, TEST_SEED, check_data_format
+from .conftest import (
+    TEST_K,
+    TEST_NUMITER,
+    TEST_NUMHVGENES,
+    TEST_SEL_THRESH,
+    TEST_SEED,
+    check_data_format,
+)
 
 from Stage1_Inference.src.run_cNMF import run_cnmf_consensus, compile_results
 from Stage1_Inference.src.plot_diagnostics import generate_all_plots
@@ -23,8 +30,10 @@ from Stage1_Inference.src.plot_diagnostics import generate_all_plots
 
 # ---------- shared state across ordered tests ----------
 
+
 class _State:
     """Mutable container shared across tests in this module."""
+
     cnmf_obj = None
     run_dir = None
 
@@ -33,6 +42,7 @@ state = _State()
 
 
 # ---------- tests (run in order) ----------
+
 
 class TestSkCNMFInference:
     """Ordered end-to-end test for sk-cNMF inference."""
@@ -183,9 +193,13 @@ class TestSkCNMFInference:
                 thresh_str = str(thresh).replace(".", "_")
                 elbow = os.path.join(plots_dir, f"elbow_curves_k{k}_dt{thresh_str}.pdf")
                 assert os.path.exists(elbow), f"Missing elbow plot: {elbow}"
-                usage = os.path.join(plots_dir, f"usage_heatmap_k{k}_dt{thresh_str}.pdf")
+                usage = os.path.join(
+                    plots_dir, f"usage_heatmap_k{k}_dt{thresh_str}.pdf"
+                )
                 assert os.path.exists(usage), f"Missing usage heatmap: {usage}"
-                violin = os.path.join(plots_dir, f"loading_violins_k{k}_dt{thresh_str}.pdf")
+                violin = os.path.join(
+                    plots_dir, f"loading_violins_k{k}_dt{thresh_str}.pdf"
+                )
                 assert os.path.exists(violin), f"Missing violin plot: {violin}"
 
         print(f"\nDiagnostic plots saved to: {plots_dir}")
@@ -227,12 +241,18 @@ class TestSkCNMFInference:
         # K-selection plot
         if not os.path.exists(os.path.join(inference_dir, "Inference.k_selection.png")):
             missing.append("Inference.k_selection.png")
-        if not os.path.exists(os.path.join(inference_dir, "diagnosis_plots", "k_selection.png")):
+        if not os.path.exists(
+            os.path.join(inference_dir, "diagnosis_plots", "k_selection.png")
+        ):
             missing.append("diagnosis_plots/k_selection.png")
 
         # Logs
         if not os.path.exists(os.path.join(inference_dir, "logs", "test_run.log")):
             missing.append("logs/test_run.log")
 
-        assert not missing, f"Missing {len(missing)} output files:\n" + "\n".join(f"  {f}" for f in missing)
-        print(f"\nAll output files verified ({len(TEST_K) * len(TEST_SEL_THRESH)} K×thresh combos)")
+        assert not missing, f"Missing {len(missing)} output files:\n" + "\n".join(
+            f"  {f}" for f in missing
+        )
+        print(
+            f"\nAll output files verified ({len(TEST_K) * len(TEST_SEL_THRESH)} K×thresh combos)"
+        )

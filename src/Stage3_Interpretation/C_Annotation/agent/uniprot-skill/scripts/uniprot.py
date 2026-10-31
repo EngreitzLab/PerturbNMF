@@ -3,18 +3,28 @@
 
 Reads one JSON object on stdin and writes one JSON object on stdout (see ../SKILL.md).
 """
+
 import os
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib.skill_lib import SkillError, as_list, merge_jsonl, request_with_retry, require_str_list, run  # noqa: E402,F401
+from _lib.skill_lib import (
+    SkillError,
+    as_list,
+    merge_jsonl,
+    request_with_retry,
+    require_str_list,
+    run,
+)  # noqa: E402,F401
 
 SOURCE = "UniProt"
 UNIPROT_URL = "https://rest.uniprot.org/uniprotkb/search"
-FIELDS = ("accession,gene_primary,gene_synonym,protein_name,cc_function,"
-          "cc_subcellular_location,cc_tissue_specificity,cc_pathway")
+FIELDS = (
+    "accession,gene_primary,gene_synonym,protein_name,cc_function,"
+    "cc_subcellular_location,cc_tissue_specificity,cc_pathway"
+)
 
 
 # query
@@ -23,14 +33,21 @@ def query_uniprot(genes, taxid=9606, batch_size=100):
     query gene, following the Link: rel="next" pagination."""
     entries = []
     for i in range(0, len(genes), batch_size):
-        terms = " OR ".join(f"gene_exact:{g}" for g in genes[i:i + batch_size])
+        terms = " OR ".join(f"gene_exact:{g}" for g in genes[i : i + batch_size])
         url = UNIPROT_URL
-        params = {"query": f"({terms}) AND organism_id:{taxid} AND reviewed:true",
-                  "fields": FIELDS, "format": "json", "size": 500}
+        params = {
+            "query": f"({terms}) AND organism_id:{taxid} AND reviewed:true",
+            "fields": FIELDS,
+            "format": "json",
+            "size": 500,
+        }
         while url:
             resp = request_with_retry("GET", url, params=params)
             entries += resp.json().get("results", [])
-            url, params = resp.links.get("next", {}).get("url"), None  # next url carries the query
+            url, params = (
+                resp.links.get("next", {}).get("url"),
+                None,
+            )  # next url carries the query
     return entries
 
 
@@ -53,7 +70,11 @@ def pick_entries(genes, entries):
             by_primary.setdefault(n, e)
         for n in synonyms:
             by_synonym.setdefault(n, e)
-    return {g: by_primary.get(g) or by_synonym[g] for g in genes if g in by_primary or g in by_synonym}
+    return {
+        g: by_primary.get(g) or by_synonym[g]
+        for g in genes
+        if g in by_primary or g in by_synonym
+    }
 
 
 def _comments(entry, ctype):
@@ -61,15 +82,29 @@ def _comments(entry, ctype):
 
 
 def _texts(entry, ctype):
-    return " ".join(t["value"] for c in _comments(entry, ctype) for t in c.get("texts", [])) or None
+    return (
+        " ".join(
+            t["value"] for c in _comments(entry, ctype) for t in c.get("texts", [])
+        )
+        or None
+    )
 
 
 def format_gene_info(entry):
     primary, synonyms = _gene_names(entry)
-    function_pmids = [ev["id"] for c in _comments(entry, "FUNCTION") for t in c.get("texts", [])
-                      for ev in t.get("evidences", []) if ev.get("source") == "PubMed"]
-    locations = [loc["location"]["value"] for c in _comments(entry, "SUBCELLULAR LOCATION")
-                 for loc in c.get("subcellularLocations", []) if "location" in loc]
+    function_pmids = [
+        ev["id"]
+        for c in _comments(entry, "FUNCTION")
+        for t in c.get("texts", [])
+        for ev in t.get("evidences", [])
+        if ev.get("source") == "PubMed"
+    ]
+    locations = [
+        loc["location"]["value"]
+        for c in _comments(entry, "SUBCELLULAR LOCATION")
+        for loc in c.get("subcellularLocations", [])
+        if "location" in loc
+    ]
     rec_name = entry.get("proteinDescription", {}).get("recommendedName", {})
     return {
         "found": True,
@@ -92,8 +127,12 @@ def handle(req):
     not_found = [g for g in genes if g not in info]
     out = {"source": UNIPROT_URL, "n_found": len(info), "not_found": not_found}
     if req.get("write_to"):
-        merge_jsonl(req["write_to"], "gene", {g: {SOURCE: v} for g, v in info.items()}
-                    | {g: {SOURCE: {"found": False}} for g in not_found})
+        merge_jsonl(
+            req["write_to"],
+            "gene",
+            {g: {SOURCE: v} for g, v in info.items()}
+            | {g: {SOURCE: {"found": False}} for g in not_found},
+        )
         out["written_to"] = req["write_to"]
     else:
         out["genes"] = info

@@ -3,6 +3,7 @@
 
 Reads one JSON object on stdin and writes one JSON object on stdout (see ../SKILL.md).
 """
+
 import sys
 from pathlib import Path
 
@@ -35,7 +36,7 @@ def normalize_doi(value):
     doi = str(value).strip().lower()
     for prefix in ("https://doi.org/", "http://doi.org/", "http://dx.doi.org/", "doi:"):
         if doi.startswith(prefix):
-            doi = doi[len(prefix):]
+            doi = doi[len(prefix) :]
             break
     doi = doi.rstrip(".,;)")
     return doi if _DOI_RE.fullmatch(doi) else None
@@ -79,7 +80,9 @@ def _get(url, params=None, as_json=True, timeout=30, retries=1):
     last = None
     for attempt in range(retries + 1):
         try:
-            resp = requests.get(url, params=params, timeout=timeout, headers={"User-Agent": USER_AGENT})
+            resp = requests.get(
+                url, params=params, timeout=timeout, headers={"User-Agent": USER_AGENT}
+            )
             if resp.status_code in TRANSIENT_STATUS and attempt < retries:
                 time.sleep(0.5 * (attempt + 1))
                 continue
@@ -100,8 +103,11 @@ def _node_text(node):
 
 
 def _pubmed_year(article):
-    for path in (".//ArticleDate/Year", ".//Journal/JournalIssue/PubDate/Year",
-                 ".//Journal/JournalIssue/PubDate/MedlineDate"):
+    for path in (
+        ".//ArticleDate/Year",
+        ".//Journal/JournalIssue/PubDate/Year",
+        ".//Journal/JournalIssue/PubDate/MedlineDate",
+    ):
         text = _node_text(article.find(path))
         if text:
             m = _YEAR_RE.search(text)
@@ -112,11 +118,19 @@ def _pubmed_year(article):
 
 def _study_type(pub_types):
     lowered = [t.casefold() for t in pub_types]
-    for key, label in (("review", "review"), ("clinical trial", "clinical trial"),
-                       ("meta-analysis", "meta-analysis"), ("randomized", "randomized trial")):
+    for key, label in (
+        ("review", "review"),
+        ("clinical trial", "clinical trial"),
+        ("meta-analysis", "meta-analysis"),
+        ("randomized", "randomized trial"),
+    ):
         if any(key in t for t in lowered):
             return label
-    non_generic = [t for t in pub_types if t.casefold() not in {"journal article", "research support"}]
+    non_generic = [
+        t
+        for t in pub_types
+        if t.casefold() not in {"journal article", "research support"}
+    ]
     return non_generic[0] if non_generic else (pub_types[0] if pub_types else None)
 
 
@@ -144,46 +158,88 @@ def _parse_pubmed_xml(xml_text):
             if text:
                 label = node.attrib.get("Label")
                 abstract_parts.append(f"{label}: {text}" if label else text)
-        pub_types = [t for t in (_node_text(n) for n in article.findall(".//PublicationTypeList/PublicationType")) if t]
-        comments = [node.attrib.get("RefType", "")
-                    for node in medline.findall(".//CommentsCorrectionsList/CommentsCorrections")]
+        pub_types = [
+            t
+            for t in (
+                _node_text(n)
+                for n in article.findall(".//PublicationTypeList/PublicationType")
+            )
+            if t
+        ]
+        comments = [
+            node.attrib.get("RefType", "")
+            for node in medline.findall(
+                ".//CommentsCorrectionsList/CommentsCorrections"
+            )
+        ]
         journal_node = article.find(".//Journal")
-        journal = _node_text(journal_node.find("Title")) if journal_node is not None else None
-        retracted = any(t.casefold() in {"retracted publication", "retraction of publication"} for t in pub_types) \
-            or any("retraction" in c.casefold() for c in comments)
-        records.append({
-            "pmid": pmid,
-            "doi": normalize_doi(ids.get("doi")),
-            "pmcid": ids.get("pmc") or None,
-            "title": _node_text(article.find("ArticleTitle")) or "No Title",
-            "year": _pubmed_year(article),
-            "journal": journal,
-            "study_type": _study_type(pub_types),
-            "abstract": " ".join(abstract_parts) or None,
-            "is_preprint": any("preprint" in t.casefold() for t in pub_types),
-            "is_retracted": retracted,
-        })
+        journal = (
+            _node_text(journal_node.find("Title")) if journal_node is not None else None
+        )
+        retracted = any(
+            t.casefold() in {"retracted publication", "retraction of publication"}
+            for t in pub_types
+        ) or any("retraction" in c.casefold() for c in comments)
+        records.append(
+            {
+                "pmid": pmid,
+                "doi": normalize_doi(ids.get("doi")),
+                "pmcid": ids.get("pmc") or None,
+                "title": _node_text(article.find("ArticleTitle")) or "No Title",
+                "year": _pubmed_year(article),
+                "journal": journal,
+                "study_type": _study_type(pub_types),
+                "abstract": " ".join(abstract_parts) or None,
+                "is_preprint": any("preprint" in t.casefold() for t in pub_types),
+                "is_retracted": retracted,
+            }
+        )
     return records
+
 
 SKILL = "pubmed-skill"
 
 
 def fetch_records(query, max_results):
-    payload = _get(f"{NCBI_BASE_URL}/esearch.fcgi",
-                   params={"db": "pubmed", "term": _bounded_query(query), "retmax": max_results,
-                           "retmode": "json", "sort": "relevance", **_ncbi_params()})
+    payload = _get(
+        f"{NCBI_BASE_URL}/esearch.fcgi",
+        params={
+            "db": "pubmed",
+            "term": _bounded_query(query),
+            "retmax": max_results,
+            "retmode": "json",
+            "sort": "relevance",
+            **_ncbi_params(),
+        },
+    )
     result = payload.get("esearchresult", {}) if isinstance(payload, dict) else {}
-    pmids = [p for p in (normalize_pmid(x) for x in result.get("idlist", [])) if p][:max_results]
+    pmids = [p for p in (normalize_pmid(x) for x in result.get("idlist", [])) if p][
+        :max_results
+    ]
     if not pmids:
         return []
-    xml_text = _get(f"{NCBI_BASE_URL}/efetch.fcgi",
-                    params={"db": "pubmed", "id": ",".join(pmids), "retmode": "xml", **_ncbi_params()}, as_json=False)
+    xml_text = _get(
+        f"{NCBI_BASE_URL}/efetch.fcgi",
+        params={
+            "db": "pubmed",
+            "id": ",".join(pmids),
+            "retmode": "xml",
+            **_ncbi_params(),
+        },
+        as_json=False,
+    )
     return _parse_pubmed_xml(str(xml_text))
 
 
 # shared by the literature skills (identical in each)
 def record_key(r):
-    return ("pmid", r["pmid"]) if r.get("pmid") else ("doi", r["doi"]) if r.get("doi") else ("title", r["title"].casefold())
+    return (
+        ("pmid", r["pmid"])
+        if r.get("pmid")
+        else ("doi", r["doi"])
+        if r.get("doi")
+        else ("title", r["title"].casefold())
+    )
 
 
 def handle(req):
@@ -191,18 +247,44 @@ def handle(req):
     max_results = max(1, min(int(req.get("max_results", 5)), MAX_SEARCH_RESULTS))
     records = fetch_records(query, max_results)
     for r in records:
-        r.setdefault("url", f"https://doi.org/{r['doi']}" if r.get("doi") else
-                     (f"https://pubmed.ncbi.nlm.nih.gov/{r['pmid']}" if r.get("pmid") else None))
+        r.setdefault(
+            "url",
+            f"https://doi.org/{r['doi']}"
+            if r.get("doi")
+            else (
+                f"https://pubmed.ncbi.nlm.nih.gov/{r['pmid']}"
+                if r.get("pmid")
+                else None
+            ),
+        )
     out = {"source": SKILL, "query": query, "n_results": len(records)}
     if req.get("write_to"):
         genes = require_str_list(req, "genes")
-        rows = [{"source": SKILL, "query": query, "genes": genes, "status": "candidate", "finding": None,
-                 "stance": None, "pdf_path": None, **r} for r in records]
+        rows = [
+            {
+                "source": SKILL,
+                "query": query,
+                "genes": genes,
+                "status": "candidate",
+                "finding": None,
+                "stance": None,
+                "pdf_path": None,
+                **r,
+            }
+            for r in records
+        ]
         added, dup = append_jsonl(req["write_to"], rows, dedupe=record_key)
-        out.update({"written_to": req["write_to"], "added": added, "already_present": dup})
+        out.update(
+            {"written_to": req["write_to"], "added": added, "already_present": dup}
+        )
     n = int(req.get("abstract_chars", 600))
-    out["records"] = [{**{k: v for k, v in r.items() if k != "abstract"},
-                       "abstract": (r.get("abstract") or "")[:n] or None} for r in records]
+    out["records"] = [
+        {
+            **{k: v for k, v in r.items() if k != "abstract"},
+            "abstract": (r.get("abstract") or "")[:n] or None,
+        }
+        for r in records
+    ]
     return out
 
 

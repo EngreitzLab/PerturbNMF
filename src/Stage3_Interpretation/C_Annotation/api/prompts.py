@@ -6,6 +6,7 @@ Each file holds one prompt string exactly as the step sends it, plus one trailin
 A prompt file is edited like code (git keeps its history); the outputs carry its id and sha256, so a changed
 prompt is visible in every record made with it (status.py flags records made with an older prompt).
 """
+
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,7 +16,7 @@ PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
 @dataclass(frozen=True)
 class Prompt:
-    id: str        # "<step>/<part>.md", relative to PROMPT_DIR
+    id: str  # "<step>/<part>.md", relative to PROMPT_DIR
     text: str
     sha256: str
 

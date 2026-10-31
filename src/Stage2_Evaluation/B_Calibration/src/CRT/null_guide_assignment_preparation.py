@@ -60,7 +60,9 @@ def null_group_size(CRT_obj: CRT_obj, ntc_cols: Sequence[int]) -> int:
     n_guides = [len(CRT_obj.guide_targets[g]) for g in CRT_obj.selected_gene_names]
     if not n_guides:
         raise ValueError("No tested genes; cannot compute the median guides per gene.")
-    median_size = int(np.round(np.median(n_guides)))   # numpy rounds .5 to even, like R's round()
+    median_size = int(
+        np.round(np.median(n_guides))
+    )  # numpy rounds .5 to even, like R's round()
     return max(1, min(median_size, len(ntc_cols)))
 
 
@@ -102,7 +104,9 @@ def sample_null_guide_groups(
     seen = set()
     groups: List[List[int]] = []
     while len(groups) < n_groups:
-        draw = tuple(sorted(int(j) for j in rng.choice(ntc_cols, size=group_size, replace=False)))
+        draw = tuple(
+            sorted(int(j) for j in rng.choice(ntc_cols, size=group_size, replace=False))
+        )
         if draw not in seen:
             seen.add(draw)
             groups.append(list(draw))
@@ -142,7 +146,10 @@ def frequency_matched_null_guide_groups(
         list of sorted guide-column lists, one per fake gene.
     """
     ntc_guides, guide_freq, guide_to_bin, real_sigs = build_ntc_group_inputs(
-        CRT_obj, ntc_label=CRT_obj.non_targeting_guide_names, group_size=group_size, n_bins=n_bins
+        CRT_obj,
+        ntc_label=CRT_obj.non_targeting_guide_names,
+        group_size=group_size,
+        n_bins=n_bins,
     )
     guide_to_col = {g: j for j, g in enumerate(CRT_obj.guide_names)}
 
@@ -172,8 +179,10 @@ def frequency_matched_null_guide_groups(
             return groups[:n_null_genes]
 
     if n_ensemble is None:
-        warnings.warn(f"Only {len(groups)} distinct frequency-matched NTC groups after {max_ensemble} "
-                      f"replicates; using them instead of {n_null_genes}.")
+        warnings.warn(
+            f"Only {len(groups)} distinct frequency-matched NTC groups after {max_ensemble} "
+            f"replicates; using them instead of {n_null_genes}."
+        )
     return groups
 
 
@@ -220,16 +229,26 @@ def prepare_null_guide_assignment(
         )
 
     # non-targeting guide columns (union over all control labels)
-    ntc_cols = sorted({j for label in CRT_obj.non_targeting_guide_names for j in CRT_obj.guide_targets[label]})
+    ntc_cols = sorted(
+        {
+            j
+            for label in CRT_obj.non_targeting_guide_names
+            for j in CRT_obj.guide_targets[label]
+        }
+    )
     if not ntc_cols:
-        raise ValueError(f"No guides found for control genes {CRT_obj.non_targeting_guide_names}.")
+        raise ValueError(
+            f"No guides found for control genes {CRT_obj.non_targeting_guide_names}."
+        )
 
     if group_size is None:
         group_size = CRT_obj.number_guide
     if group_size is None:
         group_size = null_group_size(CRT_obj, ntc_cols)
     if not 1 <= group_size <= len(ntc_cols):
-        raise ValueError(f"group_size must be in [1, {len(ntc_cols)}] (number of NTC guides); got {group_size}.")
+        raise ValueError(
+            f"group_size must be in [1, {len(ntc_cols)}] (number of NTC guides); got {group_size}."
+        )
 
     if n_null_genes is None:
         n_null_genes = len(CRT_obj.selected_gene_names)
@@ -238,16 +257,25 @@ def prepare_null_guide_assignment(
 
     seed = CRT_obj.seed if seed is None else seed
     if method == "random":
-        groups = sample_null_guide_groups(ntc_cols, group_size, n_null_genes, np.random.default_rng(seed))
+        groups = sample_null_guide_groups(
+            ntc_cols, group_size, n_null_genes, np.random.default_rng(seed)
+        )
     else:
         groups = frequency_matched_null_guide_groups(
-            CRT_obj, group_size, n_null_genes, n_bins=n_bins, n_ensemble=n_ensemble, seed=seed
+            CRT_obj,
+            group_size,
+            n_null_genes,
+            n_bins=n_bins,
+            n_ensemble=n_ensemble,
+            seed=seed,
         )
 
     null_names = [f"{null_prefix}{i}" for i in range(len(groups))]
     clash = [g for g in null_names if g in CRT_obj.guide_targets]
     if clash:
-        raise ValueError(f"Fake gene names already exist in guide_targets: {clash[:5]}; change null_prefix.")
+        raise ValueError(
+            f"Fake gene names already exist in guide_targets: {clash[:5]}; change null_prefix."
+        )
 
     return dataclasses.replace(
         CRT_obj,

@@ -3,6 +3,7 @@
 Provides synthetic MuData, enrichment DataFrames, and perturbation files
 so tests run without real data.
 """
+
 import os
 import numpy as np
 import pandas as pd
@@ -11,7 +12,9 @@ from pathlib import Path
 from scipy import sparse
 
 TESTS_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-OUTPUT_DIR = TESTS_ROOT / "output" / "torch-cNMF" / "batch" / "Interpretation" / "Summarization"
+OUTPUT_DIR = (
+    TESTS_ROOT / "output" / "torch-cNMF" / "batch" / "Interpretation" / "Summarization"
+)
 
 
 @pytest.fixture(scope="session")
@@ -24,6 +27,7 @@ def output_dir():
 # Synthetic MuData
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
 def synthetic_mdata():
     """Build a minimal MuData with 50 cells, 20 genes, 3 programs, 3 guides."""
@@ -34,7 +38,9 @@ def synthetic_mdata():
     rng = np.random.default_rng(42)
 
     # RNA modality
-    X_rna = sparse.random(n_cells, n_genes, density=0.3, format="csr", random_state=42).astype(np.float32)
+    X_rna = sparse.random(
+        n_cells, n_genes, density=0.3, format="csr", random_state=42
+    ).astype(np.float32)
     gene_names = [f"Gene{i}" for i in range(n_genes)]
     cell_ids = [f"Cell{i}" for i in range(n_cells)]
     samples = rng.choice(["S1", "S2", "S3"], size=n_cells)
@@ -75,19 +81,22 @@ def mdata_copy(synthetic_mdata):
 # Synthetic enrichment DataFrames
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
 def synthetic_go_df():
     """Minimal GO enrichment DataFrame matching Compile_GO_sheet output."""
     rows = []
     for prog in range(3):
         for t in range(5):
-            rows.append({
-                "program_name": str(prog),
-                "Term": f"GO:00{prog}{t}",
-                "Adjusted P-value": 0.001 * (t + 1),
-                "Genes": ";".join([f"Gene{j}" for j in range(7)]),
-                "Combined Score": 100 - t * 10,
-            })
+            rows.append(
+                {
+                    "program_name": str(prog),
+                    "Term": f"GO:00{prog}{t}",
+                    "Adjusted P-value": 0.001 * (t + 1),
+                    "Genes": ";".join([f"Gene{j}" for j in range(7)]),
+                    "Combined Score": 100 - t * 10,
+                }
+            )
     df = pd.DataFrame(rows).set_index("Term")
     return df
 
@@ -97,12 +106,14 @@ def synthetic_geneset_df():
     rows = []
     for prog in range(3):
         for t in range(3):
-            rows.append({
-                "program_name": str(prog),
-                "Term": f"GENESET_{prog}_{t}",
-                "Adjusted P-value": 0.01 * (t + 1),
-                "Genes": ";".join([f"Gene{j}" for j in range(4)]),
-            })
+            rows.append(
+                {
+                    "program_name": str(prog),
+                    "Term": f"GENESET_{prog}_{t}",
+                    "Adjusted P-value": 0.01 * (t + 1),
+                    "Genes": ";".join([f"Gene{j}" for j in range(4)]),
+                }
+            )
     df = pd.DataFrame(rows).set_index("Term")
     return df
 
@@ -112,15 +123,18 @@ def synthetic_explained_variance_df():
     # Match the real `{K}_Explained_Variance.txt` format produced by Stage 2,
     # which has columns: VarianceExplained, ProgramID, program_name.
     # Compile_Summary_sheet's simple_Summary_cols looks up "VarianceExplained".
-    return pd.DataFrame({
-        "program_name": [0, 1, 2],
-        "VarianceExplained": [0.15, 0.10, 0.08],
-    }).set_index("program_name")
+    return pd.DataFrame(
+        {
+            "program_name": [0, 1, 2],
+            "VarianceExplained": [0.15, 0.10, 0.08],
+        }
+    ).set_index("program_name")
 
 
 # ---------------------------------------------------------------------------
 # Synthetic perturbation files on disk
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def perturbation_dir(output_dir):
@@ -137,12 +151,14 @@ def perturbation_dir(output_dir):
         rows = []
         for tgt in targets:
             for prog in programs:
-                rows.append({
-                    "target_name": tgt,
-                    "program_name": prog,
-                    "log2FC": rng.normal(0, 1),
-                    "adj_pval": rng.uniform(0, 0.2),
-                })
+                rows.append(
+                    {
+                        "target_name": tgt,
+                        "program_name": prog,
+                        "log2FC": rng.normal(0, 1),
+                        "adj_pval": rng.uniform(0, 0.2),
+                    }
+                )
         df = pd.DataFrame(rows)
         df.to_csv(f"{base}_{samp}.txt", sep="\t", index=True)
 
@@ -157,6 +173,7 @@ def sample_list():
 # ---------------------------------------------------------------------------
 # Synthetic program loading flat DataFrame
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def synthetic_program_loading_flat(synthetic_mdata):

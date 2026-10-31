@@ -25,17 +25,23 @@ from .propensity_model import propensity_model
 
 @dataclass
 class Matched_cells_result:
-    gene: str                         # target gene name
-    treated_obs_idx: np.ndarray       # matched treated cells, row indexes into CRT_obj (int32, sorted)
-    control_obs_idx: np.ndarray       # matched control cells (int32, sorted)
-    matched_obs_idx: np.ndarray       # treated + control cells (int32, sorted)
-    subclass: np.ndarray              # pair id per matched_obs_idx cell (= rank of its treated cell)
-    weights: np.ndarray               # MatchIt ATT weights per matched_obs_idx cell
-    propensity: np.ndarray            # propensity score per matched_obs_idx cell
-    n_treated: int                    # treated cells before matching
-    n_control_pool: int               # candidate control cells before matching
-    n_treated_unmatched: int          # treated cells left with no control (caliper)
-    balance: Optional[pd.DataFrame] = None   # standardized mean differences before / after
+    gene: str  # target gene name
+    treated_obs_idx: (
+        np.ndarray
+    )  # matched treated cells, row indexes into CRT_obj (int32, sorted)
+    control_obs_idx: np.ndarray  # matched control cells (int32, sorted)
+    matched_obs_idx: np.ndarray  # treated + control cells (int32, sorted)
+    subclass: (
+        np.ndarray
+    )  # pair id per matched_obs_idx cell (= rank of its treated cell)
+    weights: np.ndarray  # MatchIt ATT weights per matched_obs_idx cell
+    propensity: np.ndarray  # propensity score per matched_obs_idx cell
+    n_treated: int  # treated cells before matching
+    n_control_pool: int  # candidate control cells before matching
+    n_treated_unmatched: int  # treated cells left with no control (caliper)
+    balance: Optional[pd.DataFrame] = (
+        None  # standardized mean differences before / after
+    )
 
 
 def _treated_obs_idx(CRT_obj: CRT_obj, gene: str) -> np.ndarray:
@@ -51,8 +57,10 @@ def _treated_obs_idx(CRT_obj: CRT_obj, gene: str) -> np.ndarray:
     """
     if gene not in CRT_obj.guide_targets:
         raise KeyError(f"'{gene}' has no guides in CRT_obj.guide_targets.")
-    G = CRT_obj.Guide_assignment                # CSC with explicit zeros removed
-    chunks = [G.indices[G.indptr[j] : G.indptr[j + 1]] for j in CRT_obj.guide_targets[gene]]
+    G = CRT_obj.Guide_assignment  # CSC with explicit zeros removed
+    chunks = [
+        G.indices[G.indptr[j] : G.indptr[j + 1]] for j in CRT_obj.guide_targets[gene]
+    ]
     return np.unique(np.concatenate(chunks)).astype(np.int32)
 
 
@@ -64,13 +72,17 @@ def guide_cell_obs_idx(CRT_obj: CRT_obj) -> np.ndarray:
     Returns:
         int32 sorted row indexes.
     """
-    idx = getattr(CRT_obj, "guide_cell_obs_idx", None)    # getattr: CRT_obj pickled before this field existed
+    idx = getattr(
+        CRT_obj, "guide_cell_obs_idx", None
+    )  # getattr: CRT_obj pickled before this field existed
     if idx is None:
         idx = np.unique(CRT_obj.Guide_assignment.indices)  # CSC, explicit zeros removed
     return np.asarray(idx, dtype=np.int32)
 
 
-def _control_pool_idx(CRT_obj: CRT_obj, treated_obs_idx: np.ndarray, guide_cells_only: bool) -> np.ndarray:
+def _control_pool_idx(
+    CRT_obj: CRT_obj, treated_obs_idx: np.ndarray, guide_cells_only: bool
+) -> np.ndarray:
     """
     Candidate control cells: cells without the gene's guides.
 
@@ -145,7 +157,9 @@ def _greedy_nearest_neighbor(
             -1 where no control was found.
     """
     n_treated, n_control = treated_distance.size, control_distance.size
-    shuffle = np.random.default_rng(seed).permutation(n_control)       # random order among ties
+    shuffle = np.random.default_rng(seed).permutation(
+        n_control
+    )  # random order among ties
     sort_idx = shuffle[np.argsort(control_distance[shuffle], kind="stable")]
     sorted_d = control_distance[sort_idx]
     # parent arrays hold positions in sorted_d plus a sentinel at each end
@@ -164,11 +178,13 @@ def _greedy_nearest_neighbor(
     for r in range(ratio):
         for t in treated_order:
             if r > 0 and match[t, r - 1] < 0:
-                continue                          # no earlier control: none will be found now
+                continue  # no earlier control: none will be found now
             d = treated_distance[t]
-            pos = int(np.searchsorted(sorted_d, d))       # sorted_d[pos-1] < d <= sorted_d[pos]
-            lo = _find(left, pos) - 1                     # nearest available at or left of pos-1
-            hi = _find(right, pos + 1) - 1                # nearest available at or right of pos
+            pos = int(
+                np.searchsorted(sorted_d, d)
+            )  # sorted_d[pos-1] < d <= sorted_d[pos]
+            lo = _find(left, pos) - 1  # nearest available at or left of pos-1
+            hi = _find(right, pos + 1) - 1  # nearest available at or right of pos
             chosen = -1
             while lo >= 0 or hi < n_control:
                 gap_lo = d - sorted_d[lo] if lo >= 0 else np.inf
@@ -179,7 +195,7 @@ def _greedy_nearest_neighbor(
                     if ok(t, lo):
                         chosen = lo
                         break
-                    lo = _find(left, lo) - 1               # skip lo for this treated cell only
+                    lo = _find(left, lo) - 1  # skip lo for this treated cell only
                 else:
                     if ok(t, hi):
                         chosen = hi
@@ -188,8 +204,8 @@ def _greedy_nearest_neighbor(
             if chosen < 0:
                 continue
             match[t, r] = sort_idx[chosen]
-            left[chosen + 1] = chosen                     # remove: left jumps past it
-            right[chosen + 1] = chosen + 2                # remove: right jumps past it
+            left[chosen + 1] = chosen  # remove: left jumps past it
+            right[chosen + 1] = chosen + 2  # remove: right jumps past it
     return match
 
 
@@ -215,7 +231,11 @@ def standardized_mean_differences(
         Series of SMDs indexed by covariate name.
     """
     treatment = np.asarray(treatment).astype(bool)
-    w = np.ones(treatment.size) if weights is None else np.asarray(weights, dtype=np.float64)
+    w = (
+        np.ones(treatment.size)
+        if weights is None
+        else np.asarray(weights, dtype=np.float64)
+    )
     mean_t = np.average(Covariates[treatment], axis=0, weights=w[treatment])
     mean_c = np.average(Covariates[~treatment], axis=0, weights=w[~treatment])
     sd = Covariates[treatment].std(axis=0) if sd_reference is None else sd_reference
@@ -228,7 +248,9 @@ def _att_weights(subclass_of_control: np.ndarray, n_control: int) -> np.ndarray:
     MatchIt ATT weights for matched controls: 1 / (controls in the pair),
     rescaled so they sum to the number of matched controls.
     """
-    _, inverse, counts = np.unique(subclass_of_control, return_inverse=True, return_counts=True)
+    _, inverse, counts = np.unique(
+        subclass_of_control, return_inverse=True, return_counts=True
+    )
     w = 1.0 / counts[inverse]
     return w * (n_control / w.sum())
 
@@ -294,14 +316,18 @@ def select_matched_cells(
     if distance not in ("propensity", "logit"):
         raise ValueError(f'distance must be "propensity" or "logit"; got {distance!r}.')
     if order not in ("largest", "smallest", "random", "data"):
-        raise ValueError(f'order must be "largest", "smallest", "random" or "data"; got {order!r}.')
+        raise ValueError(
+            f'order must be "largest", "smallest", "random" or "data"; got {order!r}.'
+        )
 
     # 1. treated cells and candidate controls
     treated_obs_idx = _treated_obs_idx(CRT_obj, gene)
     pool_obs_idx = _control_pool_idx(CRT_obj, treated_obs_idx, guide_cells_only)
     n_treated, n_pool = treated_obs_idx.size, pool_obs_idx.size
     if n_treated == 0 or n_treated < min_cells:
-        raise ValueError(f"'{gene}' has {n_treated} treated cells (min_cells = {min_cells}).")
+        raise ValueError(
+            f"'{gene}' has {n_treated} treated cells (min_cells = {min_cells})."
+        )
     if n_pool < n_treated * ratio:
         raise ValueError(
             f"'{gene}': {n_pool} candidate controls for {n_treated} treated cells x ratio {ratio}; "
@@ -311,11 +337,18 @@ def select_matched_cells(
     # 2. propensity score on treated + candidate cells
     analysis_idx = np.concatenate([treated_obs_idx, pool_obs_idx])
     Covariates = np.ascontiguousarray(CRT_obj.Covariates[analysis_idx])
-    treatment = np.r_[np.ones(n_treated, dtype=np.int8), np.zeros(n_pool, dtype=np.int8)]
-    p, _ = propensity_model(Covariates, treatment, has_intercept=CRT_obj.has_intercept,
-                            penalty=CRT_obj.propensity_penalty, C=CRT_obj.propensity_C,
-                            tol=getattr(CRT_obj, "propensity_tol", None),
-                            max_iter=getattr(CRT_obj, "propensity_max_iter", None))
+    treatment = np.r_[
+        np.ones(n_treated, dtype=np.int8), np.zeros(n_pool, dtype=np.int8)
+    ]
+    p, _ = propensity_model(
+        Covariates,
+        treatment,
+        has_intercept=CRT_obj.has_intercept,
+        penalty=CRT_obj.propensity_penalty,
+        C=CRT_obj.propensity_C,
+        tol=getattr(CRT_obj, "propensity_tol", None),
+        max_iter=getattr(CRT_obj, "propensity_max_iter", None),
+    )
     if distance == "logit":
         p_clip = np.clip(p, 1e-12, 1 - 1e-12)
         d = np.log(p_clip / (1 - p_clip))
@@ -324,13 +357,17 @@ def select_matched_cells(
     caliper_abs = None if caliper is None else caliper * d.std()
 
     # covariate calipers, in absolute units of the design columns
-    X_cols = Covariates[:, int(CRT_obj.has_intercept):]
-    names = list(CRT_obj.covariate_names or [f"covariate_{j}" for j in range(X_cols.shape[1])])
+    X_cols = Covariates[:, int(CRT_obj.has_intercept) :]
+    names = list(
+        CRT_obj.covariate_names or [f"covariate_{j}" for j in range(X_cols.shape[1])]
+    )
     treated_X = control_X = X_calipers = None
     if covariate_calipers:
         missing = set(covariate_calipers) - set(names)
         if missing:
-            raise KeyError(f"covariate_calipers not in CRT_obj.covariate_names: {sorted(missing)}")
+            raise KeyError(
+                f"covariate_calipers not in CRT_obj.covariate_names: {sorted(missing)}"
+            )
         cols = [names.index(name) for name in covariate_calipers]
         X_sub = X_cols[:, cols]
         X_calipers = np.array(list(covariate_calipers.values())) * X_sub.std(axis=0)
@@ -347,34 +384,61 @@ def select_matched_cells(
         treated_order = rng.permutation(n_treated)
     else:
         treated_order = np.arange(n_treated)
-    match = _greedy_nearest_neighbor(d_treated, d[n_treated:], ratio, caliper_abs, treated_order,
-                                     treated_X, control_X, X_calipers, seed=int(rng.integers(2**32)))
+    match = _greedy_nearest_neighbor(
+        d_treated,
+        d[n_treated:],
+        ratio,
+        caliper_abs,
+        treated_order,
+        treated_X,
+        control_X,
+        X_calipers,
+        seed=int(rng.integers(2**32)),
+    )
 
     # 4. pairs, weights, balance
     has_match = match[:, 0] >= 0
-    t_local = np.flatnonzero(has_match)                       # treated cells kept
+    t_local = np.flatnonzero(has_match)  # treated cells kept
     subclass_t = np.empty(n_treated, dtype=np.int64)
-    subclass_t[treated_order] = np.arange(n_treated)          # pair id = matching rank
+    subclass_t[treated_order] = np.arange(n_treated)  # pair id = matching rank
     c_t, c_r = np.nonzero(match >= 0)
-    c_local = match[c_t, c_r]                                 # matched controls (into the pool)
+    c_local = match[c_t, c_r]  # matched controls (into the pool)
     subclass_c = subclass_t[c_t]
 
     local = np.concatenate([t_local, n_treated + c_local])
     subclass = np.concatenate([subclass_t[t_local], subclass_c])
-    weights = np.concatenate([np.ones(t_local.size), _att_weights(subclass_c, c_local.size)])
+    weights = np.concatenate(
+        [np.ones(t_local.size), _att_weights(subclass_c, c_local.size)]
+    )
     order_out = np.argsort(analysis_idx[local], kind="stable")
     local, subclass, weights = local[order_out], subclass[order_out], weights[order_out]
 
-    sd_treated = X_cols[:n_treated].std(axis=0)               # same denominator before / after
-    balance = pd.DataFrame({
-        "smd_before": standardized_mean_differences(X_cols, treatment, names, sd_reference=sd_treated),
-        "smd_after": standardized_mean_differences(X_cols[local], treatment[local], names,
-                                                    weights=weights, sd_reference=sd_treated),
-    })
+    sd_treated = X_cols[:n_treated].std(axis=0)  # same denominator before / after
+    balance = pd.DataFrame(
+        {
+            "smd_before": standardized_mean_differences(
+                X_cols, treatment, names, sd_reference=sd_treated
+            ),
+            "smd_after": standardized_mean_differences(
+                X_cols[local],
+                treatment[local],
+                names,
+                weights=weights,
+                sd_reference=sd_treated,
+            ),
+        }
+    )
     balance.loc["propensity"] = [
-        standardized_mean_differences(d[:, None], treatment, ["d"], sd_reference=d_treated.std()).iloc[0],
-        standardized_mean_differences(d[local][:, None], treatment[local], ["d"], weights=weights,
-                                      sd_reference=d_treated.std()).iloc[0],
+        standardized_mean_differences(
+            d[:, None], treatment, ["d"], sd_reference=d_treated.std()
+        ).iloc[0],
+        standardized_mean_differences(
+            d[local][:, None],
+            treatment[local],
+            ["d"],
+            weights=weights,
+            sd_reference=d_treated.std(),
+        ).iloc[0],
     ]
 
     return Matched_cells_result(

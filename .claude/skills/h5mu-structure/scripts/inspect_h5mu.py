@@ -45,7 +45,11 @@ def get_unique_examples(data, n=3):
             return ", ".join(_fmt_value(x) for x in uniques)
         elif sp.issparse(data):
             flat = data.toarray().flatten()
-            uniques = np.unique(flat[~np.isnan(flat)] if np.issubdtype(flat.dtype, np.floating) else flat)[:n]
+            uniques = np.unique(
+                flat[~np.isnan(flat)]
+                if np.issubdtype(flat.dtype, np.floating)
+                else flat
+            )[:n]
             return ", ".join(_fmt_value(x) for x in uniques)
         elif isinstance(data, np.ndarray):
             flat = data.flatten()
@@ -182,7 +186,7 @@ def format_mapping_section(name, mapping, indent="", is_last_section=False):
         lines.append(tree_line(is_last_section, f"{name}/", indent))
         child_indent = tree_child_indent(is_last_section, indent)
         for i, key in enumerate(items):
-            is_last_item = (i == len(items) - 1)
+            is_last_item = i == len(items) - 1
             val = mapping[key]
             if name in ("uns",):
                 desc = describe_uns_value(val)
@@ -207,9 +211,11 @@ def format_adata(adata, mod_name=None):
     obs_names_examples = ", ".join(str(x) for x in adata.obs_names[:3])
     all_obs_items = ["obs_names"] + obs_cols
     for i, col in enumerate(all_obs_items):
-        is_last = (i == len(all_obs_items) - 1)
+        is_last = i == len(all_obs_items) - 1
         if col == "obs_names":
-            lines.append(tree_line(is_last, f"obs_names: e.g. {obs_names_examples}", obs_indent))
+            lines.append(
+                tree_line(is_last, f"obs_names: e.g. {obs_names_examples}", obs_indent)
+            )
         else:
             desc = describe_column(adata.obs[col])
             lines.append(tree_line(is_last, f"{col} — {desc}", obs_indent))
@@ -221,9 +227,11 @@ def format_adata(adata, mod_name=None):
     var_names_examples = ", ".join(str(x) for x in adata.var_names[:3])
     all_var_items = ["var_names"] + var_cols
     for i, col in enumerate(all_var_items):
-        is_last = (i == len(all_var_items) - 1)
+        is_last = i == len(all_var_items) - 1
         if col == "var_names":
-            lines.append(tree_line(is_last, f"var_names: e.g. {var_names_examples}", var_indent))
+            lines.append(
+                tree_line(is_last, f"var_names: e.g. {var_names_examples}", var_indent)
+            )
         else:
             desc = describe_column(adata.var[col])
             lines.append(tree_line(is_last, f"{col} — {desc}", var_indent))
@@ -238,8 +246,12 @@ def format_adata(adata, mod_name=None):
         ("varp", adata.varp),
     ]
     for i, (sec_name, sec_data) in enumerate(sections):
-        is_last = (i == len(sections) - 1)
-        lines.extend(format_mapping_section(sec_name, sec_data, indent="", is_last_section=is_last))
+        is_last = i == len(sections) - 1
+        lines.extend(
+            format_mapping_section(
+                sec_name, sec_data, indent="", is_last_section=is_last
+            )
+        )
 
     return lines
 
@@ -278,7 +290,9 @@ def format_mudata(mdata, filename):
         obs_indent = tree_child_indent(False)
         for i, col in enumerate(obs_cols):
             desc = describe_column(mdata.obs[col])
-            lines.append(tree_line(i == len(obs_cols) - 1, f"{col} — {desc}", obs_indent))
+            lines.append(
+                tree_line(i == len(obs_cols) - 1, f"{col} — {desc}", obs_indent)
+            )
     else:
         lines.append(tree_line(False, "obs columns: (none beyond obs_names)"))
 
@@ -289,7 +303,9 @@ def format_mudata(mdata, filename):
         var_indent = tree_child_indent(False)
         for i, col in enumerate(var_cols):
             desc = describe_column(mdata.var[col])
-            lines.append(tree_line(i == len(var_cols) - 1, f"{col} — {desc}", var_indent))
+            lines.append(
+                tree_line(i == len(var_cols) - 1, f"{col} — {desc}", var_indent)
+            )
     else:
         lines.append(tree_line(False, "var columns: (none beyond var_names)"))
 
@@ -302,8 +318,12 @@ def format_mudata(mdata, filename):
         ("varp", mdata.varp),
     ]
     for i, (sec_name, sec_data) in enumerate(sections):
-        is_last = (i == len(sections) - 1)
-        lines.extend(format_mapping_section(sec_name, sec_data, indent="", is_last_section=is_last))
+        is_last = i == len(sections) - 1
+        lines.extend(
+            format_mapping_section(
+                sec_name, sec_data, indent="", is_last_section=is_last
+            )
+        )
 
     return "\n".join(lines) + "\n"
 

@@ -18,15 +18,29 @@ import pytest
 import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 from pathlib import Path
 
 PIPELINE_ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(PIPELINE_ROOT / "src"))
 
-DEFAULT_INFERENCE_PATH = PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch" / "Inference"
-EVAL_5_2_0 = PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch" / "Evaluation" / "5_2_0"
-HTML_OUTPUT = PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch" / "Interpretation" / "Plotting" / "gene_html"
+DEFAULT_INFERENCE_PATH = (
+    PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch" / "Inference"
+)
+EVAL_5_2_0 = (
+    PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch" / "Evaluation" / "5_2_0"
+)
+HTML_OUTPUT = (
+    PIPELINE_ROOT
+    / "tests"
+    / "output"
+    / "torch-cNMF"
+    / "batch"
+    / "Interpretation"
+    / "Plotting"
+    / "gene_html"
+)
 
 
 SAMPLES = ["D0", "D1", "D2", "D3"]
@@ -48,6 +62,7 @@ def html_share_path():
 def test_mdata():
     """Real k=5 MuData from batch inference output."""
     import mudata
+
     h5mu_path = DEFAULT_INFERENCE_PATH / "adata" / "cNMF_5_2_0.h5mu"
     if not h5mu_path.exists():
         pytest.skip(f"h5mu not found: {h5mu_path}")
@@ -108,7 +123,10 @@ def gene_loading_corr_matrix(test_mdata, target_gene):
 @pytest.fixture(scope="session")
 def perturb_corr_by_sample(perturb_path_base, available_samples):
     """Real per-sample gene x gene waterfall correlation matrices."""
-    from Stage3_Interpretation.A_Plotting.src.Perturbed_gene_QC_plots import compute_gene_waterfall_cor
+    from Stage3_Interpretation.A_Plotting.src.Perturbed_gene_QC_plots import (
+        compute_gene_waterfall_cor,
+    )
+
     out = {}
     for samp in available_samples:
         path = f"{perturb_path_base}_{samp}.txt"

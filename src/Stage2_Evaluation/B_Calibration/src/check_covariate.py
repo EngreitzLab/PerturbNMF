@@ -28,6 +28,7 @@ invokes it when ``--check_covariate`` is set.
 import os
 
 import matplotlib
+
 matplotlib.use("Agg")  # headless / SLURM-safe
 import matplotlib.pyplot as plt
 import numpy as np
@@ -58,7 +59,9 @@ def build_covar_df(adata, covariates=None, log_covariates=None):
             covar_dict[f"log_{key}"] = np.log1p(adata.obs[key])
 
     if not covar_dict:
-        raise ValueError("No covariates provided; pass covariates and/or log_covariates.")
+        raise ValueError(
+            "No covariates provided; pass covariates and/or log_covariates."
+        )
 
     return pd.DataFrame(covar_dict, index=adata.obs_names)
 
@@ -86,7 +89,9 @@ def compute_vif(encoded_df):
         vifs.append((col, v))
 
     vif_df = pd.DataFrame(vifs, columns=["covariate", "VIF"])
-    return vif_df.sort_values("VIF", ascending=False, na_position="first").reset_index(drop=True)
+    return vif_df.sort_values("VIF", ascending=False, na_position="first").reset_index(
+        drop=True
+    )
 
 
 def plot_correlation_heatmap(corr, png_path, title):
@@ -105,8 +110,12 @@ def plot_correlation_heatmap(corr, png_path, title):
         for j in range(n):
             val = corr.iloc[i, j]
             ax.text(
-                j, i, f"{val:.2f}",
-                ha="center", va="center", fontsize=7,
+                j,
+                i,
+                f"{val:.2f}",
+                ha="center",
+                va="center",
+                fontsize=7,
                 color="white" if abs(val) > 0.5 else "black",
             )
 
@@ -121,7 +130,7 @@ def run_check(covar_df, save_path, prefix, threshold, corr_flag=0.8, vif_flag=5.
     """One-hot encode, compute correlation + VIF, write outputs, print a summary."""
     encoded = encode_categorical_covariates(
         covar_df,
-        drop_original=True,   # drop one level per categorical (get_dummies drop_first)
+        drop_original=True,  # drop one level per categorical (get_dummies drop_first)
         numeric_as_category_threshold=threshold,
     )
     # get_dummies emits bool columns; cast so corr/VIF treat them numerically.
@@ -143,7 +152,9 @@ def run_check(covar_df, save_path, prefix, threshold, corr_flag=0.8, vif_flag=5.
 
     # --- stdout summary ---
     label = f"[{prefix}] " if prefix else ""
-    print(f"\n{label}Encoded covariate columns ({encoded.shape[1]}): {list(encoded.columns)}")
+    print(
+        f"\n{label}Encoded covariate columns ({encoded.shape[1]}): {list(encoded.columns)}"
+    )
 
     # high-correlation off-diagonal pairs
     high_pairs = []
@@ -154,7 +165,9 @@ def run_check(covar_df, save_path, prefix, threshold, corr_flag=0.8, vif_flag=5.
             if abs(r) > corr_flag:
                 high_pairs.append((cols[i], cols[j], r))
     if high_pairs:
-        print(f"{label}WARNING: |Pearson r| > {corr_flag} pairs (potential redundancy):")
+        print(
+            f"{label}WARNING: |Pearson r| > {corr_flag} pairs (potential redundancy):"
+        )
         for a, b, r in sorted(high_pairs, key=lambda t: -abs(t[2])):
             print(f"    {a}  <->  {b} : r = {r:+.2f}")
     else:
@@ -171,9 +184,15 @@ def run_check(covar_df, save_path, prefix, threshold, corr_flag=0.8, vif_flag=5.
     print(f"{label}Wrote:\n    {png}\n    {corr_tsv}\n    {vif_tsv}")
 
 
-def run_covariate_check(adata, save_path, covariates=None, log_covariates=None,
-                        categorical_key=None, per_condition=False,
-                        numeric_as_category_threshold=20):
+def run_covariate_check(
+    adata,
+    save_path,
+    covariates=None,
+    log_covariates=None,
+    categorical_key=None,
+    per_condition=False,
+    numeric_as_category_threshold=20,
+):
     """High-level entry point: build the covariate design and run correlation + VIF.
 
     Intended for programmatic use (e.g. CRT.py's ``--check_covariate``). Takes an
@@ -199,7 +218,9 @@ def run_covariate_check(adata, save_path, covariates=None, log_covariates=None,
         Numeric columns with <= this many unique values are one-hot encoded
         (matches CRT ``get_covar_matrix`` default: 20).
     """
-    covar_df = build_covar_df(adata, covariates=covariates, log_covariates=log_covariates)
+    covar_df = build_covar_df(
+        adata, covariates=covariates, log_covariates=log_covariates
+    )
 
     if per_condition:
         if not categorical_key:
@@ -211,11 +232,15 @@ def run_covariate_check(adata, save_path, covariates=None, log_covariates=None,
         for cond in conditions:
             mask = (adata.obs[categorical_key] == cond).to_numpy()
             run_check(
-                covar_df.loc[mask], save_path, prefix=str(cond),
+                covar_df.loc[mask],
+                save_path,
+                prefix=str(cond),
                 threshold=numeric_as_category_threshold,
             )
     else:
         run_check(
-            covar_df, save_path, prefix="",
+            covar_df,
+            save_path,
+            prefix="",
             threshold=numeric_as_category_threshold,
         )

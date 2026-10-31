@@ -51,9 +51,11 @@ def context_for(text: str, span: tuple[int, int], width: int = 200) -> str:
 
 def check_doi(doi: str) -> dict:
     try:
-        r = requests.get(f"https://api.crossref.org/works/{doi}",
-                         headers={"User-Agent": "EngreitzLab-citation-check/1.0"},
-                         timeout=TIMEOUT)
+        r = requests.get(
+            f"https://api.crossref.org/works/{doi}",
+            headers={"User-Agent": "EngreitzLab-citation-check/1.0"},
+            timeout=TIMEOUT,
+        )
     except requests.RequestException as e:
         return {"ok": False, "error": f"network: {e}"}
     if r.status_code == 404:
@@ -63,11 +65,13 @@ def check_doi(doi: str) -> dict:
     m = r.json().get("message", {})
     authors = m.get("author") or []
     parts = (m.get("issued", {}).get("date-parts") or [[None]])[0]
-    return {"ok": True,
-            "title": (m.get("title") or [""])[0],
-            "first_author": authors[0].get("family") if authors else None,
-            "journal": (m.get("container-title") or [""])[0],
-            "year": parts[0] if parts else None}
+    return {
+        "ok": True,
+        "title": (m.get("title") or [""])[0],
+        "first_author": authors[0].get("family") if authors else None,
+        "journal": (m.get("container-title") or [""])[0],
+        "year": parts[0] if parts else None,
+    }
 
 
 def check_pmid(pmid: str, email: str | None) -> dict:
@@ -76,8 +80,11 @@ def check_pmid(pmid: str, email: str | None) -> dict:
         params["email"] = email
         params["tool"] = "EngreitzLab-citation-check"
     try:
-        r = requests.get("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi",
-                         params=params, timeout=TIMEOUT)
+        r = requests.get(
+            "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi",
+            params=params,
+            timeout=TIMEOUT,
+        )
     except requests.RequestException as e:
         return {"ok": False, "error": f"network: {e}"}
     if r.status_code != 200:
@@ -88,17 +95,22 @@ def check_pmid(pmid: str, email: str | None) -> dict:
     authors = rec.get("authors") or []
     pubdate = rec.get("pubdate", "")
     ym = YEAR_RE.search(pubdate)
-    return {"ok": True,
-            "title": rec.get("title", "").rstrip("."),
-            "first_author": (authors[0].get("name", "").split()[0] if authors else None),
-            "journal": rec.get("source"),
-            "year": int(ym.group(0)) if ym else None}
+    return {
+        "ok": True,
+        "title": rec.get("title", "").rstrip("."),
+        "first_author": (authors[0].get("name", "").split()[0] if authors else None),
+        "journal": rec.get("source"),
+        "year": int(ym.group(0)) if ym else None,
+    }
 
 
 def check_nct(nct: str) -> dict:
     try:
-        r = requests.get(f"https://clinicaltrials.gov/api/v2/studies/{nct}",
-                         params={"fields": "protocolSection"}, timeout=TIMEOUT)
+        r = requests.get(
+            f"https://clinicaltrials.gov/api/v2/studies/{nct}",
+            params={"fields": "protocolSection"},
+            timeout=TIMEOUT,
+        )
     except requests.RequestException as e:
         return {"ok": False, "error": f"network: {e}"}
     if r.status_code == 404:
@@ -109,11 +121,13 @@ def check_nct(nct: str) -> dict:
     ident = p.get("identificationModule", {})
     status = p.get("statusModule", {})
     design = p.get("designModule", {})
-    return {"ok": True,
-            "title": ident.get("briefTitle"),
-            "status": status.get("overallStatus"),
-            "phase": ", ".join(design.get("phases") or []) or None,
-            "year": (status.get("startDateStruct", {}).get("date") or "")[:4] or None}
+    return {
+        "ok": True,
+        "title": ident.get("briefTitle"),
+        "status": status.get("overallStatus"),
+        "phase": ", ".join(design.get("phases") or []) or None,
+        "year": (status.get("startDateStruct", {}).get("date") or "")[:4] or None,
+    }
 
 
 CITED_AUTHOR_RE = re.compile(r"\b([A-Z][a-zA-ZÀ-ɏ'-]{2,})\s+(?:et al\.?|and\s+[A-Z])")
@@ -151,10 +165,13 @@ def consistent(rec: dict, ctx: str, kind: str = "doi") -> tuple[list[str], list[
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("report", type=Path, nargs="+", help=".qmd / .md / .html to scan")
-    ap.add_argument("--email", default=None, help="contact address for NCBI E-utilities")
+    ap.add_argument(
+        "--email", default=None, help="contact address for NCBI E-utilities"
+    )
     ap.add_argument("--json", type=Path, default=None)
     args = ap.parse_args()
 
@@ -162,23 +179,36 @@ def main() -> None:
 
     found: dict[str, dict] = {}
     for m in DOI_RE.finditer(text):
-        found.setdefault(f"doi:{m.group(0).rstrip('.),;')}",
-                         {"kind": "doi", "id": m.group(0).rstrip(".),;"),
-                          "context": context_for(text, m.span())})
+        found.setdefault(
+            f"doi:{m.group(0).rstrip('.),;')}",
+            {
+                "kind": "doi",
+                "id": m.group(0).rstrip(".),;"),
+                "context": context_for(text, m.span()),
+            },
+        )
     for m in PMID_RE.finditer(text):
         pmid = m.group(1) or m.group(2)
-        found.setdefault(f"pmid:{pmid}",
-                         {"kind": "pmid", "id": pmid, "context": context_for(text, m.span())})
+        found.setdefault(
+            f"pmid:{pmid}",
+            {"kind": "pmid", "id": pmid, "context": context_for(text, m.span())},
+        )
     for m in NCT_RE.finditer(text):
-        found.setdefault(f"nct:{m.group(0)}",
-                         {"kind": "nct", "id": m.group(0), "context": context_for(text, m.span())})
+        found.setdefault(
+            f"nct:{m.group(0)}",
+            {"kind": "nct", "id": m.group(0), "context": context_for(text, m.span())},
+        )
 
     if not found:
-        print("No DOIs, PMIDs or NCT numbers found. If the report makes literature claims, "
-              "that is itself a finding: citations must be inline and hyperlinked at the claim.")
+        print(
+            "No DOIs, PMIDs or NCT numbers found. If the report makes literature claims, "
+            "that is itself a finding: citations must be inline and hyperlinked at the claim."
+        )
         sys.exit(0)
 
-    print(f"Checking {len(found)} identifiers from {', '.join(p.name for p in args.report)}\n")
+    print(
+        f"Checking {len(found)} identifiers from {', '.join(p.name for p in args.report)}\n"
+    )
 
     results, failures, warnings, bare = [], [], [], []
     for key, item in sorted(found.items()):
@@ -209,16 +239,22 @@ def main() -> None:
                 print(f"  ok    {kind.upper():5s} {ident:32s} {title}")
         results.append({**item, **rec})
 
-    print(f"\n{len(results) - len(failures)} of {len(results)} resolved; "
-          f"{len(failures)} failed, {len(warnings)} disagree with the surrounding text.")
+    print(
+        f"\n{len(results) - len(failures)} of {len(results)} resolved; "
+        f"{len(failures)} failed, {len(warnings)} disagree with the surrounding text."
+    )
     if bare:
-        print(f"{len(bare)} are bare identifiers with no author or year in the prose "
-              f"({', '.join(i for _, i in bare[:8])}"
-              f"{'...' if len(bare) > 8 else ''}) — nothing to cross-check them against. "
-              f"The house style is an inline hyperlinked citation carrying author, journal "
-              f"and year at the claim.")
-    print("\nThis check cannot tell you whether a paper supports the claim it is attached to. "
-          "Spot-read the abstracts of the load-bearing citations.")
+        print(
+            f"{len(bare)} are bare identifiers with no author or year in the prose "
+            f"({', '.join(i for _, i in bare[:8])}"
+            f"{'...' if len(bare) > 8 else ''}) — nothing to cross-check them against. "
+            f"The house style is an inline hyperlinked citation carrying author, journal "
+            f"and year at the claim."
+        )
+    print(
+        "\nThis check cannot tell you whether a paper supports the claim it is attached to. "
+        "Spot-read the abstracts of the load-bearing citations."
+    )
 
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)

@@ -7,6 +7,7 @@ FIMO first, never pooled): motifs tested and significant, and the top significan
 with its best motifs and the candidate TFs (expressed TFs on the motifs' TF lists). The selection rules
 follow the program annotator's motif evidence section, so the viewer shows what the annotator saw.
 """
+
 import json
 import re
 from pathlib import Path
@@ -17,13 +18,26 @@ MOTIF_FAMILIES_PER_ELEMENT_TYPE = 5
 MOTIFS_PER_FAMILY = 3
 CANDIDATES_PER_FAMILY = 6
 MOTIF_ELEMENT_TYPES = ("promoter", "enhancer")
-MOTIF_SOURCE_ORDER = ("fimo", "finemo")    # Stage 2 motif_source values, shown in this order
-FIMO_DATABASE_LABELS = {"motifcompendium": "FIMO/MotifCompendium", "hocomoco": "FIMO/HOCOMOCO"}
+MOTIF_SOURCE_ORDER = (
+    "fimo",
+    "finemo",
+)  # Stage 2 motif_source values, shown in this order
+FIMO_DATABASE_LABELS = {
+    "motifcompendium": "FIMO/MotifCompendium",
+    "hocomoco": "FIMO/HOCOMOCO",
+}
 MOTIF_SOURCE_LABELS = {"fimo": FIMO_DATABASE_LABELS["hocomoco"], "finemo": "Fi-NeMo"}
-MOTIFCOMPENDIUM_CLUSTER_RE = r"_\d+$"      # KLF-SP_0: a MotifCompendium cluster name
+MOTIFCOMPENDIUM_CLUSTER_RE = r"_\d+$"  # KLF-SP_0: a MotifCompendium cluster name
 # candidate TF tiers shown (nominate_candidate_tfs.py), strongest first; motif_only (not expressed) is hidden
-CANDIDATE_TIERS_SHOWN = ("motif+regulator", "motif+expressed_in_program", "motif+expressed")
-DEFAULT_MOTIF_TEST = {"method": "ttest", "n_top": 300}   # run_motif_enrichment.py defaults
+CANDIDATE_TIERS_SHOWN = (
+    "motif+regulator",
+    "motif+expressed_in_program",
+    "motif+expressed",
+)
+DEFAULT_MOTIF_TEST = {
+    "method": "ttest",
+    "n_top": 300,
+}  # run_motif_enrichment.py defaults
 
 
 def program_number(value):
@@ -42,14 +56,21 @@ def read_motif_test(motif_table_path):
     """How Stage 2 tested the motifs, {"method": "ttest" | "correlation", "n_top": int}: from the run's
     '<table stem>_config.yml' next to the table (written as JSON), else the Stage 2 defaults."""
     motif_test = dict(DEFAULT_MOTIF_TEST)
-    config = Path(motif_table_path).with_name(Path(motif_table_path).stem + "_config.yml")
+    config = Path(motif_table_path).with_name(
+        Path(motif_table_path).stem + "_config.yml"
+    )
     if config.is_file():
         try:
             arguments = json.loads(config.read_text()).get("arguments", {})
         except ValueError:
             arguments = {}
-        motif_test.update({key: arguments[name] for key, name in (("method", "motif_method"), ("n_top", "n_top"))
-                           if arguments.get(name) is not None})
+        motif_test.update(
+            {
+                key: arguments[name]
+                for key, name in (("method", "motif_method"), ("n_top", "n_top"))
+                if arguments.get(name) is not None
+            }
+        )
     motif_test["n_top"] = int(motif_test["n_top"])
     return motif_test
 
@@ -71,12 +92,18 @@ def read_motif_tables(motif_enrichment_path, candidate_tfs_path=None):
 
 
 def fimo_source_label(motifs):
-    """"FIMO/MotifCompendium" when most FIMO motif names are MotifCompendium clusters (KLF-SP_0), else
+    """ "FIMO/MotifCompendium" when most FIMO motif names are MotifCompendium clusters (KLF-SP_0), else
     "FIMO/HOCOMOCO" (TF names such as KLF4)."""
-    fimo = motifs[motifs["motif_source"].astype(str) == "fimo"] if "motif_source" in motifs.columns else motifs
+    fimo = (
+        motifs[motifs["motif_source"].astype(str) == "fimo"]
+        if "motif_source" in motifs.columns
+        else motifs
+    )
     names = fimo["tf"].astype(str).drop_duplicates()
     is_cluster = names.str.contains(MOTIFCOMPENDIUM_CLUSTER_RE, regex=True)
-    return FIMO_DATABASE_LABELS["motifcompendium" if len(names) and is_cluster.mean() > 0.5 else "hocomoco"]
+    return FIMO_DATABASE_LABELS[
+        "motifcompendium" if len(names) and is_cluster.mean() > 0.5 else "hocomoco"
+    ]
 
 
 def list_motif_sections(motifs):
@@ -86,10 +113,24 @@ def list_motif_sections(motifs):
     sources = [None]
     if "motif_source" in motifs.columns and motifs["motif_source"].nunique() > 1:
         present = list(motifs["motif_source"].astype(str).unique())
-        sources = sorted(present, key=lambda s: (MOTIF_SOURCE_ORDER.index(s) if s in MOTIF_SOURCE_ORDER
-                                                 else len(MOTIF_SOURCE_ORDER), s))
-    return [(element_type if source is None else f"{element_type}_{source}", element_type, source)
-            for source in sources for element_type in MOTIF_ELEMENT_TYPES]
+        sources = sorted(
+            present,
+            key=lambda s: (
+                MOTIF_SOURCE_ORDER.index(s)
+                if s in MOTIF_SOURCE_ORDER
+                else len(MOTIF_SOURCE_ORDER),
+                s,
+            ),
+        )
+    return [
+        (
+            element_type if source is None else f"{element_type}_{source}",
+            element_type,
+            source,
+        )
+        for source in sources
+        for element_type in MOTIF_ELEMENT_TYPES
+    ]
 
 
 def candidate_entry(row):
@@ -97,7 +138,10 @@ def candidate_entry(row):
     symbol = row["tf_gene_symbol"] if pd.notna(row.get("tf_gene_symbol")) else row["tf"]
     entry = {"tf": str(symbol), "tier": row["evidence_tier"], "motif": str(row["tf"])}
     if row["evidence_tier"] == "motif+regulator":
-        entry.update(log2fc=round(float(row["knockdown_log2fc"]), 3), adj_p=float(f"{row['knockdown_fdr']:.2g}"))
+        entry.update(
+            log2fc=round(float(row["knockdown_log2fc"]), 3),
+            adj_p=float(f"{row['knockdown_fdr']:.2g}"),
+        )
     elif pd.notna(row.get("tf_program_loading_rank")):
         entry["loading_rank"] = int(row["tf_program_loading_rank"])
     return entry
@@ -117,44 +161,89 @@ def select_program_motifs(program_id, motifs, candidates):
     labels = {**MOTIF_SOURCE_LABELS, "fimo": fimo_source_label(motifs)}
     program_candidates = None
     if candidates is not None:
-        program_candidates = candidates[(candidates["program_id"] == program_id)
-                                        & candidates["evidence_tier"].isin(CANDIDATE_TIERS_SHOWN)].copy()
+        program_candidates = candidates[
+            (candidates["program_id"] == program_id)
+            & candidates["evidence_tier"].isin(CANDIDATE_TIERS_SHOWN)
+        ].copy()
         program_candidates["tier_rank"] = program_candidates["evidence_tier"].map(
-            {t: i for i, t in enumerate(CANDIDATE_TIERS_SHOWN)})
-        program_candidates["symbol"] = (program_candidates["tf_gene_symbol"].fillna(program_candidates["tf"])
-                                        if "tf_gene_symbol" in program_candidates else program_candidates["tf"])
-        tie_break = ["tf_program_loading_rank"] if "tf_program_loading_rank" in program_candidates else []
-        program_candidates = program_candidates.sort_values(["tier_rank", "fdr"] + tie_break, kind="stable")
-    single_source = (str(motifs["motif_source"].iloc[0]) if "motif_source" in motifs.columns and len(motifs)
-                     else None)
-    selection = {"n_tested": {}, "n_significant": {}, "n_families": {}, "families": {}, "section_sources": {}}
+            {t: i for i, t in enumerate(CANDIDATE_TIERS_SHOWN)}
+        )
+        program_candidates["symbol"] = (
+            program_candidates["tf_gene_symbol"].fillna(program_candidates["tf"])
+            if "tf_gene_symbol" in program_candidates
+            else program_candidates["tf"]
+        )
+        tie_break = (
+            ["tf_program_loading_rank"]
+            if "tf_program_loading_rank" in program_candidates
+            else []
+        )
+        program_candidates = program_candidates.sort_values(
+            ["tier_rank", "fdr"] + tie_break, kind="stable"
+        )
+    single_source = (
+        str(motifs["motif_source"].iloc[0])
+        if "motif_source" in motifs.columns and len(motifs)
+        else None
+    )
+    selection = {
+        "n_tested": {},
+        "n_significant": {},
+        "n_families": {},
+        "families": {},
+        "section_sources": {},
+    }
     for key, element_type, source in sections:
         typed = rows[rows["element_type"] == element_type]
         if source is not None:
             typed = typed[typed["motif_source"].astype(str) == source]
-        hits = typed[typed["significant"]].sort_values(["fdr", "enrichment"], ascending=[True, False], kind="stable")
-        hits = hits.assign(family=hits["motif_family"].fillna(hits["tf"]) if "motif_family" in hits else hits["tf"])
+        hits = typed[typed["significant"]].sort_values(
+            ["fdr", "enrichment"], ascending=[True, False], kind="stable"
+        )
+        hits = hits.assign(
+            family=hits["motif_family"].fillna(hits["tf"])
+            if "motif_family" in hits
+            else hits["tf"]
+        )
         selection["n_tested"][key] = int(typed["tf"].nunique())
         selection["n_significant"][key] = int(len(hits))
         selection["n_families"][key] = int(hits["family"].nunique())
-        selection["section_sources"][key] = source if source is not None else single_source
+        selection["section_sources"][key] = (
+            source if source is not None else single_source
+        )
         families = []
-        for family, members in list(hits.groupby("family", sort=False))[:MOTIF_FAMILIES_PER_ELEMENT_TYPE]:
-            entry = {"family": str(family), "n_significant": int(len(members)),
-                     "motifs": [[str(tf), round(float(enrichment), 2), float(f"{fdr:.2g}")] for tf, enrichment, fdr
-                                in zip(members["tf"], members["enrichment"], members["fdr"])][:MOTIFS_PER_FAMILY],
-                     "candidates": []}
+        for family, members in list(hits.groupby("family", sort=False))[
+            :MOTIF_FAMILIES_PER_ELEMENT_TYPE
+        ]:
+            entry = {
+                "family": str(family),
+                "n_significant": int(len(members)),
+                "motifs": [
+                    [str(tf), round(float(enrichment), 2), float(f"{fdr:.2g}")]
+                    for tf, enrichment, fdr in zip(
+                        members["tf"], members["enrichment"], members["fdr"]
+                    )
+                ][:MOTIFS_PER_FAMILY],
+                "candidates": [],
+            }
             if program_candidates is not None:
-                chosen = program_candidates[(program_candidates["element_type"] == element_type)
-                                            & program_candidates["tf"].isin(set(members["tf"]))]
+                chosen = program_candidates[
+                    (program_candidates["element_type"] == element_type)
+                    & program_candidates["tf"].isin(set(members["tf"]))
+                ]
                 if source is not None and "motif_source" in chosen:
                     chosen = chosen[chosen["motif_source"].astype(str) == source]
                 chosen = chosen.drop_duplicates("symbol").head(CANDIDATES_PER_FAMILY)
-                entry["candidates"] = [candidate_entry(row) for _, row in chosen.iterrows()]
+                entry["candidates"] = [
+                    candidate_entry(row) for _, row in chosen.iterrows()
+                ]
             families.append(entry)
         selection["families"][key] = families
     if multi_source:
-        selection["sections"] = [[key, element_type, labels.get(source, source)] for key, element_type, source in sections]
+        selection["sections"] = [
+            [key, element_type, labels.get(source, source)]
+            for key, element_type, source in sections
+        ]
     return selection
 
 
@@ -176,6 +265,8 @@ def shown_logos(programs, logos):
                 for tf, _, _ in family["motifs"]:
                     entry = (logos.get(source) or {}).get(tf)
                     if entry:
-                        out[f"{source}|{tf}"] = {"kind": entry.get("kind", "information_content"),
-                                                 "matrix": entry["matrix"]}
+                        out[f"{source}|{tf}"] = {
+                            "kind": entry.get("kind", "information_content"),
+                            "matrix": entry["matrix"],
+                        }
     return out

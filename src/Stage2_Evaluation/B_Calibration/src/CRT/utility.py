@@ -113,7 +113,9 @@ def to_csc_matrix(Guide_assignment: Any) -> Tuple[sp.csc_matrix, Optional[List[s
     return sp.csc_matrix(np.asarray(Guide_assignment)), None
 
 
-def load_modality(h5mu_path: str, usage_key: str, covariate_cols: Sequence[str] = ()) -> Any:
+def load_modality(
+    h5mu_path: str, usage_key: str, covariate_cols: Sequence[str] = ()
+) -> Any:
     """
     Read one modality of an h5mu and drop cells with a missing value in any
     covariate column.
@@ -135,13 +137,19 @@ def load_modality(h5mu_path: str, usage_key: str, covariate_cols: Sequence[str] 
             raise KeyError(f"Covariate `{col}` not in obs of modality `{usage_key}`.")
         keep &= adata.obs[col].notna().to_numpy()
     if not keep.all():
-        print(f"cells: {adata.n_obs:,} -> {int(keep.sum()):,} (dropped {int((~keep).sum()):,} with missing covariates)")
+        print(
+            f"cells: {adata.n_obs:,} -> {int(keep.sum()):,} (dropped {int((~keep).sum()):,} with missing covariates)"
+        )
         adata = adata[keep].copy()
     return md.MuData({usage_key: adata})
 
 
-def split_by_condition(mdata: Any, usage_key: str, categorical_key: str,
-                       conditions: Optional[Sequence[str]] = None):
+def split_by_condition(
+    mdata: Any,
+    usage_key: str,
+    categorical_key: str,
+    conditions: Optional[Sequence[str]] = None,
+):
     """
     Split a MuData into one MuData per condition, to run the CRT separately in each.
 
@@ -178,17 +186,22 @@ def adjust_pvalues(pvals: np.ndarray, fdr_method: str = "BH") -> np.ndarray:
     pvals = np.asarray(pvals, dtype=np.float64)
     if fdr_method == "BH":
         from statsmodels.stats.multitest import multipletests
+
         return multipletests(pvals, method="fdr_bh")[1]
     if fdr_method == "StoreyQ":
         import builtins
-        if not hasattr(builtins, "xrange"):     # multipy is written for Python 2
+
+        if not hasattr(builtins, "xrange"):  # multipy is written for Python 2
             builtins.xrange = range
         from multipy.fdr import qvalue
+
         return qvalue(pvals, threshold=0.05, verbose=False)[1]
     raise ValueError(f'fdr_method must be "BH" or "StoreyQ"; got {fdr_method!r}.')
 
 
-def log2fc_from_beta(beta: np.ndarray, control_mean: np.ndarray, normalization: str, n_programs: int) -> np.ndarray:
+def log2fc_from_beta(
+    beta: np.ndarray, control_mean: np.ndarray, normalization: str, n_programs: int
+) -> np.ndarray:
     """
     Approximate log2 fold change of program usage from the CRT effect size beta.
 
@@ -202,16 +215,34 @@ def log2fc_from_beta(beta: np.ndarray, control_mean: np.ndarray, normalization: 
         return beta * (n_programs / (n_programs - 1)) / np.log(2)
     tiny = 1e-8
     control_mean = np.asarray(control_mean, dtype=np.float64)
-    return np.log2(np.maximum(control_mean + beta, tiny) / np.maximum(control_mean, tiny))
+    return np.log2(
+        np.maximum(control_mean + beta, tiny) / np.maximum(control_mean, tiny)
+    )
 
 
 # Results table columns (PerturbNMF format, read by Stage 3)
-RESULTS_COLUMNS = ["target_name", "program_name", "log2FC", "p-value", "adj_pval", "pval_empirical",
-                   "adj_pval_empirical", "pval_skewnorm", "beta", "n_treated", "n_control", "control_mean",
-                   "n_resampled", "propensity_n_iter", "propensity_sum_ratio"]
+RESULTS_COLUMNS = [
+    "target_name",
+    "program_name",
+    "log2FC",
+    "p-value",
+    "adj_pval",
+    "pval_empirical",
+    "adj_pval_empirical",
+    "pval_skewnorm",
+    "beta",
+    "n_treated",
+    "n_control",
+    "control_mean",
+    "n_resampled",
+    "propensity_n_iter",
+    "propensity_sum_ratio",
+]
 
 
-def format_results_table(obj, fdr_method: str = "BH", include_guides: bool = False) -> pd.DataFrame:
+def format_results_table(
+    obj, fdr_method: str = "BH", include_guides: bool = False
+) -> pd.DataFrame:
     """
     Long table: one row per tested gene x program, in the PerturbNMF format read by Stage 3.
 
@@ -238,20 +269,55 @@ def format_results_table(obj, fdr_method: str = "BH", include_guides: bool = Fal
     rows = []
     for gene, r in obj.gene_results.items():
         nan = np.full(r.betas.size, np.nan)
-        pval_empirical = r.pvalue_empirical if r.pvalue_empirical is not None else r.pvalue
+        pval_empirical = (
+            r.pvalue_empirical if r.pvalue_empirical is not None else r.pvalue
+        )
         pval_skewnorm = r.pvalue_skewnorm if r.pvalue_skewnorm is not None else nan
         control_means = r.control_means if r.control_means is not None else nan
         for k, program in enumerate(obj.selected_program_names):
-            rows.append((gene, program, r.betas[k], r.pvalue[k], pval_empirical[k], pval_skewnorm[k],
-                         r.n_treated, r.n_control, control_means[k], r.n_resampled,
-                         r.propensity_n_iter, r.propensity_sum_ratio))
-    table = pd.DataFrame(rows, columns=["target_name", "program_name", "beta", "p-value", "pval_empirical",
-                                        "pval_skewnorm", "n_treated", "n_control", "control_mean", "n_resampled",
-                                        "propensity_n_iter", "propensity_sum_ratio"])
-    table["log2FC"] = log2fc_from_beta(table["beta"], table["control_mean"], obj.normalization,
-                                       len(obj.selected_program_names))
+            rows.append(
+                (
+                    gene,
+                    program,
+                    r.betas[k],
+                    r.pvalue[k],
+                    pval_empirical[k],
+                    pval_skewnorm[k],
+                    r.n_treated,
+                    r.n_control,
+                    control_means[k],
+                    r.n_resampled,
+                    r.propensity_n_iter,
+                    r.propensity_sum_ratio,
+                )
+            )
+    table = pd.DataFrame(
+        rows,
+        columns=[
+            "target_name",
+            "program_name",
+            "beta",
+            "p-value",
+            "pval_empirical",
+            "pval_skewnorm",
+            "n_treated",
+            "n_control",
+            "control_mean",
+            "n_resampled",
+            "propensity_n_iter",
+            "propensity_sum_ratio",
+        ],
+    )
+    table["log2FC"] = log2fc_from_beta(
+        table["beta"],
+        table["control_mean"],
+        obj.normalization,
+        len(obj.selected_program_names),
+    )
     table["adj_pval"] = adjust_pvalues(table["p-value"].to_numpy(), fdr_method)
-    table["adj_pval_empirical"] = adjust_pvalues(table["pval_empirical"].to_numpy(), fdr_method)
+    table["adj_pval_empirical"] = adjust_pvalues(
+        table["pval_empirical"].to_numpy(), fdr_method
+    )
     table = table[RESULTS_COLUMNS].copy()
     if include_guides:
         table["guides"] = table["target_name"].map(_guide_string(obj))
@@ -260,7 +326,10 @@ def format_results_table(obj, fdr_method: str = "BH", include_guides: bool = Fal
 
 def _guide_string(obj) -> dict:
     """gene -> ";"-joined guide names, for every tested gene."""
-    return {g: ";".join(obj.guide_names[j] for j in obj.guide_targets[g]) for g in obj.selected_gene_names}
+    return {
+        g: ";".join(obj.guide_names[j] for j in obj.guide_targets[g])
+        for g in obj.selected_gene_names
+    }
 
 
 def load_results_table(obj, path: str):
@@ -287,20 +356,29 @@ def load_results_table(obj, path: str):
     sep = "," if path.endswith(".csv") else "\t"
     table = pd.read_csv(path, sep=sep, dtype={"program_name": str})
     genes, programs = list(obj.selected_gene_names), list(obj.selected_program_names)
-    if (set(table["target_name"]) != set(genes) or set(table["program_name"]) != set(programs)
-            or len(table) != len(genes) * len(programs)):
+    if (
+        set(table["target_name"]) != set(genes)
+        or set(table["program_name"]) != set(programs)
+        or len(table) != len(genes) * len(programs)
+    ):
         raise ValueError(
             f"{path} does not match this run: {table['target_name'].nunique()} genes x "
             f"{table['program_name'].nunique()} programs ({len(table)} rows) vs {len(genes)} genes x "
             f"{len(programs)} programs expected."
         )
     if "guides" in table:
-        cached = table.drop_duplicates("target_name").set_index("target_name")["guides"].to_dict()
+        cached = (
+            table.drop_duplicates("target_name")
+            .set_index("target_name")["guides"]
+            .to_dict()
+        )
         expected = _guide_string(obj)
         mismatched = [g for g in genes if cached[g] != expected[g]]
         if mismatched:
-            raise ValueError(f"{path}: guides differ for {len(mismatched)} genes (e.g. {mismatched[0]}); "
-                             "the cached null was built with other settings.")
+            raise ValueError(
+                f"{path}: guides differ for {len(mismatched)} genes (e.g. {mismatched[0]}); "
+                "the cached null was built with other settings."
+            )
 
     table = table.set_index(["target_name", "program_name"])
     obj.gene_results = {}
@@ -313,14 +391,21 @@ def load_results_table(obj, path: str):
             treated_obs_idx=np.empty(0, dtype=np.int32),
             pvalue=rows["p-value"].to_numpy(dtype=np.float64),
             betas=rows["beta"].to_numpy(dtype=np.float64),
-            pvalue_skewnorm=pvalue_skewnorm if obj.pvalue_method == "skew_normal" else None,
+            pvalue_skewnorm=pvalue_skewnorm
+            if obj.pvalue_method == "skew_normal"
+            else None,
             pvalue_empirical=rows["pval_empirical"].to_numpy(dtype=np.float64),
             control_means=rows["control_mean"].to_numpy(dtype=np.float64),
             n_resampled=int(rows["n_resampled"].iloc[0]),
             n_control=int(rows["n_control"].iloc[0]),
             # tables written before these columns existed: NaN
-            propensity_n_iter=float(rows["propensity_n_iter"].iloc[0]) if "propensity_n_iter" in rows else np.nan,
-            propensity_sum_ratio=(float(rows["propensity_sum_ratio"].iloc[0])
-                                  if "propensity_sum_ratio" in rows else np.nan),
+            propensity_n_iter=float(rows["propensity_n_iter"].iloc[0])
+            if "propensity_n_iter" in rows
+            else np.nan,
+            propensity_sum_ratio=(
+                float(rows["propensity_sum_ratio"].iloc[0])
+                if "propensity_sum_ratio" in rows
+                else np.nan
+            ),
         )
     return obj

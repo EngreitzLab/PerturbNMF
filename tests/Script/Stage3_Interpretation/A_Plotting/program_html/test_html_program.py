@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 import matplotlib
+
 matplotlib.use("Agg")
 
 from Stage3_Interpretation.A_Plotting.src.html_Program_QC_plots import (
@@ -33,20 +34,30 @@ from Stage3_Interpretation.A_Plotting.src.html_Program_QC_plots import (
 # Tests for individual JSON-builder helpers (cheap, no plot rendering)
 # ---------------------------------------------------------------------------
 
-class TestBuilders:
 
+class TestBuilders:
     def test_build_top_genes(self, test_mdata):
         target = str(test_mdata["cNMF"].var_names[0])
-        d = _build_top_genes(test_mdata, target, num_gene=5,
-                             file_to_dictionary=None, gene_name_key="symbol")
+        d = _build_top_genes(
+            test_mdata,
+            target,
+            num_gene=5,
+            file_to_dictionary=None,
+            gene_name_key="symbol",
+        )
         assert set(d.keys()) == {"genes", "loadings"}
         assert len(d["genes"]) == 5
         assert len(d["loadings"]) == 5
 
     def test_build_go_terms(self, go_path, test_mdata):
         target = str(test_mdata["cNMF"].var_names[0])
-        d = _build_go_terms(go_path, target, num_term=3,
-                            p_value_name="Adjusted P-value", term_col="Term")
+        d = _build_go_terms(
+            go_path,
+            target,
+            num_term=3,
+            p_value_name="Adjusted P-value",
+            term_col="Term",
+        )
         assert "terms" in d and "adj_pval" in d and "neglog10p" in d
 
     def test_build_correlations(self, program_correlation, test_mdata):
@@ -67,12 +78,20 @@ class TestBuilders:
 # End-to-end: export_program_html writes the full subtree
 # ---------------------------------------------------------------------------
 
-class TestExportProgramHTML:
 
+class TestExportProgramHTML:
     @pytest.fixture(scope="class")
-    def exported_program(self, test_mdata, perturb_path_base, go_path,
-                         program_correlation, waterfall_correlation,
-                         perturbed_gene_found, html_share_path, available_samples):
+    def exported_program(
+        self,
+        test_mdata,
+        perturb_path_base,
+        go_path,
+        program_correlation,
+        waterfall_correlation,
+        perturbed_gene_found,
+        html_share_path,
+        available_samples,
+    ):
         target = str(test_mdata["cNMF"].var_names[0])
         export_program_html(
             mdata=test_mdata,
@@ -115,8 +134,13 @@ class TestExportProgramHTML:
         prog_dir, _, samples = exported_program
         data_dir = prog_dir / "data"
         # Header panels
-        for fname in ["top_genes.json", "go_terms.json", "correlations.json",
-                      "violin.json", "heatmap.json"]:
+        for fname in [
+            "top_genes.json",
+            "go_terms.json",
+            "correlations.json",
+            "violin.json",
+            "heatmap.json",
+        ]:
             p = data_dir / fname
             assert p.is_file(), f"Missing per-panel JSON: {p}"
             with open(p) as f:
@@ -145,13 +169,20 @@ class TestExportProgramHTML:
 # write_share_index
 # ---------------------------------------------------------------------------
 
-class TestWriteShareIndex:
 
+class TestWriteShareIndex:
     @pytest.fixture
-    def ensure_one_program_exported(self, test_mdata, perturb_path_base, go_path,
-                                    program_correlation, waterfall_correlation,
-                                    perturbed_gene_found, html_share_path,
-                                    available_samples):
+    def ensure_one_program_exported(
+        self,
+        test_mdata,
+        perturb_path_base,
+        go_path,
+        program_correlation,
+        waterfall_correlation,
+        perturbed_gene_found,
+        html_share_path,
+        available_samples,
+    ):
         target = str(test_mdata["cNMF"].var_names[0])
         prog_dir = Path(html_share_path) / f"program_{target}"
         if not (prog_dir / f"program_{target}.html").exists():
@@ -175,7 +206,9 @@ class TestWriteShareIndex:
             )
         return target
 
-    def test_share_index_written(self, ensure_one_program_exported, html_share_path, test_mdata):
+    def test_share_index_written(
+        self, ensure_one_program_exported, html_share_path, test_mdata
+    ):
         program_ids = [str(p) for p in test_mdata["cNMF"].var_names]
         write_share_index(html_share_path, program_ids, {"test": "config", "k": 5})
 

@@ -13,6 +13,7 @@ advance a round that only annotated hypotheses instead of revising or killing th
 
 Stdlib only.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,14 +22,27 @@ import sys
 from pathlib import Path
 
 STATUSES = {"candidate", "supported", "killed", "merged", "shelved"}
-REVISER_ACTIONS = {"survived", "sharpened", "reframed", "merged", "split", "killed", "shelved"}
+REVISER_ACTIONS = {
+    "survived",
+    "sharpened",
+    "reframed",
+    "merged",
+    "split",
+    "killed",
+    "shelved",
+}
 ITERATION_ACTIONS = REVISER_ACTIONS - {"survived"}
 USER_ACTIONS = {"user_kill", "user_push"}
 VERSION_BUMP_ACTIONS = {"sharpened", "reframed"}
 TERMINAL_RESULT_ACTIONS = {"killed", "merged", "shelved", "survived"}
 TEST_RESULTS = {"supports", "refutes", "inconclusive", "not_run"}
 TEST_KINDS = {"data", "external_data", "literature"}
-LITERATURE_VERDICTS = {"known_in_this_cell_type", "known_elsewhere", "novel", "contradicted"}
+LITERATURE_VERDICTS = {
+    "known_in_this_cell_type",
+    "known_elsewhere",
+    "novel",
+    "contradicted",
+}
 CONFIDENCE_LEVELS = {"low", "medium", "high"}
 LEAD_ELIGIBILITY = {"yes", "flag", "no"}
 OPEN_STATUSES = {"candidate", "supported"}
@@ -61,7 +75,8 @@ def read_ledger(path: Path) -> list[dict]:
 def reviser_history_events(entry: dict) -> list[dict]:
     """Actual Reviser decisions — actor == 'reviser', in ledger (chronological) order."""
     return [
-        h for h in entry.get("history", [])
+        h
+        for h in entry.get("history", [])
         if h.get("actor") == "reviser" and h.get("action") in REVISER_ACTIONS
     ]
 
@@ -72,7 +87,8 @@ def round_completing_events(entry: dict) -> list[dict]:
     A user push is advice to the Reviser, not a decision: the Reviser still has to act that round.
     """
     return [
-        h for h in entry.get("history", [])
+        h
+        for h in entry.get("history", [])
         if (h.get("actor") == "reviser" and h.get("action") in REVISER_ACTIONS)
         or (h.get("actor") == "user" and h.get("action") == "user_kill")
     ]
@@ -81,7 +97,8 @@ def round_completing_events(entry: dict) -> list[dict]:
 def status_determining_events(entry: dict) -> list[dict]:
     """Events whose action fixes the expected status: Reviser actions or a user kill."""
     return [
-        h for h in entry.get("history", [])
+        h
+        for h in entry.get("history", [])
         if (h.get("actor") == "reviser" and h.get("action") in REVISER_ACTIONS)
         or (h.get("actor") == "user" and h.get("action") == "user_kill")
     ]
@@ -92,7 +109,9 @@ def created_round(entry: dict) -> tuple[int, bool]:
     for event in entry.get("history", []):
         if event.get("action") == "created":
             round_value = event.get("round")
-            return int(round_value) if round_value is not None else 1, event.get("actor") == "reviser"
+            return int(round_value) if round_value is not None else 1, event.get(
+                "actor"
+            ) == "reviser"
     return 1, False
 
 
@@ -114,7 +133,9 @@ def check_history_and_test_ids(entry: dict, errors: list[str]) -> None:
     hid = entry.get("id", "<no id>")
     for event in entry.get("history", []):
         if event.get("round") is None:
-            errors.append(f"{hid}: history event '{event.get('action', '<no action>')}' missing 'round'")
+            errors.append(
+                f"{hid}: history event '{event.get('action', '<no action>')}' missing 'round'"
+            )
     for test in entry.get("tests", []):
         if not test.get("id"):
             errors.append(f"{hid}: a test is missing 'id'")
@@ -126,32 +147,50 @@ def check_entry_fields(entry: dict, errors: list[str]) -> None:
         if field not in entry:
             errors.append(f"{hid}: missing field '{field}'")
     if entry.get("status") not in STATUSES:
-        errors.append(f"{hid}: status '{entry.get('status')}' not in {sorted(STATUSES)}")
+        errors.append(
+            f"{hid}: status '{entry.get('status')}' not in {sorted(STATUSES)}"
+        )
     for test in entry.get("tests", []):
         tid = f"{hid}/{test.get('id', '<no id>')}"
         if test.get("kind") not in TEST_KINDS:
-            errors.append(f"{tid}: kind '{test.get('kind')}' not in {sorted(TEST_KINDS)}")
+            errors.append(
+                f"{tid}: kind '{test.get('kind')}' not in {sorted(TEST_KINDS)}"
+            )
         if test.get("result", "not_run") not in TEST_RESULTS:
-            errors.append(f"{tid}: result '{test.get('result')}' not in {sorted(TEST_RESULTS)}")
+            errors.append(
+                f"{tid}: result '{test.get('result')}' not in {sorted(TEST_RESULTS)}"
+            )
         if not test.get("kill_if"):
-            errors.append(f"{tid}: no 'kill_if' — a test that cannot kill the hypothesis is not a test")
+            errors.append(
+                f"{tid}: no 'kill_if' — a test that cannot kill the hypothesis is not a test"
+            )
         for field in ("registered_round", "hypothesis_version"):
             if field not in test:
                 errors.append(f"{tid}: missing '{field}'")
     for review in entry.get("literature", []):
         if review.get("verdict") not in LITERATURE_VERDICTS:
-            errors.append(f"{hid}: literature verdict '{review.get('verdict')}' not in {sorted(LITERATURE_VERDICTS)}")
+            errors.append(
+                f"{hid}: literature verdict '{review.get('verdict')}' not in {sorted(LITERATURE_VERDICTS)}"
+            )
         if not review.get("citations"):
-            errors.append(f"{hid}: literature verdict in round {review.get('round')} has no citations")
+            errors.append(
+                f"{hid}: literature verdict in round {review.get('round')} has no citations"
+            )
         for citation in review.get("citations", []):
             if not citation.get("id") or not citation.get("says"):
-                errors.append(f"{hid}: every citation needs an 'id' (PMID/DOI) and what it 'says'")
+                errors.append(
+                    f"{hid}: every citation needs an 'id' (PMID/DOI) and what it 'says'"
+                )
 
 
 def check_version(entry: dict, errors: list[str]) -> None:
     """Rule 5: version == 1 + number of sharpened/reframed actions; each needs previous_claim."""
     hid = entry.get("id", "<no id>")
-    version_bumps = [e for e in reviser_history_events(entry) if e.get("action") in VERSION_BUMP_ACTIONS]
+    version_bumps = [
+        e
+        for e in reviser_history_events(entry)
+        if e.get("action") in VERSION_BUMP_ACTIONS
+    ]
     expected_version = 1 + len(version_bumps)
     if entry.get("version") != expected_version:
         errors.append(
@@ -160,7 +199,9 @@ def check_version(entry: dict, errors: list[str]) -> None:
         )
     for event in version_bumps:
         if not event.get("previous_claim"):
-            errors.append(f"{hid}: {event.get('action')} in round {event.get('round', '?')} missing 'previous_claim'")
+            errors.append(
+                f"{hid}: {event.get('action')} in round {event.get('round', '?')} missing 'previous_claim'"
+            )
 
 
 def check_status_matches_terminal_action(entry: dict, errors: list[str]) -> None:
@@ -175,7 +216,9 @@ def check_status_matches_terminal_action(entry: dict, errors: list[str]) -> None
         return
     status = entry.get("status")
     if status != expected_status:
-        errors.append(f"{hid}: last action '{last_action}' implies status '{expected_status}', got '{status}'")
+        errors.append(
+            f"{hid}: last action '{last_action}' implies status '{expected_status}', got '{status}'"
+        )
         return
     if expected_status == "killed" and not entry.get("kill_reason"):
         errors.append(f"{hid}: killed without a kill_reason")
@@ -183,7 +226,9 @@ def check_status_matches_terminal_action(entry: dict, errors: list[str]) -> None
         errors.append(f"{hid}: merged without merged_into")
 
 
-def check_rounds(entry: dict, current_round: int, max_rounds: int, errors: list[str]) -> None:
+def check_rounds(
+    entry: dict, current_round: int, max_rounds: int, errors: list[str]
+) -> None:
     """Rule 2 (every round ends in an action) and rule 8 (budget)."""
     hid = entry.get("id", "<no id>")
     born, born_from_split = created_round(entry)
@@ -206,14 +251,22 @@ def check_rounds(entry: dict, current_round: int, max_rounds: int, errors: list[
             )
         elif len(actions) > 1:
             all_but_last_are_split = all(a == "split" for a in actions[:-1])
-            one_extra_repass = len(actions) == 2 and any(e.get("repass") for e in events)
+            one_extra_repass = len(actions) == 2 and any(
+                e.get("repass") for e in events
+            )
             if not (all_but_last_are_split or one_extra_repass):
-                errors.append(f"{hid}: {len(actions)} Reviser actions in round {round_number}: {actions}")
-    extra_passes = sum(1 for c in entry.get("critique", []) if c.get("severity") == "major")
+                errors.append(
+                    f"{hid}: {len(actions)} Reviser actions in round {round_number}: {actions}"
+                )
+    extra_passes = sum(
+        1 for c in entry.get("critique", []) if c.get("severity") == "major"
+    )
     budget = max_rounds + min(extra_passes, 1)
     reviser_events = reviser_history_events(entry)
     if len(reviser_events) > budget:
-        errors.append(f"{hid}: {len(reviser_events)} Reviser actions exceeds budget {budget}")
+        errors.append(
+            f"{hid}: {len(reviser_events)} Reviser actions exceeds budget {budget}"
+        )
 
 
 def check_survival(entry: dict, errors: list[str]) -> None:
@@ -223,18 +276,30 @@ def check_survival(entry: dict, errors: list[str]) -> None:
     events = reviser_history_events(entry)
     if not events or events[-1].get("action") != "survived":
         if entry.get("status") == "supported":
-            errors.append(f"{hid}: status 'supported' without the last Reviser action being 'survived'")
+            errors.append(
+                f"{hid}: status 'supported' without the last Reviser action being 'survived'"
+            )
         return
     version = entry.get("version")
-    current_tests = [t for t in entry.get("tests", []) if t.get("hypothesis_version") == version]
+    current_tests = [
+        t for t in entry.get("tests", []) if t.get("hypothesis_version") == version
+    ]
     if not current_tests:
-        errors.append(f"{hid}: survived at version {version} with no tests registered against that version")
-    unrun = [t.get("id", "<no id>") for t in current_tests if t.get("result", "not_run") == "not_run"]
+        errors.append(
+            f"{hid}: survived at version {version} with no tests registered against that version"
+        )
+    unrun = [
+        t.get("id", "<no id>")
+        for t in current_tests
+        if t.get("result", "not_run") == "not_run"
+    ]
     if unrun:
         errors.append(f"{hid}: survived with tests not run: {unrun}")
     counterexamples = [
-        t for t in current_tests
-        if t.get("counterexample") and t.get("kind") in {"data", "external_data"}
+        t
+        for t in current_tests
+        if t.get("counterexample")
+        and t.get("kind") in {"data", "external_data"}
         and t.get("result") == "supports"
     ]
     if not counterexamples:
@@ -242,9 +307,13 @@ def check_survival(entry: dict, errors: list[str]) -> None:
             f"{hid}: survived without a data counter-example test that ran and came back "
             "'supports' (inconclusive does not count)"
         )
-    refuted = [t.get("id", "<no id>") for t in current_tests if t.get("result") == "refutes"]
+    refuted = [
+        t.get("id", "<no id>") for t in current_tests if t.get("result") == "refutes"
+    ]
     if refuted:
-        errors.append(f"{hid}: survived although tests refuted it: {refuted} — kill or revise instead")
+        errors.append(
+            f"{hid}: survived although tests refuted it: {refuted} — kill or revise instead"
+        )
 
     # Round of the last version bump before this survival — literature must be at least that fresh.
     version_bump_round = None
@@ -267,17 +336,27 @@ def check_survival(entry: dict, errors: list[str]) -> None:
     else:
         latest = reviews[-1]
     if latest.get("verdict") == "known_in_this_cell_type":
-        errors.append(f"{hid}: survived although the latest literature verdict for this version is known_in_this_cell_type")
+        errors.append(
+            f"{hid}: survived although the latest literature verdict for this version is known_in_this_cell_type"
+        )
 
 
-def check_preregistration(entries: list[dict], snapshot_dir: Path, errors: list[str]) -> None:
+def check_preregistration(
+    entries: list[dict], snapshot_dir: Path, errors: list[str]
+) -> None:
     """Rule 4: every test with a result appears without a result in an earlier snapshot."""
     registered_unrun: set[tuple[str, str, int]] = set()
     for snapshot in sorted(snapshot_dir.glob("r*_*.jsonl")):
         for entry in read_ledger(snapshot):
             for test in entry.get("tests", []):
                 if test.get("result", "not_run") == "not_run":
-                    registered_unrun.add((entry.get("id"), test.get("id"), test.get("hypothesis_version")))
+                    registered_unrun.add(
+                        (
+                            entry.get("id"),
+                            test.get("id"),
+                            test.get("hypothesis_version"),
+                        )
+                    )
     for entry in entries:
         for test in entry.get("tests", []):
             if test.get("result", "not_run") != "not_run":
@@ -289,25 +368,37 @@ def check_preregistration(entries: list[dict], snapshot_dir: Path, errors: list[
                     )
 
 
-def check_final(entries: list[dict], n_hypotheses: int, analysis_dir: Path,
-                errors: list[str], warnings: list[str]) -> None:
+def check_final(
+    entries: list[dict],
+    n_hypotheses: int,
+    analysis_dir: Path,
+    errors: list[str],
+    warnings: list[str],
+) -> None:
     """Rules 6 and 7: writer eligibility and iteration health."""
     supported = [e for e in entries if e.get("status") == "supported"]
     if len(supported) < n_hypotheses:
-        warnings.append(f"{len(supported)} supported hypotheses, fewer than the {n_hypotheses} requested — report what survived, do not pad")
+        warnings.append(
+            f"{len(supported)} supported hypotheses, fewer than the {n_hypotheses} requested — report what survived, do not pad"
+        )
     for entry in supported:
         hid = entry.get("id", "<no id>")
         if entry.get("confidence") not in CONFIDENCE_LEVELS:
-            errors.append(f"{hid}: confidence '{entry.get('confidence')}' not in {sorted(CONFIDENCE_LEVELS)}")
+            errors.append(
+                f"{hid}: confidence '{entry.get('confidence')}' not in {sorted(CONFIDENCE_LEVELS)}"
+            )
         why_investigate = entry.get("why_investigate") or ""
         if len(why_investigate.split()) < 25:
-            errors.append(f"{hid}: why_investigate missing or under 25 words — say what the finding would mean if true")
+            errors.append(
+                f"{hid}: why_investigate missing or under 25 words — say what the finding would mean if true"
+            )
         experiment = entry.get("experiment") or {}
         for field in ("design", "if_true", "if_false"):
             if not experiment.get(field):
                 errors.append(f"{hid}: experiment.{field} is empty")
         figures = [
-            t.get("headline_figure") for t in entry.get("tests", [])
+            t.get("headline_figure")
+            for t in entry.get("tests", [])
             if t.get("kind") in {"data", "external_data"} and t.get("headline_figure")
         ]
         if not figures:
@@ -317,28 +408,45 @@ def check_final(entries: list[dict], n_hypotheses: int, analysis_dir: Path,
                 errors.append(f"{hid}: headline_figure {figure} does not exist")
         cartoon = entry.get("cartoon")
         if not cartoon:
-            errors.append(f"{hid}: no 'cartoon' — every supported hypothesis needs a mechanism "
-                          "schematic (references/cartoons.md)")
+            errors.append(
+                f"{hid}: no 'cartoon' — every supported hypothesis needs a mechanism "
+                "schematic (references/cartoons.md)"
+            )
         elif not (analysis_dir / cartoon).exists():
             errors.append(f"{hid}: cartoon {cartoon} does not exist")
-        open_majors = [c for c in entry.get("critique", []) if c.get("severity") == "major" and not c.get("resolved")]
+        open_majors = [
+            c
+            for c in entry.get("critique", [])
+            if c.get("severity") == "major" and not c.get("resolved")
+        ]
         if open_majors:
             errors.append(f"{hid}: {len(open_majors)} unresolved Major critique(s)")
     ranked = sorted((e for e in supported if e.get("rank")), key=lambda e: e["rank"])
     if supported and len(ranked) != len(supported):
         errors.append("every supported hypothesis needs a rank")
-    iterated = [e for e in entries if any(a.get("action") in ITERATION_ACTIONS for a in reviser_history_events(e))]
+    iterated = [
+        e
+        for e in entries
+        if any(a.get("action") in ITERATION_ACTIONS for a in reviser_history_events(e))
+    ]
     share = len(iterated) / len(entries) if entries else 0.0
     message = f"iteration health: {len(iterated)}/{len(entries)} candidates ({share:.0%}) were revised, merged, split, killed or shelved"
     if share < MIN_ITERATION_SHARE:
-        warnings.append(message + f" — below {MIN_ITERATION_SHARE:.0%}; the loop annotated rather than iterated")
+        warnings.append(
+            message
+            + f" — below {MIN_ITERATION_SHARE:.0%}; the loop annotated rather than iterated"
+        )
     else:
         print(message)
 
 
 def read_eligibility(path: Path) -> dict[str, tuple[str, str]]:
     """target -> (lead_eligible, reason) from the Explorer's regulator_eligibility.tsv."""
-    lines = [line for line in path.read_text().splitlines() if line and not line.startswith("#")]
+    lines = [
+        line
+        for line in path.read_text().splitlines()
+        if line and not line.startswith("#")
+    ]
     header = lines[0].split("\t")
     for column in ("target", "lead_eligible", "reason"):
         if column not in header:
@@ -347,14 +455,20 @@ def read_eligibility(path: Path) -> dict[str, tuple[str, str]]:
     for line in lines[1:]:
         row = dict(zip(header, line.split("\t")))
         if row["lead_eligible"] not in LEAD_ELIGIBILITY:
-            sys.exit(f"{path}: {row['target']}: lead_eligible '{row['lead_eligible']}' "
-                     f"not in {sorted(LEAD_ELIGIBILITY)}")
+            sys.exit(
+                f"{path}: {row['target']}: lead_eligible '{row['lead_eligible']}' "
+                f"not in {sorted(LEAD_ELIGIBILITY)}"
+            )
         eligibility[row["target"]] = (row["lead_eligible"], row["reason"])
     return eligibility
 
 
-def check_member_eligibility(entry: dict, eligibility: dict[str, tuple[str, str]],
-                             errors: list[str], warnings: list[str]) -> None:
+def check_member_eligibility(
+    entry: dict,
+    eligibility: dict[str, tuple[str, str]],
+    errors: list[str],
+    warnings: list[str],
+) -> None:
     """An open hypothesis may not rest on a member that failed the Explorer's kill-checks."""
     if entry.get("status") not in OPEN_STATUSES:
         return
@@ -362,26 +476,40 @@ def check_member_eligibility(entry: dict, eligibility: dict[str, tuple[str, str]
     for member in entry.get("members", []):
         verdict, reason = eligibility.get(member, ("missing", ""))
         if verdict == "no":
-            errors.append(f"{hid}: member {member} is not lead-eligible ({reason}); "
-                          "cite it as supporting evidence instead, or drop it")
+            errors.append(
+                f"{hid}: member {member} is not lead-eligible ({reason}); "
+                "cite it as supporting evidence instead, or drop it"
+            )
         elif verdict == "missing":
-            warnings.append(f"{hid}: member {member} is not an admitted regulator, so its "
-                            "kill-checks were not run; the Falsifier must register them")
+            warnings.append(
+                f"{hid}: member {member} is not an admitted regulator, so its "
+                "kill-checks were not run; the Falsifier must register them"
+            )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("ledger", type=Path)
-    parser.add_argument("--round", type=int, required=True, help="the round that has just finished")
+    parser.add_argument(
+        "--round", type=int, required=True, help="the round that has just finished"
+    )
     parser.add_argument("--max-rounds", type=int, default=3)
     parser.add_argument("--snapshot-dir", type=Path)
     parser.add_argument("--final", action="store_true")
     parser.add_argument("--n-hypotheses", type=int, default=10)
     parser.add_argument("--analysis-dir", type=Path, default=Path("."))
-    parser.add_argument("--eligibility", type=Path,
-                        help="explore/regulator_eligibility.tsv; open hypotheses may not rest on a 'no' member")
-    parser.add_argument("--mid-round", action="store_true",
-                        help="skip the end-of-round action check (use after Falsifier/Analyst/Literature steps)")
+    parser.add_argument(
+        "--eligibility",
+        type=Path,
+        help="explore/regulator_eligibility.tsv; open hypotheses may not rest on a 'no' member",
+    )
+    parser.add_argument(
+        "--mid-round",
+        action="store_true",
+        help="skip the end-of-round action check (use after Falsifier/Analyst/Literature steps)",
+    )
     args = parser.parse_args()
 
     entries = read_ledger(args.ledger)

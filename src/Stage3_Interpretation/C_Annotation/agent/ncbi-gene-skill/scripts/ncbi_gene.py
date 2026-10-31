@@ -3,13 +3,21 @@
 
 Reads one JSON object on stdin and writes one JSON object on stdout (see ../SKILL.md).
 """
+
 import os
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _lib.skill_lib import SkillError, as_list, merge_jsonl, request_with_retry, require_str_list, run  # noqa: E402,F401
+from _lib.skill_lib import (
+    SkillError,
+    as_list,
+    merge_jsonl,
+    request_with_retry,
+    require_str_list,
+    run,
+)  # noqa: E402,F401
 
 SOURCE = "NCBI"
 NCBI_BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
@@ -29,8 +37,11 @@ def _ncbi_params():
 
 def _eutils(endpoint, data):
     """POST to an E-utility, pausing to stay under NCBI's rate limit (3/s, 10/s with a key)."""
-    resp = request_with_retry("POST", f"{NCBI_BASE_URL}/{endpoint}.fcgi",
-                              data={**_ncbi_params(), **data, "retmode": "json"})
+    resp = request_with_retry(
+        "POST",
+        f"{NCBI_BASE_URL}/{endpoint}.fcgi",
+        data={**_ncbi_params(), **data, "retmode": "json"},
+    )
     time.sleep(0.1 if os.getenv("NCBI_API_KEY") else 0.34)
     return resp.json()
 
@@ -40,9 +51,15 @@ def search_gene_ids(genes, taxid=9606, batch_size=200):
     """NCBI Gene ids whose symbol or alias ([sym]) matches any query gene."""
     ids = []
     for i in range(0, len(genes), batch_size):
-        terms = " OR ".join(f"{g}[sym]" for g in genes[i:i + batch_size])
-        res = _eutils("esearch", {"db": "gene", "term": f"({terms}) AND {taxid}[taxid] AND alive[prop]",
-                                  "retmax": 10000})
+        terms = " OR ".join(f"{g}[sym]" for g in genes[i : i + batch_size])
+        res = _eutils(
+            "esearch",
+            {
+                "db": "gene",
+                "term": f"({terms}) AND {taxid}[taxid] AND alive[prop]",
+                "retmax": 10000,
+            },
+        )
         ids += res["esearchresult"]["idlist"]
     return list(dict.fromkeys(ids))
 
@@ -51,7 +68,9 @@ def fetch_summaries(ids, batch_size=200):
     """{gene_id: esummary record}."""
     records = {}
     for i in range(0, len(ids), batch_size):
-        res = _eutils("esummary", {"db": "gene", "id": ",".join(ids[i:i + batch_size])})["result"]
+        res = _eutils(
+            "esummary", {"db": "gene", "id": ",".join(ids[i : i + batch_size])}
+        )["result"]
         records.update({uid: res[uid] for uid in res["uids"]})
     return records
 
@@ -61,8 +80,12 @@ def fetch_generif_pmids(ids, batch_size=20):
     batches: well-studied genes link thousands of PMIDs and NCBI cuts off large responses."""
     pmids = {}
     for i in range(0, len(ids), batch_size):
-        data = {"dbfrom": "gene", "db": "pubmed", "linkname": "gene_pubmed_rif",
-                "id": ids[i:i + batch_size]}  # repeated id= gives one linkset per gene
+        data = {
+            "dbfrom": "gene",
+            "db": "pubmed",
+            "linkname": "gene_pubmed_rif",
+            "id": ids[i : i + batch_size],
+        }  # repeated id= gives one linkset per gene
         for ls in _eutils("elink", data).get("linksets", []):
             links = [l for db in ls.get("linksetdbs", []) for l in db.get("links", [])]
             pmids[str(ls["ids"][0])] = [str(l) for l in links]
@@ -111,14 +134,24 @@ def handle(req):
     ids = search_gene_ids(genes, taxid)
     records = fetch_summaries(ids)
     picked = pick_records(genes, records)
-    generif = fetch_generif_pmids(sorted(set(picked.values()))) if req.get("generif", True) else {}
-    info = {g: format_gene_info(uid, records[uid], generif, int(req.get("top_generif", 10)))
-            for g, uid in picked.items()}
+    generif = (
+        fetch_generif_pmids(sorted(set(picked.values())))
+        if req.get("generif", True)
+        else {}
+    )
+    info = {
+        g: format_gene_info(uid, records[uid], generif, int(req.get("top_generif", 10)))
+        for g, uid in picked.items()
+    }
     not_found = [g for g in genes if g not in info]
     out = {"source": NCBI_BASE_URL, "n_found": len(info), "not_found": not_found}
     if req.get("write_to"):
-        merge_jsonl(req["write_to"], "gene", {g: {SOURCE: v} for g, v in info.items()}
-                    | {g: {SOURCE: {"found": False}} for g in not_found})
+        merge_jsonl(
+            req["write_to"],
+            "gene",
+            {g: {SOURCE: v} for g, v in info.items()}
+            | {g: {SOURCE: {"found": False}} for g in not_found},
+        )
         out["written_to"] = req["write_to"]
     else:
         out["genes"] = info

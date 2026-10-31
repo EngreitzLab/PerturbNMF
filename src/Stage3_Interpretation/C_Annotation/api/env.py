@@ -1,4 +1,5 @@
 """Keys and the API handler shared by the pipeline scripts (not by the skills, which read their environment)."""
+
 import os
 import sys
 from pathlib import Path
@@ -22,7 +23,10 @@ def make_handler(model):
     """Anthropic API handler (api/LLM_interface.claude_api); needs ANTHROPIC_API_KEY."""
     sys.path.insert(0, str(ROOT / "api"))
     from LLM_interface import claude_api
+
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        raise SystemExit("ANTHROPIC_API_KEY not set (export it or add it to C_Annotation/.env)")
+        raise SystemExit(
+            "ANTHROPIC_API_KEY not set (export it or add it to C_Annotation/.env)"
+        )
     return claude_api(api_key=key, model=model)

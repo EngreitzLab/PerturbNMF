@@ -23,12 +23,20 @@ import numpy as np
 import pandas as pd
 import cnmf
 
-from .conftest import TEST_K, TEST_NUMITER, TEST_NUMHVGENES, TEST_SEL_THRESH, TEST_SEED, PERSISTENT_OUTPUT
+from .conftest import (
+    TEST_K,
+    TEST_NUMITER,
+    TEST_NUMHVGENES,
+    TEST_SEL_THRESH,
+    TEST_SEED,
+    PERSISTENT_OUTPUT,
+)
 
 from Stage1_Inference.src.run_cNMF import rename_all_NMF
 
 
 # ---------- shared state ----------
+
 
 class _State:
     per_k_dirs = {}
@@ -40,6 +48,7 @@ OUTPUT_DIR = str(PERSISTENT_OUTPUT / "sk-cNMF-parallel")
 
 
 # ---------- tests ----------
+
 
 class TestSkCNMFParallel:
     """Test parallel K factorization and merge."""
@@ -76,15 +85,21 @@ class TestSkCNMFParallel:
             assert os.path.isdir(cnmf_tmp), f"cnmf_tmp not found for K={k}"
 
             for i in range(TEST_NUMITER):
-                spectra = os.path.join(cnmf_tmp, f"Inference.spectra.k_{k}.iter_{i}.df.npz")
-                assert os.path.exists(spectra), f"Missing spectra K={k} iter={i}: {spectra}"
+                spectra = os.path.join(
+                    cnmf_tmp, f"Inference.spectra.k_{k}.iter_{i}.df.npz"
+                )
+                assert os.path.exists(spectra), (
+                    f"Missing spectra K={k} iter={i}: {spectra}"
+                )
 
             state.per_k_dirs[k] = k_dir
             print(f"  K={k}: factorized ({TEST_NUMITER} iters)")
 
     def test_02_combine_parallel_results(self):
         """Combine per-K spectra files into Inference_all/cnmf_tmp/."""
-        assert len(state.per_k_dirs) == len(TEST_K), "All K values must be factorized first"
+        assert len(state.per_k_dirs) == len(TEST_K), (
+            "All K values must be factorized first"
+        )
 
         combined_name = "Inference_all"
         combined_cnmf_tmp = os.path.join(OUTPUT_DIR, combined_name, "cnmf_tmp")
@@ -102,9 +117,15 @@ class TestSkCNMFParallel:
         missing = []
         for k in TEST_K:
             for i in range(TEST_NUMITER):
-                f = os.path.join(combined_cnmf_tmp, f"{combined_name}.spectra.k_{k}.iter_{i}.df.npz")
+                f = os.path.join(
+                    combined_cnmf_tmp, f"{combined_name}.spectra.k_{k}.iter_{i}.df.npz"
+                )
                 if not os.path.exists(f):
                     missing.append(f"Inference_all.spectra.k_{k}.iter_{i}.df.npz")
 
-        assert not missing, f"Missing {len(missing)} combined spectra:\n" + "\n".join(f"  {f}" for f in missing)
-        print(f"  Combined {len(TEST_K)} K values × {TEST_NUMITER} iters into {combined_cnmf_tmp}")
+        assert not missing, f"Missing {len(missing)} combined spectra:\n" + "\n".join(
+            f"  {f}" for f in missing
+        )
+        print(
+            f"  Combined {len(TEST_K)} K values × {TEST_NUMITER} iters into {combined_cnmf_tmp}"
+        )

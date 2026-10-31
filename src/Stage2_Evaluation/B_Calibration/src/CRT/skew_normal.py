@@ -19,12 +19,12 @@ import numba as nb
 import numpy as np
 from scipy.stats import skewnorm
 
-MAX_SKEWNESS = 0.995      # |skewness| a skew-normal can reach is < 0.9953
+MAX_SKEWNESS = 0.995  # |skewness| a skew-normal can reach is < 0.9953
 P_FLOOR = 1e-250
 
 
 @nb.njit(cache=True)
-def fit_skew_normal(y): 
+def fit_skew_normal(y):
     """
     Method-of-moments skew-normal fit.
 
@@ -54,7 +54,9 @@ def fit_skew_normal(y):
         gamma1 = np.copysign(0.9 * MAX_SKEWNESS, gamma1)
 
     b = np.sqrt(2.0 / np.pi)
-    r = np.copysign(1.0, gamma1) * np.power(2.0 * np.abs(gamma1) / (4.0 - np.pi), 1.0 / 3.0)
+    r = np.copysign(1.0, gamma1) * np.power(
+        2.0 * np.abs(gamma1) / (4.0 - np.pi), 1.0 / 3.0
+    )
     delta = r / (b * np.sqrt(1.0 + r * r))
     alpha = delta / np.sqrt(1.0 - delta * delta)
     mu_z = b * delta
@@ -70,13 +72,23 @@ def fit_skew_normal(y):
     return out
 
 
-def _outliers_ok(z_sorted: np.ndarray, mean: float, sd: float, ratio_thresh: float = 1.5) -> bool:
+def _outliers_ok(
+    z_sorted: np.ndarray, mean: float, sd: float, ratio_thresh: float = 1.5
+) -> bool:
     """False if the null's max or min is far beyond mean +/- sd * sqrt(2 log B) (sceptre's check)."""
     spread = sd * np.sqrt(2.0 * np.log(z_sorted.size))
-    return (z_sorted[-1] / (mean + spread) <= ratio_thresh) and (z_sorted[0] / (mean - spread) <= ratio_thresh)
+    return (z_sorted[-1] / (mean + spread) <= ratio_thresh) and (
+        z_sorted[0] / (mean - spread) <= ratio_thresh
+    )
 
 
-def _tail_ok(z_sorted: np.ndarray, xi: float, omega: float, alpha: float, ratio_thresh: float = 2.0) -> bool:
+def _tail_ok(
+    z_sorted: np.ndarray,
+    xi: float,
+    omega: float,
+    alpha: float,
+    ratio_thresh: float = 2.0,
+) -> bool:
     """
     False if, at any of the 90.0, 90.5, ..., 99.0% quantiles of the null, the
     empirical right-tail mass exceeds the fitted one by more than ratio_thresh.
@@ -126,14 +138,16 @@ def skew_normal_pvals(
         z_obs = (beta_obs[k] - mean) / sd
 
         xi, omega, alpha, z_mean, z_sd = fit_skew_normal(z_sorted)
-        if not np.all(np.isfinite([xi, omega, alpha])) or not _outliers_ok(z_sorted, z_mean, z_sd):
+        if not np.all(np.isfinite([xi, omega, alpha])) or not _outliers_ok(
+            z_sorted, z_mean, z_sd
+        ):
             continue
 
         right_tail = z_obs >= z_sorted[(z_sorted.size - 1) // 2]
         if right_tail:
             ok = _tail_ok(z_sorted, xi, omega, alpha)
             tail = skewnorm.sf(z_obs, alpha, loc=xi, scale=omega)
-        else:   # mirror so the left tail is checked like a right tail
+        else:  # mirror so the left tail is checked like a right tail
             ok = _tail_ok(-z_sorted[::-1], -xi, omega, -alpha)
             tail = skewnorm.cdf(z_obs, alpha, loc=xi, scale=omega)
         if not ok or not np.isfinite(tail):

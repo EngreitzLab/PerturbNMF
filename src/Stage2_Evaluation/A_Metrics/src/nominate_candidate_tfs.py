@@ -38,24 +38,46 @@ import numpy as np
 import pandas as pd
 
 HOCOMOCO_V11_ANNOTATION_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "motif_databases", "HOCOMOCOv11_full_annotation_HUMAN_mono.tsv")
+    os.path.dirname(os.path.abspath(__file__)),
+    "motif_databases",
+    "HOCOMOCOv11_full_annotation_HUMAN_mono.tsv",
+)
 
 CANDIDATE_TF_COLUMNS = [
-    "program", "element_type", "tf", "tf_gene_symbol", "tf_gene_symbol_source",
-    "pvalue", "fdr", "enrichment",
-    "tf_expressed", "tf_program_loading_rank", "tf_in_top_program_genes",
-    "tf_perturbed", "knockdown_log2fc", "knockdown_fdr", "tf_knockdown_regulates_program",
+    "program",
+    "element_type",
+    "tf",
+    "tf_gene_symbol",
+    "tf_gene_symbol_source",
+    "pvalue",
+    "fdr",
+    "enrichment",
+    "tf_expressed",
+    "tf_program_loading_rank",
+    "tf_in_top_program_genes",
+    "tf_perturbed",
+    "knockdown_log2fc",
+    "knockdown_fdr",
+    "tf_knockdown_regulates_program",
     "evidence_tier",
 ]
 
-EVIDENCE_TIER_ORDER = ["motif+regulator", "motif+expressed_in_program", "motif+expressed", "motif_only"]
+EVIDENCE_TIER_ORDER = [
+    "motif+regulator",
+    "motif+expressed_in_program",
+    "motif+expressed",
+    "motif_only",
+]
 
 
 # ---------------------------------------------------------------------------
 # Motif TF name -> gene symbol
 # ---------------------------------------------------------------------------
 
-def read_hocomoco_tf_gene_symbols(path: str = HOCOMOCO_V11_ANNOTATION_PATH) -> pd.DataFrame:
+
+def read_hocomoco_tf_gene_symbols(
+    path: str = HOCOMOCO_V11_ANNOTATION_PATH,
+) -> pd.DataFrame:
     """HOCOMOCO v11 TF name (motif id before '_', e.g. ``ZN148``) -> TF gene symbol (``ZNF148``).
 
     Parameters
@@ -66,14 +88,20 @@ def read_hocomoco_tf_gene_symbols(path: str = HOCOMOCO_V11_ANNOTATION_PATH) -> p
     -------
     DataFrame with columns tf, tf_gene_symbol (one row per TF name).
     """
-    annotation = pd.read_csv(path, sep="\t", usecols=["Model", "Transcription factor"], dtype=str)
-    table = pd.DataFrame({
-        "tf": annotation["Model"].str.split("_", n=1).str[0],
-        "tf_gene_symbol": annotation["Transcription factor"].str.strip(),
-    }).drop_duplicates()
+    annotation = pd.read_csv(
+        path, sep="\t", usecols=["Model", "Transcription factor"], dtype=str
+    )
+    table = pd.DataFrame(
+        {
+            "tf": annotation["Model"].str.split("_", n=1).str[0],
+            "tf_gene_symbol": annotation["Transcription factor"].str.strip(),
+        }
+    ).drop_duplicates()
     conflicting = table["tf"][table["tf"].duplicated()].unique()
     if len(conflicting):
-        raise ValueError(f"HOCOMOCO TF names mapping to more than one gene: {list(conflicting)[:10]}")
+        raise ValueError(
+            f"HOCOMOCO TF names mapping to more than one gene: {list(conflicting)[:10]}"
+        )
     return table.reset_index(drop=True)
 
 
@@ -98,8 +126,16 @@ def map_tf_names_to_gene_symbols(
     """
     if hocomoco_tf_gene_symbols is None:
         hocomoco_tf_gene_symbols = read_hocomoco_tf_gene_symbols()
-    lookup = (dict(zip(hocomoco_tf_gene_symbols["tf"], hocomoco_tf_gene_symbols["tf_gene_symbol"]))
-              if len(hocomoco_tf_gene_symbols) else {})
+    lookup = (
+        dict(
+            zip(
+                hocomoco_tf_gene_symbols["tf"],
+                hocomoco_tf_gene_symbols["tf_gene_symbol"],
+            )
+        )
+        if len(hocomoco_tf_gene_symbols)
+        else {}
+    )
     rows = []
     for tf in pd.unique(pd.Series(list(tf_names), dtype=str)):
         if tf in lookup:
@@ -125,17 +161,24 @@ def read_hocomoco_tf_families(path: str = HOCOMOCO_V11_ANNOTATION_PATH) -> pd.Da
     factors``; the first of several ``;``-separated families); ``TF subfamily`` when the family is blank;
     the TF name when both are blank.
     One row per TF name (first model in file order)."""
-    annotation = pd.read_csv(path, sep="\t", usecols=["Model", "TF family", "TF subfamily"], dtype=str)
+    annotation = pd.read_csv(
+        path, sep="\t", usecols=["Model", "TF family", "TF subfamily"], dtype=str
+    )
     tf = annotation["Model"].str.split("_", n=1).str[0]
     family = annotation["TF family"].fillna("").map(strip_tfclass_code)
     subfamily = annotation["TF subfamily"].fillna("").map(strip_tfclass_code)
     family = family.where(family != "", subfamily)
     family = family.where(family != "", tf)
-    return pd.DataFrame({"tf": tf, "motif_family": family}).drop_duplicates("tf").reset_index(drop=True)
+    return (
+        pd.DataFrame({"tf": tf, "motif_family": family})
+        .drop_duplicates("tf")
+        .reset_index(drop=True)
+    )
 
 
-def resolve_database_tf_to_gene(tf_name: str, gene_set: set, tf_name_to_symbol: dict,
-                                gene_without_hyphen: dict) -> Optional[str]:
+def resolve_database_tf_to_gene(
+    tf_name: str, gene_set: set, tf_name_to_symbol: dict, gene_without_hyphen: dict
+) -> Optional[str]:
     """A TF name from a motif database -> expressed gene symbol, or None: the name itself; else its
     HOCOMOCO mnemonic's gene (``ANDR`` -> ``AR``, ``NF2L2`` -> ``NFE2L2``); else the gene with hyphens
     removed (``NKX61`` -> ``NKX6-1``)."""
@@ -170,11 +213,17 @@ def map_motif_families_to_gene_symbols(
         hocomoco = read_hocomoco_tf_gene_symbols()
         tf_name_to_symbol = dict(zip(hocomoco["tf"], hocomoco["tf_gene_symbol"]))
     gene_set = set(map(str, genes))
-    gene_without_hyphen = {gene.replace("-", ""): gene for gene in gene_set if "-" in gene}
+    gene_without_hyphen = {
+        gene.replace("-", ""): gene for gene in gene_set if "-" in gene
+    }
     rows = []
     for family, database_tfs in family_database_tfs.items():
-        members = [resolve_database_tf_to_gene(str(tf), gene_set, tf_name_to_symbol, gene_without_hyphen)
-                   for tf in database_tfs]
+        members = [
+            resolve_database_tf_to_gene(
+                str(tf), gene_set, tf_name_to_symbol, gene_without_hyphen
+            )
+            for tf in database_tfs
+        ]
         members = list(dict.fromkeys(member for member in members if member))
         if members:
             rows.extend((family, gene, "motifcompendium") for gene in members)
@@ -187,6 +236,7 @@ def map_motif_families_to_gene_symbols(
 # Evidence tables
 # ---------------------------------------------------------------------------
 
+
 def rank_genes_in_programs(gene_spectra_score: pd.DataFrame) -> pd.DataFrame:
     """Long table program, gene, loading_rank (1 = highest score; NaN scores rank last; ties by gene order).
 
@@ -197,9 +247,15 @@ def rank_genes_in_programs(gene_spectra_score: pd.DataFrame) -> pd.DataFrame:
     for program, scores in gene_spectra_score.iterrows():
         values = scores.to_numpy(dtype=float)
         order = np.argsort(np.where(np.isnan(values), np.inf, -values), kind="stable")
-        rows.append(pd.DataFrame({
-            "program": program, "gene": scores.index[order], "loading_rank": np.arange(1, len(order) + 1),
-        }))
+        rows.append(
+            pd.DataFrame(
+                {
+                    "program": program,
+                    "gene": scores.index[order],
+                    "loading_rank": np.arange(1, len(order) + 1),
+                }
+            )
+        )
     return pd.concat(rows, ignore_index=True)
 
 
@@ -245,21 +301,36 @@ def nominate_candidate_tfs(
     DataFrame (``CANDIDATE_TF_COLUMNS`` + carried columns) sorted by program, element_type, evidence tier, fdr.
     """
     if "significant" in motif_results.columns:
-        is_enriched = motif_results["significant"].astype(str).str.lower().isin({"true", "1", "yes"})
+        is_enriched = (
+            motif_results["significant"]
+            .astype(str)
+            .str.lower()
+            .isin({"true", "1", "yes"})
+        )
     else:
-        is_enriched = (motif_results["fdr"] < motif_fdr_threshold) & (motif_results["enrichment"] > 1)
+        is_enriched = (motif_results["fdr"] < motif_fdr_threshold) & (
+            motif_results["enrichment"] > 1
+        )
     enriched = motif_results[is_enriched.to_numpy()].copy()
-    source_columns = [c for c in ("motif_family", "motif_match_qvalue", "motif_source") if c in enriched.columns]
+    source_columns = [
+        c
+        for c in ("motif_family", "motif_match_qvalue", "motif_source")
+        if c in enriched.columns
+    ]
     enriched["program"] = enriched["program"].astype(str)
     if tf_gene_symbols is None:
         tf_gene_symbols = map_tf_names_to_gene_symbols(enriched["tf"])
-    candidates = enriched[["program", "element_type", "tf", "pvalue", "fdr", "enrichment"] + source_columns].merge(
-        tf_gene_symbols, on="tf", how="left")
+    candidates = enriched[
+        ["program", "element_type", "tf", "pvalue", "fdr", "enrichment"]
+        + source_columns
+    ].merge(tf_gene_symbols, on="tf", how="left")
     unmapped = candidates["tf_gene_symbol"].isna()
     candidates.loc[unmapped, "tf_gene_symbol"] = candidates.loc[unmapped, "tf"]
     candidates.loc[unmapped, "tf_gene_symbol_source"] = "passthrough"
 
-    universe = set(gene_spectra_score.columns if expressed_genes is None else expressed_genes)
+    universe = set(
+        gene_spectra_score.columns if expressed_genes is None else expressed_genes
+    )
     candidates["tf_expressed"] = candidates["tf_gene_symbol"].isin(universe)
 
     scores = gene_spectra_score.copy()
@@ -267,47 +338,84 @@ def nominate_candidate_tfs(
     ranks = rank_genes_in_programs(scores)
     ranks = ranks[ranks["gene"].isin(set(candidates["tf_gene_symbol"]))]
     candidates = candidates.merge(
-        ranks.rename(columns={"gene": "tf_gene_symbol", "loading_rank": "tf_program_loading_rank"}),
-        on=["program", "tf_gene_symbol"], how="left")
-    candidates["tf_in_top_program_genes"] = candidates["tf_program_loading_rank"] <= n_top_genes
+        ranks.rename(
+            columns={
+                "gene": "tf_gene_symbol",
+                "loading_rank": "tf_program_loading_rank",
+            }
+        ),
+        on=["program", "tf_gene_symbol"],
+        how="left",
+    )
+    candidates["tf_in_top_program_genes"] = (
+        candidates["tf_program_loading_rank"] <= n_top_genes
+    )
 
     candidates = candidates.merge(
         summarize_tf_knockdowns(perturbation_results, perturbation_columns),
-        on=["program", "tf_gene_symbol"], how="left")
+        on=["program", "tf_gene_symbol"],
+        how="left",
+    )
     candidates["tf_perturbed"] = candidates["tf_gene_symbol"].isin(
-        perturbed_targets(perturbation_results, perturbation_columns))
-    candidates["tf_knockdown_regulates_program"] = (candidates["knockdown_fdr"] < knockdown_fdr_threshold)
+        perturbed_targets(perturbation_results, perturbation_columns)
+    )
+    candidates["tf_knockdown_regulates_program"] = (
+        candidates["knockdown_fdr"] < knockdown_fdr_threshold
+    )
 
     candidates["evidence_tier"] = np.select(
-        [candidates["tf_knockdown_regulates_program"], candidates["tf_in_top_program_genes"],
-         candidates["tf_expressed"]],
-        EVIDENCE_TIER_ORDER[:3], default=EVIDENCE_TIER_ORDER[3])
-    tier_position = candidates["evidence_tier"].map({t: i for i, t in enumerate(EVIDENCE_TIER_ORDER)})
-    candidates = (candidates.assign(tier_position=tier_position)
-                  .sort_values(["program", "element_type", "tier_position", "fdr"], kind="stable")
-                  .reset_index(drop=True))
+        [
+            candidates["tf_knockdown_regulates_program"],
+            candidates["tf_in_top_program_genes"],
+            candidates["tf_expressed"],
+        ],
+        EVIDENCE_TIER_ORDER[:3],
+        default=EVIDENCE_TIER_ORDER[3],
+    )
+    tier_position = candidates["evidence_tier"].map(
+        {t: i for i, t in enumerate(EVIDENCE_TIER_ORDER)}
+    )
+    candidates = (
+        candidates.assign(tier_position=tier_position)
+        .sort_values(["program", "element_type", "tier_position", "fdr"], kind="stable")
+        .reset_index(drop=True)
+    )
     columns = list(CANDIDATE_TF_COLUMNS)
     if "motif_family" in source_columns:
         columns.insert(columns.index("tf") + 1, "motif_family")
     return candidates[columns + [c for c in source_columns if c != "motif_family"]]
 
 
-def standardize_perturbation_results(perturbation_results: pd.DataFrame, perturbation_columns=None) -> pd.DataFrame:
+def standardize_perturbation_results(
+    perturbation_results: pd.DataFrame, perturbation_columns=None
+) -> pd.DataFrame:
     table = perturbation_results.rename(columns=perturbation_columns or {})
     missing = {"target_name", "program_name", "log2FC", "adj_pval"} - set(table.columns)
     if missing:
-        raise ValueError(f"perturbation_results missing columns {sorted(missing)}; use perturbation_columns")
-    return table.assign(program_name=table["program_name"].astype(str),
-                        target_name=table["target_name"].astype(str))
+        raise ValueError(
+            f"perturbation_results missing columns {sorted(missing)}; use perturbation_columns"
+        )
+    return table.assign(
+        program_name=table["program_name"].astype(str),
+        target_name=table["target_name"].astype(str),
+    )
 
 
-def perturbed_targets(perturbation_results: Optional[pd.DataFrame], perturbation_columns=None) -> set:
+def perturbed_targets(
+    perturbation_results: Optional[pd.DataFrame], perturbation_columns=None
+) -> set:
     if perturbation_results is None:
         return set()
-    return set(standardize_perturbation_results(perturbation_results, perturbation_columns)["target_name"])
+    return set(
+        standardize_perturbation_results(perturbation_results, perturbation_columns)[
+            "target_name"
+        ]
+    )
 
 
-def summarize_tf_knockdowns(perturbation_results: Optional[pd.DataFrame], perturbation_columns=None) -> pd.DataFrame:
+def summarize_tf_knockdowns(
+    perturbation_results: Optional[pd.DataFrame], perturbation_columns=None
+) -> pd.DataFrame:
     """Per (program, target gene): knockdown_log2fc, knockdown_fdr from the row with the smallest adj_pval.
 
     Rows repeat when per-sample association files are concatenated: taking the minimum adj_pval means a
@@ -315,14 +423,23 @@ def summarize_tf_knockdowns(perturbation_results: Optional[pd.DataFrame], pertur
     """
     columns = ["program", "tf_gene_symbol", "knockdown_log2fc", "knockdown_fdr"]
     if perturbation_results is None:
-        return pd.DataFrame(columns=columns).astype({"program": str, "tf_gene_symbol": str,
-                                                     "knockdown_log2fc": float, "knockdown_fdr": float})
+        return pd.DataFrame(columns=columns).astype(
+            {
+                "program": str,
+                "tf_gene_symbol": str,
+                "knockdown_log2fc": float,
+                "knockdown_fdr": float,
+            }
+        )
     table = standardize_perturbation_results(perturbation_results, perturbation_columns)
-    table = (table.sort_values("adj_pval", kind="stable")
-             .drop_duplicates(["program_name", "target_name"], keep="first"))
-    return pd.DataFrame({
-        "program": table["program_name"].to_numpy(),
-        "tf_gene_symbol": table["target_name"].to_numpy(),
-        "knockdown_log2fc": table["log2FC"].to_numpy(dtype=float),
-        "knockdown_fdr": table["adj_pval"].to_numpy(dtype=float),
-    })
+    table = table.sort_values("adj_pval", kind="stable").drop_duplicates(
+        ["program_name", "target_name"], keep="first"
+    )
+    return pd.DataFrame(
+        {
+            "program": table["program_name"].to_numpy(),
+            "tf_gene_symbol": table["target_name"].to_numpy(),
+            "knockdown_log2fc": table["log2FC"].to_numpy(dtype=float),
+            "knockdown_fdr": table["adj_pval"].to_numpy(dtype=float),
+        }
+    )

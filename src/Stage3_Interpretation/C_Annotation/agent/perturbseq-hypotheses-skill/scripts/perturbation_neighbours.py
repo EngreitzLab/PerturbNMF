@@ -76,38 +76,58 @@ def die(msg: str) -> None:
     sys.exit(f"ERROR: {msg}")
 
 
-def load_matrix(path: Path, target_col: str, program_col: str, effect_col: str) -> pd.DataFrame:
+def load_matrix(
+    path: Path, target_col: str, program_col: str, effect_col: str
+) -> pd.DataFrame:
     df = pd.read_csv(path, sep=None, engine="python")
     if {target_col, program_col, effect_col} <= set(df.columns):
-        mat = df.pivot_table(index=target_col, columns=program_col,
-                             values=effect_col, aggfunc="mean")
+        mat = df.pivot_table(
+            index=target_col, columns=program_col, values=effect_col, aggfunc="mean"
+        )
     elif target_col in df.columns:
         mat = df.set_index(target_col)
         mat = mat.select_dtypes(include=[np.number])
     else:
-        die(f"{path.name}: expected a long table with "
+        die(
+            f"{path.name}: expected a long table with "
             f"({target_col}, {program_col}, {effect_col}) or a wide matrix indexed by "
-            f"{target_col!r}. Present: {sorted(df.columns)[:15]}")
+            f"{target_col!r}. Present: {sorted(df.columns)[:15]}"
+        )
     mat.columns = [str(c) for c in mat.columns]
     return mat
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--effects", type=Path, required=True)
     ap.add_argument("--target-col", default="gene")
     ap.add_argument("--program-col", default="program")
     ap.add_argument("--effect-col", default="log2FC")
-    ap.add_argument("--exclude-programs", nargs="*", default=[],
-                    help="technical programs to drop before correlating (CNV, cell cycle, ambient)")
+    ap.add_argument(
+        "--exclude-programs",
+        nargs="*",
+        default=[],
+        help="technical programs to drop before correlating (CNV, cell cycle, ambient)",
+    )
     ap.add_argument("--exclude-targets", nargs="*", default=["non-targeting"])
-    ap.add_argument("--min-effect", type=float, default=0.0,
-                    help="max |effect| below which a target is marked low_signal")
-    ap.add_argument("--k", type=int, default=6, help="neighbours to report per direction")
+    ap.add_argument(
+        "--min-effect",
+        type=float,
+        default=0.0,
+        help="max |effect| below which a target is marked low_signal",
+    )
+    ap.add_argument(
+        "--k", type=int, default=6, help="neighbours to report per direction"
+    )
     ap.add_argument("--out", type=Path, required=True)
-    ap.add_argument("--matrix-out", type=Path, default=None,
-                    help="also write the full target x target correlation matrix")
+    ap.add_argument(
+        "--matrix-out",
+        type=Path,
+        default=None,
+        help="also write the full target x target correlation matrix",
+    )
     args = ap.parse_args()
 
     mat = load_matrix(args.effects, args.target_col, args.program_col, args.effect_col)
@@ -115,25 +135,35 @@ def main() -> None:
     drop = [str(p) for p in args.exclude_programs]
     unknown = [p for p in drop if p not in mat.columns]
     if unknown:
-        die(f"--exclude-programs not present in the matrix: {unknown}. "
-            f"Columns look like: {list(mat.columns)[:8]}")
+        die(
+            f"--exclude-programs not present in the matrix: {unknown}. "
+            f"Columns look like: {list(mat.columns)[:8]}"
+        )
     if drop:
         mat = mat.drop(columns=drop)
         print(f"  dropped {len(drop)} technical programs: {drop}")
 
-    mat = mat.drop(index=[t for t in args.exclude_targets if t in mat.index], errors="ignore")
+    mat = mat.drop(
+        index=[t for t in args.exclude_targets if t in mat.index], errors="ignore"
+    )
 
     if mat.isna().any().any():
         n = int(mat.isna().sum().sum())
-        print(f"  WARNING: {n} missing values -> 0. Prefer an effect table with no gaps.")
+        print(
+            f"  WARNING: {n} missing values -> 0. Prefer an effect table with no gaps."
+        )
         mat = mat.fillna(0.0)
 
     print(f"  {mat.shape[0]} targets x {mat.shape[1]} programs")
 
     max_abs = mat.abs().max(axis=1)
-    low_signal = set(max_abs[max_abs < args.min_effect].index) if args.min_effect > 0 else set()
+    low_signal = (
+        set(max_abs[max_abs < args.min_effect].index) if args.min_effect > 0 else set()
+    )
     if low_signal:
-        print(f"  {len(low_signal)} targets marked low_signal (max |effect| < {args.min_effect})")
+        print(
+            f"  {len(low_signal)} targets marked low_signal (max |effect| < {args.min_effect})"
+        )
 
     # Pearson across programs, each target's vector centred on its own mean.
     # Blank the diagonal on the ndarray before wrapping it: a DataFrame built straight from
@@ -147,15 +177,21 @@ def main() -> None:
         s = corr.loc[target].dropna().sort_values(ascending=False)
         pos = s.head(args.k)
         neg = s.tail(args.k).sort_values()
-        rows.append({
-            "target": target,
-            "max_abs_effect": round(float(max_abs.loc[target]), 4),
-            "low_signal": target in low_signal,
-            "top_positive_neighbours": "; ".join(f"{g} {v:+.2f}" for g, v in pos.items()),
-            "top_negative_neighbours": "; ".join(f"{g} {v:+.2f}" for g, v in neg.items()),
-            "best_positive_r": round(float(pos.iloc[0]), 4) if len(pos) else None,
-            "best_negative_r": round(float(neg.iloc[0]), 4) if len(neg) else None,
-        })
+        rows.append(
+            {
+                "target": target,
+                "max_abs_effect": round(float(max_abs.loc[target]), 4),
+                "low_signal": target in low_signal,
+                "top_positive_neighbours": "; ".join(
+                    f"{g} {v:+.2f}" for g, v in pos.items()
+                ),
+                "top_negative_neighbours": "; ".join(
+                    f"{g} {v:+.2f}" for g, v in neg.items()
+                ),
+                "best_positive_r": round(float(pos.iloc[0]), 4) if len(pos) else None,
+                "best_negative_r": round(float(neg.iloc[0]), 4) if len(neg) else None,
+            }
+        )
 
     out = pd.DataFrame(rows)
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -166,9 +202,15 @@ def main() -> None:
         corr.to_csv(args.matrix_out)
         print(f"-> {args.matrix_out}")
 
-    print("\nIn the report: quote the neighbours as a plain sentence, not a coefficient dump.")
-    print('  "Knockdown mirrors loss of insulin signalling (Insr +0.70, Irs1 +0.69, Pik3ca +0.63)."')
-    print("Strong negative neighbours with a well-understood partner -> the `mirror` class.")
+    print(
+        "\nIn the report: quote the neighbours as a plain sentence, not a coefficient dump."
+    )
+    print(
+        '  "Knockdown mirrors loss of insulin signalling (Insr +0.70, Irs1 +0.69, Pik3ca +0.63)."'
+    )
+    print(
+        "Strong negative neighbours with a well-understood partner -> the `mirror` class."
+    )
 
 
 if __name__ == "__main__":

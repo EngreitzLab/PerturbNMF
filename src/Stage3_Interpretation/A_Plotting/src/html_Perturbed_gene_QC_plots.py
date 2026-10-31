@@ -14,6 +14,7 @@ module renders one self-contained share folder containing:
 Re-uses the styling, Plotly template, and most figure makers from
 html_Program_QC_plots.py so the two share folders look identical.
 """
+
 from __future__ import annotations
 
 import os
@@ -34,12 +35,26 @@ from .Perturbed_gene_QC_plots import (
     perturbed_gene_dotplot,
 )
 from .html_Program_QC_plots import (
-    PLOTLY_CDN, GOOGLE_FONTS,
-    COLOR_UP, COLOR_DOWN, COLOR_NS, COLOR_NEUTRAL, COLOR_ACCENT,
-    _PLOTLY_TEMPLATE, _STYLE_CSS,
-    _sanitize, _write_json, _safe_sample_key,
-    _fmt_layout, _empty_fig, _fig_to_div, _write_plotly_js,
-    _make_correlations_fig, _make_log2fc_fig, _make_volcano_fig, _make_waterfall_fig,
+    PLOTLY_CDN,
+    GOOGLE_FONTS,
+    COLOR_UP,
+    COLOR_DOWN,
+    COLOR_NS,
+    COLOR_NEUTRAL,
+    COLOR_ACCENT,
+    _PLOTLY_TEMPLATE,
+    _STYLE_CSS,
+    _sanitize,
+    _write_json,
+    _safe_sample_key,
+    _fmt_layout,
+    _empty_fig,
+    _fig_to_div,
+    _write_plotly_js,
+    _make_correlations_fig,
+    _make_log2fc_fig,
+    _make_volcano_fig,
+    _make_waterfall_fig,
 )
 
 
@@ -64,13 +79,22 @@ def _get_dense_cnmf_X(mdata, prog_key="cNMF"):
     if key in _cnmf_X_cache:
         return _cnmf_X_cache[key]
     _cnmf_X_cache.clear()  # drop stale entry from any prior mdata
-    dense = np.asarray(X_raw.toarray()) if hasattr(X_raw, "toarray") else np.asarray(X_raw)
+    dense = (
+        np.asarray(X_raw.toarray()) if hasattr(X_raw, "toarray") else np.asarray(X_raw)
+    )
     _cnmf_X_cache[key] = dense
     return dense
 
 
-def _build_top_programs(mdata, target_gene, top_n, ensembl_to_symbol_file, gene_name_key,
-                        data_key="rna", prog_key="cNMF"):
+def _build_top_programs(
+    mdata,
+    target_gene,
+    top_n,
+    ensembl_to_symbol_file,
+    gene_name_key,
+    data_key="rna",
+    prog_key="cNMF",
+):
     """Top N programs by gene-loading score for one gene."""
     X = mdata[prog_key].varm["loadings"]  # (programs x genes)
     if ensembl_to_symbol_file is None:
@@ -80,7 +104,10 @@ def _build_top_programs(mdata, target_gene, top_n, ensembl_to_symbol_file, gene_
             col_names = list(mdata[data_key].var_names)
     else:
         from .utilities import rename_list_gene_dictionary
-        col_names = rename_list_gene_dictionary(list(mdata[data_key].var_names), ensembl_to_symbol_file)
+
+        col_names = rename_list_gene_dictionary(
+            list(mdata[data_key].var_names), ensembl_to_symbol_file
+        )
     df = pd.DataFrame(data=X, columns=col_names, index=mdata[prog_key].var_names)
     if target_gene not in df.columns:
         return {"programs": [], "loadings": []}
@@ -107,7 +134,11 @@ def _build_gene_correlations(corr_matrix, target_gene, top_n):
     """Top ± correlated genes from the gene × gene correlation matrix."""
     if target_gene not in corr_matrix.columns:
         return {"programs": [], "r": [], "direction": []}
-    s = corr_matrix.loc[target_gene].drop(target_gene, errors="ignore").sort_values(ascending=False)
+    s = (
+        corr_matrix.loc[target_gene]
+        .drop(target_gene, errors="ignore")
+        .sort_values(ascending=False)
+    )
     top = s[s > 0].head(top_n)
     bottom = s[s < 0].tail(top_n)
     combined = pd.concat([bottom, top])
@@ -118,8 +149,9 @@ def _build_gene_correlations(corr_matrix, target_gene, top_n):
     }
 
 
-def _build_log2fc_gene(perturb_path, target_gene, target_col, program_col,
-                       log2fc_col, num_item, p_value):
+def _build_log2fc_gene(
+    perturb_path, target_gene, target_col, program_col, log2fc_col, num_item, p_value
+):
     """log2FC bars: programs most affected by perturbation of `target_gene`."""
     df = pd.read_csv(perturb_path, sep="\t")
     df[target_col] = df[target_col].astype(str)
@@ -129,7 +161,9 @@ def _build_log2fc_gene(perturb_path, target_gene, target_col, program_col,
     sub = sub[sub["adj_pval"] < p_value].sort_values(by=log2fc_col, ascending=False)
     top = sub.head(num_item)
     bottom = sub.tail(num_item)
-    plot_data = pd.merge(top, bottom, how="outer").sort_values(by=log2fc_col, ascending=False)
+    plot_data = pd.merge(top, bottom, how="outer").sort_values(
+        by=log2fc_col, ascending=False
+    )
     return {
         "regulators": [str(p) for p in plot_data[program_col].values],
         "log2fc": [float(x) for x in plot_data[log2fc_col].values],
@@ -137,14 +171,27 @@ def _build_log2fc_gene(perturb_path, target_gene, target_col, program_col,
     }
 
 
-def _build_volcano_gene(perturb_path, target_gene, target_col, program_col,
-                        log2fc_col, down_thred_log, up_thred_log, p_value):
+def _build_volcano_gene(
+    perturb_path,
+    target_gene,
+    target_col,
+    program_col,
+    log2fc_col,
+    down_thred_log,
+    up_thred_log,
+    p_value,
+):
     """Volcano: all programs as effect of perturbing `target_gene`."""
     df = pd.read_csv(perturb_path, sep="\t")
     df[target_col] = df[target_col].astype(str)
     if target_gene not in df[target_col].values:
-        return {"regulators": [], "log2fc": [], "neglog10p": [], "category": [],
-                "thresholds": {"down": down_thred_log, "up": up_thred_log, "p": p_value}}
+        return {
+            "regulators": [],
+            "log2fc": [],
+            "neglog10p": [],
+            "category": [],
+            "thresholds": {"down": down_thred_log, "up": up_thred_log, "p": p_value},
+        }
     sub = df.loc[df[target_col] == target_gene].copy()
     sub["neglog10p"] = -np.log10(sub["adj_pval"].clip(lower=1e-300))
     cats = []
@@ -162,11 +209,17 @@ def _build_volcano_gene(perturb_path, target_gene, target_col, program_col,
         "neglog10p": [float(x) for x in sub["neglog10p"].values],
         "adj_pval": [float(x) for x in sub["adj_pval"].values],
         "category": cats,
-        "thresholds": {"down": float(down_thred_log), "up": float(up_thred_log), "p": float(p_value)},
+        "thresholds": {
+            "down": float(down_thred_log),
+            "up": float(up_thred_log),
+            "p": float(p_value),
+        },
     }
 
 
-def _build_programs_dotplot(mdata, program_list, groupby, data_key="rna", prog_key="cNMF"):
+def _build_programs_dotplot(
+    mdata, program_list, groupby, data_key="rna", prog_key="cNMF"
+):
     """Program loading dotplot data: program × condition (mean + frac>0)."""
     if not program_list:
         return {"genes": [], "conditions": [], "mean": [], "frac": []}
@@ -223,9 +276,17 @@ def _build_gene_waterfall(corr_matrix, target_gene, top_num):
     }
 
 
-def _build_kd_vs_control(mdata, target_gene, condition_key, control_target_name, gene_name_key,
-                         data_key="rna", prog_key="cNMF",
-                         guide_targets_key="guide_targets", guide_assignment_key="guide_assignment"):
+def _build_kd_vs_control(
+    mdata,
+    target_gene,
+    condition_key,
+    control_target_name,
+    gene_name_key,
+    data_key="rna",
+    prog_key="cNMF",
+    guide_targets_key="guide_targets",
+    guide_assignment_key="guide_assignment",
+):
     """KD vs control bar data per condition. Mirrors plot_perturbation_vs_control_by_condition logic."""
     from scipy import sparse
 
@@ -237,7 +298,9 @@ def _build_kd_vs_control(mdata, target_gene, condition_key, control_target_name,
     X = mdata[data_key].X
 
     if gene_name_key is not None and gene_name_key in mdata[data_key].var.columns:
-        gene_mask = (mdata[data_key].var[gene_name_key].astype(str) == target_gene).values
+        gene_mask = (
+            mdata[data_key].var[gene_name_key].astype(str) == target_gene
+        ).values
     else:
         gene_mask = np.array([v == target_gene for v in mdata[data_key].var_names])
     if gene_mask.sum() == 0:
@@ -255,7 +318,10 @@ def _build_kd_vs_control(mdata, target_gene, condition_key, control_target_name,
 
     nt_idx = np.where(np.isin(guide_targets, control_target_name))[0]
     if len(nt_idx) == 0:
-        return {"groups": [], "error": f"control target '{control_target_name}' not in guide_targets"}
+        return {
+            "groups": [],
+            "error": f"control target '{control_target_name}' not in guide_targets",
+        }
     control_mask = np.asarray(ga[:, nt_idx].sum(axis=1)).flatten() > 0
 
     target_idx = np.where(guide_targets == target_gene)[0]
@@ -270,7 +336,14 @@ def _build_kd_vs_control(mdata, target_gene, condition_key, control_target_name,
         conditions = sorted(conditions_series.unique())
     group_labels = ["All"] + [str(c) for c in conditions]
 
-    pert_means, ctrl_means, pert_sems, ctrl_sems, pert_ns, ctrl_ns = [], [], [], [], [], []
+    pert_means, ctrl_means, pert_sems, ctrl_sems, pert_ns, ctrl_ns = (
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
     for label in group_labels:
         if label == "All":
             cond_mask = np.ones(len(gene_expr_norm), dtype=bool)
@@ -316,17 +389,25 @@ def _build_kd_vs_control(mdata, target_gene, condition_key, control_target_name,
 # Plotly figure makers for the gene-specific panels
 # ---------------------------------------------------------------------------
 
+
 def _make_top_programs_fig(data):
     if not data["programs"]:
         return _empty_fig("No program loadings")
-    fig = go.Figure(go.Bar(
-        x=data["loadings"], y=data["programs"], orientation="h",
-        marker=dict(color=COLOR_NEUTRAL, line=dict(width=0)),
-        hovertemplate="Program %{y}<br>Loading: %{x:.3g}<extra></extra>",
-    ))
-    fig.update_layout(xaxis_title="Gene loading", yaxis_title="Program",
-                      xaxis=dict(exponentformat="none"),
-                      yaxis=dict(type="category"))
+    fig = go.Figure(
+        go.Bar(
+            x=data["loadings"],
+            y=data["programs"],
+            orientation="h",
+            marker=dict(color=COLOR_NEUTRAL, line=dict(width=0)),
+            hovertemplate="Program %{y}<br>Loading: %{x:.3g}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        xaxis_title="Gene loading",
+        yaxis_title="Program",
+        xaxis=dict(exponentformat="none"),
+        yaxis=dict(type="category"),
+    )
     return _fmt_layout(fig)
 
 
@@ -344,15 +425,33 @@ def _make_programs_dotplot_fig(data):
             sizes.append(4 + 20 * (f / max_frac))
             colors.append(m)
             hovers.append(f"Program {prog}<br>{cond}<br>mean={m:.3f}<br>frac={f:.2f}")
-    fig = go.Figure(go.Scatter(
-        x=xs, y=ys, mode="markers",
-        marker=dict(size=sizes, color=colors, colorscale="Blues", showscale=True,
-                    colorbar=dict(title=dict(text="mean<br>loading", side="right"), thickness=8, len=0.7),
-                    line=dict(width=0)),
-        text=hovers, hovertemplate="%{text}<extra></extra>",
-    ))
-    fig.update_layout(xaxis_title="Condition", yaxis_title="Program",
-                      xaxis=dict(type="category"), yaxis=dict(type="category"))
+    fig = go.Figure(
+        go.Scatter(
+            x=xs,
+            y=ys,
+            mode="markers",
+            marker=dict(
+                size=sizes,
+                color=colors,
+                colorscale="Blues",
+                showscale=True,
+                colorbar=dict(
+                    title=dict(text="mean<br>loading", side="right"),
+                    thickness=8,
+                    len=0.7,
+                ),
+                line=dict(width=0),
+            ),
+            text=hovers,
+            hovertemplate="%{text}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        xaxis_title="Condition",
+        yaxis_title="Program",
+        xaxis=dict(type="category"),
+        yaxis=dict(type="category"),
+    )
     return _fmt_layout(fig)
 
 
@@ -365,37 +464,58 @@ def _make_kd_vs_control_fig(data):
     ctrl = [v if v is not None else 0.0 for v in data["ctrl_means"]]
     pert_sem = data["pert_sems"]
     ctrl_sem = data["ctrl_sems"]
-    tick_labels = [f"{g}<br>[{p}|{c}]" for g, p, c in zip(groups, data["pert_n"], data["ctrl_n"])]
+    tick_labels = [
+        f"{g}<br>[{p}|{c}]" for g, p, c in zip(groups, data["pert_n"], data["ctrl_n"])
+    ]
 
     fig = go.Figure()
-    fig.add_trace(go.Bar(
-        name=data["target_gene"],
-        x=groups, y=pert,
-        error_y=dict(type="data", array=pert_sem, color="#222", thickness=1.2, width=4),
-        marker=dict(color=COLOR_UP, line=dict(width=0)),
-        customdata=list(zip(data["pert_n"], pert_sem)),
-        hovertemplate="<b>%{x}</b><br>"
-                       f"{data['target_gene']}: " "%{y:.1%} of control<br>"
-                       "n=%{customdata[0]}<br>SEM=%{customdata[1]:.3f}<extra></extra>",
-    ))
-    fig.add_trace(go.Bar(
-        name=f"control ({data['control_name']})",
-        x=groups, y=ctrl,
-        error_y=dict(type="data", array=ctrl_sem, color="#222", thickness=1.2, width=4),
-        marker=dict(color=COLOR_NEUTRAL, line=dict(width=0)),
-        customdata=list(zip(data["ctrl_n"], ctrl_sem)),
-        hovertemplate="<b>%{x}</b><br>control: %{y:.1%}<br>"
-                       "n=%{customdata[0]}<br>SEM=%{customdata[1]:.3f}<extra></extra>",
-    ))
+    fig.add_trace(
+        go.Bar(
+            name=data["target_gene"],
+            x=groups,
+            y=pert,
+            error_y=dict(
+                type="data", array=pert_sem, color="#222", thickness=1.2, width=4
+            ),
+            marker=dict(color=COLOR_UP, line=dict(width=0)),
+            customdata=list(zip(data["pert_n"], pert_sem)),
+            hovertemplate="<b>%{x}</b><br>"
+            f"{data['target_gene']}: "
+            "%{y:.1%} of control<br>"
+            "n=%{customdata[0]}<br>SEM=%{customdata[1]:.3f}<extra></extra>",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
+            name=f"control ({data['control_name']})",
+            x=groups,
+            y=ctrl,
+            error_y=dict(
+                type="data", array=ctrl_sem, color="#222", thickness=1.2, width=4
+            ),
+            marker=dict(color=COLOR_NEUTRAL, line=dict(width=0)),
+            customdata=list(zip(data["ctrl_n"], ctrl_sem)),
+            hovertemplate="<b>%{x}</b><br>control: %{y:.1%}<br>"
+            "n=%{customdata[0]}<br>SEM=%{customdata[1]:.3f}<extra></extra>",
+        )
+    )
     fig.add_hline(y=1.0, line_dash="dash", line_color="#888", line_width=1)
     fig.update_layout(
         barmode="group",
-        xaxis=dict(tickmode="array", tickvals=groups, ticktext=tick_labels, type="category"),
+        xaxis=dict(
+            tickmode="array", tickvals=groups, ticktext=tick_labels, type="category"
+        ),
         yaxis=dict(tickformat=".0%", range=[0, 1.20]),
         xaxis_title="Condition  [n perturbed | n control]",
         yaxis_title=f"{data['target_gene']} expression (% of control)",
-        legend=dict(orientation="h", x=1, xanchor="right", y=1.08, yanchor="bottom",
-                    bgcolor="rgba(0,0,0,0)"),
+        legend=dict(
+            orientation="h",
+            x=1,
+            xanchor="right",
+            y=1.08,
+            yanchor="bottom",
+            bgcolor="rgba(0,0,0,0)",
+        ),
     )
     return _fmt_layout(fig, height=300)
 
@@ -404,14 +524,27 @@ def _make_kd_vs_control_fig(data):
 # Matplotlib → PNG renderers
 # ---------------------------------------------------------------------------
 
-def _render_umap_expression_png(mdata, target_gene, out_path, ensembl_to_symbol_file,
-                                 gene_name_key, umap_dot_size, subsample_frac, data_key="rna"):
+
+def _render_umap_expression_png(
+    mdata,
+    target_gene,
+    out_path,
+    ensembl_to_symbol_file,
+    gene_name_key,
+    umap_dot_size,
+    subsample_frac,
+    data_key="rna",
+):
     fig, ax = plt.subplots(figsize=(5, 4))
     plot_umap_per_gene(
-        mdata=mdata, Target_Gene=target_gene, ax=ax,
+        mdata=mdata,
+        Target_Gene=target_gene,
+        ax=ax,
         ensembl_to_symbol_file=ensembl_to_symbol_file,
-        gene_name_key=gene_name_key, size=umap_dot_size,
-        umap_subsample_frac=subsample_frac, data_key=data_key,
+        gene_name_key=gene_name_key,
+        size=umap_dot_size,
+        umap_subsample_frac=subsample_frac,
+        data_key=data_key,
     )
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -419,15 +552,28 @@ def _render_umap_expression_png(mdata, target_gene, out_path, ensembl_to_symbol_
     plt.close(fig)
 
 
-def _render_umap_guide_png(mdata, target_gene, out_path, umap_dot_size, subsample_frac,
-                           data_key="rna", prog_key="cNMF",
-                           guide_targets_key="guide_targets", guide_assignment_key="guide_assignment"):
+def _render_umap_guide_png(
+    mdata,
+    target_gene,
+    out_path,
+    umap_dot_size,
+    subsample_frac,
+    data_key="rna",
+    prog_key="cNMF",
+    guide_targets_key="guide_targets",
+    guide_assignment_key="guide_assignment",
+):
     fig, ax = plt.subplots(figsize=(5, 4))
     plot_umap_per_gene_guide(
-        mdata=mdata, Target_Gene=target_gene, ax=ax,
-        size=umap_dot_size, umap_subsample_frac=subsample_frac,
-        data_key=data_key, prog_key=prog_key,
-        guide_targets_key=guide_targets_key, guide_assignment_key=guide_assignment_key,
+        mdata=mdata,
+        Target_Gene=target_gene,
+        ax=ax,
+        size=umap_dot_size,
+        umap_subsample_frac=subsample_frac,
+        data_key=data_key,
+        prog_key=prog_key,
+        guide_targets_key=guide_targets_key,
+        guide_assignment_key=guide_assignment_key,
     )
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -435,8 +581,15 @@ def _render_umap_guide_png(mdata, target_gene, out_path, umap_dot_size, subsampl
     plt.close(fig)
 
 
-def _render_gene_dotplot_png(mdata, target_gene, out_path,
-                              ensembl_to_symbol_file, groupby, gene_name_key, data_key="rna"):
+def _render_gene_dotplot_png(
+    mdata,
+    target_gene,
+    out_path,
+    ensembl_to_symbol_file,
+    groupby,
+    gene_name_key,
+    data_key="rna",
+):
     """Render the scanpy dotplot for the target gene to a PNG (standalone mode).
 
     Note: perturbed_gene_dotplot calls plt.close() internally when show=False,
@@ -446,11 +599,16 @@ def _render_gene_dotplot_png(mdata, target_gene, out_path,
     out_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         ax = perturbed_gene_dotplot(
-            mdata=mdata, Target_Gene=target_gene,
+            mdata=mdata,
+            Target_Gene=target_gene,
             ensembl_to_symbol_file=ensembl_to_symbol_file,
-            dotplot_groupby=groupby, gene_name_key=gene_name_key,
+            dotplot_groupby=groupby,
+            gene_name_key=gene_name_key,
             figsize=(4, 3),
-            save_path=None, save_name=None, show=True, ax=None,
+            save_path=None,
+            save_name=None,
+            show=True,
+            ax=None,
             data_key=data_key,
         )
         if ax is None:
@@ -460,8 +618,15 @@ def _render_gene_dotplot_png(mdata, target_gene, out_path,
         plt.close(fig)
     except Exception as e:
         fig, ax = plt.subplots(figsize=(4, 3))
-        ax.text(0.5, 0.5, f"dotplot unavailable\n({e})",
-                ha="center", va="center", fontsize=10, color="#888")
+        ax.text(
+            0.5,
+            0.5,
+            f"dotplot unavailable\n({e})",
+            ha="center",
+            va="center",
+            fontsize=10,
+            color="#888",
+        )
         ax.set_axis_off()
         fig.savefig(str(out_path), format="png", bbox_inches="tight", dpi=150)
         plt.close(fig)
@@ -561,6 +726,7 @@ _SAMPLE_BLOCK = """<div class="sample-row">
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def export_gene_html(
     mdata,
     perturb_path_base,
@@ -621,21 +787,50 @@ def export_gene_html(
     (gene_dir / "images").mkdir(parents=True, exist_ok=True)
 
     # ---- images (matplotlib → PNG) ----
-    _render_umap_expression_png(mdata, Target_Gene, gene_dir / "images" / "umap_expression.png",
-                                 ensembl_to_symbol_file, gene_name_key, umap_dot_size, subsample_frac,
-                                 data_key=data_key)
-    _render_umap_guide_png(mdata, Target_Gene, gene_dir / "images" / "umap_guide.png",
-                            umap_dot_size, subsample_frac,
-                            data_key=data_key, prog_key=prog_key,
-                            guide_targets_key=guide_targets_key, guide_assignment_key=guide_assignment_key)
-    _render_gene_dotplot_png(mdata, Target_Gene, gene_dir / "images" / "gene_dotplot.png",
-                              ensembl_to_symbol_file, groupby, gene_name_key, data_key=data_key)
+    _render_umap_expression_png(
+        mdata,
+        Target_Gene,
+        gene_dir / "images" / "umap_expression.png",
+        ensembl_to_symbol_file,
+        gene_name_key,
+        umap_dot_size,
+        subsample_frac,
+        data_key=data_key,
+    )
+    _render_umap_guide_png(
+        mdata,
+        Target_Gene,
+        gene_dir / "images" / "umap_guide.png",
+        umap_dot_size,
+        subsample_frac,
+        data_key=data_key,
+        prog_key=prog_key,
+        guide_targets_key=guide_targets_key,
+        guide_assignment_key=guide_assignment_key,
+    )
+    _render_gene_dotplot_png(
+        mdata,
+        Target_Gene,
+        gene_dir / "images" / "gene_dotplot.png",
+        ensembl_to_symbol_file,
+        groupby,
+        gene_name_key,
+        data_key=data_key,
+    )
 
     # ---- header-row interactive panels ----
-    top_programs_d = _build_top_programs(mdata, Target_Gene, top_n_programs,
-                                          ensembl_to_symbol_file, gene_name_key,
-                                          data_key=data_key, prog_key=prog_key)
-    corr_d = _build_gene_correlations(gene_loading_corr_matrix, Target_Gene, top_corr_genes)
+    top_programs_d = _build_top_programs(
+        mdata,
+        Target_Gene,
+        top_n_programs,
+        ensembl_to_symbol_file,
+        gene_name_key,
+        data_key=data_key,
+        prog_key=prog_key,
+    )
+    corr_d = _build_gene_correlations(
+        gene_loading_corr_matrix, Target_Gene, top_corr_genes
+    )
     _write_json(gene_dir / "data" / "top_programs.json", top_programs_d)
     _write_json(gene_dir / "data" / "correlations.json", corr_d)
 
@@ -643,29 +838,52 @@ def export_gene_html(
     corr_fig = _make_correlations_fig(corr_d)
 
     # ---- wide KD vs control bar ----
-    kd_d = _build_kd_vs_control(mdata, Target_Gene, groupby, control_target_name, gene_name_key,
-                                data_key=data_key, prog_key=prog_key,
-                                guide_targets_key=guide_targets_key, guide_assignment_key=guide_assignment_key)
+    kd_d = _build_kd_vs_control(
+        mdata,
+        Target_Gene,
+        groupby,
+        control_target_name,
+        gene_name_key,
+        data_key=data_key,
+        prog_key=prog_key,
+        guide_targets_key=guide_targets_key,
+        guide_assignment_key=guide_assignment_key,
+    )
     _write_json(gene_dir / "data" / "kd_vs_control.json", kd_d)
     kd_fig = _make_kd_vs_control_fig(kd_d)
 
     # ---- per-sample panels ----
     sample_blocks = []
     sig_per_sample = {}
-    for samp in (sample if plot_perturbation else []):
+    for samp in sample if plot_perturbation else []:
         skey = _safe_sample_key(samp)
         perturb_path = f"{perturb_path_base}_{samp}.txt"
 
-        log2fc_d = _build_log2fc_gene(perturb_path, Target_Gene, perturb_target_col,
-                                       perturb_program_col, perturb_log2fc_col,
-                                       top_n_programs, significance_threshold)
-        volcano_d = _build_volcano_gene(perturb_path, Target_Gene, perturb_target_col,
-                                         perturb_program_col, perturb_log2fc_col,
-                                         volcano_log2fc_min, volcano_log2fc_max,
-                                         significance_threshold)
-        programs_dot_d = _build_programs_dotplot(mdata, log2fc_d["regulators"], groupby,
-                                                  data_key=data_key, prog_key=prog_key)
-        waterfall_d = _build_gene_waterfall(perturb_corr_by_sample[samp], Target_Gene, top_corr_genes)
+        log2fc_d = _build_log2fc_gene(
+            perturb_path,
+            Target_Gene,
+            perturb_target_col,
+            perturb_program_col,
+            perturb_log2fc_col,
+            top_n_programs,
+            significance_threshold,
+        )
+        volcano_d = _build_volcano_gene(
+            perturb_path,
+            Target_Gene,
+            perturb_target_col,
+            perturb_program_col,
+            perturb_log2fc_col,
+            volcano_log2fc_min,
+            volcano_log2fc_max,
+            significance_threshold,
+        )
+        programs_dot_d = _build_programs_dotplot(
+            mdata, log2fc_d["regulators"], groupby, data_key=data_key, prog_key=prog_key
+        )
+        waterfall_d = _build_gene_waterfall(
+            perturb_corr_by_sample[samp], Target_Gene, top_corr_genes
+        )
 
         _write_json(gene_dir / "data" / f"log2fc_{skey}.json", log2fc_d)
         _write_json(gene_dir / "data" / f"volcano_{skey}.json", volcano_d)
@@ -674,13 +892,24 @@ def export_gene_html(
 
         sig_per_sample[samp] = sum(1 for c in volcano_d["category"] if c != "ns")
 
-        sample_blocks.append(_SAMPLE_BLOCK.format(
-            sample=samp,
-            log2fc_div=_fig_to_div(_make_log2fc_fig(log2fc_d), f"div-log2fc-{skey}"),
-            volcano_div=_fig_to_div(_make_volcano_fig(volcano_d), f"div-volcano-{skey}"),
-            dotplot_div=_fig_to_div(_make_programs_dotplot_fig(programs_dot_d), f"div-dotplot-{skey}"),
-            waterfall_div=_fig_to_div(_make_waterfall_fig(waterfall_d, Target_Gene), f"div-waterfall-{skey}"),
-        ))
+        sample_blocks.append(
+            _SAMPLE_BLOCK.format(
+                sample=samp,
+                log2fc_div=_fig_to_div(
+                    _make_log2fc_fig(log2fc_d), f"div-log2fc-{skey}"
+                ),
+                volcano_div=_fig_to_div(
+                    _make_volcano_fig(volcano_d), f"div-volcano-{skey}"
+                ),
+                dotplot_div=_fig_to_div(
+                    _make_programs_dotplot_fig(programs_dot_d), f"div-dotplot-{skey}"
+                ),
+                waterfall_div=_fig_to_div(
+                    _make_waterfall_fig(waterfall_d, Target_Gene),
+                    f"div-waterfall-{skey}",
+                ),
+            )
+        )
 
     # ---- nav strings ----
     position = ""
@@ -695,10 +924,14 @@ def export_gene_html(
 
     # ---- assemble page ----
     page = _PAGE_TEMPLATE.format(
-        gene=Target_Gene, cdn=PLOTLY_CDN, fonts=GOOGLE_FONTS,
+        gene=Target_Gene,
+        cdn=PLOTLY_CDN,
+        fonts=GOOGLE_FONTS,
         position=position,
-        prev_href=prev_href, prev_disabled=prev_disabled,
-        next_href=next_href, next_disabled=next_disabled,
+        prev_href=prev_href,
+        prev_disabled=prev_disabled,
+        next_href=next_href,
+        next_disabled=next_disabled,
         top_programs_div=_fig_to_div(top_programs_fig, "div-top-programs"),
         corr_div=_fig_to_div(corr_fig, "div-gene-corr"),
         kd_div=_fig_to_div(kd_fig, "div-kd"),
@@ -719,11 +952,21 @@ def export_gene_html(
         },
         "top_loaded_programs": top_programs_d["programs"][::-1],
         "top_correlated_genes": {
-            "positive": [p for p, d in zip(corr_d["programs"], corr_d["direction"]) if d == "positive"],
-            "negative": [p for p, d in zip(corr_d["programs"], corr_d["direction"]) if d == "negative"],
+            "positive": [
+                p
+                for p, d in zip(corr_d["programs"], corr_d["direction"])
+                if d == "positive"
+            ],
+            "negative": [
+                p
+                for p, d in zip(corr_d["programs"], corr_d["direction"])
+                if d == "negative"
+            ],
         },
         "n_significant_program_perturbations_total": int(sum(sig_per_sample.values())),
-        "n_significant_program_perturbations_per_sample": {str(k): int(v) for k, v in sig_per_sample.items()},
+        "n_significant_program_perturbations_per_sample": {
+            str(k): int(v) for k, v in sig_per_sample.items()
+        },
         "kd_effect_pct_of_control": kd_d.get("all_effect_pct"),
         "control_target_name": control_target_name,
         "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
@@ -743,8 +986,9 @@ def write_gene_share_index(html_share_path, gene_list, config_snapshot):
         "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
         "kind": "perturbed_gene",
         "gene_list": list(map(str, gene_list)),
-        "config": {k: v for k, v in config_snapshot.items()
-                   if not isinstance(v, (np.ndarray,))},
+        "config": {
+            k: v for k, v in config_snapshot.items() if not isinstance(v, (np.ndarray,))
+        },
     }
     _write_json(share_root / "shared" / "manifest.json", manifest)
 
@@ -761,8 +1005,10 @@ def write_gene_share_index(html_share_path, gene_list, config_snapshot):
         n_sig = int(m.get("n_significant_program_perturbations_total", 0))
         kd_pct = m.get("kd_effect_pct_of_control")
 
-        chips = "".join(f'<span class="chip">P{p}</span>' for p in top_progs) \
-                or '<span class="chip" style="opacity:0.5">—</span>'
+        chips = (
+            "".join(f'<span class="chip">P{p}</span>' for p in top_progs)
+            or '<span class="chip" style="opacity:0.5">—</span>'
+        )
         if kd_pct is None:
             kd_label = "n/a"
             kd_cls = "zero"
@@ -776,20 +1022,20 @@ def write_gene_share_index(html_share_path, gene_list, config_snapshot):
             f'  <div class="pid-block">'
             f'    <span class="pid-label">Gene</span>'
             f'    <span class="pid-value">{gene}</span>'
-            f'  </div>'
+            f"  </div>"
             f'  <div class="details">'
             f'    <div class="go-term">Top loaded programs</div>'
             f'    <div class="chips">{chips}</div>'
-            f'  </div>'
+            f"  </div>"
             f'  <div class="badge-block">'
             f'    <span class="badge {kd_cls}">{kd_label}</span>'
             f'    <span class="badge-label">vs control</span>'
-            f'  </div>'
+            f"  </div>"
             f'  <div class="badge-block">'
             f'    <span class="badge {sig_cls}">{n_sig}</span>'
             f'    <span class="badge-label">sig programs</span>'
-            f'  </div>'
-            f'</a>'
+            f"  </div>"
+            f"</a>"
         )
 
     n_genes = len(cards)

@@ -63,19 +63,36 @@ RESOURCE_MOTIF_INSTANCES = "motif_instances"
 RESOURCE_MOTIF_ANNOTATION = "motif_annotation"
 RESOURCE_MOTIF_REPORT = "motif_report"
 ALL_RESOURCE_TYPES = (
-    RESOURCE_E2G, RESOURCE_MOTIF_INSTANCES, RESOURCE_MOTIF_ANNOTATION, RESOURCE_MOTIF_REPORT,
+    RESOURCE_E2G,
+    RESOURCE_MOTIF_INSTANCES,
+    RESOURCE_MOTIF_ANNOTATION,
+    RESOURCE_MOTIF_REPORT,
 )
 
 MANIFEST_COLUMNS = [
-    "rank", "portal", "resource_type", "dataset_accession", "file_accession",
-    "biosample_term_name", "ontology_id", "match_reason", "match_score",
-    "assembly", "file_format", "output_type", "model_input_assay", "source_experiment",
-    "size", "download_url", "local_path",
+    "rank",
+    "portal",
+    "resource_type",
+    "dataset_accession",
+    "file_accession",
+    "biosample_term_name",
+    "ontology_id",
+    "match_reason",
+    "match_score",
+    "assembly",
+    "file_format",
+    "output_type",
+    "model_input_assay",
+    "source_experiment",
+    "size",
+    "download_url",
+    "local_path",
 ]
 
 # ---------------------------------------------------------------------------
 # Curated cell-type matching rules (loaded from --synonyms; none by default)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MatchingRules:
@@ -86,6 +103,7 @@ class MatchingRules:
     ``tier_rules``: (compiled pattern, score, label), tried in order inside the curated band.
     ``tissue_rule``: (compiled pattern, score, label) for tissue biosamples only, or None.
     """
+
     synonyms: dict[str, list[tuple[str, str]]] = field(default_factory=dict)
     tier_rules: list[tuple[re.Pattern, float, str]] = field(default_factory=list)
     tissue_rule: Optional[tuple[re.Pattern, float, str]] = None
@@ -102,18 +120,31 @@ def load_matching_rules(path: Optional[str]) -> MatchingRules:
         for alias, pairs in (data.get("synonyms") or {}).items()
     }
     tier_rules = [
-        (re.compile(rule["pattern"]), float(rule["score"]), str(rule.get("label", rule["pattern"])))
+        (
+            re.compile(rule["pattern"]),
+            float(rule["score"]),
+            str(rule.get("label", rule["pattern"])),
+        )
         for rule in data.get("tier_rules") or []
     ]
     tissue = data.get("tissue_rule")
     tissue_rule = (
-        (re.compile(tissue["pattern"]), float(tissue["score"]), str(tissue.get("label", tissue["pattern"])))
-        if tissue else None
+        (
+            re.compile(tissue["pattern"]),
+            float(tissue["score"]),
+            str(tissue.get("label", tissue["pattern"])),
+        )
+        if tissue
+        else None
     )
     for _, score, label in tier_rules + ([tissue_rule] if tissue_rule else []):
         if not 50.0 < score < 90.0:
-            raise ValueError(f"{path}: tier score for {label!r} must be between 50 and 90, got {score}")
-    return MatchingRules(synonyms=synonyms, tier_rules=tier_rules, tissue_rule=tissue_rule)
+            raise ValueError(
+                f"{path}: tier score for {label!r} must be between 50 and 90, got {score}"
+            )
+    return MatchingRules(
+        synonyms=synonyms, tier_rules=tier_rules, tissue_rule=tissue_rule
+    )
 
 
 def normalize(text: str) -> str:
@@ -148,7 +179,9 @@ class CellTypeQuery:
 
 
 def parse_query(
-    cell_type_text: Optional[str], ontology_id: Optional[str], rules: Optional[MatchingRules] = None
+    cell_type_text: Optional[str],
+    ontology_id: Optional[str],
+    rules: Optional[MatchingRules] = None,
 ) -> CellTypeQuery:
     if not cell_type_text and not ontology_id:
         raise ValueError("Provide --cell-type and/or --ontology-id.")
@@ -162,6 +195,7 @@ def parse_query(
 # HTTP client (cached)
 # ---------------------------------------------------------------------------
 
+
 def build_cached_http_client(cache_dir: Path):
     """Reuse annotator_core's disk-cached HTTP client; fall back to a minimal local copy.
 
@@ -170,11 +204,14 @@ def build_cached_http_client(cache_dir: Path):
     caching logic) keeps cache format and retry behavior consistent across the pipeline.
     """
     pipeline_src = Path(__file__).resolve().parents[3]
-    annotator_core = pipeline_src / "Stage3_Interpretation" / "C_Annotation" / "annotator_core"
+    annotator_core = (
+        pipeline_src / "Stage3_Interpretation" / "C_Annotation" / "annotator_core"
+    )
     if annotator_core.is_dir() and str(annotator_core) not in sys.path:
         sys.path.insert(0, str(annotator_core))
     try:
         from http_cache import CachedHttp  # type: ignore
+
         return CachedHttp(cache_dir)
     except ImportError:
         return FallbackCachedHttp(cache_dir)
@@ -185,13 +222,16 @@ class FallbackCachedHttp:
 
     def __init__(self, cache_dir: Path, pause: float = 0.2):
         import json
+
         self.json = json
         self.cache_dir = cache_dir
         cache_dir.mkdir(parents=True, exist_ok=True)
         self.pause = pause
         self.cache_file = cache_dir / "http_cache_fallback.json"
         self.cache = (
-            self.json.loads(self.cache_file.read_text()) if self.cache_file.exists() else {}
+            self.json.loads(self.cache_file.read_text())
+            if self.cache_file.exists()
+            else {}
         )
         self.dirty = 0
 
@@ -201,7 +241,9 @@ class FallbackCachedHttp:
 
         if url in self.cache:
             return self.cache[url]
-        request = urllib.request.Request(url, headers={"Accept": "application/json", **(headers or {})})
+        request = urllib.request.Request(
+            url, headers={"Accept": "application/json", **(headers or {})}
+        )
         result = None
         for attempt in range(1, 6):
             try:
@@ -229,6 +271,7 @@ class FallbackCachedHttp:
 # Candidate file record
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Candidate:
     portal: str  # "IGVF" | "ENCODE"
@@ -245,14 +288,18 @@ class Candidate:
     is_tissue: bool = False
     is_treated: bool = False
     released_date: str = ""
-    ancestor_terms: tuple[str, ...] = ()  # term names/ids from organ/cell/system slims or ancestors
+    ancestor_terms: tuple[
+        str, ...
+    ] = ()  # term names/ids from organ/cell/system slims or ancestors
     cell_slims: tuple[str, ...] = ()
     organ_slims: tuple[str, ...] = ()
     # ChromBPNet/BPNet FileSets only encode these two facts as free text in ``description`` (no
     # structured field exists for either) -- see ``parse_chrombpnet_description``.
     model_input_assay: str = ""  # e.g. "DNase-seq" or "ATAC-seq"
     source_experiment: str = ""  # ENCODE experiment accession the model was trained on
-    is_tf_chip_bpnet: bool = False  # single-TF ChIP-seq BPNet model, e.g. CTCF -- see module docstring
+    is_tf_chip_bpnet: bool = (
+        False  # single-TF ChIP-seq BPNet model, e.g. CTCF -- see module docstring
+    )
     match_score: float = 0.0
     match_reason: str = ""
 
@@ -283,7 +330,9 @@ class Candidate:
 # ---------------------------------------------------------------------------
 
 
-def curated_tier_score(query: CellTypeQuery, candidate: Candidate) -> Optional[tuple[float, str]]:
+def curated_tier_score(
+    query: CellTypeQuery, candidate: Candidate
+) -> Optional[tuple[float, str]]:
     """Fine-grained ranking within the "curated synonym" band from the ``tier_rules`` /
     ``tissue_rule`` of the ``--synonyms`` file (see the module docstring). Runs only when the
     query itself matched a curated alias; otherwise returns ``None`` so the caller falls through
@@ -296,18 +345,29 @@ def curated_tier_score(query: CellTypeQuery, candidate: Candidate) -> Optional[t
     """
     if not query.curated_terms():
         return None
-    haystacks = [normalize(candidate.biosample_term_name), normalize(" ".join(candidate.cell_slims))]
+    haystacks = [
+        normalize(candidate.biosample_term_name),
+        normalize(" ".join(candidate.cell_slims)),
+    ]
     for haystack in haystacks:
         for pattern, score, label in query.rules.tier_rules:
             if pattern.search(haystack):
-                return score, f"curated synonym -> tier: {label} ({candidate.biosample_term_name!r})"
+                return (
+                    score,
+                    f"curated synonym -> tier: {label} ({candidate.biosample_term_name!r})",
+                )
     tissue_rule = query.rules.tissue_rule
     if tissue_rule and candidate.is_tissue and tissue_rule[0].search(haystacks[0]):
-        return tissue_rule[1], f"curated synonym -> tier: {tissue_rule[2]} ({candidate.biosample_term_name!r})"
+        return (
+            tissue_rule[1],
+            f"curated synonym -> tier: {tissue_rule[2]} ({candidate.biosample_term_name!r})",
+        )
     return None
 
 
-def score_biosample_match(query: CellTypeQuery, candidate: Candidate) -> tuple[float, str]:
+def score_biosample_match(
+    query: CellTypeQuery, candidate: Candidate
+) -> tuple[float, str]:
     """Score how well ``candidate``'s biosample matches ``query``. Higher is better.
 
     Tiers (documented in the module docstring): ontology-ID exact (100) > term-name exact (90) >
@@ -319,13 +379,23 @@ def score_biosample_match(query: CellTypeQuery, candidate: Candidate) -> tuple[f
     gene lists, etc. that pass the file-type filter but are not the links themselves).
     """
     candidate_term_norm = normalize(candidate.biosample_term_name)
-    candidate_ontology_norm = normalize_ontology_id(candidate.ontology_id) if candidate.ontology_id else ""
+    candidate_ontology_norm = (
+        normalize_ontology_id(candidate.ontology_id) if candidate.ontology_id else ""
+    )
 
     score, reason = 0.0, "no match"
 
-    if query.ontology_ids and candidate_ontology_norm and candidate_ontology_norm in query.ontology_ids:
+    if (
+        query.ontology_ids
+        and candidate_ontology_norm
+        and candidate_ontology_norm in query.ontology_ids
+    ):
         score, reason = 100.0, f"ontology_id exact ({candidate_ontology_norm})"
-    elif query.text_norm and candidate_term_norm and query.text_norm == candidate_term_norm:
+    elif (
+        query.text_norm
+        and candidate_term_norm
+        and query.text_norm == candidate_term_norm
+    ):
         score, reason = 90.0, f"term_name exact ({candidate.biosample_term_name!r})"
     else:
         curated_tier = curated_tier_score(query, candidate)
@@ -336,10 +406,14 @@ def score_biosample_match(query: CellTypeQuery, candidate: Candidate) -> tuple[f
                 # An empty ``ontology_id`` (some curated synonyms have none) must never be
                 # compared -- otherwise it spuriously matches any candidate whose own
                 # ontology_id is also unset, e.g. "" == "".
-                if (ontology_id and normalize_ontology_id(ontology_id) == candidate_ontology_norm) or (
-                    term_name and normalize(term_name) == candidate_term_norm
-                ):
-                    score, reason = 80.0, f"curated synonym -> {term_name} ({ontology_id})"
+                if (
+                    ontology_id
+                    and normalize_ontology_id(ontology_id) == candidate_ontology_norm
+                ) or (term_name and normalize(term_name) == candidate_term_norm):
+                    score, reason = (
+                        80.0,
+                        f"curated synonym -> {term_name} ({ontology_id})",
+                    )
                     break
         if score == 0.0:
             curated_norms = {normalize(t) for t, _ in query.curated_terms() if t} | {
@@ -348,13 +422,23 @@ def score_biosample_match(query: CellTypeQuery, candidate: Candidate) -> tuple[f
             ancestor_norms = {normalize(a) for a in candidate.ancestor_terms if a} | {
                 normalize_ontology_id(a) for a in candidate.ancestor_terms if a
             }
-            hit = (curated_norms | {query.text_norm} | set(query.ontology_ids)) & ancestor_norms
+            hit = (
+                curated_norms | {query.text_norm} | set(query.ontology_ids)
+            ) & ancestor_norms
             if hit:
                 score, reason = 50.0, f"ontology ancestry match ({sorted(hit)[0]})"
-            elif query.text_norm and candidate_term_norm and (
-                query.text_norm in candidate_term_norm or candidate_term_norm in query.text_norm
+            elif (
+                query.text_norm
+                and candidate_term_norm
+                and (
+                    query.text_norm in candidate_term_norm
+                    or candidate_term_norm in query.text_norm
+                )
             ):
-                score, reason = 20.0, f"substring match ({candidate.biosample_term_name!r})"
+                score, reason = (
+                    20.0,
+                    f"substring match ({candidate.biosample_term_name!r})",
+                )
 
     if score > 0.0:
         bonus = 0.0
@@ -367,7 +451,10 @@ def score_biosample_match(query: CellTypeQuery, candidate: Candidate) -> tuple[f
         if candidate.released_date:
             # Newer release -> slightly higher; string-sortable ISO dates, capped contribution.
             bonus += min(0.1, int(candidate.released_date[:4] or 0) / 100000.0)
-        if candidate.resource_type == RESOURCE_E2G and candidate.file_format in ("bedpe", "bed"):
+        if candidate.resource_type == RESOURCE_E2G and candidate.file_format in (
+            "bedpe",
+            "bed",
+        ):
             # A biosample match ties across every file in the same dataset (QC/summary tsvs
             # included); prefer the actual link-coordinate file over a same-dataset tsv sidecar.
             bonus += 0.05
@@ -380,9 +467,13 @@ def score_biosample_match(query: CellTypeQuery, candidate: Candidate) -> tuple[f
     return score, reason
 
 
-def rank_candidates(query: CellTypeQuery, candidates: list[Candidate]) -> list[Candidate]:
+def rank_candidates(
+    query: CellTypeQuery, candidates: list[Candidate]
+) -> list[Candidate]:
     for candidate in candidates:
-        candidate.match_score, candidate.match_reason = score_biosample_match(query, candidate)
+        candidate.match_score, candidate.match_reason = score_biosample_match(
+            query, candidate
+        )
     scored = [c for c in candidates if c.match_score > 0.0]
     scored.sort(key=lambda c: c.match_score, reverse=True)
     return scored
@@ -393,16 +484,34 @@ def rank_candidates(query: CellTypeQuery, candidates: list[Candidate]) -> list[C
 # ---------------------------------------------------------------------------
 
 IGVF_E2G_FIELDS = [
-    "accession", "@id", "summary", "file_set_type", "lab.title", "status",
-    "samples.sample_terms.term_name", "samples.sample_terms.@id",
-    "samples.classifications", "samples.disease_terms",
-    "assembly", "files.accession", "files.file_format", "files.output_type",
-    "files.content_type", "files.file_size", "files.href", "files.assembly",
+    "accession",
+    "@id",
+    "summary",
+    "file_set_type",
+    "lab.title",
+    "status",
+    "samples.sample_terms.term_name",
+    "samples.sample_terms.@id",
+    "samples.classifications",
+    "samples.disease_terms",
+    "assembly",
+    "files.accession",
+    "files.file_format",
+    "files.output_type",
+    "files.content_type",
+    "files.file_size",
+    "files.href",
+    "files.assembly",
 ]
 
 
 def igvf_search_url(file_set_type: str, extra_type: str = "PredictionSet") -> str:
-    params = [("type", extra_type), ("file_set_type", file_set_type), ("limit", "all"), ("format", "json")]
+    params = [
+        ("type", extra_type),
+        ("file_set_type", file_set_type),
+        ("limit", "all"),
+        ("format", "json"),
+    ]
     for f in IGVF_E2G_FIELDS:
         params.append(("field", f))
     return f"{IGVF_PORTAL_BASE}/search/?{urllib.parse.urlencode(params)}"
@@ -424,25 +533,32 @@ def igvf_candidates_for_e2g(http) -> list[Candidate]:
             sample_terms = [{"term_name": item.get("summary", ""), "@id": ""}]
         for term in sample_terms:
             term_name = term.get("term_name", "") or ""
-            ontology_id = normalize_ontology_id(term.get("@id", "")) if term.get("@id") else ""
+            ontology_id = (
+                normalize_ontology_id(term.get("@id", "")) if term.get("@id") else ""
+            )
             for f in item.get("files", []) or []:
-                if not any(kw in (f.get("output_type") or "").lower() for kw in ("link", "prediction")) and (
-                    f.get("file_format") not in ("bedpe", "bed", "tsv")
-                ):
+                if not any(
+                    kw in (f.get("output_type") or "").lower()
+                    for kw in ("link", "prediction")
+                ) and (f.get("file_format") not in ("bedpe", "bed", "tsv")):
                     continue
-                candidates.append(Candidate(
-                    portal="IGVF",
-                    resource_type=RESOURCE_E2G,
-                    dataset_accession=item.get("accession", ""),
-                    file_accession=f.get("accession", ""),
-                    biosample_term_name=term_name,
-                    ontology_id=ontology_id,
-                    assembly=f.get("assembly", item.get("assembly", "")) or "",
-                    file_format=f.get("file_format", "") or "",
-                    output_type=f.get("output_type", "") or "",
-                    size=f.get("file_size"),
-                    download_url=(IGVF_PORTAL_BASE + f["href"]) if f.get("href") else "",
-                ))
+                candidates.append(
+                    Candidate(
+                        portal="IGVF",
+                        resource_type=RESOURCE_E2G,
+                        dataset_accession=item.get("accession", ""),
+                        file_accession=f.get("accession", ""),
+                        biosample_term_name=term_name,
+                        ontology_id=ontology_id,
+                        assembly=f.get("assembly", item.get("assembly", "")) or "",
+                        file_format=f.get("file_format", "") or "",
+                        output_type=f.get("output_type", "") or "",
+                        size=f.get("file_size"),
+                        download_url=(IGVF_PORTAL_BASE + f["href"])
+                        if f.get("href")
+                        else "",
+                    )
+                )
     return candidates
 
 
@@ -450,29 +566,42 @@ def igvf_candidates_for_motifs(http) -> list[Candidate]:
     """IGVF currently has no known finemo/ChromBPNet hit-call FileSets; kept as a documented no-op
     stub so a future IGVF submission is picked up automatically once it exists (searches
     ModelSet/AnalysisSet for a 'motif' summary keyword)."""
-    data = http.get_json(igvf_search_url("motif enrichment", extra_type="AnalysisSet")) or {}
+    data = (
+        http.get_json(igvf_search_url("motif enrichment", extra_type="AnalysisSet"))
+        or {}
+    )
     candidates = []
     for item in data.get("@graph", []):
         summary = (item.get("summary") or "").lower()
-        if "motif" not in summary and "chrombpnet" not in summary and "modisco" not in summary:
+        if (
+            "motif" not in summary
+            and "chrombpnet" not in summary
+            and "modisco" not in summary
+        ):
             continue
         samples = item.get("samples") or []
         sample_terms = [t for s in samples for t in (s.get("sample_terms") or [])]
         for term in sample_terms or [{"term_name": summary, "@id": ""}]:
             for f in item.get("files", []) or []:
-                candidates.append(Candidate(
-                    portal="IGVF",
-                    resource_type=RESOURCE_MOTIF_INSTANCES,
-                    dataset_accession=item.get("accession", ""),
-                    file_accession=f.get("accession", ""),
-                    biosample_term_name=term.get("term_name", ""),
-                    ontology_id=normalize_ontology_id(term.get("@id", "")) if term.get("@id") else "",
-                    assembly=f.get("assembly", item.get("assembly", "")) or "",
-                    file_format=f.get("file_format", "") or "",
-                    output_type=f.get("output_type", "") or "",
-                    size=f.get("file_size"),
-                    download_url=(IGVF_PORTAL_BASE + f["href"]) if f.get("href") else "",
-                ))
+                candidates.append(
+                    Candidate(
+                        portal="IGVF",
+                        resource_type=RESOURCE_MOTIF_INSTANCES,
+                        dataset_accession=item.get("accession", ""),
+                        file_accession=f.get("accession", ""),
+                        biosample_term_name=term.get("term_name", ""),
+                        ontology_id=normalize_ontology_id(term.get("@id", ""))
+                        if term.get("@id")
+                        else "",
+                        assembly=f.get("assembly", item.get("assembly", "")) or "",
+                        file_format=f.get("file_format", "") or "",
+                        output_type=f.get("output_type", "") or "",
+                        size=f.get("file_size"),
+                        download_url=(IGVF_PORTAL_BASE + f["href"])
+                        if f.get("href")
+                        else "",
+                    )
+                )
     return candidates
 
 
@@ -481,9 +610,12 @@ def igvf_candidates_for_motifs(http) -> list[Candidate]:
 # ---------------------------------------------------------------------------
 
 ENCODE_BIOSAMPLE_FIELDS = [
-    "biosample_ontology.term_name", "biosample_ontology.term_id",
-    "biosample_ontology.classification", "biosample_ontology.organ_slims",
-    "biosample_ontology.cell_slims", "biosample_ontology.system_slims",
+    "biosample_ontology.term_name",
+    "biosample_ontology.term_id",
+    "biosample_ontology.classification",
+    "biosample_ontology.organ_slims",
+    "biosample_ontology.cell_slims",
+    "biosample_ontology.system_slims",
 ]
 # ENCODE's annotation_type facet values for motif-model FileSets (confirmed against a live
 # search). ChromBPNet-model is the primary source: genome-wide DNase-seq/ATAC-seq accessibility
@@ -503,9 +635,17 @@ def encode_search_url(
     """Search Annotation FileSets. Always pass a ``biosample_ontology.term_name`` filter in
     ``extra_params`` -- an unfiltered pull of one annotation_type is 1000s of records and prone to
     ENCODE's under-load 504s; a per-biosample-term query is small and fast (verified live)."""
-    params = [("type", "Annotation"), ("annotation_type", annotation_type), ("limit", limit),
-              ("format", "json"), ("field", "accession"), ("field", "assembly"),
-              ("field", "status"), ("field", "date_released"), ("field", "description")]
+    params = [
+        ("type", "Annotation"),
+        ("annotation_type", annotation_type),
+        ("limit", limit),
+        ("format", "json"),
+        ("field", "accession"),
+        ("field", "assembly"),
+        ("field", "status"),
+        ("field", "date_released"),
+        ("field", "description"),
+    ]
     params += [("field", f) for f in ENCODE_BIOSAMPLE_FIELDS]
     params += extra_params
     return f"{ENCODE_PORTAL_BASE}/search/?{urllib.parse.urlencode(params)}"
@@ -540,7 +680,9 @@ def encode_search_get(url: str, cache_dir: Path) -> dict:
         return cache[url]
 
     result: dict = {"@graph": []}
-    resolved = False  # True only for a real success or a confirmed 404 -- never for exhausted
+    resolved = (
+        False  # True only for a real success or a confirmed 404 -- never for exhausted
+    )
     # retries after a transient failure, which must stay uncached so the next run retries them
     # instead of a network blip being remembered forever as "no results".
     for attempt in range(1, 3):
@@ -549,7 +691,9 @@ def encode_search_get(url: str, cache_dir: Path) -> dict:
         )
         try:
             with urllib.request.urlopen(request, timeout=15) as response:
-                result = json.loads(response.read().decode() or "null") or {"@graph": []}
+                result = json.loads(response.read().decode() or "null") or {
+                    "@graph": []
+                }
             resolved = True
             break
         except urllib.error.HTTPError as exc:
@@ -610,7 +754,9 @@ def parse_chrombpnet_description(description: str) -> tuple[str, str]:
     """Parse the two facts ChromBPNet/BPNet FileSet descriptions encode as free text (ENCODE has
     no structured field for either), e.g. "ChromBPNet models trained on DNase-seq data in
     <cell type> (ENCSR000AAA)" -> ("DNase-seq", "ENCSR000AAA")."""
-    assay_match = re.search(r"trained on (DNase-seq|ATAC-seq)", description or "", re.IGNORECASE)
+    assay_match = re.search(
+        r"trained on (DNase-seq|ATAC-seq)", description or "", re.IGNORECASE
+    )
     accession_match = re.search(r"\b(ENCSR[0-9A-Z]{6})\b", description or "")
     input_assay = assay_match.group(1) if assay_match else ""
     source_experiment = accession_match.group(1) if accession_match else ""
@@ -624,13 +770,16 @@ def encode_fetch_files(http, accession: str) -> list[dict]:
     intermittently raises ``http.client.IncompleteRead`` on ENCODE's chunked+gzip responses.
     """
     data = http.get_json(
-        f"{ENCODE_PORTAL_BASE}/{accession}/?format=json", headers={"Accept-Encoding": "identity"}
+        f"{ENCODE_PORTAL_BASE}/{accession}/?format=json",
+        headers={"Accept-Encoding": "identity"},
     )
     files = (data or {}).get("files") or []
     return [f for f in files if isinstance(f, dict)]
 
 
-def encode_candidates_for_e2g(http, query: CellTypeQuery, cache_dir: Path) -> list[Candidate]:
+def encode_candidates_for_e2g(
+    http, query: CellTypeQuery, cache_dir: Path
+) -> list[Candidate]:
     candidates = []
     seen_datasets: set[str] = set()
     for term_name in candidate_biosample_term_names(query):
@@ -645,31 +794,40 @@ def encode_candidates_for_e2g(http, query: CellTypeQuery, cache_dir: Path) -> li
             if accession in seen_datasets:
                 continue
             seen_datasets.add(accession)
-            item_term_name, ontology_id, is_tissue, ancestors, cell_slims, organ_slims = (
-                encode_biosample_from_item(item)
-            )
+            (
+                item_term_name,
+                ontology_id,
+                is_tissue,
+                ancestors,
+                cell_slims,
+                organ_slims,
+            ) = encode_biosample_from_item(item)
             for f in encode_fetch_files(http, accession):
                 output_type = (f.get("output_type") or "").lower()
                 if "thresholded" not in output_type:
                     continue
-                candidates.append(Candidate(
-                    portal="ENCODE",
-                    resource_type=RESOURCE_E2G,
-                    dataset_accession=accession,
-                    file_accession=f.get("accession", ""),
-                    biosample_term_name=item_term_name,
-                    ontology_id=ontology_id,
-                    assembly=f.get("assembly", item.get("assembly", "")) or "",
-                    file_format=f.get("file_format", "") or "",
-                    output_type=f.get("output_type", "") or "",
-                    size=f.get("file_size"),
-                    download_url=ENCODE_PORTAL_BASE + f.get("href", "") if f.get("href") else "",
-                    is_tissue=is_tissue,
-                    released_date=item.get("date_released", "") or "",
-                    ancestor_terms=ancestors,
-                    cell_slims=cell_slims,
-                    organ_slims=organ_slims,
-                ))
+                candidates.append(
+                    Candidate(
+                        portal="ENCODE",
+                        resource_type=RESOURCE_E2G,
+                        dataset_accession=accession,
+                        file_accession=f.get("accession", ""),
+                        biosample_term_name=item_term_name,
+                        ontology_id=ontology_id,
+                        assembly=f.get("assembly", item.get("assembly", "")) or "",
+                        file_format=f.get("file_format", "") or "",
+                        output_type=f.get("output_type", "") or "",
+                        size=f.get("file_size"),
+                        download_url=ENCODE_PORTAL_BASE + f.get("href", "")
+                        if f.get("href")
+                        else "",
+                        is_tissue=is_tissue,
+                        released_date=item.get("date_released", "") or "",
+                        ancestor_terms=ancestors,
+                        cell_slims=cell_slims,
+                        organ_slims=organ_slims,
+                    )
+                )
     return candidates
 
 
@@ -708,39 +866,52 @@ def encode_candidates_for_motifs(
                 if dataset_key in seen_datasets:
                     continue
                 seen_datasets.add(dataset_key)
-                item_term_name, ontology_id, is_tissue, ancestors, cell_slims, organ_slims = (
-                    encode_biosample_from_item(item)
-                )
+                (
+                    item_term_name,
+                    ontology_id,
+                    is_tissue,
+                    ancestors,
+                    cell_slims,
+                    organ_slims,
+                ) = encode_biosample_from_item(item)
                 model_input_assay, source_experiment = parse_chrombpnet_description(
                     item.get("description", "") or ""
                 )
-                is_tf_chip_bpnet = annotation_type == ENCODE_MOTIF_TF_CHIP_BPNET_ANNOTATION_TYPE
+                is_tf_chip_bpnet = (
+                    annotation_type == ENCODE_MOTIF_TF_CHIP_BPNET_ANNOTATION_TYPE
+                )
                 for f in encode_fetch_files(http, accession):
                     output_type = (f.get("output_type") or "").lower()
-                    resource_type = ENCODE_MOTIF_OUTPUT_TO_RESOURCE_TYPE.get(output_type)
+                    resource_type = ENCODE_MOTIF_OUTPUT_TO_RESOURCE_TYPE.get(
+                        output_type
+                    )
                     if resource_type is None:
                         continue
-                    candidates.append(Candidate(
-                        portal="ENCODE",
-                        resource_type=resource_type,
-                        dataset_accession=accession,
-                        file_accession=f.get("accession", ""),
-                        biosample_term_name=item_term_name,
-                        ontology_id=ontology_id,
-                        assembly=f.get("assembly", item.get("assembly", "")) or "",
-                        file_format=f.get("file_format", "") or "",
-                        output_type=f.get("output_type", "") or "",
-                        size=f.get("file_size"),
-                        download_url=ENCODE_PORTAL_BASE + f.get("href", "") if f.get("href") else "",
-                        is_tissue=is_tissue,
-                        released_date=item.get("date_released", "") or "",
-                        ancestor_terms=ancestors,
-                        cell_slims=cell_slims,
-                        organ_slims=organ_slims,
-                        model_input_assay=model_input_assay,
-                        source_experiment=source_experiment,
-                        is_tf_chip_bpnet=is_tf_chip_bpnet,
-                    ))
+                    candidates.append(
+                        Candidate(
+                            portal="ENCODE",
+                            resource_type=resource_type,
+                            dataset_accession=accession,
+                            file_accession=f.get("accession", ""),
+                            biosample_term_name=item_term_name,
+                            ontology_id=ontology_id,
+                            assembly=f.get("assembly", item.get("assembly", "")) or "",
+                            file_format=f.get("file_format", "") or "",
+                            output_type=f.get("output_type", "") or "",
+                            size=f.get("file_size"),
+                            download_url=ENCODE_PORTAL_BASE + f.get("href", "")
+                            if f.get("href")
+                            else "",
+                            is_tissue=is_tissue,
+                            released_date=item.get("date_released", "") or "",
+                            ancestor_terms=ancestors,
+                            cell_slims=cell_slims,
+                            organ_slims=organ_slims,
+                            model_input_assay=model_input_assay,
+                            source_experiment=source_experiment,
+                            is_tf_chip_bpnet=is_tf_chip_bpnet,
+                        )
+                    )
     return candidates
 
 
@@ -748,19 +919,29 @@ def encode_candidates_for_motifs(
 # Manifest
 # ---------------------------------------------------------------------------
 
+
 def build_manifest(
-    query: CellTypeQuery, http, cache_dir: Path, top_n: int = 10, include_tf_chip_bpnet: bool = False
+    query: CellTypeQuery,
+    http,
+    cache_dir: Path,
+    top_n: int = 10,
+    include_tf_chip_bpnet: bool = False,
 ) -> "pd.DataFrame":
     import pandas as pd
 
     all_candidates = (
-        igvf_candidates_for_e2g(http) + igvf_candidates_for_motifs(http)
+        igvf_candidates_for_e2g(http)
+        + igvf_candidates_for_motifs(http)
         + encode_candidates_for_e2g(http, query, cache_dir)
-        + encode_candidates_for_motifs(http, query, cache_dir, include_tf_chip_bpnet=include_tf_chip_bpnet)
+        + encode_candidates_for_motifs(
+            http, query, cache_dir, include_tf_chip_bpnet=include_tf_chip_bpnet
+        )
     )
     rows = []
     for resource_type in ALL_RESOURCE_TYPES:
-        ranked = rank_candidates(query, [c for c in all_candidates if c.resource_type == resource_type])
+        ranked = rank_candidates(
+            query, [c for c in all_candidates if c.resource_type == resource_type]
+        )
         for rank, candidate in enumerate(ranked[:top_n], start=1):
             rows.append(candidate.as_row(rank))
     return pd.DataFrame(rows, columns=MANIFEST_COLUMNS)
@@ -769,7 +950,9 @@ def build_manifest(
 def top_suggestion_per_type(manifest: "pd.DataFrame") -> dict[str, dict]:
     top = {}
     for resource_type in ALL_RESOURCE_TYPES:
-        subset = manifest[(manifest["resource_type"] == resource_type) & (manifest["rank"] == 1)]
+        subset = manifest[
+            (manifest["resource_type"] == resource_type) & (manifest["rank"] == 1)
+        ]
         if not subset.empty:
             top[resource_type] = subset.iloc[0].to_dict()
     return top
@@ -797,25 +980,56 @@ def print_top_suggestions(manifest: "pd.DataFrame") -> None:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--cell-type", default="", help="Free-text cell type description, e.g. \"T cell\"")
-    parser.add_argument("--ontology-id", default="", help="Ontology ID, e.g. CL:0000182")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument(
-        "--synonyms", default=None,
+        "--cell-type", default="", help='Free-text cell type description, e.g. "T cell"'
+    )
+    parser.add_argument(
+        "--ontology-id", default="", help="Ontology ID, e.g. CL:0000182"
+    )
+    parser.add_argument(
+        "--synonyms",
+        default=None,
         help=(
             "JSON file of curated synonyms + optional tier rules for the curated-synonym band "
             "(format: resources/cell_type_synonyms.example.json). Default: none (neutral ranking)."
         ),
     )
-    parser.add_argument("--out-dir", required=True, help="Directory to write regulatory_resources_manifest.tsv")
-    parser.add_argument("--cache-dir", default=None, help="HTTP cache dir (default: <out-dir>/.http_cache)")
-    parser.add_argument("--top-n", type=int, default=10, help="Candidates to keep per resource type")
-    parser.add_argument("--e2g-links", default=None, help="User-provided E2G links file; bypasses search")
-    parser.add_argument("--motif-hits", default=None, help="User-provided motif-instances file; bypasses search")
-    parser.add_argument("--motif-annotation", default=None, help="User-provided motif-annotation file; bypasses search")
     parser.add_argument(
-        "--include-tf-chip-bpnet-models", action="store_true",
+        "--out-dir",
+        required=True,
+        help="Directory to write regulatory_resources_manifest.tsv",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        default=None,
+        help="HTTP cache dir (default: <out-dir>/.http_cache)",
+    )
+    parser.add_argument(
+        "--top-n", type=int, default=10, help="Candidates to keep per resource type"
+    )
+    parser.add_argument(
+        "--e2g-links",
+        default=None,
+        help="User-provided E2G links file; bypasses search",
+    )
+    parser.add_argument(
+        "--motif-hits",
+        default=None,
+        help="User-provided motif-instances file; bypasses search",
+    )
+    parser.add_argument(
+        "--motif-annotation",
+        default=None,
+        help="User-provided motif-annotation file; bypasses search",
+    )
+    parser.add_argument(
+        "--include-tf-chip-bpnet-models",
+        action="store_true",
         help=(
             "Also search single-TF ChIP-seq BPNet-model FileSets (e.g. CTCF) as motif "
             "candidates; never ranked above a ChromBPNet-model candidate for the same biosample."
@@ -836,10 +1050,17 @@ def main(argv: Optional[list[str]] = None) -> int:
         RESOURCE_MOTIF_ANNOTATION: args.motif_annotation,
     }
 
-    query = parse_query(args.cell_type or None, args.ontology_id or None, load_matching_rules(args.synonyms))
+    query = parse_query(
+        args.cell_type or None,
+        args.ontology_id or None,
+        load_matching_rules(args.synonyms),
+    )
     http = build_cached_http_client(cache_dir)
     manifest = build_manifest(
-        query, http, cache_dir, top_n=args.top_n,
+        query,
+        http,
+        cache_dir,
+        top_n=args.top_n,
         include_tf_chip_bpnet=args.include_tf_chip_bpnet_models,
     )
     if hasattr(http, "save"):
@@ -854,16 +1075,32 @@ def main(argv: Optional[list[str]] = None) -> int:
         if not path:
             continue
         manifest = manifest[manifest["resource_type"] != resource_type]
-        override_rows.append({
-            "rank": 1, "portal": "user", "resource_type": resource_type,
-            "dataset_accession": "", "file_accession": "", "biosample_term_name": "",
-            "ontology_id": "", "match_reason": "user override", "match_score": float("inf"),
-            "assembly": "", "file_format": Path(path).suffix.lstrip("."), "output_type": "",
-            "model_input_assay": "", "source_experiment": "",
-            "size": "", "download_url": path, "local_path": path,
-        })
+        override_rows.append(
+            {
+                "rank": 1,
+                "portal": "user",
+                "resource_type": resource_type,
+                "dataset_accession": "",
+                "file_accession": "",
+                "biosample_term_name": "",
+                "ontology_id": "",
+                "match_reason": "user override",
+                "match_score": float("inf"),
+                "assembly": "",
+                "file_format": Path(path).suffix.lstrip("."),
+                "output_type": "",
+                "model_input_assay": "",
+                "source_experiment": "",
+                "size": "",
+                "download_url": path,
+                "local_path": path,
+            }
+        )
     if override_rows:
-        manifest = pd.concat([pd.DataFrame(override_rows, columns=MANIFEST_COLUMNS), manifest], ignore_index=True)
+        manifest = pd.concat(
+            [pd.DataFrame(override_rows, columns=MANIFEST_COLUMNS), manifest],
+            ignore_index=True,
+        )
 
     manifest_path = out_dir / "regulatory_resources_manifest.tsv"
     manifest.to_csv(manifest_path, sep="\t", index=False)

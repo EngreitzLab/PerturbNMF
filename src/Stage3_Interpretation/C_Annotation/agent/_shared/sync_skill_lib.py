@@ -1,7 +1,8 @@
 """Copy agent/_shared/skill_lib.py into every skill's scripts/_lib/ (or, with --check, report stale copies).
 
-    python agent/_shared/sync_skill_lib.py [--check]
+python agent/_shared/sync_skill_lib.py [--check]
 """
+
 import argparse
 import filecmp
 import shutil
@@ -14,7 +15,11 @@ LIB = SHARED / "skill_lib.py"
 
 def main():
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    p.add_argument("--check", action="store_true", help="Only report skills whose copy differs (exit 1).")
+    p.add_argument(
+        "--check",
+        action="store_true",
+        help="Only report skills whose copy differs (exit 1).",
+    )
     args = p.parse_args()
     stale = []
     for skill in sorted(SHARED.parent.glob("*-skill")):

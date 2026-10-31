@@ -38,15 +38,23 @@ ENRICHMENT_METHODS = ("ttest", "correlation")
 SIGNIFICANCE_MIN_ENRICHMENT = {"ttest": 1.0, "correlation": 0.0}
 
 RESULT_COLUMNS = [
-    "program", "element_type", "tf", "pvalue", "fdr", "enrichment",
-    "n_program_genes_tested", "n_background_genes",
-    "mean_count_program", "mean_count_background",
+    "program",
+    "element_type",
+    "tf",
+    "pvalue",
+    "fdr",
+    "enrichment",
+    "n_program_genes_tested",
+    "n_background_genes",
+    "mean_count_program",
+    "mean_count_background",
 ]
 
 
 # ---------------------------------------------------------------------------
 # Motif hits -> gene x TF counts
 # ---------------------------------------------------------------------------
+
 
 def collapse_motif_to_tf(motif_ids: Iterable[str]) -> pd.Series:
     """TF name = text before the first '_' of a HOCOMOCO motif id (``AP1_HUMAN.H11MO.0.A`` -> ``AP1``)."""
@@ -61,12 +69,16 @@ def parse_abc_sequence_name(sequence_names: pd.Series) -> pd.DataFrame:
     """
     parts = sequence_names.str.split("|", expand=True)
     if parts.shape[1] != 4:
-        raise ValueError(f"expected 4 '|'-separated fields in ABC sequence names, got {parts.shape[1]}")
-    return pd.DataFrame({
-        "element_name": parts[0].to_numpy(),
-        "element_class": parts[1].to_numpy(),
-        "gene": parts[3].str.split("::", n=1).str[0].to_numpy(),
-    })
+        raise ValueError(
+            f"expected 4 '|'-separated fields in ABC sequence names, got {parts.shape[1]}"
+        )
+    return pd.DataFrame(
+        {
+            "element_name": parts[0].to_numpy(),
+            "element_class": parts[1].to_numpy(),
+            "gene": parts[3].str.split("::", n=1).str[0].to_numpy(),
+        }
+    )
 
 
 def read_fimo_hits(
@@ -99,27 +111,50 @@ def read_fimo_hits(
     DataFrame with columns motif_id, tf, pvalue, gene (+ parser columns).
     """
     chunks = []
-    wanted = {"motif_id", "sequence_name", "p-value"} | ({"motif_alt_id"} if use_motif_alt_id else set())
+    wanted = {"motif_id", "sequence_name", "p-value"} | (
+        {"motif_alt_id"} if use_motif_alt_id else set()
+    )
     reader = pd.read_csv(
-        path, sep="\t", comment="#", usecols=lambda column: column in wanted,
-        dtype={"motif_id": str, "motif_alt_id": str, "sequence_name": str}, float_precision="round_trip",
+        path,
+        sep="\t",
+        comment="#",
+        usecols=lambda column: column in wanted,
+        dtype={"motif_id": str, "motif_alt_id": str, "sequence_name": str},
+        float_precision="round_trip",
         chunksize=chunksize,
     )
     for chunk in reader:
-        chunks.append(chunk if pvalue_threshold is None else chunk[chunk["p-value"] < pvalue_threshold])
+        chunks.append(
+            chunk
+            if pvalue_threshold is None
+            else chunk[chunk["p-value"] < pvalue_threshold]
+        )
     hits = pd.concat(chunks, ignore_index=True).rename(columns={"p-value": "pvalue"})
     if sequence_name_parser is None:
         parsed = pd.DataFrame({"gene": hits["sequence_name"].to_numpy()})
     else:
         parsed = sequence_name_parser(hits["sequence_name"]).reset_index(drop=True)
     hits = pd.concat([hits.drop(columns="sequence_name"), parsed], axis=1)
-    tf = collapse_motif_to_tf(hits["motif_id"]) if collapse_motif_ids else hits["motif_id"].astype(str)
+    tf = (
+        collapse_motif_to_tf(hits["motif_id"])
+        if collapse_motif_ids
+        else hits["motif_id"].astype(str)
+    )
     if "motif_alt_id" in hits.columns and collapse_motif_ids:
-        alt_id = hits["motif_alt_id"].fillna("").astype(str).str.strip().reset_index(drop=True)
-        use_alt = (~hits["motif_id"].astype(str).str.contains("_", regex=False).reset_index(drop=True)
-                   & (alt_id != ""))
+        alt_id = (
+            hits["motif_alt_id"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .reset_index(drop=True)
+        )
+        use_alt = ~hits["motif_id"].astype(str).str.contains(
+            "_", regex=False
+        ).reset_index(drop=True) & (alt_id != "")
         tf = tf.where(~use_alt, alt_id)
-    hits = hits.drop(columns=[column for column in ["motif_alt_id"] if column in hits.columns])
+    hits = hits.drop(
+        columns=[column for column in ["motif_alt_id"] if column in hits.columns]
+    )
     hits.insert(1, "tf", tf.to_numpy())
     return hits
 
@@ -156,7 +191,10 @@ def count_hits_per_gene_tf(
 # Program genes
 # ---------------------------------------------------------------------------
 
-def select_top_program_genes(gene_spectra_score: pd.DataFrame, n_top: int = 300) -> pd.DataFrame:
+
+def select_top_program_genes(
+    gene_spectra_score: pd.DataFrame, n_top: int = 300
+) -> pd.DataFrame:
     """Top ``n_top`` genes per program by score (descending; ties keep input gene order; NaN last).
 
     Parameters
@@ -171,16 +209,25 @@ def select_top_program_genes(gene_spectra_score: pd.DataFrame, n_top: int = 300)
     for program, scores in gene_spectra_score.iterrows():
         values = scores.to_numpy(dtype=float)
         # stable descending sort with NaN last == dplyr::arrange(desc(x))
-        order = np.argsort(np.where(np.isnan(values), np.inf, -values), kind="stable")[:n_top]
-        rows.append(pd.DataFrame({
-            "program": program, "gene": scores.index[order], "rank": np.arange(1, len(order) + 1),
-        }))
+        order = np.argsort(np.where(np.isnan(values), np.inf, -values), kind="stable")[
+            :n_top
+        ]
+        rows.append(
+            pd.DataFrame(
+                {
+                    "program": program,
+                    "gene": scores.index[order],
+                    "rank": np.arange(1, len(order) + 1),
+                }
+            )
+        )
     return pd.concat(rows, ignore_index=True)
 
 
 # ---------------------------------------------------------------------------
 # Statistics
 # ---------------------------------------------------------------------------
+
 
 def adjust_pvalues_bh(pvalues: np.ndarray) -> np.ndarray:
     """Benjamini-Hochberg adjusted p-values; NaN ignored (n = non-NaN count), as R ``p.adjust``."""
@@ -207,15 +254,18 @@ def welch_ttest_from_moments(mean_a, var_a, n_a, mean_b, var_b, n_b):
     (stderr < 10 * eps * max(|mean_a|, |mean_b|)) or a group has < 2 values, returns NaN.
     """
     mean_a, var_a, n_a, mean_b, var_b, n_b = np.broadcast_arrays(
-        *(np.asarray(x, dtype=float) for x in (mean_a, var_a, n_a, mean_b, var_b, n_b)))
+        *(np.asarray(x, dtype=float) for x in (mean_a, var_a, n_a, mean_b, var_b, n_b))
+    )
     with np.errstate(divide="ignore", invalid="ignore"):
         se2_a = var_a / n_a
         se2_b = var_b / n_b
         stderr = np.sqrt(se2_a + se2_b)
-        df = (se2_a + se2_b) ** 2 / (se2_a ** 2 / (n_a - 1) + se2_b ** 2 / (n_b - 1))
+        df = (se2_a + se2_b) ** 2 / (se2_a**2 / (n_a - 1) + se2_b**2 / (n_b - 1))
         t = (mean_a - mean_b) / stderr
         pvalue = 2.0 * stats.t.sf(np.abs(t), df)
-    constant = stderr < 10 * np.finfo(float).eps * np.maximum(np.abs(mean_a), np.abs(mean_b))
+    constant = stderr < 10 * np.finfo(float).eps * np.maximum(
+        np.abs(mean_a), np.abs(mean_b)
+    )
     invalid = constant | (n_a < 2) | (n_b < 2)
     for x in (t, df, pvalue):
         x[invalid] = np.nan
@@ -242,21 +292,25 @@ def test_motif_enrichment_ttest(
     Long DataFrame (``RESULT_COLUMNS``), one row per program x TF, BH FDR across all rows.
     """
     universe = counts.index
-    count_matrix = counts.to_numpy(dtype=float)                     # genes x TFs
+    count_matrix = counts.to_numpy(dtype=float)  # genes x TFs
     programs = pd.unique(program_genes["program"])
-    membership = np.zeros((len(universe), len(programs)), dtype=float)  # genes x programs
+    membership = np.zeros(
+        (len(universe), len(programs)), dtype=float
+    )  # genes x programs
     gene_position = pd.Series(np.arange(len(universe)), index=universe)
     for j, program in enumerate(programs):
         genes = program_genes.loc[program_genes["program"] == program, "gene"]
-        positions = gene_position.reindex(pd.unique(genes)).dropna().astype(int).to_numpy()
+        positions = (
+            gene_position.reindex(pd.unique(genes)).dropna().astype(int).to_numpy()
+        )
         membership[positions, j] = 1.0
 
     n_total = float(len(universe))
-    total_sum = count_matrix.sum(axis=0)                             # TFs
-    total_sumsq = (count_matrix ** 2).sum(axis=0)
-    n_program = membership.sum(axis=0)[:, None]                      # programs x 1
-    program_sum = membership.T @ count_matrix                        # programs x TFs
-    program_sumsq = membership.T @ count_matrix ** 2
+    total_sum = count_matrix.sum(axis=0)  # TFs
+    total_sumsq = (count_matrix**2).sum(axis=0)
+    n_program = membership.sum(axis=0)[:, None]  # programs x 1
+    program_sum = membership.T @ count_matrix  # programs x TFs
+    program_sumsq = membership.T @ count_matrix**2
     n_background = n_total - n_program
     background_sum = total_sum - program_sum
     background_sumsq = total_sumsq - program_sumsq
@@ -264,28 +318,38 @@ def test_motif_enrichment_ttest(
     def mean_and_var(total, total_sq, n):
         # (n * sum(x^2) - sum(x)^2) is exact for integer counts, so var is correctly rounded
         with np.errstate(divide="ignore", invalid="ignore"):
-            return total / n, (n * total_sq - total ** 2) / (n * (n - 1))
+            return total / n, (n * total_sq - total**2) / (n * (n - 1))
 
     mean_program, var_program = mean_and_var(program_sum, program_sumsq, n_program)
-    mean_background, var_background = mean_and_var(background_sum, background_sumsq, n_background)
+    mean_background, var_background = mean_and_var(
+        background_sum, background_sumsq, n_background
+    )
     _, _, pvalue = welch_ttest_from_moments(
-        mean_program, var_program, n_program, mean_background, var_background, n_background)
+        mean_program,
+        var_program,
+        n_program,
+        mean_background,
+        var_background,
+        n_background,
+    )
     with np.errstate(divide="ignore", invalid="ignore"):
         enrichment = mean_program / mean_background
 
     n_tfs = count_matrix.shape[1]
-    result = pd.DataFrame({
-        "program": np.repeat(programs, n_tfs),
-        "element_type": element_type,
-        "tf": np.tile(counts.columns.to_numpy(), len(programs)),
-        "pvalue": pvalue.ravel(),
-        "fdr": adjust_pvalues_bh(pvalue.ravel()),
-        "enrichment": enrichment.ravel(),
-        "n_program_genes_tested": np.repeat(n_program[:, 0], n_tfs).astype(int),
-        "n_background_genes": np.repeat(n_background[:, 0], n_tfs).astype(int),
-        "mean_count_program": mean_program.ravel(),
-        "mean_count_background": mean_background.ravel(),
-    })
+    result = pd.DataFrame(
+        {
+            "program": np.repeat(programs, n_tfs),
+            "element_type": element_type,
+            "tf": np.tile(counts.columns.to_numpy(), len(programs)),
+            "pvalue": pvalue.ravel(),
+            "fdr": adjust_pvalues_bh(pvalue.ravel()),
+            "enrichment": enrichment.ravel(),
+            "n_program_genes_tested": np.repeat(n_program[:, 0], n_tfs).astype(int),
+            "n_background_genes": np.repeat(n_background[:, 0], n_tfs).astype(int),
+            "mean_count_program": mean_program.ravel(),
+            "mean_count_background": mean_background.ravel(),
+        }
+    )
     return result[RESULT_COLUMNS]
 
 
@@ -322,11 +386,19 @@ def test_motif_enrichment_correlation(
     count columns = mean count over those genes (the same value for every program).
     """
     if correlation not in ("pearson", "spearman"):
-        raise ValueError(f"correlation must be pearson or spearman, got {correlation!r}")
-    genes = pd.Index(gene_spectra_score.columns if universe_genes is None else list(universe_genes))
+        raise ValueError(
+            f"correlation must be pearson or spearman, got {correlation!r}"
+        )
+    genes = pd.Index(
+        gene_spectra_score.columns if universe_genes is None else list(universe_genes)
+    )
     genes = genes[genes.isin(gene_spectra_score.columns)].unique()
-    count_matrix = counts.reindex(index=genes, fill_value=0).to_numpy(dtype=float)       # genes x TFs
-    loading_matrix = gene_spectra_score.loc[:, genes].to_numpy(dtype=float).T             # genes x programs
+    count_matrix = counts.reindex(index=genes, fill_value=0).to_numpy(
+        dtype=float
+    )  # genes x TFs
+    loading_matrix = (
+        gene_spectra_score.loc[:, genes].to_numpy(dtype=float).T
+    )  # genes x programs
     if correlation == "spearman":
         count_matrix = stats.rankdata(count_matrix, axis=0)
         loading_matrix = stats.rankdata(loading_matrix, axis=0)
@@ -334,36 +406,43 @@ def test_motif_enrichment_correlation(
 
     def standardize(matrix):
         centered = matrix - matrix.mean(axis=0)
-        norm = np.sqrt((centered ** 2).sum(axis=0))
+        norm = np.sqrt((centered**2).sum(axis=0))
         with np.errstate(divide="ignore", invalid="ignore"):
             return centered / np.where(norm > 0, norm, np.nan)
 
-    r = standardize(loading_matrix).T @ standardize(count_matrix)                         # programs x TFs
+    r = standardize(loading_matrix).T @ standardize(count_matrix)  # programs x TFs
     pvalue = pearson_pvalues(r, n)
     programs = gene_spectra_score.index.to_numpy()
     n_tfs = count_matrix.shape[1]
-    mean_count = counts.reindex(index=genes, fill_value=0).to_numpy(dtype=float).mean(axis=0)
-    result = pd.DataFrame({
-        "program": np.repeat(programs, n_tfs),
-        "element_type": element_type,
-        "tf": np.tile(counts.columns.to_numpy(), len(programs)),
-        "pvalue": pvalue.ravel(),
-        "fdr": adjust_pvalues_bh(pvalue.ravel()),
-        "enrichment": r.ravel(),
-        "n_program_genes_tested": n,
-        "n_background_genes": 0,
-        "mean_count_program": np.tile(mean_count, len(programs)),
-        "mean_count_background": np.tile(mean_count, len(programs)),
-    })
+    mean_count = (
+        counts.reindex(index=genes, fill_value=0).to_numpy(dtype=float).mean(axis=0)
+    )
+    result = pd.DataFrame(
+        {
+            "program": np.repeat(programs, n_tfs),
+            "element_type": element_type,
+            "tf": np.tile(counts.columns.to_numpy(), len(programs)),
+            "pvalue": pvalue.ravel(),
+            "fdr": adjust_pvalues_bh(pvalue.ravel()),
+            "enrichment": r.ravel(),
+            "n_program_genes_tested": n,
+            "n_background_genes": 0,
+            "mean_count_program": np.tile(mean_count, len(programs)),
+            "mean_count_background": np.tile(mean_count, len(programs)),
+        }
+    )
     return result[RESULT_COLUMNS]
 
 
-def flag_significant(results: pd.DataFrame, fdr_threshold: float = 0.05, method: str = "ttest") -> pd.DataFrame:
+def flag_significant(
+    results: pd.DataFrame, fdr_threshold: float = 0.05, method: str = "ttest"
+) -> pd.DataFrame:
     """Add boolean ``significant`` = fdr < threshold and enrichment > :data:`SIGNIFICANCE_MIN_ENRICHMENT`
     of ``method`` (t-test: mean ratio > 1, the paper definition; correlation: coefficient > 0)."""
     if method not in SIGNIFICANCE_MIN_ENRICHMENT:
         raise ValueError(f"method must be one of {ENRICHMENT_METHODS}, got {method!r}")
     results = results.copy()
-    results["significant"] = ((results["fdr"] < fdr_threshold)
-                              & (results["enrichment"] > SIGNIFICANCE_MIN_ENRICHMENT[method]))
+    results["significant"] = (results["fdr"] < fdr_threshold) & (
+        results["enrichment"] > SIGNIFICANCE_MIN_ENRICHMENT[method]
+    )
     return results

@@ -16,9 +16,9 @@ def encode_categorical_covariates(
     numeric_as_category_threshold: Optional[int] = None,
 ) -> pd.DataFrame:
     """
-    One-hot encode categorical/object/bool columns in a covariate DataFrame. 
-    All categorical values (dispite number) are one-hotted 
-    For numberical values, if it has > 20 unique numbers, it is continous, else discrete and one-hotted  
+    One-hot encode categorical/object/bool columns in a covariate DataFrame.
+    All categorical values (dispite number) are one-hotted
+    For numberical values, if it has > 20 unique numbers, it is continous, else discrete and one-hotted
 
     Args:
         df: covariate table (cells x covariates).
@@ -73,7 +73,7 @@ def build_covariate_table(
     log_covariates: Optional[Sequence[str]] = None,
 ) -> pd.DataFrame:
     """
-    Collect covariate columns from adata.obs into one table. 
+    Collect covariate columns from adata.obs into one table.
     Log trasnform values like UMI or gene counts, that are skewed and wide-range
     these values can be continous or integer
 
@@ -132,7 +132,9 @@ def get_covar_matrix(
     covariate_table = encode_categorical_covariates(
         covariate_table,
         drop_original=drop_original,
-        numeric_as_category_threshold=numeric_as_category_threshold if one_hot_encode else None,
+        numeric_as_category_threshold=numeric_as_category_threshold
+        if one_hot_encode
+        else None,
     )
     covariate_names = list(covariate_table.columns)
     Covariates = covariate_table.to_numpy().astype(np.float64, copy=False)
