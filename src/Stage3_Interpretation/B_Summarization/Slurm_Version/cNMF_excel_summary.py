@@ -156,7 +156,7 @@ def main():
         help="uns key for guide target names. Default: guide_targets",
     )
     parser.add_argument(
-        "--organism",
+        "--species",
         type=str.lower,
         choices=["human", "mouse"],
         default="human",
@@ -168,7 +168,7 @@ def main():
         "--ortholog_table",
         type=str,
         default=None,
-        help="For --organism mouse: TSV of mouse-human orthologs (columns: "
+        help="For --species mouse: TSV of mouse-human orthologs (columns: "
         "mouse_symbol, mouse_ensembl, human_symbol, source). Default: the table "
         "cached in src/Stage2_Evaluation/Resources/, downloaded if missing",
     )
@@ -306,7 +306,7 @@ def main():
         num_gene=args.num_gene,
         data_key=args.data_key,
         gene_names_key=args.gene_names_key,
-        species=args.organism,
+        species=args.species,
         ortholog_table=args.ortholog_table,
     )
     df_Program_loading_flat = compile_Program_loading_score_sheet_flat(

@@ -40,7 +40,7 @@ The evaluation pipeline tests cNMF programs against various criteria to assess t
 | X_normalized_path | str | None | Path to normalized cell x gene matrix (.h5ad), required for explained variance |
 | guide_annotation_path | str | None | Path to tab-separated guide annotation file with "targeting" column |
 | gwas_data_path | str | None | Path to GWAS data file for trait enrichment (required when --Perform_trait is set) |
-| organism | str | "human" | Organism/species for enrichment analysis (`human` or `mouse`; mouse genes are mapped to human orthologs to match the human gene-set libraries) |
+| species | str | "human" | Species for enrichment analysis (`human` or `mouse`; mouse genes are mapped to human orthologs to match the human gene-set libraries) |
 | ortholog_table | str | None | For mouse: mouse-human ortholog TSV (columns `mouse_symbol`, `mouse_ensembl`, `human_symbol`, `source`). Default: MGI + Ensembl table, downloaded once and cached in `src/Stage2_Evaluation/Resources/` |
 | FDR_method | str | "StoreyQ" | FDR correction method for perturbation association |
 | balanced | flag | off | Subsample each target's reference cells to the target's cell count before the perturbation U-test (all reference cells kept if fewer) |

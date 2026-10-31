@@ -35,7 +35,7 @@ python $SCRIPT_DIR/prepare_programs.py \
   --categorical_key sample \
   --log2fc_key log2FC \
   --cell_type "<cell type>" \
-  --organism human \
+  --species human \
   --n_genes 300 \
   --membership_top 300 \
   --fdr 0.05 \

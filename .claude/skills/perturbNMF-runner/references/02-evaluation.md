@@ -8,7 +8,7 @@
 cat <out_dir>/<run_name>/Inference/config_*.yml
 ```
 
-Extract: `K`, `sel_thresh`, `categorical_key`, `gene_names_key`, `species` -> `organism`, `data_key`, `prog_key`.
+Extract: `K`, `sel_thresh`, `categorical_key`, `gene_names_key`, `species`, `data_key`, `prog_key`.
 
 ## Step B: Construct paths
 
@@ -39,7 +39,7 @@ Reconstruction error and stability are computed automatically.
 | `--FDR_method` | `StoreyQ` | FDR correction: `StoreyQ` or `BH` |
 | `--balanced` | off | Subsample each target's U-test reference to the target's cell count (all kept if fewer) |
 | `--balanced_seed` | `0` | Seed for the `--balanced` subsample |
-| `--organism` | `human` | Species for enrichment (`human` or `mouse`; mouse genes are mapped to human orthologs) |
+| `--species` | `human` | Species for enrichment (`human` or `mouse`; mouse genes are mapped to human orthologs) |
 | `--ortholog_table` | None | Mouse-human ortholog TSV; default MGI + Ensembl, cached in `Resources/` |
 | `--n_top` | `300` | Top genes for enrichment tests |
 | `--guide_annotation_key` | `["non-targeting"]` | Non-targeting guide identifiers (accepts multiple values) |

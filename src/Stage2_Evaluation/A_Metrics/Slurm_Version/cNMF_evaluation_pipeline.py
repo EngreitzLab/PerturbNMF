@@ -222,8 +222,8 @@ def main():
     )
 
     parser.add_argument(
-        "--organism",
-        help="Organism/species for enrichment analysis: human or mouse (default: human)",
+        "--species",
+        help="Species for enrichment analysis: human or mouse (default: human)",
         type=str.lower,
         choices=["human", "mouse"],
         default="human",
@@ -232,7 +232,7 @@ def main():
         "--ortholog_table",
         type=str,
         default=None,
-        help="For --organism mouse: TSV of mouse-human orthologs used to match genes "
+        help="For --species mouse: TSV of mouse-human orthologs used to match genes "
         "to the human gene-set libraries (columns: mouse_symbol, mouse_ensembl, "
         "human_symbol, source). Default: MGI + Ensembl table, downloaded once and "
         "cached in src/Stage2_Evaluation/Resources/",
@@ -286,9 +286,9 @@ def main():
     args = parser.parse_args()
 
     # The bundled GWAS resource (OpenTargets L2G) is human-only.
-    if args.Perform_trait and args.organism != "human":
+    if args.Perform_trait and args.species != "human":
         print(
-            f"--organism {args.organism}: skipping trait (GWAS) enrichment, which is "
+            f"--species {args.species}: skipping trait (GWAS) enrichment, which is "
             "only available for human data. Pass --no_trait to K-selection plotting.",
             flush=True,
         )
@@ -529,7 +529,7 @@ def main():
                         prog_key=args.prog_key,
                         data_key=args.data_key,
                         prog_name=None,
-                        organism=args.organism,
+                        organism=args.species,
                         ortholog_table=args.ortholog_table,
                         library="Reactome_2022",
                         method="fisher",
@@ -550,7 +550,7 @@ def main():
                         prog_key=args.prog_key,
                         data_key=args.data_key,
                         prog_name=None,
-                        organism=args.organism,
+                        organism=args.species,
                         ortholog_table=args.ortholog_table,
                         library="GO_Biological_Process_2023",
                         method="fisher",

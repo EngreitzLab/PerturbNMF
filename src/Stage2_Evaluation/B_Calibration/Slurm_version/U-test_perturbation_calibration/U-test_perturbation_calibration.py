@@ -129,8 +129,8 @@ def main():
         default="guide_assignment",
     )
     parser.add_argument(
-        "--organism",
-        help="Organism/species for analysis (default: human)",
+        "--species",
+        help="Species of the data: human or mouse (default: human)",
         type=str,
         default="human",
     )

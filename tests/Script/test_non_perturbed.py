@@ -163,7 +163,7 @@ def test_trait_enrichment_skipped_for_mouse(
     """--Perform_trait with a non-human organism is skipped with a message,
     without requiring --gwas_data_path."""
     monkeypatch.setattr(
-        sys, "argv", _eval_argv(run_dir, "--Perform_trait", "--organism", "mouse")
+        sys, "argv", _eval_argv(run_dir, "--Perform_trait", "--species", "mouse")
     )
     assert evaluation_main() == 0
 
@@ -177,7 +177,7 @@ def test_trait_enrichment_still_requires_gwas_for_human(
 ):
     """Human behavior is unchanged: --Perform_trait needs --gwas_data_path."""
     monkeypatch.setattr(
-        sys, "argv", _eval_argv(run_dir, "--Perform_trait", "--organism", "human")
+        sys, "argv", _eval_argv(run_dir, "--Perform_trait", "--species", "human")
     )
     with pytest.raises(SystemExit):
         evaluation_main()
@@ -218,14 +218,14 @@ def test_perturbation_with_wrong_prog_key_names_the_modality(
 
 def test_organism_is_case_insensitive(run_dir, evaluation_main, monkeypatch, capsys):
     monkeypatch.setattr(
-        sys, "argv", _eval_argv(run_dir, "--Perform_trait", "--organism", "Mouse")
+        sys, "argv", _eval_argv(run_dir, "--Perform_trait", "--species", "Mouse")
     )
     assert evaluation_main() == 0
     assert "skipping trait (GWAS) enrichment" in capsys.readouterr().out
 
 
 def test_unsupported_organism_is_rejected(run_dir, evaluation_main, monkeypatch):
-    monkeypatch.setattr(sys, "argv", _eval_argv(run_dir, "--organism", "rat"))
+    monkeypatch.setattr(sys, "argv", _eval_argv(run_dir, "--species", "rat"))
     with pytest.raises(SystemExit):
         evaluation_main()
 
@@ -373,7 +373,7 @@ def test_excel_summary_without_guides(run_dir, monkeypatch, capsys, tmp_path):
             str(k),
             "--sel_thresh",
             str(SEL_THRESH),
-            "--organism",
+            "--species",
             "mouse",
             "--categorical_key",
             "sample",
