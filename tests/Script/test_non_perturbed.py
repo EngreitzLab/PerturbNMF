@@ -2,8 +2,8 @@
 
 Covers the code paths that previously assumed CRISPR guide information or human data:
 
-- Stage 2 evaluation skips trait (GWAS) enrichment for non-human organisms and fails
-  early with a clear message when perturbation association is requested without guides.
+- Stage 2 evaluation skips trait (GWAS) enrichment for non-human species and
+  validates --species.
 - Stage 3 K-selection runs without trait or perturbation files (--no_trait,
   --no_perturbation).
 - Stage 3 Excel summary runs on an h5mu without uns['guide_targets'] and, for
@@ -180,39 +180,6 @@ def test_trait_enrichment_still_requires_gwas_for_human(
         sys, "argv", _eval_argv(run_dir, "--Perform_trait", "--species", "human")
     )
     with pytest.raises(SystemExit):
-        evaluation_main()
-
-
-def test_perturbation_without_guides_fails_clearly(
-    run_dir, evaluation_main, monkeypatch
-):
-    """Fails before any metric is computed (no categorical results written)."""
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        _eval_argv(
-            run_dir,
-            "--Perform_perturbation",
-            "--Perform_categorical",
-            "--categorical_key",
-            "sample",
-        ),
-    )
-    with pytest.raises(ValueError, match="drop --Perform_perturbation"):
-        evaluation_main()
-    eval_dir = run_dir["run"] / "Evaluation" / f"{K_VALUES[0]}_{SEL_STR}"
-    assert not (
-        eval_dir / f"{K_VALUES[0]}_categorical_association_results.txt"
-    ).exists()
-
-
-def test_perturbation_with_wrong_prog_key_names_the_modality(
-    run_dir, evaluation_main, monkeypatch
-):
-    monkeypatch.setattr(
-        sys, "argv", _eval_argv(run_dir, "--Perform_perturbation", "--prog_key", "prog")
-    )
-    with pytest.raises(ValueError, match="check --prog_key"):
         evaluation_main()
 
 

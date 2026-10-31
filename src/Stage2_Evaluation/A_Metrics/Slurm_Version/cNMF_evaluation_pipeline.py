@@ -47,23 +47,6 @@ def _read_samples_from_h5mu(h5mu_path, data_key, categorical_key):
         return None
 
 
-def _h5mu_has_uns_key(h5mu_path, mod_key, uns_key):
-    """True if mod/<mod_key>/uns/<uns_key> exists in the h5mu; None if unreadable.
-
-    Raises ValueError if the modality itself is missing (e.g. a wrong --prog_key).
-    """
-    try:
-        f = h5py.File(h5mu_path, "r")
-    except OSError:
-        return None
-    with f:
-        if f"mod/{mod_key}" not in f:
-            raise ValueError(
-                f"Modality '{mod_key}' not found in {h5mu_path}; check --prog_key."
-            )
-        return f"mod/{mod_key}/uns/{uns_key}" in f
-
-
 # Make the repo's src/ importable regardless of the current working directory
 from pathlib import Path
 
@@ -342,25 +325,6 @@ def main():
         reference_targets = df_target_non.index.values.tolist()
     else:
         reference_targets = args.guide_annotation_key
-
-    # Check for guide information before computing any metric.
-    if args.Perform_perturbation:
-        for sel_thresh in args.sel_threshs:
-            for k in args.K:
-                h5mu_path = (
-                    f"{args.out_dir}/{args.run_name}/Inference/adata/"
-                    f"cNMF_{k}_{str(sel_thresh).replace('.', '_')}.h5mu"
-                )
-                if (
-                    _h5mu_has_uns_key(h5mu_path, args.prog_key, args.guide_targets_key)
-                    is False
-                ):
-                    raise ValueError(
-                        f"--Perform_perturbation needs guide information, but uns['"
-                        f"{args.guide_targets_key}'] is missing from '{args.prog_key}' "
-                        f"in {h5mu_path}. For non-perturbed data, drop "
-                        "--Perform_perturbation."
-                    )
 
     for sel_thresh in args.sel_threshs:
         for k in args.K:

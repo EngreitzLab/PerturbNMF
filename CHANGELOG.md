@@ -49,8 +49,7 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
 - Support for scRNA-seq data without perturbations (no guide information):
   K-selection `--no_perturbation` / `--no_trait`; program plots and the Excel
   summary run without `uns['guide_targets']` (the Targets Summary sheet is
-  skipped); evaluation stops early when `--Perform_perturbation` is requested
-  without guides. See the README section "Non-perturbed and mouse data".
+  skipped). See the README section "Non-perturbed and mouse data".
 - Mouse-human ortholog table (`src/Stage2_Evaluation/A_Metrics/src/orthologs.py`),
   downloaded once and cached in `src/Stage2_Evaluation/Resources/`, or supplied
   with `--ortholog_table`. With `--species mouse`, the Excel summary annotates
