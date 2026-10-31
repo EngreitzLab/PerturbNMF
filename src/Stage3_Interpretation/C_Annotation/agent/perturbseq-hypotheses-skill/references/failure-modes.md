@@ -249,12 +249,12 @@ with a confound it does not actually remove. State the real reason, or say the c
 arbitrary and that nothing turns on it.
 
 **Do not bake a temporary worktree's path into a committed entrypoint.** A blind run executed in
-an isolated `$SCRATCH` worktree wrote six SLURM runners that all `cd` to that worktree — so the
+an isolated worktree on scratch storage wrote six SLURM runners that all `cd` to that worktree — so the
 Regenerate block's first step fails for anyone else, and succeeds *wrongly* for whoever still has
-the directory, running the scratch copy rather than the one they just cloned. `$SCRATCH` is
+the directory, running the scratch copy rather than the one they just cloned. Scratch storage is
 purged, so it breaks for the author too on a 90-day horizon. Use
-`cd "$(dirname "$(readlink -f "$0")")"`, and point `--output`/`--error` at `$SCRATCH/...` rather
-than a literal path.
+`cd "$(dirname "$(readlink -f "$0")")"`, and point `--output`/`--error` at a path built from an environment
+variable (e.g. the cluster's scratch variable) rather than a literal path.
 
 **A documented chain of `sbatch` calls needs `--dependency`, and the order must be right.** Six
 runners fired back to back can interleave, so a later stage reads an earlier stage's stale or

@@ -26,6 +26,9 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
   repo from their own location instead of a hardcoded checkout path.
 - Annotation defaults are cell-type neutral; the PubMed keyword is optional, and
   Vertex AI project/bucket come from env vars (`VERTEX_PROJECT_ID`, `VERTEX_BUCKET`).
+- `setup_sterile_run.sh` (perturbseq-hypotheses skill): remote inputs use a `remote:`
+  manifest prefix (was `sherlock:`), and `fetch_inputs.sh` reads the host from
+  `STERILE_RUN_REMOTE` instead of a hardcoded login.
 
 ### Added
 - `tools/check_no_lab_specific_content.py` guard (CI + pre-commit) that blocks

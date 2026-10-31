@@ -6,14 +6,15 @@
 # contaminated through all of these. This script builds a directory that holds only the inputs,
 # a scrubbed skill copy and a settings file that blocks the rest, then prints how to launch it.
 #
-#   setup_sterile_run.sh --run-dir ~/ph-sterile/telohaec_v2 \
+#   setup_sterile_run.sh --run-dir ~/ph-sterile/my_study_v2 \
 #       --inputs inputs_manifest.tsv \
-#       --terms ~/held_out/telohaec_terms.txt \
+#       --terms ~/held_out/my_study_terms.txt \
 #       [--study study.yaml] [--skill-src DIR] [--analysis-report-src DIR] [--style-src DIR]
 #
 # inputs_manifest.tsv: <name><TAB><path>, one per line. A local path is copied into inputs/<name>.
-# A path written as sherlock:/oak/... is added to fetch_inputs.sh (scp via the DTN, which asks
-# for a password — run it yourself).
+# A path written as remote:/path/on/host is added to fetch_inputs.sh (scp over SSH, which may ask
+# for a password — run it yourself). fetch_inputs.sh reads the host from STERILE_RUN_REMOTE
+# (user@host, e.g. a cluster's data-transfer node).
 #
 # --terms: held-out terms (answer-key genes, predecessor paper title, pathway names), one per line,
 # kept OUTSIDE the run directory. The run fails to build if any appears in the text it will read.
@@ -77,22 +78,22 @@ mkdir -p style && rsync -a --exclude '__pycache__' "$STYLE_SRC/" style/
 # 2. Inputs.
 cat > fetch_inputs.sh <<'FETCH'
 #!/usr/bin/env bash
-# Copies the Sherlock inputs via the DTN. One shared connection, so the password is asked once.
+# Copies the remote inputs over SSH. One shared connection, so the password is asked once.
 set -euo pipefail
 cd "$(dirname "$0")"
-DTN=engreitz@dtn.sherlock.stanford.edu
+REMOTE="${STERILE_RUN_REMOTE:?set STERILE_RUN_REMOTE to user@host for scp}"
 # %C is a short hash: macOS $TMPDIR paths exceed the Unix-socket length limit.
 mkdir -p ~/.ssh/cm
 SOCKET="$HOME/.ssh/cm/%C"
 SSH_OPTS=(-o ControlMaster=auto -o "ControlPath=$SOCKET" -o ControlPersist=15m)
-ssh "${SSH_OPTS[@]}" -fN "$DTN"
-trap 'ssh "${SSH_OPTS[@]}" -O exit "$DTN" 2>/dev/null || true' EXIT
+ssh "${SSH_OPTS[@]}" -fN "$REMOTE"
+trap 'ssh "${SSH_OPTS[@]}" -O exit "$REMOTE" 2>/dev/null || true' EXIT
 FETCH
 n_remote=0
 while IFS=$'\t' read -r name path || [[ -n "$name" ]]; do
   [[ -z "${name// }" || "$name" == \#* ]] && continue
-  if [[ "$path" == sherlock:* ]]; then
-    echo "scp -r \"\${SSH_OPTS[@]}\" \"\$DTN:${path#sherlock:}\" 'inputs/$name'" >> fetch_inputs.sh
+  if [[ "$path" == remote:* ]]; then
+    echo "scp -r \"\${SSH_OPTS[@]}\" \"\$REMOTE:${path#remote:}\" 'inputs/$name'" >> fetch_inputs.sh
     n_remote=$((n_remote + 1))
   else
     case "$path" in
@@ -154,7 +155,7 @@ git -c user.name=sterile-run -c user.email=sterile-run@localhost commit -qm "Ste
 cat <<EOF
 
 Sterile run ready: $RUN_DIR
-$( [[ -f fetch_inputs.sh ]] && echo "1. Fetch the Sherlock inputs yourself (DTN password):  $RUN_DIR/fetch_inputs.sh" )
+$( [[ -f fetch_inputs.sh ]] && echo "1. Fetch the remote inputs yourself (export STERILE_RUN_REMOTE=user@host first; SSH may ask for a password):  $RUN_DIR/fetch_inputs.sh" )
 
 Launch from a new terminal (not from a session started in ~/Claude):
 
@@ -170,7 +171,7 @@ Paste this as the FIRST message, before invoking the skill:
 Expected: (1) blocked, (2) none, (3) the copy under $RUN_DIR/.claude/skills. If any check fails,
 stop and fix the settings before running the skill.
 
-Residual risk: large inputs on Sherlock are read over SSH, and the cluster account can see
-all of Oak. The skill tells the Analyst to read only the paths in inputs/MANIFEST.txt; that is
+Residual risk: large inputs on the cluster are read over SSH, and the cluster account can see
+all of the shared filesystem. The skill tells the Analyst to read only the paths in inputs/MANIFEST.txt; that is
 an instruction, not a block.
 EOF

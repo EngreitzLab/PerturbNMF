@@ -8,7 +8,7 @@ exact-case matching (useful for a term that is a common English word in lower ca
 are not scanned: gene names legitimately appear there. Every non-binary file under the given
 paths is scanned (binary = a NUL byte in the first 8 KB); `.git` directories are skipped.
 
-    python check_for_leaked_terms.py --terms ~/held_out/telohaec_terms.txt \
+    python check_for_leaked_terms.py --terms ~/held_out/my_study_terms.txt \
         --paths RUN_DIR/.claude RUN_DIR/study.yaml RUN_DIR/README.md
 
 Stdlib only. Exit 1 on any hit.

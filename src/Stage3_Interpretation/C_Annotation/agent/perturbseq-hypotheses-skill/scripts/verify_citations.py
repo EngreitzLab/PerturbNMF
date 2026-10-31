@@ -20,7 +20,7 @@ Usage
 -----
     python verify_citations.py report.qmd
     python verify_citations.py report.qmd --json outputs/citation_check.json
-    python verify_citations.py report.qmd --email you@stanford.edu   # NCBI etiquette
+    python verify_citations.py report.qmd --email you@example.org   # NCBI etiquette
 """
 
 from __future__ import annotations

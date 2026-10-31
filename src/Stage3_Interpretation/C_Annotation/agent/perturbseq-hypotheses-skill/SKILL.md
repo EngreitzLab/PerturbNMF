@@ -96,7 +96,7 @@ checks or passes.
      lists every input the run may read, one absolute path per line (in a sterile run the setup
      script writes it, as names under `inputs/`). The Explorer and Analyst read only what it lists.
    - Give the analysis a pixi environment (`pandas`, `numpy`, `matplotlib`, `scipy`, plus
-     `anndata`/`mudata` if per-cell files are used). List both `linux-64` (Sherlock) and
+     `anndata`/`mudata` if per-cell files are used). List both `linux-64` (e.g. an HPC cluster) and
      `osx-arm64` as platforms if it will run in both places.
    - Copy `study_template.yaml` to `study.yaml`, fill it from the repo's README / spec, and **show
      it to the user before anything runs**, with the `effort` question (low / medium / high,
