@@ -225,3 +225,21 @@ def test_cache_is_written_atomically(monkeypatch, tmp_path, table):
     )
     second = orthologs.load_ortholog_table()
     assert len(second) == len(first)
+
+
+def test_unwritable_cache_keeps_downloaded_table(monkeypatch, tmp_path, table, caplog):
+    """A cache that cannot be written (e.g. read-only Resources/) does not fail the run."""
+    from Stage2_Evaluation.A_Metrics.src import orthologs
+
+    blocker = tmp_path / "not_a_dir"
+    blocker.write_text("")  # makedirs under a regular file fails, even as root
+    monkeypatch.setattr(orthologs, "RESOURCES_DIR", str(blocker / "Resources"))
+    monkeypatch.setattr(
+        orthologs, "DEFAULT_TABLE_PATH", str(blocker / "Resources" / "cache.tsv")
+    )
+    monkeypatch.setattr(orthologs, "build_ortholog_table", lambda: table)
+
+    loaded = orthologs.load_ortholog_table()
+    assert len(loaded) == len(table)
+    assert "Could not cache the ortholog table" in caplog.text
+    assert list(tmp_path.iterdir()) == [blocker]  # no temporary file left behind

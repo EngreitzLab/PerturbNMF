@@ -131,16 +131,23 @@ def load_ortholog_table(path: str | None = None) -> pd.DataFrame:
                 "without internet access, build it once elsewhere (it is cached at "
                 f"{DEFAULT_TABLE_PATH}) or pass a pre-built table with --ortholog_table."
             ) from err
-        os.makedirs(RESOURCES_DIR, exist_ok=True)
         # Write to a temporary file first so concurrent jobs never read a partial table.
+        # A failed write (e.g. a read-only shared Resources/) keeps the downloaded table.
         tmp_path = f"{DEFAULT_TABLE_PATH}.{os.getpid()}.tmp"
         try:
+            os.makedirs(RESOURCES_DIR, exist_ok=True)
             table.to_csv(tmp_path, sep="\t", index=False)
             os.replace(tmp_path, DEFAULT_TABLE_PATH)
+            logger.info(f"Saved ortholog table to {DEFAULT_TABLE_PATH}")
+        except OSError as err:
+            logger.warning(
+                f"Could not cache the ortholog table at {DEFAULT_TABLE_PATH} ({err}); "
+                "using the downloaded table. Pass --ortholog_table to avoid "
+                "downloading it again."
+            )
         finally:
             if os.path.exists(tmp_path):  # only left over if the write failed
                 os.remove(tmp_path)
-        logger.info(f"Saved ortholog table to {DEFAULT_TABLE_PATH}")
 
     missing = set(TABLE_COLUMNS) - set(table.columns)
     if missing:
