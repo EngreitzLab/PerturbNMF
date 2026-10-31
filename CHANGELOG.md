@@ -44,6 +44,10 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
   a new UMAP.
 
 ### Added
+- perturbNMF-runner skill: `validate_data.py --stage evaluation` checks the inference
+  h5mu files an evaluation run will read (modalities, `varm['loadings']`, the condition
+  column and, with `--Perform_perturbation`, guide information) before the job is
+  generated. The evaluation pipeline itself no longer pre-checks for guides.
 - `tools/check_no_lab_specific_content.py` guard (CI + pre-commit) that blocks
   lab/project-specific content in this public repo.
 - Support for scRNA-seq data without perturbations (no guide information):

@@ -393,15 +393,146 @@ def validate_mdata(mdata, args):
     return issues
 
 
+def evaluation_h5mu_paths(args):
+    """The h5mu files cNMF_evaluation_pipeline.py reads for these --K / --sel_threshs."""
+    return [
+        f"{args.out_dir}/{args.run_name}/Inference/adata/"
+        f"cNMF_{k}_{str(sel_thresh).replace('.', '_')}.h5mu"
+        for sel_thresh in args.sel_threshs
+        for k in args.K
+    ]
+
+
+def validate_evaluation_inputs(args):
+    """Check the evaluation input h5mu files by key existence (no full load; files can be tens of GB)."""
+    import h5py
+
+    issues = []
+    guides_found = []
+    guide_keys = [
+        f"mod/{args.prog_key}/uns/{args.guide_names_key}",
+        f"mod/{args.prog_key}/uns/{args.guide_targets_key}",
+        f"mod/{args.prog_key}/obsm/{args.guide_assignment_key}",
+    ]
+    needs_categorical = args.Perform_categorical or args.Perform_perturbation
+    for path in evaluation_h5mu_paths(args):
+        print(f"\n--- {path} ---")
+        if not os.path.isfile(path):
+            issues.append(
+                f"{path}: file not found (check --out_dir, --run_name, --K, --sel_threshs)"
+            )
+            continue
+        try:
+            f = h5py.File(path, "r")
+        except OSError as e:
+            issues.append(f"{path}: cannot be opened as HDF5 ({e})")
+            continue
+        with f:
+            mods = sorted(f["mod"].keys()) if "mod" in f else []
+            print(f"  Modalities: {mods}")
+            required = [f"mod/{args.data_key}", f"mod/{args.prog_key}"]
+            missing_mods = [k for k in required if k not in f]
+            for k in missing_mods:
+                flag = "--data_key" if k.endswith(f"/{args.data_key}") else "--prog_key"
+                issues.append(f"{path}: missing modality '{k[4:]}' (check {flag})")
+            if missing_mods:
+                continue
+
+            required = [f"mod/{args.prog_key}/varm/loadings"]
+            if needs_categorical:
+                required.append(f"mod/{args.data_key}/obs/{args.categorical_key}")
+            elif f"mod/{args.data_key}/obs/{args.categorical_key}" not in f:
+                print(f"  Note: no obs['{args.categorical_key}'] in '{args.data_key}'")
+            if args.gene_names_key:
+                required.append(f"mod/{args.data_key}/var/{args.gene_names_key}")
+            for k in required:
+                if k in f:
+                    print(f"  Found {k}")
+                else:
+                    issues.append(f"{path}: missing {k}")
+
+            missing_guides = [k for k in guide_keys if k not in f]
+            guides_found.append(not missing_guides)
+            if args.Perform_perturbation:
+                for k in missing_guides:
+                    issues.append(
+                        f"{path}: missing {k}, needed by --Perform_perturbation "
+                        "(for non-perturbed data, run evaluation without it)"
+                    )
+            if not missing_guides:
+                print(f"  Found guide information ({', '.join(guide_keys)})")
+
+    if not args.Perform_perturbation and guides_found:
+        if not any(guides_found):
+            print(
+                "\nNon-perturbed data (no guide information): run evaluation "
+                "without --Perform_perturbation."
+            )
+        elif all(guides_found):
+            print(
+                "\nGuide information found: perturbation association "
+                "(--Perform_perturbation) is available."
+            )
+    return issues
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Validate input data for cNMF pipeline"
     )
     parser.add_argument(
+        "--stage",
+        choices=["inference", "evaluation"],
+        default="inference",
+        help="inference: check the --counts_fn input (default). evaluation: check the "
+        "cNMF h5mu files that cNMF_evaluation_pipeline.py will read, built from "
+        "--out_dir / --run_name / --K / --sel_threshs",
+    )
+    parser.add_argument(
         "--counts_fn",
         type=str,
-        required=True,
-        help="Path to input data file (.h5ad or .h5mu)",
+        default=None,
+        help="Path to input data file (.h5ad or .h5mu); required for --stage inference",
+    )
+    parser.add_argument(
+        "--out_dir",
+        type=str,
+        default=None,
+        help="Evaluation: parent directory of the run",
+    )
+    parser.add_argument(
+        "--run_name", type=str, default=None, help="Evaluation: run directory name"
+    )
+    parser.add_argument(
+        "--K",
+        nargs="*",
+        type=int,
+        default=[30, 50, 70, 80, 100, 200, 300],
+        help="Evaluation: K values (same as the evaluation pipeline)",
+    )
+    parser.add_argument(
+        "--sel_threshs",
+        nargs="*",
+        type=float,
+        default=[0.2, 2.0],
+        help="Evaluation: density thresholds (same as the evaluation pipeline)",
+    )
+    parser.add_argument(
+        "--gene_names_key",
+        type=str,
+        default=None,
+        help="Evaluation: column in var of --data_key that must exist (optional)",
+    )
+    parser.add_argument(
+        "--Perform_categorical",
+        action="store_true",
+        help="Evaluation: require obs[--categorical_key]",
+    )
+    parser.add_argument(
+        "--Perform_perturbation",
+        action="store_true",
+        help="Evaluation: require guide information (uns guide names/targets, "
+        "obsm guide assignment) and obs[--categorical_key]",
     )
     parser.add_argument(
         "--categorical_key",
@@ -453,6 +584,22 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if args.stage == "evaluation":
+        if not (args.out_dir and args.run_name):
+            parser.error("--stage evaluation needs --out_dir and --run_name")
+        issues = validate_evaluation_inputs(args)
+        print("\n" + "=" * 60)
+        if issues:
+            print(f"VALIDATION: {len(issues)} issue(s) found:")
+            for i, issue in enumerate(issues, 1):
+                print(f"  {i}. {issue}")
+            sys.exit(1)
+        print("VALIDATION: All checks passed")
+        sys.exit(0)
+
+    if not args.counts_fn:
+        parser.error("--counts_fn is required for --stage inference")
 
     # Check file exists
     if not os.path.exists(args.counts_fn):
