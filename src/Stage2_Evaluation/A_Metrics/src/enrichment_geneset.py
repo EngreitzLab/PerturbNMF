@@ -14,13 +14,14 @@ from tqdm.auto import tqdm
 
 logging.basicConfig(level=logging.INFO)
 
-_RESOURCES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "Resources")
+_RESOURCES_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "Resources",
+)
 
 
 def create_geneset_dict(
-    dataframe: pd.DataFrame, 
-    key_column='trait_efos', 
-    gene_column='gene_name'
+    dataframe: pd.DataFrame, key_column="trait_efos", gene_column="gene_name"
 ):
     """Create custom geneset"""
 
@@ -31,7 +32,8 @@ def create_geneset_dict(
         geneset_dict.setdefault(key, []).append(gene)
     return geneset_dict
 
-def get_idconversion(var_names, organism='human', chunk_size=100):
+
+def get_idconversion(var_names, organism="human", chunk_size=100):
     """Match gene IDs with database, chunking large queries to avoid HTML errors."""
     # Ensure var_names is a simple list
     var_names = list(var_names)
@@ -40,55 +42,74 @@ def get_idconversion(var_names, organism='human', chunk_size=100):
     gene_names = [v.upper() for v in var_names]
 
     # Detect Ensembl IDs by looking at the first element safely
-    is_ensembl = (len(var_names) > 0 and var_names[0].lower().startswith('ens'))
+    is_ensembl = len(var_names) > 0 and var_names[0].lower().startswith("ens")
     if is_ensembl:
         bm = Biomart()
         dataset = (
-            'hsapiens_gene_ensembl'
-            if organism=='human'
-            else 'mmusculus_gene_ensembl'
+            "hsapiens_gene_ensembl" if organism == "human" else "mmusculus_gene_ensembl"
         )
 
         lookup = {}
         for i in range(0, len(var_names), chunk_size):
-            chunk = var_names[i:i+chunk_size]
+            chunk = var_names[i : i + chunk_size]
             try:
                 res = bm.query(
                     dataset=dataset,
-                    attributes=['ensembl_gene_id', 'external_gene_name'],
-                    filters={'ensembl_gene_id': chunk}
+                    attributes=["ensembl_gene_id", "external_gene_name"],
+                    filters={"ensembl_gene_id": chunk},
                 )
-                if not hasattr(res, 'columns'):
-                    raise RuntimeError('BioMart returned HTML or invalid format')
-                df = res[['ensembl_gene_id', 'external_gene_name']].astype(str)
-                df['external_gene_name'] = df['external_gene_name'].str.upper()
-                lookup.update(dict(zip(df['ensembl_gene_id'], df['external_gene_name'])))
+                if not hasattr(res, "columns"):
+                    raise RuntimeError("BioMart returned HTML or invalid format")
+                df = res[["ensembl_gene_id", "external_gene_name"]].astype(str)
+                df["external_gene_name"] = df["external_gene_name"].str.upper()
+                lookup.update(
+                    dict(zip(df["ensembl_gene_id"], df["external_gene_name"]))
+                )
             except Exception as e:
-                logging.info(f"BioMart chunk lookup failed for IDs {i}-{i+len(chunk)} ({e}); skipping these.")
+                logging.info(
+                    f"BioMart chunk lookup failed for IDs {i}-{i + len(chunk)} ({e}); skipping these."
+                )
 
         gene_names = [lookup.get(v, v.upper()) for v in var_names]
 
-    elif any(':ens' in v.lower() for v in var_names):
-        gene_names = [v.split(':', 1)[0].upper() for v in var_names]
+    elif any(":ens" in v.lower() for v in var_names):
+        gene_names = [v.split(":", 1)[0].upper() for v in var_names]
 
     return gene_names
-        
-def get_program_gene_loadings(mdata, prog_key='prog', prog_nam=None, data_key='rna', organism='human', gene_names_key=None):
+
+
+def get_program_gene_loadings(
+    mdata,
+    prog_key="prog",
+    prog_nam=None,
+    data_key="rna",
+    organism="human",
+    gene_names_key=None,
+):
     """Get gene loadings for each program in the mudata object."""
 
     if gene_names_key is not None and gene_names_key in mdata[data_key].var.columns:
-        gene_names = mdata[data_key].var[gene_names_key].astype(str).str.upper().tolist()
-    elif 'var_names' in mdata[prog_key].uns.keys():
-        gene_names = get_idconversion(mdata[prog_key].uns['var_names'], organism=organism)
+        gene_names = (
+            mdata[data_key].var[gene_names_key].astype(str).str.upper().tolist()
+        )
+    elif "var_names" in mdata[prog_key].uns.keys():
+        gene_names = get_idconversion(
+            mdata[prog_key].uns["var_names"], organism=organism
+        )
     else:
-        assert mdata[prog_key].varm['loadings'].shape[1] == mdata[data_key].var.shape[0]
+        assert mdata[prog_key].varm["loadings"].shape[1] == mdata[data_key].var.shape[0]
         gene_names = get_idconversion(mdata[data_key].var_names, organism=organism)
 
     if prog_nam:
-        loadings = pd.DataFrame(data=mdata[prog_key][:, prog_nam].varm['loadings'].flatten(), index=gene_names)
+        loadings = pd.DataFrame(
+            data=mdata[prog_key][:, prog_nam].varm["loadings"].flatten(),
+            index=gene_names,
+        )
         loadings.columns = [prog_nam]
     else:
-        loadings = pd.DataFrame(data=mdata[prog_key].varm['loadings'], index=mdata[prog_key].var.index).T
+        loadings = pd.DataFrame(
+            data=mdata[prog_key].varm["loadings"], index=mdata[prog_key].var.index
+        ).T
         loadings["gene_names"] = gene_names
         loadings.set_index("gene_names", inplace=True)
 
@@ -99,7 +120,14 @@ def get_program_gene_loadings(mdata, prog_key='prog', prog_nam=None, data_key='r
     return loadings
 
 
-def get_geneset(organism='human', library='h.all', database='msigdb', min_size: int = 0, max_size: int = 2000, use_cache: bool = False):
+def get_geneset(
+    organism="human",
+    library="h.all",
+    database="msigdb",
+    min_size: int = 0,
+    max_size: int = 2000,
+    use_cache: bool = False,
+):
     """Download gene set from MsigDB or Enrichr.
 
     Parameters
@@ -116,21 +144,28 @@ def get_geneset(organism='human', library='h.all', database='msigdb', min_size: 
             with open(cache_file) as f:
                 return json.load(f)
         else:
-            logging.info(f"Cache file not found ({cache_file}), downloading from {database}")
+            logging.info(
+                f"Cache file not found ({cache_file}), downloading from {database}"
+            )
 
-    if database == 'msigdb':
+    if database == "msigdb":
         msig = Msigdb()
-        dbver = '2023.2.Hs' if organism == 'human' else '2023.1.Mm'
+        dbver = "2023.2.Hs" if organism == "human" else "2023.1.Mm"
         gmt = msig.get_gmt(category=library, dbver=dbver)
         if gmt is None:
-            raise ValueError('Library does not exist')
-    elif database == 'enrichr':
-        gmt = gp.get_library(name=library, organism=organism.capitalize(), min_size=min_size, max_size=max_size)
+            raise ValueError("Library does not exist")
+    elif database == "enrichr":
+        gmt = gp.get_library(
+            name=library,
+            organism=organism.capitalize(),
+            min_size=min_size,
+            max_size=max_size,
+        )
 
     # Cache for future use
     try:
         os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-        with open(cache_file, 'w') as f:
+        with open(cache_file, "w") as f:
             json.dump(gmt, f)
         logging.info(f"Saved gene set cache to {cache_file}")
     except Exception as e:
@@ -145,10 +180,10 @@ def perform_prerank(
     n_jobs: int = 1,
     low_cutoff: float = -np.inf,
     n_top: int = None,
-    **kwargs
+    **kwargs,
 ) -> pd.DataFrame:
     """Run GSEA prerank on each gene program in the loadings matrix.
-    
+
     Parameters
     ----------
     loadings : pd.DataFrame
@@ -161,7 +196,7 @@ def perform_prerank(
         Remove features with loadings at or below this value.
     n_top : int
         Take the top n features with the highest loadings.
-        
+
     Returns
     -------
     pd.DataFrame
@@ -181,8 +216,7 @@ def perform_prerank(
 
     # Run GSEA prerank for each column of loadings (each cell program)
     pre_res = pd.DataFrame()
-    for i in tqdm(loadings.columns, desc='Running GSEA', unit='programs'):
-
+    for i in tqdm(loadings.columns, desc="Running GSEA", unit="programs"):
         # Filter out low loadings
         temp_loadings = loadings[i][(loadings[i] > low_cutoff)]
 
@@ -190,27 +224,26 @@ def perform_prerank(
         if n_top is not None:
             temp_loadings = temp_loadings.sort_values(ascending=False).head(n_top)
             if len(temp_loadings) < n_top:
-                logging.warning(f"Program {i} has less than {n_top} features after filtering. Only {len(temp_loadings)} features will be used.")
+                logging.warning(
+                    f"Program {i} has less than {n_top} features after filtering. Only {len(temp_loadings)} features will be used."
+                )
 
         # Run GSEA prerank
         temp_res = gp.prerank(
-            rnk=temp_loadings, 
-            gene_sets=geneset, 
-            threads=n_jobs, 
-            **kwargs
+            rnk=temp_loadings, gene_sets=geneset, threads=n_jobs, **kwargs
         ).res2d
 
         # Post-process results
-        temp_res['Gene %'] = temp_res['Gene %'].apply(lambda x: float(x[:-1]))
-        temp_res['tag_before'] = temp_res['Tag %'].apply(lambda x: int(x.split('/')[0]))
-        temp_res['tag_after'] = temp_res['Tag %'].apply(lambda x: int(x.split('/')[1]))
-        temp_res.drop(columns=['Tag %'], inplace=True)
-        if 'Name' in temp_res.columns and temp_res['Name'][0] == "prerank":
-            temp_res['Name'] = i
-        temp_res.rename(columns={'Name': 'program_name'}, inplace=True)
-        temp_res = temp_res.sort_values(['program_name', 'FDR q-val'])
+        temp_res["Gene %"] = temp_res["Gene %"].apply(lambda x: float(x[:-1]))
+        temp_res["tag_before"] = temp_res["Tag %"].apply(lambda x: int(x.split("/")[0]))
+        temp_res["tag_after"] = temp_res["Tag %"].apply(lambda x: int(x.split("/")[1]))
+        temp_res.drop(columns=["Tag %"], inplace=True)
+        if "Name" in temp_res.columns and temp_res["Name"][0] == "prerank":
+            temp_res["Name"] = i
+        temp_res.rename(columns={"Name": "program_name"}, inplace=True)
+        temp_res = temp_res.sort_values(["program_name", "FDR q-val"])
         pre_res = pd.concat([pre_res, temp_res], ignore_index=True)
-    
+
     return pre_res
 
 
@@ -220,11 +253,7 @@ def perform_ssGSEA():
 
 
 def perform_fisher_enrich(
-    loadings, 
-    geneset, 
-    n_top=500,
-    use_loadings_gene = False,
-    **kwargs
+    loadings, geneset, n_top=500, use_loadings_gene=False, **kwargs
 ):
     """Run Fisher enrichment on each gene program in the loadings matrix.
 
@@ -236,7 +265,7 @@ def perform_fisher_enrich(
         Dictionary of gene sets.
     n_top : int
         Number of top features to take.
-    
+
     Returns
     -------
     ['Gene_set', 'Term', 'P-value', 'Adjusted P-value', 'Odds Ratio',
@@ -261,41 +290,44 @@ def perform_fisher_enrich(
     # Find the intersection of genes present in the mudata object and in the library
     background_genes = set(value for sublist in geneset.values() for value in sublist)
 
-    if use_loadings_gene: # if True, only use expressed genes as background genes
+    if use_loadings_gene:  # if True, only use expressed genes as background genes
         expressed_gene_list = set(loadings.index)
         background_genes = background_genes.intersection(expressed_gene_list)
 
-    
     enr_res = pd.DataFrame()
-    for i in tqdm(loadings.columns, desc='Running Fisher enrichment', unit='programs'):
+    for i in tqdm(loadings.columns, desc="Running Fisher enrichment", unit="programs"):
         gene_list = list(loadings[i].sort_values(ascending=False).head(n_top).index)
         temp_res = gp.enrich(
-            gene_list=gene_list,
-            gene_sets=geneset, 
-            background=background_genes
+            gene_list=gene_list, gene_sets=geneset, background=background_genes
         ).res2d
         temp_res["program_name"] = i
         enr_res = pd.concat([enr_res, temp_res], ignore_index=True)
-    enr_res['overlap_numerator'] = enr_res['Overlap'].apply(lambda x: int(x.split('/')[0]))
-    enr_res['overlap_denominator'] = enr_res['Overlap'].apply(lambda x: int(x.split('/')[1]))
-    enr_res.drop(columns=['Overlap', 'Gene_set'], inplace=True)
-    enr_res = enr_res[["program_name"] + [col for col in enr_res.columns if col != "program_name"]]
-    enr_res = enr_res.sort_values(['program_name', 'Adjusted P-value'])
-    
+    enr_res["overlap_numerator"] = enr_res["Overlap"].apply(
+        lambda x: int(x.split("/")[0])
+    )
+    enr_res["overlap_denominator"] = enr_res["Overlap"].apply(
+        lambda x: int(x.split("/")[1])
+    )
+    enr_res.drop(columns=["Overlap", "Gene_set"], inplace=True)
+    enr_res = enr_res[
+        ["program_name"] + [col for col in enr_res.columns if col != "program_name"]
+    ]
+    enr_res = enr_res.sort_values(["program_name", "Adjusted P-value"])
+
     return enr_res
 
 
 def insert_enrichment(
     mdata: mudata.MuData,
     df: pd.DataFrame,
-    library="GSEA", 
+    library="GSEA",
     prog_key="prog",
-    geneset_index="Term", 
+    geneset_index="Term",
     program_index="program_name",
-    varmap_name_prefix="gsea_varmap"
+    varmap_name_prefix="gsea_varmap",
 ) -> None:
     """Insert geneset enrichment into mudata
-    
+
     Parameters
     ----------
     mdata : mudata.MuData
@@ -312,40 +344,41 @@ def insert_enrichment(
         index for the program in the DataFrame.
     varmap_name_prefix : str
         prefix for the varmap name.
-    
+
     Returns
     -------
     None
     """
-    
+
     # Create a mudata key to column name mapping dictionary
     mudata_keys_dict = {}
     for col in df.columns:
         if col not in [geneset_index, program_index]:
             key = f"{col}_{library}"
-            key = key.replace(' ', '_').replace('%', 'percent')
+            key = key.replace(" ", "_").replace("%", "percent")
             mudata_keys_dict[key] = col
 
     # Insert the values from the dataframe into the array for each key
     for key, colname in mudata_keys_dict.items():
         # Create an empty dataframe with the right dimensions
-        all_progs_df = pd.DataFrame(index=df[geneset_index].unique(), 
-                                    columns=mdata[prog_key].var.index)
-        
+        all_progs_df = pd.DataFrame(
+            index=df[geneset_index].unique(), columns=mdata[prog_key].var.index
+        )
+
         # Pivot the dataframe for gene sets and programs
-        pivot_df = df[[geneset_index, program_index, colname]].pivot(index=geneset_index, 
-                                                                     columns=program_index, 
-                                                                     values=colname)
-        
+        pivot_df = df[[geneset_index, program_index, colname]].pivot(
+            index=geneset_index, columns=program_index, values=colname
+        )
+
         # Update the empty dataframe with new values
         all_progs_df[pivot_df.columns] = pivot_df
-        
+
         # Convert dataframe to a numpy array
         all_progs_array = all_progs_df.T.to_numpy()
-        
+
         # Add the array into the MuData object
         mdata[prog_key].varm[key] = all_progs_array
-        
+
     # Add the varmap to the mudata object
     varmap_name = f"{varmap_name_prefix}_{library}"
     mdata[prog_key].uns[varmap_name] = all_progs_df.index
@@ -353,13 +386,13 @@ def insert_enrichment(
 
 def compute_geneset_enrichment(
     mdata: Union[str, mudata.MuData],
-    prog_key: str = 'prog',
-    data_key: str = 'rna',
+    prog_key: str = "prog",
+    data_key: str = "rna",
     prog_name: Optional[str] = None,
-    method: Literal['gsea', 'fisher'] = 'gsea',
-    organism: Literal['human', 'mouse'] = 'human',
-    library: str = 'Reactome_2022',
-    database: Literal['msigdb', 'enrichr'] = 'enrichr',
+    method: Literal["gsea", "fisher"] = "gsea",
+    organism: Literal["human", "mouse"] = "human",
+    library: str = "Reactome_2022",
+    database: Literal["msigdb", "enrichr"] = "enrichr",
     user_geneset: Optional[Dict[str, List[str]]] = None,
     min_size: int = 0,
     max_size: int = 2000,
@@ -367,12 +400,11 @@ def compute_geneset_enrichment(
     n_top: int = 2000,
     n_jobs: int = 1,
     inplace: bool = True,
-    use_loadings_gene = False, # False = use all oncology gene, True = use interact expresseed gene
+    use_loadings_gene=False,  # False = use all oncology gene, True = use interact expresseed gene
     gene_names_key: Optional[str] = None,
     use_cache: bool = False,
-    **kwargs
+    **kwargs,
 ) -> Optional[pd.DataFrame]:
-
     """
     Wrapper function to compute gene set enrichment for each program in the MuData object.
 
@@ -410,7 +442,7 @@ def compute_geneset_enrichment(
         number of threads to run processes on.
     inplace : bool (default: True)
         whether to insert the results back into the mudata object.
-    
+
     Returns
     -------
     if not inplace:
@@ -420,16 +452,17 @@ def compute_geneset_enrichment(
     """
 
     # Read in mudata if it is provided as a path
-    frompath=False
+    frompath = False
     if isinstance(mdata, str):
         if os.path.exists(mdata):
             mdata = mudata.read(mdata)
             if inplace:
-                logging.warning('Changed to inplace=False since path was provided')
-                inplace=False
-            frompath=True
-        else: raise ValueError('Incorrect mudata specification.')
-    
+                logging.warning("Changed to inplace=False since path was provided")
+                inplace = False
+            frompath = True
+        else:
+            raise ValueError("Incorrect mudata specification.")
+
     # get the geneset
     if user_geneset is not None:
         geneset = user_geneset
@@ -440,9 +473,9 @@ def compute_geneset_enrichment(
             database=database,
             max_size=max_size,
             min_size=min_size,
-            use_cache=use_cache
+            use_cache=use_cache,
         )
-     
+
     # get the gene loadings for each program
     loadings = get_program_gene_loadings(
         mdata,
@@ -452,16 +485,16 @@ def compute_geneset_enrichment(
         organism=organism,
         gene_names_key=gene_names_key,
     )
-    
+
     # run enrichment
     if method == "gsea":
         pre_res = perform_prerank(
-            loadings=loadings, 
+            loadings=loadings,
             geneset=geneset,
             n_jobs=n_jobs,
             low_cutoff=low_cutoff,
             n_top=n_top,
-            **kwargs
+            **kwargs,
         )
     elif method == "fisher":
         pre_res = perform_fisher_enrich(
@@ -469,19 +502,19 @@ def compute_geneset_enrichment(
             geneset=geneset,
             n_top=n_top,
             use_loadings_gene=use_loadings_gene,
-            **kwargs
+            **kwargs,
         )
-        
+
     # insert results back into the mudata object if inplace
     if inplace:
-        mdata=insert_enrichment(
-            mdata, df=pre_res, 
-            library=library, 
+        mdata = insert_enrichment(
+            mdata,
+            df=pre_res,
+            library=library,
             prog_key=prog_key,
-            geneset_index="Term", 
+            geneset_index="Term",
             program_index="program_name",
-            varmap_name_prefix="gsea_varmap"
+            varmap_name_prefix="gsea_varmap",
         )
     else:
-        return(pre_res)
-    
+        return pre_res

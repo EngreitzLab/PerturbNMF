@@ -1,4 +1,5 @@
 """Unit tests for Interpretation.Summary_table.src.Compile_excel_sheet."""
+
 import os
 import sys
 import numpy as np
@@ -41,6 +42,7 @@ from Stage3_Interpretation.B_Summarization.src.Compile_excel_sheet import (
 # Test: compile_Program_loading_score_sheet_flat
 # ==========================================================================
 
+
 class TestProgramLoadingFlat:
     def test_returns_dataframe(self, synthetic_mdata):
         df = compile_Program_loading_score_sheet_flat(synthetic_mdata, num_gene=5)
@@ -49,7 +51,9 @@ class TestProgramLoadingFlat:
     def test_shape(self, synthetic_mdata):
         n_programs = synthetic_mdata["cNMF"].n_vars
         num_gene = 5
-        df = compile_Program_loading_score_sheet_flat(synthetic_mdata, num_gene=num_gene)
+        df = compile_Program_loading_score_sheet_flat(
+            synthetic_mdata, num_gene=num_gene
+        )
         assert df.shape == (n_programs, num_gene)
 
     def test_index_name(self, synthetic_mdata):
@@ -58,7 +62,9 @@ class TestProgramLoadingFlat:
 
     def test_columns_are_ranks(self, synthetic_mdata):
         num_gene = 10
-        df = compile_Program_loading_score_sheet_flat(synthetic_mdata, num_gene=num_gene)
+        df = compile_Program_loading_score_sheet_flat(
+            synthetic_mdata, num_gene=num_gene
+        )
         assert list(df.columns) == list(range(1, num_gene + 1))
 
     def test_genes_are_from_var_names(self, synthetic_mdata):
@@ -73,16 +79,19 @@ class TestProgramLoadingFlat:
 # Test: Compile_GO_sheet / Compile_Geneset_sheet / Compile_Trait_sheet
 # ==========================================================================
 
+
 class TestEnrichmentSheets:
     @pytest.fixture
     def go_file(self, output_dir):
         path = output_dir / "test_GO.txt"
-        df = pd.DataFrame({
-            "Term": ["GO:001", "GO:002"],
-            "program_name": ["0", "1"],
-            "Adjusted P-value": [0.001, 0.05],
-            "Genes": ["A;B;C;D;E;F;G", "X;Y;Z"],
-        })
+        df = pd.DataFrame(
+            {
+                "Term": ["GO:001", "GO:002"],
+                "program_name": ["0", "1"],
+                "Adjusted P-value": [0.001, 0.05],
+                "Genes": ["A;B;C;D;E;F;G", "X;Y;Z"],
+            }
+        )
         df.to_csv(path, sep="\t")
         return str(path)
 
@@ -109,6 +118,7 @@ class TestEnrichmentSheets:
 # Test: Compile_Perturbation_sheet
 # ==========================================================================
 
+
 class TestPerturbationSheet:
     def test_concatenates_samples(self, perturbation_dir, sample_list):
         df = Compile_Perturbation_sheet(perturbation_dir, conditions=sample_list)
@@ -131,15 +141,18 @@ class TestPerturbationSheet:
 # Test: Compile_Association_sheet
 # ==========================================================================
 
+
 class TestAssociationSheet:
     @pytest.fixture
     def association_file(self, output_dir):
         path = output_dir / "test_association.txt"
-        df = pd.DataFrame({
-            "program_name": [0, 1, 2],
-            "chi2": [10.5, 20.3, 5.1],
-            "pval": [0.001, 0.0001, 0.05],
-        })
+        df = pd.DataFrame(
+            {
+                "program_name": [0, 1, 2],
+                "chi2": [10.5, 20.3, 5.1],
+                "pval": [0.001, 0.0001, 0.05],
+            }
+        )
         df.to_csv(path, sep="\t")
         return str(path)
 
@@ -153,14 +166,17 @@ class TestAssociationSheet:
 # Test: Compile_Explained_variance
 # ==========================================================================
 
+
 class TestExplainedVariance:
     @pytest.fixture
     def variance_file(self, output_dir):
         path = output_dir / "test_variance.txt"
-        df = pd.DataFrame({
-            "program_name": [0, 1, 2],
-            "variance_explained": [0.15, 0.10, 0.08],
-        })
+        df = pd.DataFrame(
+            {
+                "program_name": [0, 1, 2],
+                "variance_explained": [0.15, 0.10, 0.08],
+            }
+        )
         df.to_csv(path, sep="\t", index=False)
         return str(path)
 
@@ -176,6 +192,7 @@ class TestExplainedVariance:
 # Test: Specificity score helpers
 # ==========================================================================
 
+
 class TestSpecificityHelpers:
     @pytest.fixture
     def perturb_df(self):
@@ -184,12 +201,14 @@ class TestSpecificityHelpers:
         rows = []
         for tgt in ["GeneA", "GeneB", "GeneC"]:
             for prog in ["0", "1", "2"]:
-                rows.append({
-                    "target_name": tgt,
-                    "program_name": prog,
-                    "log2FC": rng.normal(0, 1),
-                    "adj_pval": rng.uniform(0, 0.1),
-                })
+                rows.append(
+                    {
+                        "target_name": tgt,
+                        "program_name": prog,
+                        "log2FC": rng.normal(0, 1),
+                        "adj_pval": rng.uniform(0, 0.1),
+                    }
+                )
         return pd.DataFrame(rows)
 
     def test_compute_regulator_zscore_shape(self, perturb_df):
@@ -240,6 +259,7 @@ class TestSpecificityHelpers:
 # Test: get_specificity_program (end-to-end with files)
 # ==========================================================================
 
+
 class TestGetSpecificityProgram:
     def test_returns_dataframe(self, perturbation_dir, sample_list):
         df = get_specificity_program(perturbation_dir, conditions=sample_list, T=0.5)
@@ -256,6 +276,7 @@ class TestGetSpecificityProgram:
 # Test: get_significant_programs / get_significant_programs_df
 # ==========================================================================
 
+
 class TestSignificantPrograms:
     def test_returns_dict(self, perturbation_dir, sample_list):
         result = get_significant_programs(perturbation_dir, conditions=sample_list)
@@ -268,12 +289,16 @@ class TestSignificantPrograms:
             assert f"# programs {samp}" in df.columns
             counts = df[f"# programs {samp}"]
             assert pd.api.types.is_integer_dtype(counts)
-            expected = df[f"significant programs {samp}"].map(lambda x: len(x.split(',')) if x else 0)
+            expected = df[f"significant programs {samp}"].map(
+                lambda x: len(x.split(",")) if x else 0
+            )
             assert (counts == expected).all()
 
     def test_df_empty_when_nothing_significant(self, perturbation_dir, sample_list):
         # adj_pval in the fixture is >= 0, so a threshold of 0 selects nothing
-        df = get_significant_programs_df(perturbation_dir, conditions=sample_list, adj_pval_threshold=0)
+        df = get_significant_programs_df(
+            perturbation_dir, conditions=sample_list, adj_pval_threshold=0
+        )
         assert df.empty
         assert df.index.name == "target_name"
         for samp in sample_list:
@@ -284,6 +309,7 @@ class TestSignificantPrograms:
 # ==========================================================================
 # Test: MuData helper functions
 # ==========================================================================
+
 
 class TestMuDataHelpers:
     def test_get_guide_cells_per_days(self, synthetic_mdata):
@@ -315,6 +341,7 @@ class TestMuDataHelpers:
 # Test: get_top_terms_Summary_cols
 # ==========================================================================
 
+
 class TestTopTermsSummaryCols:
     def test_returns_dataframe(self, synthetic_go_df, synthetic_geneset_df):
         df = get_top_terms_Summary_cols(synthetic_go_df, synthetic_geneset_df)
@@ -330,6 +357,7 @@ class TestTopTermsSummaryCols:
 # ==========================================================================
 # Test: check_program_name_match
 # ==========================================================================
+
 
 class TestCheckProgramNameMatch:
     def test_no_warning_on_match(self, synthetic_mdata, capsys):
@@ -353,13 +381,21 @@ class TestCheckProgramNameMatch:
 # Test: Compile_Summary_sheet (integration)
 # ==========================================================================
 
+
 class TestCompileSummarySheet:
     def test_returns_dataframe(
-        self, synthetic_mdata, synthetic_go_df, synthetic_geneset_df,
-        synthetic_program_loading_flat, synthetic_explained_variance_df,
-        perturbation_dir, sample_list,
+        self,
+        synthetic_mdata,
+        synthetic_go_df,
+        synthetic_geneset_df,
+        synthetic_program_loading_flat,
+        synthetic_explained_variance_df,
+        perturbation_dir,
+        sample_list,
     ):
-        df_perturbation = Compile_Perturbation_sheet(perturbation_dir, conditions=sample_list)
+        df_perturbation = Compile_Perturbation_sheet(
+            perturbation_dir, conditions=sample_list
+        )
         df = Compile_Summary_sheet(
             mdata=synthetic_mdata,
             df_GO=synthetic_go_df,
@@ -375,11 +411,18 @@ class TestCompileSummarySheet:
         assert len(df) == synthetic_mdata["cNMF"].n_vars
 
     def test_has_manual_columns(
-        self, synthetic_mdata, synthetic_go_df, synthetic_geneset_df,
-        synthetic_program_loading_flat, synthetic_explained_variance_df,
-        perturbation_dir, sample_list,
+        self,
+        synthetic_mdata,
+        synthetic_go_df,
+        synthetic_geneset_df,
+        synthetic_program_loading_flat,
+        synthetic_explained_variance_df,
+        perturbation_dir,
+        sample_list,
     ):
-        df_perturbation = Compile_Perturbation_sheet(perturbation_dir, conditions=sample_list)
+        df_perturbation = Compile_Perturbation_sheet(
+            perturbation_dir, conditions=sample_list
+        )
         df = Compile_Summary_sheet(
             mdata=synthetic_mdata,
             df_GO=synthetic_go_df,
@@ -390,14 +433,25 @@ class TestCompileSummarySheet:
             conditions=sample_list,
             categorical_key="sample",
         )
-        for col in ["manual_annotation_label", "manual_timepoint", "Notes", "Automatic Timepoint"]:
+        for col in [
+            "manual_annotation_label",
+            "manual_timepoint",
+            "Notes",
+            "Automatic Timepoint",
+        ]:
             assert col in df.columns
 
     def test_works_with_none_enrichment(
-        self, synthetic_mdata, synthetic_program_loading_flat,
-        synthetic_explained_variance_df, perturbation_dir, sample_list,
+        self,
+        synthetic_mdata,
+        synthetic_program_loading_flat,
+        synthetic_explained_variance_df,
+        perturbation_dir,
+        sample_list,
     ):
-        df_perturbation = Compile_Perturbation_sheet(perturbation_dir, conditions=sample_list)
+        df_perturbation = Compile_Perturbation_sheet(
+            perturbation_dir, conditions=sample_list
+        )
         df = Compile_Summary_sheet(
             mdata=synthetic_mdata,
             df_GO=None,

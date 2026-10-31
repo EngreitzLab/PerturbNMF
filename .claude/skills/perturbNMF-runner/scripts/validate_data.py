@@ -14,14 +14,16 @@ import os
 import sys
 
 # Add pipeline root to path
-PIPELINE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+PIPELINE_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 sys.path.insert(0, PIPELINE_ROOT)
 
 
 def get_file_size_str(path):
     """Return human-readable file size."""
     size_bytes = os.path.getsize(path)
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
         if size_bytes < 1024:
             return f"{size_bytes:.1f} {unit}", size_bytes
         size_bytes /= 1024
@@ -32,6 +34,7 @@ def compute_sparsity(X):
     """Compute fraction of zeros in the matrix."""
     import scipy.sparse as sp
     import numpy as np
+
     if sp.issparse(X):
         nnz = X.nnz
         total = X.shape[0] * X.shape[1]
@@ -41,8 +44,13 @@ def compute_sparsity(X):
     return 1.0 - (nnz / total) if total > 0 else 0.0
 
 
-def check_data_format(adata, guide_names_key="guide_names", guide_targets_key="guide_targets",
-                      categorical_key="batch", guide_assignment_key="guide_assignment"):
+def check_data_format(
+    adata,
+    guide_names_key="guide_names",
+    guide_targets_key="guide_targets",
+    categorical_key="batch",
+    guide_assignment_key="guide_assignment",
+):
     """Validate that an AnnData has the keys cNMF inference relies on."""
     is_valid = True
     if categorical_key not in adata.obs:
@@ -83,13 +91,20 @@ def check_data_format(adata, guide_names_key="guide_names", guide_targets_key="g
         print(f"Found adata.obsm['{guide_assignment_key}']\n")
         try:
             import scipy.sparse as sp
+
             if sp.issparse(guide_assignment):
-                print(f"WARNING: '{guide_assignment_key}' is sparse. Converting to dense array...")
+                print(
+                    f"WARNING: '{guide_assignment_key}' is sparse. Converting to dense array..."
+                )
                 dense_array = guide_assignment.toarray()
                 adata.obsm[guide_assignment_key] = dense_array
-                print(f"'{guide_assignment_key}' converted to dense array (shape: {dense_array.shape})\n")
+                print(
+                    f"'{guide_assignment_key}' converted to dense array (shape: {dense_array.shape})\n"
+                )
             else:
-                print(f"'{guide_assignment_key}' is already dense (shape: {guide_assignment.shape})\n")
+                print(
+                    f"'{guide_assignment_key}' is already dense (shape: {guide_assignment.shape})\n"
+                )
         except Exception as e:
             print(f"WARNING: Error checking '{guide_assignment_key}' sparsity: {e}\n")
             is_valid = False
@@ -99,25 +114,43 @@ def check_data_format(adata, guide_names_key="guide_names", guide_targets_key="g
 def _validate_against_reference_gtf(rna_gene_names, gtf_path):
     """Compare RNA var_names against gene_name attributes extracted from a GTF."""
     import pandas as pd
+
     validation = {"is_valid": True, "gtf_genes": set(), "not_in_gtf": []}
     try:
         gtf_df = pd.read_csv(
-            gtf_path, sep="\t", comment="#", header=None,
-            dtype={0: str, 1: str, 2: str, 3: int, 4: int, 5: str, 6: str, 7: str, 8: str},
+            gtf_path,
+            sep="\t",
+            comment="#",
+            header=None,
+            dtype={
+                0: str,
+                1: str,
+                2: str,
+                3: int,
+                4: int,
+                5: str,
+                6: str,
+                7: str,
+                8: str,
+            },
         )
         extracted = gtf_df[8].str.extract(r'gene_name "([^"]+)"')[0]
         if extracted.notna().sum() == 0:
             print("gene_name not found in any rows\n")
         else:
-            print(f"Successfully extracted gene_name from {extracted.notna().sum()} rows")
+            print(
+                f"Successfully extracted gene_name from {extracted.notna().sum()} rows"
+            )
             extracted = set(extracted)
             validation["gtf_genes"] = extracted
 
         rna_not_in_gtf = rna_gene_names - extracted
         print(f"Found {len(rna_gene_names)} gene names in adata.var_name")
         if rna_not_in_gtf:
-            print(f"WARNING: {len(rna_not_in_gtf)}/{len(rna_gene_names)} adata.var RNA NOT found in reference GTF."
-                  "\n This might be caused by the adata.var RNA being Ensembl ID instead of gene symbols.")
+            print(
+                f"WARNING: {len(rna_not_in_gtf)}/{len(rna_gene_names)} adata.var RNA NOT found in reference GTF."
+                "\n This might be caused by the adata.var RNA being Ensembl ID instead of gene symbols."
+            )
             print(f"Examples: {list(rna_not_in_gtf)[:5]}\n")
             validation["not_in_gtf"] = sorted(list(rna_not_in_gtf))
         else:
@@ -131,16 +164,26 @@ def _validate_against_reference_gtf(rna_gene_names, gtf_path):
     return validation
 
 
-def check_guide_names(adata, guide_names_key="guide_names", guide_targets_key="guide_targets",
-                     categorical_key="batch", reference_gtf_path=None, guide_annotation_path=None,
-                     guide_assignment_key="guide_assignment", check_var_names_align_with_guide_targets=True):
+def check_guide_names(
+    adata,
+    guide_names_key="guide_names",
+    guide_targets_key="guide_targets",
+    categorical_key="batch",
+    reference_gtf_path=None,
+    guide_annotation_path=None,
+    guide_assignment_key="guide_assignment",
+    check_var_names_align_with_guide_targets=True,
+):
     """Validate guide/RNA name consistency, optionally against a GTF and/or guide annotation TSV."""
     import pandas as pd
 
     results = {"is_valid": True, "missing_from_rna": [], "gtf_validation": None}
     results["is_valid"] = check_data_format(
-        adata, guide_names_key=guide_names_key, guide_targets_key=guide_targets_key,
-        categorical_key=categorical_key, guide_assignment_key=guide_assignment_key,
+        adata,
+        guide_names_key=guide_names_key,
+        guide_targets_key=guide_targets_key,
+        categorical_key=categorical_key,
+        guide_assignment_key=guide_assignment_key,
     )
 
     rna_gene_names = set(adata.var_names)
@@ -157,17 +200,24 @@ def check_guide_names(adata, guide_names_key="guide_names", guide_targets_key="g
         guide_gene_targets = set(guide_targets)
         guide_gene_names = set(guide_names)
 
-    if len(guide_targets) != len(guide_names) and len(guide_gene_targets) != adata.obsm[guide_assignment_key].shape[1]:
-        print("WARNING: guide_targets and guide_names and guide_assignment col should be equal length but not in here\n")
+    if (
+        len(guide_targets) != len(guide_names)
+        and len(guide_gene_targets) != adata.obsm[guide_assignment_key].shape[1]
+    ):
+        print(
+            "WARNING: guide_targets and guide_names and guide_assignment col should be equal length but not in here\n"
+        )
         results["is_valid"] = False
 
     if check_var_names_align_with_guide_targets:
         guide_not_in_rna = guide_gene_targets - rna_gene_names
         print(f"Found {len(guide_gene_targets)} genes in gene_targets")
         if guide_not_in_rna:
-            print(f"WARNING: {len(guide_not_in_rna)}/{len(guide_gene_targets)} gene names in guide_targets but NOT in adata.var.\n"
-                  "                This might be caused by mismatch between gene symbol vs Ensembl ID or some perturbed genes are not expressed in the dataset."
-                  " Might cause issue in evalutation or plotting if naming conventions are different.")
+            print(
+                f"WARNING: {len(guide_not_in_rna)}/{len(guide_gene_targets)} gene names in guide_targets but NOT in adata.var.\n"
+                "                This might be caused by mismatch between gene symbol vs Ensembl ID or some perturbed genes are not expressed in the dataset."
+                " Might cause issue in evalutation or plotting if naming conventions are different."
+            )
             print(f"Examples: {list(guide_not_in_rna)[:5]}\n")
             results["missing_from_rna"] = sorted(list(guide_not_in_rna))
         else:
@@ -177,7 +227,9 @@ def check_guide_names(adata, guide_names_key="guide_names", guide_targets_key="g
         print("No reference GTF provided (optional check skipped)")
         results["gtf_validation"] = None
     else:
-        gtf_validation = _validate_against_reference_gtf(rna_gene_names, reference_gtf_path)
+        gtf_validation = _validate_against_reference_gtf(
+            rna_gene_names, reference_gtf_path
+        )
         results["gtf_validation"] = gtf_validation
         if not gtf_validation["is_valid"]:
             results["is_valid"] = False
@@ -207,10 +259,14 @@ def check_guide_names(adata, guide_names_key="guide_names", guide_targets_key="g
         guide_names_not_in_annotation = guide_gene_names - annotation_guide_names
         if guide_targets_not_in_annotation or guide_names_not_in_annotation:
             if guide_targets_not_in_annotation:
-                print(f"\n WARNING: {len(guide_targets_not_in_annotation)}/{len(guide_gene_targets)} guide targets in data but NOT in annotation.")
+                print(
+                    f"\n WARNING: {len(guide_targets_not_in_annotation)}/{len(guide_gene_targets)} guide targets in data but NOT in annotation."
+                )
                 print(f"Examples: {list(guide_targets_not_in_annotation)[:5]}\n")
             if guide_names_not_in_annotation:
-                print(f"\n WARNING: {len(guide_names_not_in_annotation)}/{len(guide_gene_names)} guide names in data but NOT in annotation.")
+                print(
+                    f"\n WARNING: {len(guide_names_not_in_annotation)}/{len(guide_gene_names)} guide names in data but NOT in annotation."
+                )
                 print(f"Examples: {list(guide_names_not_in_annotation)[:5]}\n")
             results["is_valid"] = False
         else:
@@ -244,7 +300,9 @@ def validate_adata(adata, args):
 
     # Check categorical key
     if args.categorical_key not in adata.obs:
-        issues.append(f"Missing obs['{args.categorical_key}'] (condition key, --categorical_key)")
+        issues.append(
+            f"Missing obs['{args.categorical_key}'] (condition key, --categorical_key)"
+        )
     else:
         n_cats = adata.obs[args.categorical_key].nunique()
         print(f"\n  obs['{args.categorical_key}']: {n_cats} unique values")
@@ -252,11 +310,11 @@ def validate_adata(adata, args):
     # Check obsm
     print(f"\n=== obsm keys ===")
     for key in adata.obsm:
-        shape = adata.obsm[key].shape if hasattr(adata.obsm[key], 'shape') else 'N/A'
+        shape = adata.obsm[key].shape if hasattr(adata.obsm[key], "shape") else "N/A"
         print(f"  - {key}: {shape}")
 
-    has_pca = 'X_pca' in adata.obsm
-    has_umap = 'X_umap' in adata.obsm
+    has_pca = "X_pca" in adata.obsm
+    has_umap = "X_umap" in adata.obsm
     if not has_pca:
         issues.append("Missing obsm['X_pca']")
     if not has_umap:
@@ -277,7 +335,7 @@ def validate_adata(adata, args):
 
     if has_guide_targets:
         targets = adata.uns[args.guide_targets_key]
-        if hasattr(targets, '__len__'):
+        if hasattr(targets, "__len__"):
             n_targets = len(set(targets))
             print(f"  uns['{args.guide_targets_key}']: {n_targets} unique targets")
         else:
@@ -288,7 +346,7 @@ def validate_adata(adata, args):
 
     if has_guide_assignment:
         ga = adata.obsm[args.guide_assignment_key]
-        ga_shape = ga.shape if hasattr(ga, 'shape') else 'N/A'
+        ga_shape = ga.shape if hasattr(ga, "shape") else "N/A"
         ga_sparse = sp.issparse(ga)
         print(f"  obsm['{args.guide_assignment_key}']: {ga_shape} (sparse={ga_sparse})")
     else:
@@ -327,7 +385,7 @@ def validate_mdata(mdata, args):
         print(f"\n--- Found '{args.prog_key}' modality ---")
         cnmf_adata = mdata[args.prog_key]
         print(f"  Programs: {cnmf_adata.n_vars}")
-        if 'loadings' in cnmf_adata.varm:
+        if "loadings" in cnmf_adata.varm:
             print(f"  varm['loadings']: {cnmf_adata.varm['loadings'].shape}")
         else:
             print(f"  varm['loadings']: NOT FOUND (expected post-inference)")
@@ -340,40 +398,58 @@ def main():
         description="Validate input data for cNMF pipeline"
     )
     parser.add_argument(
-        '--counts_fn', type=str, required=True,
-        help='Path to input data file (.h5ad or .h5mu)'
+        "--counts_fn",
+        type=str,
+        required=True,
+        help="Path to input data file (.h5ad or .h5mu)",
     )
     parser.add_argument(
-        '--categorical_key', type=str, default='sample',
-        help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample"
+        "--categorical_key",
+        type=str,
+        default="sample",
+        help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample",
     )
     parser.add_argument(
-        '--guide_names_key', type=str, default='guide_names',
-        help='Key in .uns for guide names (default: guide_names)'
+        "--guide_names_key",
+        type=str,
+        default="guide_names",
+        help="Key in .uns for guide names (default: guide_names)",
     )
     parser.add_argument(
-        '--guide_targets_key', type=str, default='guide_targets',
-        help='Key in .uns for guide targets (default: guide_targets)'
+        "--guide_targets_key",
+        type=str,
+        default="guide_targets",
+        help="Key in .uns for guide targets (default: guide_targets)",
     )
     parser.add_argument(
-        '--guide_assignment_key', type=str, default='guide_assignment',
-        help='Key in .obsm for guide assignment matrix (default: guide_assignment)'
+        "--guide_assignment_key",
+        type=str,
+        default="guide_assignment",
+        help="Key in .obsm for guide assignment matrix (default: guide_assignment)",
     )
     parser.add_argument(
-        '--data_key', type=str, default='rna',
-        help='Key for RNA modality in MuData (default: rna)'
+        "--data_key",
+        type=str,
+        default="rna",
+        help="Key for RNA modality in MuData (default: rna)",
     )
     parser.add_argument(
-        '--prog_key', type=str, default='cNMF',
-        help='Key for cNMF modality in MuData (default: cNMF)'
+        "--prog_key",
+        type=str,
+        default="cNMF",
+        help="Key for cNMF modality in MuData (default: cNMF)",
     )
     parser.add_argument(
-        '--reference_gtf_path', type=str, default=None,
-        help='Path to reference GTF for gene name validation (optional)'
+        "--reference_gtf_path",
+        type=str,
+        default=None,
+        help="Path to reference GTF for gene name validation (optional)",
     )
     parser.add_argument(
-        '--guide_annotation_path', type=str, default=None,
-        help='Path to guide annotation TSV file (optional)'
+        "--guide_annotation_path",
+        type=str,
+        default=None,
+        help="Path to guide annotation TSV file (optional)",
     )
 
     args = parser.parse_args()
@@ -392,13 +468,15 @@ def main():
 
     # Load and validate
     issues = []
-    if ext == '.h5mu':
+    if ext == ".h5mu":
         import muon as mu
+
         print("Loading MuData...")
         mdata = mu.read(args.counts_fn)
         issues = validate_mdata(mdata, args)
-    elif ext in ('.h5ad', '.h5'):
+    elif ext in (".h5ad", ".h5"):
         import scanpy as sc
+
         print("Loading AnnData...")
         adata = sc.read_h5ad(args.counts_fn)
         issues = validate_adata(adata, args)
@@ -409,7 +487,7 @@ def main():
     # Optional: run full format checking from pipeline
     if args.reference_gtf_path or args.guide_annotation_path:
         try:
-            if ext == '.h5mu':
+            if ext == ".h5mu":
                 adata_check = mdata[args.data_key]
             else:
                 adata_check = adata
@@ -420,15 +498,21 @@ def main():
                 categorical_key=args.categorical_key,
                 reference_gtf_path=args.reference_gtf_path,
                 guide_annotation_path=args.guide_annotation_path,
-                guide_assignment_key=args.guide_assignment_key
+                guide_assignment_key=args.guide_assignment_key,
             )
-            if not result.get('is_valid', True) if isinstance(result, dict) else not result:
-                issues.append("Format check reported validation failures (see output above)")
+            if (
+                not result.get("is_valid", True)
+                if isinstance(result, dict)
+                else not result
+            ):
+                issues.append(
+                    "Format check reported validation failures (see output above)"
+                )
         except Exception as e:
             print(f"\nWARNING: Could not run extended format checks: {e}")
 
     # Resource recommendations
-    if ext == '.h5mu':
+    if ext == ".h5mu":
         n_cells = mdata[args.data_key].n_obs if args.data_key in mdata.mod else 0
         n_genes = mdata[args.data_key].n_vars if args.data_key in mdata.mod else 0
     else:
@@ -447,8 +531,14 @@ def main():
 
     print(f"  Cells: {n_cells:,} | Genes: {n_genes:,}")
     print(f"  sk-cNMF:    mem={mem_rec}, time={time_rec_sk} (numiter=10, 8 K values)")
-    print(f"  torch-cNMF: mem={'64G' if n_cells < 100000 else '128G' if n_cells < 300000 else '256G'}, time={time_rec_torch}")
-    partition = "standard CPU partition" if n_cells < 200000 else "large-memory partition (if your cluster has one)"
+    print(
+        f"  torch-cNMF: mem={'64G' if n_cells < 100000 else '128G' if n_cells < 300000 else '256G'}, time={time_rec_torch}"
+    )
+    partition = (
+        "standard CPU partition"
+        if n_cells < 200000
+        else "large-memory partition (if your cluster has one)"
+    )
     print(f"  Partition:  {partition}")
 
     # Report
@@ -463,5 +553,5 @@ def main():
         sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

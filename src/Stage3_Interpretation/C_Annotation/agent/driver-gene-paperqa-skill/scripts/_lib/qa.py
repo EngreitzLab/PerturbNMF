@@ -6,6 +6,7 @@ Fully offline w.r.t. paper discovery -- search / download happen first (gene-fun
   build_docs_from_papers(papers, settings)             -> Docs (listed PDFs, citation from their metadata)
   answer_question(question, docs, settings, metas=..)  -> dict (verdict, answer, top citations)
 """
+
 from __future__ import annotations
 
 import re
@@ -14,7 +15,9 @@ from typing import Optional
 
 from paperqa import Docs, Settings
 
-_VERDICT_RE = re.compile(r"VERDICT\s*[:=]\s*(supported|contradicted|mixed|insufficient)", re.IGNORECASE)
+_VERDICT_RE = re.compile(
+    r"VERDICT\s*[:=]\s*(supported|contradicted|mixed|insufficient)", re.IGNORECASE
+)
 
 # Excerpts must be short — the viewer renders them unclamped.
 SHORT_EXCERPT_CHARS = 200
@@ -63,11 +66,15 @@ async def build_docs(pdf_dir, settings: Settings) -> Docs:
         try:
             await docs.aadd(str(pdf), settings=settings)
         except Exception as e:  # a single unparsable PDF shouldn't sink the whole run
-            print(f"  [warn] paper-qa could not index {pdf.name}: {type(e).__name__}: {str(e)[:200]}")
+            print(
+                f"  [warn] paper-qa could not index {pdf.name}: {type(e).__name__}: {str(e)[:200]}"
+            )
     return docs
 
 
-async def build_docs_from_papers(papers: list[dict], settings: Settings, docs: Optional[Docs] = None) -> Docs:
+async def build_docs_from_papers(
+    papers: list[dict], settings: Settings, docs: Optional[Docs] = None
+) -> Docs:
     """Index PDFs from anywhere: papers = [{pdf_path, docname, title, year, journal, doi}].
 
     The citation, title and DOI come from the paper's metadata, which skips paper-qa's two
@@ -75,12 +82,22 @@ async def build_docs_from_papers(papers: list[dict], settings: Settings, docs: O
     """
     docs = docs if docs is not None else Docs()
     for p in papers:
-        citation = ", ".join(str(x) for x in (p.get("title"), p.get("journal"), p.get("year")) if x)
+        citation = ", ".join(
+            str(x) for x in (p.get("title"), p.get("journal"), p.get("year")) if x
+        )
         try:
-            await docs.aadd(str(p["pdf_path"]), citation=citation or None, docname=p.get("docname"),
-                            title=p.get("title"), doi=p.get("doi"), settings=settings)
+            await docs.aadd(
+                str(p["pdf_path"]),
+                citation=citation or None,
+                docname=p.get("docname"),
+                title=p.get("title"),
+                doi=p.get("doi"),
+                settings=settings,
+            )
         except Exception as e:  # a single unparsable PDF shouldn't sink the whole run
-            print(f"  [warn] paper-qa could not index {p['pdf_path']}: {type(e).__name__}: {str(e)[:200]}")
+            print(
+                f"  [warn] paper-qa could not index {p['pdf_path']}: {type(e).__name__}: {str(e)[:200]}"
+            )
     return docs
 
 
@@ -115,28 +132,55 @@ def question_prompt(question: str) -> str:
     )
 
 
-async def answer_question(question: str, docs: Docs, settings: Settings, metas: Optional[list] = None,
-                          max_citations: int = 3, prompt: Optional[str] = None) -> dict:
+async def answer_question(
+    question: str,
+    docs: Docs,
+    settings: Settings,
+    metas: Optional[list] = None,
+    max_citations: int = 3,
+    prompt: Optional[str] = None,
+) -> dict:
     """Answer one question over an indexed Docs collection; verdict + top citations.
 
     prompt replaces question_prompt(question) as the text sent to paper-qa (the verdict is then
     None unless the prompt asks for a VERDICT line).
     """
-    result = {"question": question, "verdict": None, "answer": "", "citations": [],
-              "short_excerpt": None, "n_pdfs": len(docs.docs), "source_db": "paper-qa"}
+    result = {
+        "question": question,
+        "verdict": None,
+        "answer": "",
+        "citations": [],
+        "short_excerpt": None,
+        "n_pdfs": len(docs.docs),
+        "source_db": "paper-qa",
+    }
     if not docs.docs:
         return result
     session = await docs.aquery(prompt or question_prompt(question), settings=settings)
-    result["cost_usd"] = float(getattr(session, "cost", 0.0) or 0.0)   # paper-qa's LLM cost of this query
+    result["cost_usd"] = float(
+        getattr(session, "cost", 0.0) or 0.0
+    )  # paper-qa's LLM cost of this query
     answer_text = session.answer or session.formatted_answer or ""
     result["answer"] = answer_text
     m = _VERDICT_RE.search(answer_text)
     result["verdict"] = m.group(1).lower() if m else None
-    ranked = sorted(session.contexts, key=lambda c: (c.score if c.score is not None else -1), reverse=True)
-    result["citations"] = [{**_citation_from_context(c, metas), "excerpt": first_sentence(c.context)}
-                           for c in ranked[:max_citations]]
+    ranked = sorted(
+        session.contexts,
+        key=lambda c: c.score if c.score is not None else -1,
+        reverse=True,
+    )
+    result["citations"] = [
+        {**_citation_from_context(c, metas), "excerpt": first_sentence(c.context)}
+        for c in ranked[:max_citations]
+    ]
     # every evidence summary paper-qa used, in score order (for a downstream judge)
-    result["evidence"] = [{"title": _citation_from_context(c, metas)["title"], "score": c.score, "summary": c.context}
-                          for c in ranked]
+    result["evidence"] = [
+        {
+            "title": _citation_from_context(c, metas)["title"],
+            "score": c.score,
+            "summary": c.context,
+        }
+        for c in ranked
+    ]
     result["short_excerpt"] = first_sentence(_VERDICT_RE.sub("", answer_text).strip())
     return result

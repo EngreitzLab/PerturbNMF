@@ -20,6 +20,7 @@ PMC PDFs come from the PMC open-data S3 bucket instead (checked 2026-09-24).
 Env: NCBI_EMAIL / PUBMED_EMAIL (NCBI courtesy), UNPAYWALL_EMAIL (required by Unpaywall;
 falls back to NCBI_EMAIL / PUBMED_EMAIL, and Unpaywall is skipped if none is set).
 """
+
 import os
 import re
 from pathlib import Path
@@ -56,8 +57,13 @@ def _download(url, dest, timeout=DEFAULT_TIMEOUT, params=None):
     if dest.exists() and dest.stat().st_size > 0:
         return str(dest.resolve()), "cached"
     try:
-        resp = requests.get(url, params=params, timeout=timeout, allow_redirects=True,
-                            headers={"User-Agent": _user_agent()})
+        resp = requests.get(
+            url,
+            params=params,
+            timeout=timeout,
+            allow_redirects=True,
+            headers={"User-Agent": _user_agent()},
+        )
     except requests.RequestException as e:
         return None, f"network error ({type(e).__name__})"
     if resp.status_code != 200 or not resp.content:
@@ -89,9 +95,15 @@ def pmc_pdf_url(pmcid, timeout=DEFAULT_TIMEOUT):
     """Return (pdf_url, reason) for a PMCID from the PMC open-access S3 bucket."""
     pmcid = str(pmcid).upper()
     latest = None
-    for version in (1, 2, 3):   # articles are versioned PMCxxxx.1, .2, ...; keep the newest
+    for version in (
+        1,
+        2,
+        3,
+    ):  # articles are versioned PMCxxxx.1, .2, ...; keep the newest
         try:
-            resp = requests.get(f"{PMC_S3}/metadata/{pmcid}.{version}.json", timeout=timeout)
+            resp = requests.get(
+                f"{PMC_S3}/metadata/{pmcid}.{version}.json", timeout=timeout
+            )
         except requests.RequestException as e:
             return None, f"PMC error ({type(e).__name__})"
         if resp.status_code != 200:
@@ -101,7 +113,10 @@ def pmc_pdf_url(pmcid, timeout=DEFAULT_TIMEOUT):
         return None, "not in PMC open-access dataset"
     pdf_url = latest.get("pdf_url")
     if not pdf_url:
-        return None, f"PMC has no open-access PDF (license: {latest.get('license_code')})"
+        return (
+            None,
+            f"PMC has no open-access PDF (license: {latest.get('license_code')})",
+        )
     return pdf_url.replace("s3://pmc-oa-opendata", PMC_S3).split("?")[0], "pmc"
 
 
@@ -111,16 +126,21 @@ def unpaywall_pdf_url(doi, timeout=DEFAULT_TIMEOUT):
     if not email:
         return None, "Unpaywall skipped (set UNPAYWALL_EMAIL)"
     try:
-        resp = requests.get(UNPAYWALL.format(doi=doi), params={"email": email}, timeout=timeout)
+        resp = requests.get(
+            UNPAYWALL.format(doi=doi), params={"email": email}, timeout=timeout
+        )
         data = resp.json() if resp.status_code == 200 else {}
     except (requests.RequestException, ValueError) as e:
         return None, f"Unpaywall error ({type(e).__name__})"
     pdf_url = (data.get("best_oa_location") or {}).get("url_for_pdf")
-    return (pdf_url, "unpaywall") if pdf_url else (None, "no open-access PDF on Unpaywall")
+    return (
+        (pdf_url, "unpaywall") if pdf_url else (None, "no open-access PDF on Unpaywall")
+    )
 
 
-def download_paper(out_dir, name, pmid=None, pmcid=None, doi=None, pdf_urls=(),
-                   timeout=DEFAULT_TIMEOUT):
+def download_paper(
+    out_dir, name, pmid=None, pmcid=None, doi=None, pdf_urls=(), timeout=DEFAULT_TIMEOUT
+):
     """Try every open-access route for one paper.
 
     Returns (pdf_path, message): pdf_path is None when nothing worked, and message then

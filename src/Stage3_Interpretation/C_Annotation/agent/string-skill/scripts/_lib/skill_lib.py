@@ -4,6 +4,7 @@ Canonical copy: C_Annotation/agent/_shared/skill_lib.py. Each skill carries an i
 scripts/_lib/skill_lib.py (agent/_shared/sync_skill_lib.py copies it and checks the copies), so a skill
 folder never imports from outside itself.
 """
+
 import json
 import sys
 import time
@@ -31,20 +32,35 @@ def run(handler):
         out = {"ok": True, **handler(req)}
         out.setdefault("warnings", [])
     except SkillError as e:
-        out = {"ok": False, "error": {"code": e.code, "message": e.message}, "warnings": []}
-    except Exception as e:   # network or API failures are reported, never raised
-        out = {"ok": False, "error": {"code": "runtime_error", "message": f"{type(e).__name__}: {e}"},
-               "warnings": []}
+        out = {
+            "ok": False,
+            "error": {"code": e.code, "message": e.message},
+            "warnings": [],
+        }
+    except Exception as e:  # network or API failures are reported, never raised
+        out = {
+            "ok": False,
+            "error": {"code": "runtime_error", "message": f"{type(e).__name__}: {e}"},
+            "warnings": [],
+        }
     print(json.dumps(out, indent=2, ensure_ascii=False))
     return 0 if out["ok"] else 1
 
 
 def require_str_list(req, key, max_len=None):
     value = req.get(key)
-    if not isinstance(value, list) or not value or not all(isinstance(v, str) and v.strip() for v in value):
-        raise SkillError("invalid_input", f"`{key}` must be a non-empty list of strings")
+    if (
+        not isinstance(value, list)
+        or not value
+        or not all(isinstance(v, str) and v.strip() for v in value)
+    ):
+        raise SkillError(
+            "invalid_input", f"`{key}` must be a non-empty list of strings"
+        )
     if max_len and len(value) > max_len:
-        raise SkillError("invalid_input", f"`{key}` has {len(value)} items; at most {max_len}")
+        raise SkillError(
+            "invalid_input", f"`{key}` has {len(value)} items; at most {max_len}"
+        )
     return [v.strip() for v in value]
 
 
@@ -58,16 +74,21 @@ def require_str(req, key):
 def request_with_retry(method, url, retries=3, timeout=60, **kwargs):
     """requests.<method> with exponential backoff on transient status codes and dropped connections."""
     import requests
+
     for attempt in range(retries + 1):
         try:
             resp = requests.request(method, url, timeout=timeout, **kwargs)
-        except (requests.ConnectionError, requests.Timeout, requests.exceptions.ChunkedEncodingError):
+        except (
+            requests.ConnectionError,
+            requests.Timeout,
+            requests.exceptions.ChunkedEncodingError,
+        ):
             if attempt == retries:
                 raise
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
             continue
         if resp.status_code in TRANSIENT_STATUS and attempt < retries:
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
             continue
         resp.raise_for_status()
         return resp
@@ -89,7 +110,9 @@ def read_jsonl(path):
 def write_jsonl(path, rows):
     path = Path(path)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text("".join(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in rows))
+    tmp.write_text(
+        "".join(json.dumps(r, ensure_ascii=False, sort_keys=True) + "\n" for r in rows)
+    )
     tmp.replace(path)
 
 

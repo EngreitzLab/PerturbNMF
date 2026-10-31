@@ -3,6 +3,7 @@
 
 Reads one JSON object on stdin and writes one JSON object on stdout (see ../SKILL.md).
 """
+
 import sys
 from pathlib import Path
 
@@ -32,7 +33,9 @@ USER_AGENT = "PerturbNMF-annotation/0.1 (literature search)"
 TRANSIENT_STATUS = {408, 425, 429, 500, 502, 503, 504}
 
 _TAG_RE = re.compile(r"<[^>]+>")
-_DESCRIPTION_RE = re.compile(r'<meta\s+name="(?:dc\.description|description)"\s+content="([^"]*)"', re.IGNORECASE)
+_DESCRIPTION_RE = re.compile(
+    r'<meta\s+name="(?:dc\.description|description)"\s+content="([^"]*)"', re.IGNORECASE
+)
 
 
 def _clean(text):
@@ -62,7 +65,9 @@ def _get(url, params=None, timeout=30, retries=1):
     last = None
     for attempt in range(retries + 1):
         try:
-            resp = requests.get(url, params=params, timeout=timeout, headers={"User-Agent": USER_AGENT})
+            resp = requests.get(
+                url, params=params, timeout=timeout, headers={"User-Agent": USER_AGENT}
+            )
             if resp.status_code in TRANSIENT_STATUS and attempt < retries:
                 time.sleep(0.5 * (attempt + 1))
                 continue
@@ -79,7 +84,9 @@ def _get(url, params=None, timeout=30, retries=1):
 def _landing_page_abstract(article_url, timeout=30):
     """Nature rarely deposits abstracts in Crossref; read the article page's description meta."""
     try:
-        resp = requests.get(article_url, timeout=timeout, headers={"User-Agent": USER_AGENT})
+        resp = requests.get(
+            article_url, timeout=timeout, headers={"User-Agent": USER_AGENT}
+        )
         m = _DESCRIPTION_RE.search(resp.text) if resp.status_code == 200 else None
         return _clean(m.group(1)) if m else None
     except requests.RequestException:
@@ -90,12 +97,17 @@ def _nature_record(item):
     doi = str(item.get("DOI") or "").lower()
     if not doi.startswith(NATURE_DOI_PREFIX + "/"):
         return None
-    article_id = doi.split("/", 1)[1]           # 10.1038/s41586-020-2012-7 -> s41586-020-2012-7
+    article_id = doi.split("/", 1)[1]  # 10.1038/s41586-020-2012-7 -> s41586-020-2012-7
     titles = item.get("title") or []
-    date_parts = ((item.get("published") or {}).get("date-parts")
-                  or (item.get("issued") or {}).get("date-parts") or [])
+    date_parts = (
+        (item.get("published") or {}).get("date-parts")
+        or (item.get("issued") or {}).get("date-parts")
+        or []
+    )
     container = item.get("container-title") or []
-    authors = [a.get("family") or a.get("name") or "" for a in (item.get("author") or [])]
+    authors = [
+        a.get("family") or a.get("name") or "" for a in (item.get("author") or [])
+    ]
     authors = [a for a in authors if a]
     return {
         "doi": doi,
@@ -103,7 +115,9 @@ def _nature_record(item):
         "url": f"{NATURE_BASE_URL}/articles/{article_id}",
         "pdf_url": f"{NATURE_BASE_URL}/articles/{article_id}.pdf",
         "title": _clean(titles[0] if titles else "") or "No Title",
-        "authors": ", ".join(authors[:3]) + (" et al." if len(authors) > 3 else "") if authors else None,
+        "authors": ", ".join(authors[:3]) + (" et al." if len(authors) > 3 else "")
+        if authors
+        else None,
         "year": date_parts[0][0] if date_parts and date_parts[0] else None,
         "journal": container[0] if container else None,
         "study_type": item.get("type"),
@@ -111,12 +125,16 @@ def _nature_record(item):
         "is_retracted": "is-retracted-by" in (item.get("relation") or {}),
     }
 
+
 SKILL = "nature-skill"
 
 
 def fetch_records(query, max_results):
-    params = {"query.bibliographic": _bounded_query(query), "rows": max_results,
-              "filter": f"prefix:{NATURE_DOI_PREFIX},type:journal-article"}
+    params = {
+        "query.bibliographic": _bounded_query(query),
+        "rows": max_results,
+        "filter": f"prefix:{NATURE_DOI_PREFIX},type:journal-article",
+    }
     email = os.getenv("CROSSREF_MAILTO") or os.getenv("PUBMED_EMAIL")
     if email:
         params["mailto"] = email
@@ -131,7 +149,13 @@ def fetch_records(query, max_results):
 
 # shared by the literature skills (identical in each)
 def record_key(r):
-    return ("pmid", r["pmid"]) if r.get("pmid") else ("doi", r["doi"]) if r.get("doi") else ("title", r["title"].casefold())
+    return (
+        ("pmid", r["pmid"])
+        if r.get("pmid")
+        else ("doi", r["doi"])
+        if r.get("doi")
+        else ("title", r["title"].casefold())
+    )
 
 
 def handle(req):
@@ -139,18 +163,44 @@ def handle(req):
     max_results = max(1, min(int(req.get("max_results", 5)), MAX_SEARCH_RESULTS))
     records = fetch_records(query, max_results)
     for r in records:
-        r.setdefault("url", f"https://doi.org/{r['doi']}" if r.get("doi") else
-                     (f"https://pubmed.ncbi.nlm.nih.gov/{r['pmid']}" if r.get("pmid") else None))
+        r.setdefault(
+            "url",
+            f"https://doi.org/{r['doi']}"
+            if r.get("doi")
+            else (
+                f"https://pubmed.ncbi.nlm.nih.gov/{r['pmid']}"
+                if r.get("pmid")
+                else None
+            ),
+        )
     out = {"source": SKILL, "query": query, "n_results": len(records)}
     if req.get("write_to"):
         genes = require_str_list(req, "genes")
-        rows = [{"source": SKILL, "query": query, "genes": genes, "status": "candidate", "finding": None,
-                 "stance": None, "pdf_path": None, **r} for r in records]
+        rows = [
+            {
+                "source": SKILL,
+                "query": query,
+                "genes": genes,
+                "status": "candidate",
+                "finding": None,
+                "stance": None,
+                "pdf_path": None,
+                **r,
+            }
+            for r in records
+        ]
         added, dup = append_jsonl(req["write_to"], rows, dedupe=record_key)
-        out.update({"written_to": req["write_to"], "added": added, "already_present": dup})
+        out.update(
+            {"written_to": req["write_to"], "added": added, "already_present": dup}
+        )
     n = int(req.get("abstract_chars", 600))
-    out["records"] = [{**{k: v for k, v in r.items() if k != "abstract"},
-                       "abstract": (r.get("abstract") or "")[:n] or None} for r in records]
+    out["records"] = [
+        {
+            **{k: v for k, v in r.items() if k != "abstract"},
+            "abstract": (r.get("abstract") or "")[:n] or None,
+        }
+        for r in records
+    ]
     return out
 
 

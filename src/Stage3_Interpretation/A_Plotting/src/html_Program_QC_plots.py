@@ -13,6 +13,7 @@ module renders one self-contained share folder containing:
 
 Plotly is loaded from CDN; the folder is movable.
 """
+
 from __future__ import annotations
 
 import os
@@ -37,11 +38,11 @@ PLOTLY_CDN = "https://cdn.plot.ly/plotly-2.27.0.min.js"
 GOOGLE_FONTS = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap"
 
 # Unified palette — used in every Plotly figure
-COLOR_UP = "#c0392b"       # positive effect / upregulated
-COLOR_DOWN = "#1c5f8f"     # negative effect / downregulated
-COLOR_NS = "#cbd5db"       # not significant
+COLOR_UP = "#c0392b"  # positive effect / upregulated
+COLOR_DOWN = "#1c5f8f"  # negative effect / downregulated
+COLOR_NS = "#cbd5db"  # not significant
 COLOR_NEUTRAL = "#7f8c8d"  # neutral grey bar
-COLOR_ACCENT = "#1769aa"   # link / accent
+COLOR_ACCENT = "#1769aa"  # link / accent
 
 # Plotly template applied to every figure for consistency
 _PLOTLY_TEMPLATE = go.layout.Template(
@@ -49,10 +50,22 @@ _PLOTLY_TEMPLATE = go.layout.Template(
         font=dict(family="Inter, system-ui, sans-serif", size=11, color="#222"),
         plot_bgcolor="#ffffff",
         paper_bgcolor="rgba(0,0,0,0)",
-        xaxis=dict(gridcolor="#eef0f2", linecolor="#cfd4d8", zerolinecolor="#dfe3e6",
-                   ticks="outside", tickcolor="#cfd4d8", tickfont=dict(size=10)),
-        yaxis=dict(gridcolor="#eef0f2", linecolor="#cfd4d8", zerolinecolor="#dfe3e6",
-                   ticks="outside", tickcolor="#cfd4d8", tickfont=dict(size=10)),
+        xaxis=dict(
+            gridcolor="#eef0f2",
+            linecolor="#cfd4d8",
+            zerolinecolor="#dfe3e6",
+            ticks="outside",
+            tickcolor="#cfd4d8",
+            tickfont=dict(size=10),
+        ),
+        yaxis=dict(
+            gridcolor="#eef0f2",
+            linecolor="#cfd4d8",
+            zerolinecolor="#dfe3e6",
+            ticks="outside",
+            tickcolor="#cfd4d8",
+            tickfont=dict(size=10),
+        ),
         colorway=[COLOR_ACCENT, COLOR_UP, COLOR_DOWN, COLOR_NEUTRAL],
         margin=dict(l=50, r=20, t=20, b=50),
         hoverlabel=dict(bgcolor="#222", font=dict(color="#fff", size=11)),
@@ -63,6 +76,7 @@ _PLOTLY_TEMPLATE = go.layout.Template(
 # ---------------------------------------------------------------------------
 # JSON / file helpers
 # ---------------------------------------------------------------------------
+
 
 def _sanitize(o):
     if isinstance(o, float):
@@ -103,13 +117,26 @@ def _safe_sample_key(samp: str) -> str:
 # _make_*_fig functions below.
 # ---------------------------------------------------------------------------
 
-def _build_top_genes(mdata, target_program, num_gene, file_to_dictionary, gene_name_key,
-                     data_key="rna", prog_key="cNMF"):
+
+def _build_top_genes(
+    mdata,
+    target_program,
+    num_gene,
+    file_to_dictionary,
+    gene_name_key,
+    data_key="rna",
+    prog_key="cNMF",
+):
     # Mirror of plot_top_gene_per_program data prep.
     X = mdata[prog_key].varm["loadings"]
     gene_names = mdata[prog_key].uns["var_names"]
     if gene_name_key is not None and gene_name_key in mdata[data_key].var.columns:
-        ens_to_sym = dict(zip(mdata[data_key].var_names, mdata[data_key].var[gene_name_key].astype(str)))
+        ens_to_sym = dict(
+            zip(
+                mdata[data_key].var_names,
+                mdata[data_key].var[gene_name_key].astype(str),
+            )
+        )
         gene_names = np.array([ens_to_sym.get(g, g) for g in gene_names])
     if file_to_dictionary is not None:
         gene_names = rename_list_gene_dictionary(list(gene_names), file_to_dictionary)
@@ -154,7 +181,11 @@ def _build_go_terms(GO_path, target_program, num_term, p_value_name, term_col):
 def _build_correlations(program_correlation, target_program, num_program):
     if str(target_program) not in program_correlation.columns:
         return {"programs": [], "r": [], "direction": []}
-    s = program_correlation.loc[str(target_program)].drop(str(target_program), errors="ignore").sort_values(ascending=False)
+    s = (
+        program_correlation.loc[str(target_program)]
+        .drop(str(target_program), errors="ignore")
+        .sort_values(ascending=False)
+    )
     top = s[s > 0].head(num_program)
     bottom = s[s < 0].tail(num_program)
     combined = pd.concat([bottom, top])
@@ -176,19 +207,40 @@ def _build_violin(mdata, target_program, groupby, data_key="rna", prog_key="cNMF
     else:
         groups = mdata[data_key].obs[groupby].values
     df = pd.DataFrame({"expression": scores, "group": list(groups)})
-    order = list(df["group"].astype("category").cat.categories) if hasattr(df["group"], "cat") else sorted(df["group"].unique())
-    summary = df.groupby("group")["expression"].agg(["mean", lambda x: float((x > x.mean()).mean())])
+    order = (
+        list(df["group"].astype("category").cat.categories)
+        if hasattr(df["group"], "cat")
+        else sorted(df["group"].unique())
+    )
+    summary = df.groupby("group")["expression"].agg(
+        ["mean", lambda x: float((x > x.mean()).mean())]
+    )
     summary.columns = ["mean", "frac_above"]
     return {
         "groups": list(map(str, order)),
-        "per_group_expression": {str(g): list(df.loc[df["group"] == g, "expression"].values) for g in order},
-        "summary": {str(g): {"mean": float(summary.loc[g, "mean"]),
-                              "frac_above": float(summary.loc[g, "frac_above"])} for g in order},
+        "per_group_expression": {
+            str(g): list(df.loc[df["group"] == g, "expression"].values) for g in order
+        },
+        "summary": {
+            str(g): {
+                "mean": float(summary.loc[g, "mean"]),
+                "frac_above": float(summary.loc[g, "frac_above"]),
+            }
+            for g in order
+        },
     }
 
 
-def _build_log2fc(perturb_path, target_program, tagert_col_name, plot_col_name,
-                  log2fc_col, num_item, p_value, gene_list):
+def _build_log2fc(
+    perturb_path,
+    target_program,
+    tagert_col_name,
+    plot_col_name,
+    log2fc_col,
+    num_item,
+    p_value,
+    gene_list,
+):
     df = pd.read_csv(perturb_path, sep="\t")
     df["program_name"] = df["program_name"].astype(str)
     if str(target_program) not in df[tagert_col_name].astype(str).values:
@@ -199,7 +251,9 @@ def _build_log2fc(perturb_path, target_program, tagert_col_name, plot_col_name,
     sub = sub[sub["adj_pval"] < p_value].sort_values(by=log2fc_col, ascending=False)
     top = sub.head(num_item)
     bottom = sub.tail(num_item)
-    plot_data = pd.merge(top, bottom, how="outer").sort_values(by=log2fc_col, ascending=False)
+    plot_data = pd.merge(top, bottom, how="outer").sort_values(
+        by=log2fc_col, ascending=False
+    )
     return {
         "regulators": list(plot_data[plot_col_name].astype(str).values),
         "log2fc": [float(x) for x in plot_data[log2fc_col].values],
@@ -207,13 +261,27 @@ def _build_log2fc(perturb_path, target_program, tagert_col_name, plot_col_name,
     }
 
 
-def _build_volcano(perturb_path, target_program, tagert_col_name, plot_col_name,
-                   log2fc_col, down_thred_log, up_thred_log, p_value, gene_list):
+def _build_volcano(
+    perturb_path,
+    target_program,
+    tagert_col_name,
+    plot_col_name,
+    log2fc_col,
+    down_thred_log,
+    up_thred_log,
+    p_value,
+    gene_list,
+):
     df = pd.read_csv(perturb_path, sep="\t")
     df["program_name"] = df["program_name"].astype(str)
     if str(target_program) not in df[tagert_col_name].astype(str).values:
-        return {"regulators": [], "log2fc": [], "neglog10p": [], "category": [],
-                "thresholds": {"down": down_thred_log, "up": up_thred_log, "p": p_value}}
+        return {
+            "regulators": [],
+            "log2fc": [],
+            "neglog10p": [],
+            "category": [],
+            "thresholds": {"down": down_thred_log, "up": up_thred_log, "p": p_value},
+        }
     sub = df.loc[df[tagert_col_name].astype(str) == str(target_program)].copy()
     if gene_list:
         sub = sub[sub[plot_col_name].isin(set(gene_list))]
@@ -233,7 +301,11 @@ def _build_volcano(perturb_path, target_program, tagert_col_name, plot_col_name,
         "neglog10p": [float(x) for x in sub["neglog10p"].values],
         "adj_pval": [float(x) for x in sub["adj_pval"].values],
         "category": cats,
-        "thresholds": {"down": float(down_thred_log), "up": float(up_thred_log), "p": float(p_value)},
+        "thresholds": {
+            "down": float(down_thred_log),
+            "up": float(up_thred_log),
+            "p": float(p_value),
+        },
     }
 
 
@@ -242,13 +314,17 @@ def _build_dotplot(mdata, gene_list, groupby, gene_name_key, data_key="rna"):
         return {"genes": [], "conditions": [], "mean": [], "frac": []}
     if gene_name_key is not None and gene_name_key in mdata[data_key].var.columns:
         sym_to_ens = {}
-        for ens, sym in zip(mdata[data_key].var_names, mdata[data_key].var[gene_name_key].astype(str)):
+        for ens, sym in zip(
+            mdata[data_key].var_names, mdata[data_key].var[gene_name_key].astype(str)
+        ):
             sym_to_ens.setdefault(sym, ens)
         gene_indices = []
         kept_genes = []
         for g in gene_list:
             if g in sym_to_ens:
-                gene_indices.append(list(mdata[data_key].var_names).index(sym_to_ens[g]))
+                gene_indices.append(
+                    list(mdata[data_key].var_names).index(sym_to_ens[g])
+                )
                 kept_genes.append(g)
         gene_list = kept_genes
     else:
@@ -264,7 +340,11 @@ def _build_dotplot(mdata, gene_list, groupby, gene_name_key, data_key="rna"):
 
     X = mdata[data_key].X
     groups = mdata[data_key].obs[groupby].values
-    conds_cat = mdata[data_key].obs[groupby].astype("category").cat.categories if hasattr(mdata[data_key].obs[groupby], "cat") else sorted(np.unique(groups))
+    conds_cat = (
+        mdata[data_key].obs[groupby].astype("category").cat.categories
+        if hasattr(mdata[data_key].obs[groupby], "cat")
+        else sorted(np.unique(groups))
+    )
     conditions = [str(c) for c in conds_cat]
     mean_mat = []
     frac_mat = []
@@ -298,33 +378,70 @@ def _build_waterfall(corr_matrix, target_program, top_num):
     }
 
 
-def _build_heatmap(perturb_path_base, mdata, target_program, sample,
-                   tagert_col_name, plot_col_name, log2fc_col, p_value, groupby,
-                   data_key="rna", prog_key="cNMF"):
-    dfs = [pd.read_csv(f"{perturb_path_base}_{samp}.txt", sep="\t").assign(sample=samp) for samp in sample]
+def _build_heatmap(
+    perturb_path_base,
+    mdata,
+    target_program,
+    sample,
+    tagert_col_name,
+    plot_col_name,
+    log2fc_col,
+    p_value,
+    groupby,
+    data_key="rna",
+    prog_key="cNMF",
+):
+    dfs = [
+        pd.read_csv(f"{perturb_path_base}_{samp}.txt", sep="\t").assign(sample=samp)
+        for samp in sample
+    ]
     combined = pd.concat(dfs, ignore_index=True)
     combined["program_name"] = combined["program_name"].astype(str)
     sub = combined.loc[combined[tagert_col_name].astype(str) == str(target_program)]
     keep = sub[sub["adj_pval"] < p_value][plot_col_name].unique()
     sub = sub[sub[plot_col_name].isin(keep)]
     if sub.empty:
-        return {"conditions": [], "regulators": [], "log2fc": [], "sig": [], "expression": []}
+        return {
+            "conditions": [],
+            "regulators": [],
+            "log2fc": [],
+            "sig": [],
+            "expression": [],
+        }
     pv = sub.pivot(columns=plot_col_name, index="sample", values=log2fc_col)
     pp = sub.pivot(columns=plot_col_name, index="sample", values="adj_pval")
     pv = pv.reindex(sample)
     pp = pp.reindex(sample)
-    if mdata is None:   # expression is not drawn by _make_heatmap_fig; callers without an h5mu skip it
+    if (
+        mdata is None
+    ):  # expression is not drawn by _make_heatmap_fig; callers without an h5mu skip it
         expr_vals = []
     else:
-        expr = compute_program_expression_by_condition(mdata, target_program, groupby=groupby, data_key=data_key, prog_key=prog_key)
+        expr = compute_program_expression_by_condition(
+            mdata, target_program, groupby=groupby, data_key=data_key, prog_key=prog_key
+        )
         expr_vals = [float(expr.get(c, 0.0)) for c in pv.index]
     return {
         "conditions": list(map(str, pv.index)),
         "regulators": list(map(str, pv.columns)),
-        "log2fc": [[None if (isinstance(v, float) and math.isnan(v)) else float(v) for v in row]
-                   for row in pv.values],
-        "sig": [[(False if (isinstance(v, float) and math.isnan(v)) else bool(v < p_value)) for v in row]
-                for row in pp.values],
+        "log2fc": [
+            [
+                None if (isinstance(v, float) and math.isnan(v)) else float(v)
+                for v in row
+            ]
+            for row in pv.values
+        ],
+        "sig": [
+            [
+                (
+                    False
+                    if (isinstance(v, float) and math.isnan(v))
+                    else bool(v < p_value)
+                )
+                for v in row
+            ]
+            for row in pp.values
+        ],
         "expression": expr_vals,
     }
 
@@ -332,6 +449,7 @@ def _build_heatmap(perturb_path_base, mdata, target_program, sample,
 # ---------------------------------------------------------------------------
 # Plotly figure builders. No internal titles — titles are emitted in HTML.
 # ---------------------------------------------------------------------------
+
 
 def _fmt_layout(fig: go.Figure, height: int = 320) -> go.Figure:
     fig.update_layout(template=_PLOTLY_TEMPLATE, height=height)
@@ -341,13 +459,19 @@ def _fmt_layout(fig: go.Figure, height: int = 320) -> go.Figure:
 def _empty_fig(message: str) -> go.Figure:
     fig = go.Figure()
     fig.add_annotation(
-        text=f"<i>{message}</i>", showarrow=False,
-        xref="paper", yref="paper", x=0.5, y=0.5,
+        text=f"<i>{message}</i>",
+        showarrow=False,
+        xref="paper",
+        yref="paper",
+        x=0.5,
+        y=0.5,
         font=dict(color="#999", size=12),
     )
     fig.update_layout(
-        template=_PLOTLY_TEMPLATE, height=160,
-        xaxis=dict(visible=False), yaxis=dict(visible=False),
+        template=_PLOTLY_TEMPLATE,
+        height=160,
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
         margin=dict(l=10, r=10, t=10, b=10),
     )
     return fig
@@ -356,11 +480,15 @@ def _empty_fig(message: str) -> go.Figure:
 def _make_top_genes_fig(data):
     if not data["genes"]:
         return _empty_fig("No gene loadings")
-    fig = go.Figure(go.Bar(
-        x=data["loadings"], y=data["genes"], orientation="h",
-        marker=dict(color=COLOR_NEUTRAL, line=dict(width=0)),
-        hovertemplate="%{y}<br>Loading: %{x:.3g}<extra></extra>",
-    ))
+    fig = go.Figure(
+        go.Bar(
+            x=data["loadings"],
+            y=data["genes"],
+            orientation="h",
+            marker=dict(color=COLOR_NEUTRAL, line=dict(width=0)),
+            hovertemplate="%{y}<br>Loading: %{x:.3g}<extra></extra>",
+        )
+    )
     fig.update_layout(xaxis_title="Gene loading (z-score)", yaxis_title="")
     return _fmt_layout(fig)
 
@@ -368,14 +496,19 @@ def _make_top_genes_fig(data):
 def _make_go_fig(data):
     if not data["terms"]:
         return _empty_fig("No GO enrichment")
-    fig = go.Figure(go.Bar(
-        x=data["neglog10p"], y=data["terms"], orientation="h",
-        marker=dict(color=COLOR_NEUTRAL, line=dict(width=0)),
-        customdata=data["adj_pval"],
-        hovertemplate="%{y}<br>-log10(adj_p): %{x:.2f}<br>adj_p: %{customdata:.2e}<extra></extra>",
-    ))
-    fig.update_layout(xaxis_title="-log10 adj. p-value", yaxis_title="",
-                      yaxis=dict(automargin=True))
+    fig = go.Figure(
+        go.Bar(
+            x=data["neglog10p"],
+            y=data["terms"],
+            orientation="h",
+            marker=dict(color=COLOR_NEUTRAL, line=dict(width=0)),
+            customdata=data["adj_pval"],
+            hovertemplate="%{y}<br>-log10(adj_p): %{x:.2f}<br>adj_p: %{customdata:.2e}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        xaxis_title="-log10 adj. p-value", yaxis_title="", yaxis=dict(automargin=True)
+    )
     return _fmt_layout(fig)
 
 
@@ -383,14 +516,19 @@ def _make_correlations_fig(data):
     if not data["programs"]:
         return _empty_fig("No correlations")
     colors = [COLOR_DOWN if d == "negative" else COLOR_UP for d in data["direction"]]
-    fig = go.Figure(go.Bar(
-        x=data["r"], y=data["programs"], orientation="h",
-        marker=dict(color=colors, line=dict(width=0)),
-        hovertemplate="Program %{y}<br>r = %{x:.3f}<extra></extra>",
-    ))
+    fig = go.Figure(
+        go.Bar(
+            x=data["r"],
+            y=data["programs"],
+            orientation="h",
+            marker=dict(color=colors, line=dict(width=0)),
+            hovertemplate="Program %{y}<br>r = %{x:.3f}<extra></extra>",
+        )
+    )
     fig.add_vline(x=0, line_width=0.5, line_color="#555")
-    fig.update_layout(xaxis_title="Pearson r", yaxis_title="Program",
-                      yaxis=dict(type="category"))
+    fig.update_layout(
+        xaxis_title="Pearson r", yaxis_title="Program", yaxis=dict(type="category")
+    )
     return _fmt_layout(fig)
 
 
@@ -400,15 +538,21 @@ def _make_violin_fig(data):
     fig = go.Figure()
     for g in data["groups"]:
         s = data["summary"][g]
-        fig.add_trace(go.Violin(
-            y=data["per_group_expression"][g], name=g,
-            box_visible=True, meanline_visible=True, points=False,
-            line=dict(color=COLOR_ACCENT, width=1),
-            fillcolor="rgba(23,105,170,0.20)",
-            hovertemplate=f"{g}<br>mean={s['mean']:.3f}<br>frac>mean={s['frac_above']:.2f}<extra></extra>",
-        ))
-    fig.update_layout(xaxis_title="Condition", yaxis_title="Program expression",
-                      showlegend=False)
+        fig.add_trace(
+            go.Violin(
+                y=data["per_group_expression"][g],
+                name=g,
+                box_visible=True,
+                meanline_visible=True,
+                points=False,
+                line=dict(color=COLOR_ACCENT, width=1),
+                fillcolor="rgba(23,105,170,0.20)",
+                hovertemplate=f"{g}<br>mean={s['mean']:.3f}<br>frac>mean={s['frac_above']:.2f}<extra></extra>",
+            )
+        )
+    fig.update_layout(
+        xaxis_title="Condition", yaxis_title="Program expression", showlegend=False
+    )
     return _fmt_layout(fig)
 
 
@@ -416,17 +560,22 @@ def _make_log2fc_fig(data):
     if not data["regulators"]:
         return _empty_fig("No significant regulators")
     colors = [COLOR_UP if v > 0 else COLOR_DOWN for v in data["log2fc"]]
-    fig = go.Figure(go.Bar(
-        x=data["log2fc"], y=data["regulators"], orientation="h",
-        marker=dict(color=colors, line=dict(width=0)),
-        customdata=data["adj_pval"],
-        hovertemplate="%{y}<br>log2FC: %{x:.3f}<br>adj_p: %{customdata:.2e}<extra></extra>",
-    ))
+    fig = go.Figure(
+        go.Bar(
+            x=data["log2fc"],
+            y=data["regulators"],
+            orientation="h",
+            marker=dict(color=colors, line=dict(width=0)),
+            customdata=data["adj_pval"],
+            hovertemplate="%{y}<br>log2FC: %{x:.3f}<br>adj_p: %{customdata:.2e}<extra></extra>",
+        )
+    )
     fig.add_vline(x=0, line_width=0.5, line_color="#555")
     # Program/regulator labels are numeric-looking strings ("3", "28", ...); without
     # type="category" Plotly renders a linear y-axis and scatters the bars by value.
-    fig.update_layout(xaxis_title="log2FC", yaxis_title="Regulator",
-                      yaxis=dict(type="category"))
+    fig.update_layout(
+        xaxis_title="log2FC", yaxis_title="Regulator", yaxis=dict(type="category")
+    )
     return _fmt_layout(fig)
 
 
@@ -440,26 +589,41 @@ def _make_volcano_fig(data):
         idx = [i for i, c in enumerate(data["category"]) if c == cat]
         if not idx:
             continue
-        fig.add_trace(go.Scattergl(
-            x=[data["log2fc"][i] for i in idx],
-            y=[data["neglog10p"][i] for i in idx],
-            mode="markers", name=cat_names[cat],
-            text=[data["regulators"][i] for i in idx],
-            customdata=[data["adj_pval"][i] for i in idx],
-            marker=dict(color=cat_colors[cat], size=6,
-                        opacity=0.85 if cat != "ns" else 0.45,
-                        line=dict(width=0)),
-            hovertemplate="%{text}<br>log2FC: %{x:.3f}<br>-log10 adj_p: %{y:.2f}<br>adj_p: %{customdata:.2e}<extra></extra>",
-        ))
+        fig.add_trace(
+            go.Scattergl(
+                x=[data["log2fc"][i] for i in idx],
+                y=[data["neglog10p"][i] for i in idx],
+                mode="markers",
+                name=cat_names[cat],
+                text=[data["regulators"][i] for i in idx],
+                customdata=[data["adj_pval"][i] for i in idx],
+                marker=dict(
+                    color=cat_colors[cat],
+                    size=6,
+                    opacity=0.85 if cat != "ns" else 0.45,
+                    line=dict(width=0),
+                ),
+                hovertemplate="%{text}<br>log2FC: %{x:.3f}<br>-log10 adj_p: %{y:.2f}<br>adj_p: %{customdata:.2e}<extra></extra>",
+            )
+        )
     th = data["thresholds"]
     fig.add_vline(x=th["down"], line_dash="dash", line_color="#999", line_width=1)
     fig.add_vline(x=th["up"], line_dash="dash", line_color="#999", line_width=1)
     if th["p"] > 0:
-        fig.add_hline(y=-math.log10(th["p"]), line_dash="dash", line_color="#999", line_width=1)
+        fig.add_hline(
+            y=-math.log10(th["p"]), line_dash="dash", line_color="#999", line_width=1
+        )
     fig.update_layout(
-        xaxis_title="log2FC", yaxis_title="-log10 adj. p-value",
-        legend=dict(orientation="h", x=1, xanchor="right", y=1.08, yanchor="bottom",
-                    bgcolor="rgba(0,0,0,0)"),
+        xaxis_title="log2FC",
+        yaxis_title="-log10 adj. p-value",
+        legend=dict(
+            orientation="h",
+            x=1,
+            xanchor="right",
+            y=1.08,
+            yanchor="bottom",
+            bgcolor="rgba(0,0,0,0)",
+        ),
     )
     return _fmt_layout(fig)
 
@@ -478,15 +642,31 @@ def _make_dotplot_fig(data):
             sizes.append(4 + 20 * (f / max_frac))
             colors.append(m)
             hovers.append(f"{gene}<br>{cond}<br>mean={m:.3f}<br>frac={f:.2f}")
-    fig = go.Figure(go.Scatter(
-        x=xs, y=ys, mode="markers",
-        marker=dict(size=sizes, color=colors, colorscale="Reds", showscale=True,
-                    colorbar=dict(title=dict(text="mean", side="right"), thickness=8, len=0.7),
-                    line=dict(width=0)),
-        text=hovers, hovertemplate="%{text}<extra></extra>",
-    ))
-    fig.update_layout(xaxis_title="Condition", yaxis_title="Regulator",
-                      xaxis=dict(type="category"), yaxis=dict(type="category"))
+    fig = go.Figure(
+        go.Scatter(
+            x=xs,
+            y=ys,
+            mode="markers",
+            marker=dict(
+                size=sizes,
+                color=colors,
+                colorscale="Reds",
+                showscale=True,
+                colorbar=dict(
+                    title=dict(text="mean", side="right"), thickness=8, len=0.7
+                ),
+                line=dict(width=0),
+            ),
+            text=hovers,
+            hovertemplate="%{text}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        xaxis_title="Condition",
+        yaxis_title="Regulator",
+        xaxis=dict(type="category"),
+        yaxis=dict(type="category"),
+    )
     return _fmt_layout(fig)
 
 
@@ -494,14 +674,20 @@ def _make_waterfall_fig(data, target_program):
     if not data["programs"]:
         return _empty_fig("No correlation data")
     xs = list(range(len(data["programs"])))
-    fig = go.Figure(go.Scattergl(
-        x=xs, y=data["r"], mode="markers",
-        text=data["programs"],
-        marker=dict(size=[8 if lab else 5 for lab in data["labeled"]],
-                    color=[COLOR_ACCENT if lab else COLOR_NS for lab in data["labeled"]],
-                    line=dict(width=0)),
-        hovertemplate="Program %{text}<br>r = %{y:.3f}<extra></extra>",
-    ))
+    fig = go.Figure(
+        go.Scattergl(
+            x=xs,
+            y=data["r"],
+            mode="markers",
+            text=data["programs"],
+            marker=dict(
+                size=[8 if lab else 5 for lab in data["labeled"]],
+                color=[COLOR_ACCENT if lab else COLOR_NS for lab in data["labeled"]],
+                line=dict(width=0),
+            ),
+            hovertemplate="Program %{text}<br>r = %{y:.3f}<extra></extra>",
+        )
+    )
     fig.add_hline(y=0, line_dash="dash", line_color="#999", line_width=1)
     fig.update_layout(xaxis_title="Rank", yaxis_title=f"r vs Program {target_program}")
     return _fmt_layout(fig)
@@ -515,22 +701,42 @@ def _make_heatmap_fig(data):
         line = []
         for j, v in enumerate(_row):
             s = " *" if data["sig"][i][j] else ""
-            line.append(f"{data['regulators'][j]}<br>{data['conditions'][i]}<br>log2FC={v}{s}")
+            line.append(
+                f"{data['regulators'][j]}<br>{data['conditions'][i]}<br>log2FC={v}{s}"
+            )
         htext.append(line)
-    fig = go.Figure(go.Heatmap(
-        z=data["log2fc"], x=data["regulators"], y=data["conditions"],
-        zmin=-1, zmax=1, zmid=0, colorscale="RdBu_r", reversescale=False,
-        text=htext, hovertemplate="%{text}<extra></extra>",
-        colorbar=dict(title=dict(text="log2FC", side="right"), thickness=8, len=0.7),
-    ))
+    fig = go.Figure(
+        go.Heatmap(
+            z=data["log2fc"],
+            x=data["regulators"],
+            y=data["conditions"],
+            zmin=-1,
+            zmax=1,
+            zmid=0,
+            colorscale="RdBu_r",
+            reversescale=False,
+            text=htext,
+            hovertemplate="%{text}<extra></extra>",
+            colorbar=dict(
+                title=dict(text="log2FC", side="right"), thickness=8, len=0.7
+            ),
+        )
+    )
     annotations = []
     for i, row in enumerate(data["sig"]):
         for j, sig in enumerate(row):
             if sig:
-                annotations.append(dict(
-                    x=data["regulators"][j], y=data["conditions"][i],
-                    text="*", showarrow=False,
-                    font=dict(color="#111", size=14, family="JetBrains Mono, monospace")))
+                annotations.append(
+                    dict(
+                        x=data["regulators"][j],
+                        y=data["conditions"][i],
+                        text="*",
+                        showarrow=False,
+                        font=dict(
+                            color="#111", size=14, family="JetBrains Mono, monospace"
+                        ),
+                    )
+                )
     height = max(280, 80 + 36 * len(data["conditions"]))
     fig.update_layout(annotations=annotations, xaxis=dict(tickangle=-45), height=height)
     return _fmt_layout(fig, height=height)
@@ -540,11 +746,15 @@ def _make_heatmap_fig(data):
 # UMAP PNG rendering — reuses the existing matplotlib function
 # ---------------------------------------------------------------------------
 
+
 def _render_umap_png(mdata, target_program, out_path, subsample_frac, prog_key="cNMF"):
     fig, ax = plt.subplots(figsize=(5, 4))
     plot_umap_per_program(
-        mdata=mdata, Target_Program=target_program, ax=ax,
-        subsample_frac=subsample_frac, prog_key=prog_key,
+        mdata=mdata,
+        Target_Program=target_program,
+        ax=ax,
+        subsample_frac=subsample_frac,
+        prog_key=prog_key,
     )
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -834,8 +1044,12 @@ footer {
 
 
 def _fig_to_div(fig: go.Figure, div_id: str) -> str:
-    return fig.to_html(include_plotlyjs=False, full_html=False, div_id=div_id,
-                       config={"displaylogo": False, "responsive": True})
+    return fig.to_html(
+        include_plotlyjs=False,
+        full_html=False,
+        div_id=div_id,
+        config={"displaylogo": False, "responsive": True},
+    )
 
 
 # Pages load Plotly from this local, relative path (every page lives one level
@@ -854,6 +1068,7 @@ def _write_plotly_js(share_root):
     so the renderer always matches the version that produced the figure divs.
     """
     from plotly.offline import get_plotlyjs
+
     shared = Path(share_root) / "shared"
     shared.mkdir(parents=True, exist_ok=True)
     js_path = shared / "plotly.min.js"
@@ -864,6 +1079,7 @@ def _write_plotly_js(share_root):
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def export_program_html(
     mdata,
@@ -922,14 +1138,31 @@ def export_program_html(
     (prog_dir / "images").mkdir(parents=True, exist_ok=True)
 
     # UMAP PNG
-    _render_umap_png(mdata, Target_Program, prog_dir / "images" / "umap.png", subsample_frac, prog_key=prog_key)
+    _render_umap_png(
+        mdata,
+        Target_Program,
+        prog_dir / "images" / "umap.png",
+        subsample_frac,
+        prog_key=prog_key,
+    )
 
     # ---- header panels ----
-    top_genes_d = _build_top_genes(mdata, Target_Program, top_enrichned_term, file_to_dictionary, gene_name_key,
-                                   data_key=data_key, prog_key=prog_key)
-    go_d = _build_go_terms(GO_path, Target_Program, top_enrichned_term, go_p_value_name, go_term_col)
+    top_genes_d = _build_top_genes(
+        mdata,
+        Target_Program,
+        top_enrichned_term,
+        file_to_dictionary,
+        gene_name_key,
+        data_key=data_key,
+        prog_key=prog_key,
+    )
+    go_d = _build_go_terms(
+        GO_path, Target_Program, top_enrichned_term, go_p_value_name, go_term_col
+    )
     corr_d = _build_correlations(program_correlation, Target_Program, top_program)
-    violin_d = _build_violin(mdata, Target_Program, groupby, data_key=data_key, prog_key=prog_key)
+    violin_d = _build_violin(
+        mdata, Target_Program, groupby, data_key=data_key, prog_key=prog_key
+    )
 
     _write_json(prog_dir / "data" / "top_genes.json", top_genes_d)
     _write_json(prog_dir / "data" / "go_terms.json", go_d)
@@ -943,35 +1176,77 @@ def export_program_html(
 
     # ---- per-sample panels ----
     sample_blocks = []
-    for samp in (sample if plot_perturbation else []):
+    for samp in sample if plot_perturbation else []:
         skey = _safe_sample_key(samp)
         perturb_path = f"{perturb_path_base}_{samp}.txt"
 
-        log2fc_d = _build_log2fc(perturb_path, Target_Program, tagert_col_name, plot_col_name,
-                                  log2fc_col, top_enrichned_term, p_value, perturbed_gene_found)
-        volcano_d = _build_volcano(perturb_path, Target_Program, tagert_col_name, plot_col_name,
-                                    log2fc_col, down_thred_log, up_thred_log, p_value, perturbed_gene_found)
-        dotplot_d = _build_dotplot(mdata, log2fc_d["regulators"], groupby, gene_name_key, data_key=data_key)
-        waterfall_d = _build_waterfall(waterfall_correlation[samp], Target_Program, top_enrichned_term)
+        log2fc_d = _build_log2fc(
+            perturb_path,
+            Target_Program,
+            tagert_col_name,
+            plot_col_name,
+            log2fc_col,
+            top_enrichned_term,
+            p_value,
+            perturbed_gene_found,
+        )
+        volcano_d = _build_volcano(
+            perturb_path,
+            Target_Program,
+            tagert_col_name,
+            plot_col_name,
+            log2fc_col,
+            down_thred_log,
+            up_thred_log,
+            p_value,
+            perturbed_gene_found,
+        )
+        dotplot_d = _build_dotplot(
+            mdata, log2fc_d["regulators"], groupby, gene_name_key, data_key=data_key
+        )
+        waterfall_d = _build_waterfall(
+            waterfall_correlation[samp], Target_Program, top_enrichned_term
+        )
 
         _write_json(prog_dir / "data" / f"log2fc_{skey}.json", log2fc_d)
         _write_json(prog_dir / "data" / f"volcano_{skey}.json", volcano_d)
         _write_json(prog_dir / "data" / f"dotplot_{skey}.json", dotplot_d)
         _write_json(prog_dir / "data" / f"waterfall_{skey}.json", waterfall_d)
 
-        sample_blocks.append(_SAMPLE_BLOCK.format(
-            sample=samp,
-            log2fc_div=_fig_to_div(_make_log2fc_fig(log2fc_d), f"div-log2fc-{skey}"),
-            volcano_div=_fig_to_div(_make_volcano_fig(volcano_d), f"div-volcano-{skey}"),
-            dotplot_div=_fig_to_div(_make_dotplot_fig(dotplot_d), f"div-dotplot-{skey}"),
-            waterfall_div=_fig_to_div(_make_waterfall_fig(waterfall_d, Target_Program), f"div-waterfall-{skey}"),
-        ))
+        sample_blocks.append(
+            _SAMPLE_BLOCK.format(
+                sample=samp,
+                log2fc_div=_fig_to_div(
+                    _make_log2fc_fig(log2fc_d), f"div-log2fc-{skey}"
+                ),
+                volcano_div=_fig_to_div(
+                    _make_volcano_fig(volcano_d), f"div-volcano-{skey}"
+                ),
+                dotplot_div=_fig_to_div(
+                    _make_dotplot_fig(dotplot_d), f"div-dotplot-{skey}"
+                ),
+                waterfall_div=_fig_to_div(
+                    _make_waterfall_fig(waterfall_d, Target_Program),
+                    f"div-waterfall-{skey}",
+                ),
+            )
+        )
 
     # ---- heatmap ----
     if plot_perturbation:
-        heatmap_d = _build_heatmap(perturb_path_base, mdata, Target_Program, sample,
-                                    tagert_col_name, plot_col_name, log2fc_col, p_value, groupby,
-                                    data_key=data_key, prog_key=prog_key)
+        heatmap_d = _build_heatmap(
+            perturb_path_base,
+            mdata,
+            Target_Program,
+            sample,
+            tagert_col_name,
+            plot_col_name,
+            log2fc_col,
+            p_value,
+            groupby,
+            data_key=data_key,
+            prog_key=prog_key,
+        )
         _write_json(prog_dir / "data" / "heatmap.json", heatmap_d)
         heatmap_fig = _make_heatmap_fig(heatmap_d)
     else:
@@ -984,11 +1259,17 @@ def export_program_html(
     if prev_program_id is None:
         prev_href, prev_disabled = "#", " disabled"
     else:
-        prev_href, prev_disabled = f"../program_{prev_program_id}/program_{prev_program_id}.html", ""
+        prev_href, prev_disabled = (
+            f"../program_{prev_program_id}/program_{prev_program_id}.html",
+            "",
+        )
     if next_program_id is None:
         next_href, next_disabled = "#", " disabled"
     else:
-        next_href, next_disabled = f"../program_{next_program_id}/program_{next_program_id}.html", ""
+        next_href, next_disabled = (
+            f"../program_{next_program_id}/program_{next_program_id}.html",
+            "",
+        )
 
     # ---- assemble page ----
     page = _PAGE_TEMPLATE.format(
@@ -996,8 +1277,10 @@ def export_program_html(
         cdn=PLOTLY_CDN,
         fonts=GOOGLE_FONTS,
         position=position,
-        prev_href=prev_href, prev_disabled=prev_disabled,
-        next_href=next_href, next_disabled=next_disabled,
+        prev_href=prev_href,
+        prev_disabled=prev_disabled,
+        next_href=next_href,
+        next_disabled=next_disabled,
         violin_div=_fig_to_div(violin_fig, "div-violin"),
         go_div=_fig_to_div(go_fig, "div-go"),
         corr_div=_fig_to_div(corr_fig, "div-corr"),
@@ -1012,7 +1295,7 @@ def export_program_html(
     # ---- metadata.json ----
     n_sig_total = 0
     top_go_term = go_d["terms"][0] if go_d["terms"] else None
-    for samp in (sample if plot_perturbation else []):
+    for samp in sample if plot_perturbation else []:
         skey = _safe_sample_key(samp)
         with open(prog_dir / "data" / f"volcano_{skey}.json") as f:
             v = json.load(f)
@@ -1020,14 +1303,27 @@ def export_program_html(
     metadata = {
         "program_id": pid,
         "samples": list(map(str, sample)),
-        "thresholds": {"p_value": float(p_value), "down_thred_log": float(down_thred_log),
-                        "up_thred_log": float(up_thred_log)},
+        "thresholds": {
+            "p_value": float(p_value),
+            "down_thred_log": float(down_thred_log),
+            "up_thred_log": float(up_thred_log),
+        },
         "top_loaded_genes": top_genes_d["genes"][::-1],
         "top_correlated_programs": {
-            "positive": [p for p, d in zip(corr_d["programs"], corr_d["direction"]) if d == "positive"],
-            "negative": [p for p, d in zip(corr_d["programs"], corr_d["direction"]) if d == "negative"],
+            "positive": [
+                p
+                for p, d in zip(corr_d["programs"], corr_d["direction"])
+                if d == "positive"
+            ],
+            "negative": [
+                p
+                for p, d in zip(corr_d["programs"], corr_d["direction"])
+                if d == "negative"
+            ],
         },
-        "top_GO_terms": [{"term": t, "adj_pval": p} for t, p in zip(go_d["terms"], go_d["adj_pval"])],
+        "top_GO_terms": [
+            {"term": t, "adj_pval": p} for t, p in zip(go_d["terms"], go_d["adj_pval"])
+        ],
         "top_GO_term": top_go_term,
         "n_significant_regulators_total": n_sig_total,
         "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
@@ -1047,8 +1343,9 @@ def write_share_index(html_share_path, program_ids, config_snapshot):
     manifest = {
         "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
         "program_ids": [str(p) for p in program_ids],
-        "config": {k: v for k, v in config_snapshot.items()
-                   if not isinstance(v, (np.ndarray,))},
+        "config": {
+            k: v for k, v in config_snapshot.items() if not isinstance(v, (np.ndarray,))
+        },
     }
     _write_json(share_root / "shared" / "manifest.json", manifest)
 
@@ -1064,7 +1361,10 @@ def write_share_index(html_share_path, program_ids, config_snapshot):
         top_go = m.get("top_GO_term") or "—"
         n_sig = int(m.get("n_significant_regulators_total", 0))
 
-        chips = "".join(f'<span class="chip">{g}</span>' for g in top_genes) or '<span class="chip" style="opacity:0.5">—</span>'
+        chips = (
+            "".join(f'<span class="chip">{g}</span>' for g in top_genes)
+            or '<span class="chip" style="opacity:0.5">—</span>'
+        )
         badge_cls = "sig" if n_sig > 0 else "zero"
 
         cards.append(
@@ -1072,16 +1372,16 @@ def write_share_index(html_share_path, program_ids, config_snapshot):
             f'  <div class="pid-block">'
             f'    <span class="pid-label">Program</span>'
             f'    <span class="pid-value">{pid}</span>'
-            f'  </div>'
+            f"  </div>"
             f'  <div class="details">'
             f'    <div class="go-term" title="{top_go}">{top_go}</div>'
             f'    <div class="chips">{chips}</div>'
-            f'  </div>'
+            f"  </div>"
             f'  <div class="badge-block">'
             f'    <span class="badge {badge_cls}">{n_sig}</span>'
             f'    <span class="badge-label">sig regulators</span>'
-            f'  </div>'
-            f'</a>'
+            f"  </div>"
+            f"</a>"
         )
 
     n_progs = len(cards)

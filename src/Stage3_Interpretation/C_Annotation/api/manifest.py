@@ -13,6 +13,7 @@ status is one of
 
 The step's own P<k>.json stays the result; this record is the bookkeeping beside it (status.py reads both).
 """
+
 import json
 import os
 import time
@@ -43,11 +44,20 @@ def read_run(out_dir, program):
 class StepRun:
     """One step on one program: create it before the call (starts the clock), finish(status, ...) after it."""
 
-    def __init__(self, out_dir, program, step, model, prompts=None, budget=None, record_name=None):
-        self.out_dir, self.program, self.step, self.model = Path(out_dir), program, step, model
-        self.record_name = record_name or program   # _runs/<record_name>.json (program folders: the step id)
+    def __init__(
+        self, out_dir, program, step, model, prompts=None, budget=None, record_name=None
+    ):
+        self.out_dir, self.program, self.step, self.model = (
+            Path(out_dir),
+            program,
+            step,
+            model,
+        )
+        self.record_name = (
+            record_name or program
+        )  # _runs/<record_name>.json (program folders: the step id)
         self.prompts = prompts or {}
-        self.budget = budget                    # api/budget.ProgramBudget or None
+        self.budget = budget  # api/budget.ProgramBudget or None
         self.t0 = time.time()
         self.usd0 = self._step_usd()
 
@@ -60,10 +70,17 @@ class StepRun:
         if status not in STATUSES:
             raise ValueError(f"unknown run status {status!r}")
         record = {
-            "program": self.program, "step": self.step, "status": status, "model": self.model,
-            "prompts": self.prompts, "duration_s": round(time.time() - self.t0, 2),
-            "usd": round(self._step_usd() - self.usd0, 6) if self.budget is not None else None,
-            "detail": detail or {}, "errors": list(errors),
+            "program": self.program,
+            "step": self.step,
+            "status": status,
+            "model": self.model,
+            "prompts": self.prompts,
+            "duration_s": round(time.time() - self.t0, 2),
+            "usd": round(self._step_usd() - self.usd0, 6)
+            if self.budget is not None
+            else None,
+            "detail": detail or {},
+            "errors": list(errors),
             "updated": datetime.now().isoformat(timespec="seconds"),
         }
         if raw_answer is not None:

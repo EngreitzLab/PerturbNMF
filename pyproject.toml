@@ -9,3 +9,8 @@ license-files = ["LICENSE"]
 [tool.pytest.ini_options]
 testpaths = ["tests/Script"]
 pythonpath = ["src"]
+
+[tool.ruff]
+# `ruff format` (default black-compatible style, line length 88) covers .py files only;
+# notebooks and Markdown code blocks are left alone. Formatted with ruff 0.17.3.
+extend-exclude = ["*.ipynb", "*.md"]

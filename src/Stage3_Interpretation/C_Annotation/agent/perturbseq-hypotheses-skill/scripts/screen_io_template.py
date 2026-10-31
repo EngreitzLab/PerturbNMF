@@ -18,6 +18,7 @@ After adapting, run `python src/screen_io.py --check`. It prints each table's sh
 paste that output into `explore/README.md` under "Loaders", so Analysts need not open this file
 to know what it returns. Delete a loader the run has no data for and say so in the README.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,10 +30,12 @@ ANALYSIS_DIR = Path(__file__).resolve().parents[1]
 
 # Decided by the Explorer from the run's own README / calibration report. Copy them into
 # study.yaml :: significance as well; this module is where the code reads them.
-EFFECT_COLUMN = ""          # e.g. "log2FC"
-QVALUE_COLUMN = ""          # e.g. "adj_pval"
-TECHNICAL_PROGRAMS: list[str] = []   # excluded from breadth, selectivity and neighbour denominators
-NULL_TARGET_LABELS: list[str] = []   # e.g. ["non-targeting", "safe-targeting"]
+EFFECT_COLUMN = ""  # e.g. "log2FC"
+QVALUE_COLUMN = ""  # e.g. "adj_pval"
+TECHNICAL_PROGRAMS: list[
+    str
+] = []  # excluded from breadth, selectivity and neighbour denominators
+NULL_TARGET_LABELS: list[str] = []  # e.g. ["non-targeting", "safe-targeting"]
 
 
 def load_effects() -> pd.DataFrame:
@@ -64,16 +67,27 @@ def load_correlation() -> pd.DataFrame:
 
 def load_eligibility() -> pd.DataFrame:
     """explore/regulator_eligibility.tsv as written by the Explorer."""
-    return pd.read_csv(ANALYSIS_DIR / "explore/regulator_eligibility.tsv", sep="\t", comment="#")
+    return pd.read_csv(
+        ANALYSIS_DIR / "explore/regulator_eligibility.tsv", sep="\t", comment="#"
+    )
 
 
 def load_program_glossary() -> pd.DataFrame:
     """explore/program_glossary.tsv: program id -> short title and technical flag."""
-    return pd.read_csv(ANALYSIS_DIR / "explore/program_glossary.tsv", sep="\t", comment="#")
+    return pd.read_csv(
+        ANALYSIS_DIR / "explore/program_glossary.tsv", sep="\t", comment="#"
+    )
 
 
-LOADERS = [load_effects, load_null_effects, load_guides, load_loadings, load_correlation,
-           load_eligibility, load_program_glossary]
+LOADERS = [
+    load_effects,
+    load_null_effects,
+    load_guides,
+    load_loadings,
+    load_correlation,
+    load_eligibility,
+    load_program_glossary,
+]
 
 
 def check_loaders() -> None:
@@ -83,13 +97,19 @@ def check_loaders() -> None:
         except NotImplementedError:
             print(f"{loader.__name__}: not implemented")
             continue
-        print(f"{loader.__name__}: {table.shape[0]} rows x {table.shape[1]} cols; columns={list(table.columns)[:8]}")
+        print(
+            f"{loader.__name__}: {table.shape[0]} rows x {table.shape[1]} cols; columns={list(table.columns)[:8]}"
+        )
         if len(table):
             print(f"  first row: {table.iloc[0].to_dict()}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--check", action="store_true", help="print each loader's shape and first row")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--check", action="store_true", help="print each loader's shape and first row"
+    )
     if parser.parse_args().check:
         check_loaders()

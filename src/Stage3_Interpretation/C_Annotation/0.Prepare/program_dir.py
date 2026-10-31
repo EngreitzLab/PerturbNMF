@@ -20,6 +20,7 @@ CLI, used by the per-program agent and by hand:
 otherwise it is marked [!] with the reasons and the command exits 1. Every outcome is also written to
 <program_dir>/_runs/<step>.json (api/manifest.py).
 """
+
 import argparse
 import csv
 import hashlib
@@ -35,21 +36,55 @@ ROOT = HERE.parent
 
 # step id, outputs, skills the agent may use for it, optional
 STEPS = (
-    ("prepare", ("program.json", "genes_top300.tsv", "regulators_sig.tsv", "go_sig.tsv", "string_sig.tsv",
-                 "literature.jsonl"), (), False),
+    (
+        "prepare",
+        (
+            "program.json",
+            "genes_top300.tsv",
+            "regulators_sig.tsv",
+            "go_sig.tsv",
+            "string_sig.tsv",
+            "literature.jsonl",
+        ),
+        (),
+        False,
+    ),
     ("confounder_screens", ("confounder_screens.json",), (), False),
-    ("gene_info", ("gene_info.jsonl",), ("mygene-skill", "ncbi-gene-skill", "uniprot-skill"), False),
+    (
+        "gene_info",
+        ("gene_info.jsonl",),
+        ("mygene-skill", "ncbi-gene-skill", "uniprot-skill"),
+        False,
+    ),
     ("interactions", ("interactions.jsonl",), ("omnipath-skill",), False),
-    ("literature", ("literature.jsonl",), ("gene-function-papers-skill", "generif-papers-skill", "pubmed-skill",
-                                           "openalex-skill", "crossref-skill", "paper-fetch-skill"), False),
+    (
+        "literature",
+        ("literature.jsonl",),
+        (
+            "gene-function-papers-skill",
+            "generif-papers-skill",
+            "pubmed-skill",
+            "openalex-skill",
+            "crossref-skill",
+            "paper-fetch-skill",
+        ),
+        False,
+    ),
     ("regulator_context", ("regulator_context.md",), (), False),
     ("label", ("label.json",), (), False),
-    ("driver_genes", ("driver_genes.json",), ("gene-function-papers-skill", "paper-fetch-skill"), True),
+    (
+        "driver_genes",
+        ("driver_genes.json",),
+        ("gene-function-papers-skill", "paper-fetch-skill"),
+        True,
+    ),
     ("interpretation", ("interpretation.json",), (), False),
 )
 STEP_IDS = tuple(s[0] for s in STEPS)
 MARKS = {"todo": " ", "done": "x", "failed": "!", "skipped": "-"}
-LINE = re.compile(r"^- \[(?P<mark>[ x!\-])\] (?P<id>[a-z_]+)(?P<opt> \(optional\))? — (?P<rest>.*)$")
+LINE = re.compile(
+    r"^- \[(?P<mark>[ x!\-])\] (?P<id>[a-z_]+)(?P<opt> \(optional\))? — (?P<rest>.*)$"
+)
 
 
 @dataclass
@@ -67,8 +102,10 @@ class Step:
             parts.append("skills: " + ", ".join(self.skills))
         if self.note:
             parts.append(self.note)
-        return (f"- [{MARKS[self.status]}] {self.id}{' (optional)' if self.optional else ''} — "
-                + " — ".join(parts))
+        return (
+            f"- [{MARKS[self.status]}] {self.id}{' (optional)' if self.optional else ''} — "
+            + " — ".join(parts)
+        )
 
 
 @dataclass
@@ -80,21 +117,37 @@ class Plan:
         for s in self.steps:
             if s.id == step_id:
                 return s
-        raise KeyError(f"no step {step_id!r} in the plan of {self.program} (steps: {[s.id for s in self.steps]})")
+        raise KeyError(
+            f"no step {step_id!r} in the plan of {self.program} (steps: {[s.id for s in self.steps]})"
+        )
 
     def next_todo(self):
         """First required step not done, else None (optional steps never block)."""
-        return next((s for s in self.steps if s.status != "done" and not s.optional), None)
+        return next(
+            (s for s in self.steps if s.status != "done" and not s.optional), None
+        )
 
     def render(self):
-        return "\n".join([f"# {self.program} — plan", "",
-                          "Tick a step only with `python 0.Prepare/program_dir.py done --program_dir <this folder> "
-                          "--step <id>` (it runs the step's checks first).", "",
-                          *(s.line() for s in self.steps)]) + "\n"
+        return (
+            "\n".join(
+                [
+                    f"# {self.program} — plan",
+                    "",
+                    "Tick a step only with `python 0.Prepare/program_dir.py done --program_dir <this folder> "
+                    "--step <id>` (it runs the step's checks first).",
+                    "",
+                    *(s.line() for s in self.steps),
+                ]
+            )
+            + "\n"
+        )
 
 
 def new_plan(program):
-    return Plan(program, [Step(sid, "todo", opt, outs, skills) for sid, outs, skills, opt in STEPS])
+    return Plan(
+        program,
+        [Step(sid, "todo", opt, outs, skills) for sid, outs, skills, opt in STEPS],
+    )
 
 
 def read_plan(program_dir):
@@ -112,8 +165,13 @@ def read_plan(program_dir):
         status = {v: k for k, v in MARKS.items()}[m["mark"]]
         parts = m["rest"].split(" — ")
         note = " — ".join(p for p in parts[1:] if not p.startswith("skills: "))
-        outs, skills = spec.get(m["id"], (tuple(x.strip() for x in parts[0].split(",") if x.strip() != "-"), ()))
-        plan.steps.append(Step(m["id"], status, bool(m["opt"]), tuple(outs), tuple(skills), note))
+        outs, skills = spec.get(
+            m["id"],
+            (tuple(x.strip() for x in parts[0].split(",") if x.strip() != "-"), ()),
+        )
+        plan.steps.append(
+            Step(m["id"], status, bool(m["opt"]), tuple(outs), tuple(skills), note)
+        )
     return plan
 
 
@@ -132,20 +190,34 @@ def mark(program_dir, step_id, status, note="", by="", run_detail=None, errors=(
     """Set one step's status in plan.md and write its run record."""
     sys.path.insert(0, str(ROOT / "api"))
     from manifest import StepRun
+
     program_dir = Path(program_dir)
     plan = read_plan(program_dir)
     step = plan.step(step_id)
     today = datetime.now().strftime("%Y-%m-%d %H:%M")
     step.status = status
-    step.note = {"done": f"done {today}" + (f" by {by}" if by else ""),
-                 "failed": f"failed {today}: " + "; ".join(errors)[:300],
-                 "skipped": f"skipped {today}" + (f": {note}" if note else ""),
-                 "todo": note}[status]
+    step.note = {
+        "done": f"done {today}" + (f" by {by}" if by else ""),
+        "failed": f"failed {today}: " + "; ".join(errors)[:300],
+        "skipped": f"skipped {today}" + (f": {note}" if note else ""),
+        "todo": note,
+    }[status]
     write_plan(program_dir, plan)
-    outputs = {o: sha256(program_dir / o) for o in step.outputs if (program_dir / o).is_file()}
-    run = StepRun(program_dir, program_dir.name, step_id, by or "unknown", record_name=step_id)
-    run_status = {"done": "completed", "failed": "failed_validation", "skipped": "cached", "todo": "cached"}[status]
-    run.finish(run_status, {"outputs": outputs, **(run_detail or {})}, errors=list(errors))
+    outputs = {
+        o: sha256(program_dir / o) for o in step.outputs if (program_dir / o).is_file()
+    }
+    run = StepRun(
+        program_dir, program_dir.name, step_id, by or "unknown", record_name=step_id
+    )
+    run_status = {
+        "done": "completed",
+        "failed": "failed_validation",
+        "skipped": "cached",
+        "todo": "cached",
+    }[status]
+    run.finish(
+        run_status, {"outputs": outputs, **(run_detail or {})}, errors=list(errors)
+    )
     return step
 
 
@@ -155,6 +227,7 @@ def mark_done(program_dir, step_id, by="", check=True):
     if check:
         sys.path.insert(0, str(ROOT / "1.Annotate"))
         from validate_program import validate_step
+
         errors = validate_step(Path(program_dir), step_id)
     mark(program_dir, step_id, "failed" if errors else "done", by=by, errors=errors)
     return errors
@@ -178,7 +251,9 @@ def read_tsv(path):
 
 def write_tsv(path, rows, columns):
     with Path(path).open("w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=list(columns), delimiter="\t", extrasaction="ignore")
+        w = csv.DictWriter(
+            fh, fieldnames=list(columns), delimiter="\t", extrasaction="ignore"
+        )
         w.writeheader()
         w.writerows(rows)
 
@@ -196,12 +271,18 @@ def read_json(path):
 
 
 def main():
-    p = argparse.ArgumentParser(description="Show a program's plan, or tick one of its steps after its checks pass.")
+    p = argparse.ArgumentParser(
+        description="Show a program's plan, or tick one of its steps after its checks pass."
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
-    d = sub.add_parser("done", help="Run the step's checks and tick it (or mark it failed).")
+    d = sub.add_parser(
+        "done", help="Run the step's checks and tick it (or mark it failed)."
+    )
     d.add_argument("--program_dir", required=True)
     d.add_argument("--step", required=True, choices=STEP_IDS)
-    d.add_argument("--by", default="", help="Who did the step (e.g. agent, a script name).")
+    d.add_argument(
+        "--by", default="", help="Who did the step (e.g. agent, a script name)."
+    )
     s = sub.add_parser("skip", help="Skip an optional step.")
     s.add_argument("--program_dir", required=True)
     s.add_argument("--step", required=True, choices=STEP_IDS)
@@ -224,7 +305,10 @@ def main():
         return 0
     errors = mark_done(args.program_dir, args.step, by=args.by)
     if errors:
-        print(f"{args.step}: FAILED its checks; not ticked:\n" + "\n".join(f"  - {e}" for e in errors))
+        print(
+            f"{args.step}: FAILED its checks; not ticked:\n"
+            + "\n".join(f"  - {e}" for e in errors)
+        )
         return 1
     print(f"{args.step}: done")
     return 0

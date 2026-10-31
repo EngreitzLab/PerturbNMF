@@ -13,6 +13,7 @@ paths is scanned (binary = a NUL byte in the first 8 KB); `.git` directories are
 
 Stdlib only. Exit 1 on any hit.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -58,19 +59,28 @@ def iter_text_files(paths: list[Path]):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--terms", type=Path, required=True)
     parser.add_argument("--paths", type=Path, nargs="+", required=True)
-    parser.add_argument("--case-sensitive", action="store_true",
-                        help="match terms exactly as written instead of case-insensitively")
+    parser.add_argument(
+        "--case-sensitive",
+        action="store_true",
+        help="match terms exactly as written instead of case-insensitively",
+    )
     args = parser.parse_args()
 
-    patterns = {term: compile_term(term, args.case_sensitive) for term in read_terms(args.terms)}
+    patterns = {
+        term: compile_term(term, args.case_sensitive) for term in read_terms(args.terms)
+    }
     hits = 0
     scanned = 0
     for file in iter_text_files(args.paths):
         scanned += 1
-        for line_number, line in enumerate(file.read_text(errors="replace").splitlines(), start=1):
+        for line_number, line in enumerate(
+            file.read_text(errors="replace").splitlines(), start=1
+        ):
             for term, pattern in patterns.items():
                 if pattern.search(line):
                     hits += 1

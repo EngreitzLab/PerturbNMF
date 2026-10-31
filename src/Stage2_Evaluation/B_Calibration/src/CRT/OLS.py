@@ -7,7 +7,6 @@ import numba as nb
 import numpy as np
 
 
-
 @nb.njit(cache=True)
 def OLS_solver(Covariates, Usage_norm, CtC_inv, CtU_norm, treated_obs_idx):
     """

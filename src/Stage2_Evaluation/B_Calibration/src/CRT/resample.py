@@ -96,10 +96,14 @@ def _permutation_rounds(stratum_cells, stratum_ptr, stratum_n_treated, n_rounds,
     return indptr, indices
 
 
-def _strata_layout(strata: np.ndarray, treated_mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _strata_layout(
+    strata: np.ndarray, treated_mask: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Cells grouped by stratum (positions), stratum offsets, and treated count per stratum."""
     _, strata = np.unique(strata, return_inverse=True)
     order = np.argsort(strata, kind="stable").astype(np.int32)
     stratum_ptr = np.concatenate([[0], np.cumsum(np.bincount(strata))]).astype(np.int64)
-    stratum_n_treated = np.bincount(strata, weights=treated_mask, minlength=stratum_ptr.size - 1).astype(np.int64)
+    stratum_n_treated = np.bincount(
+        strata, weights=treated_mask, minlength=stratum_ptr.size - 1
+    ).astype(np.int64)
     return order, stratum_ptr, stratum_n_treated

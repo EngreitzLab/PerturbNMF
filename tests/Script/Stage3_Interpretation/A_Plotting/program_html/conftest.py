@@ -19,16 +19,30 @@ import pytest
 import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
 from pathlib import Path
 
 PIPELINE_ROOT = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(PIPELINE_ROOT / "src"))
 
 # Default to the batch run (matches the rest of the test suite).
-DEFAULT_INFERENCE_PATH = PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch" / "Inference"
-EVAL_5_2_0 = PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch" / "Evaluation" / "5_2_0"
-HTML_OUTPUT = PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch" / "Interpretation" / "Plotting" / "program_html"
+DEFAULT_INFERENCE_PATH = (
+    PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch" / "Inference"
+)
+EVAL_5_2_0 = (
+    PIPELINE_ROOT / "tests" / "output" / "torch-cNMF" / "batch" / "Evaluation" / "5_2_0"
+)
+HTML_OUTPUT = (
+    PIPELINE_ROOT
+    / "tests"
+    / "output"
+    / "torch-cNMF"
+    / "batch"
+    / "Interpretation"
+    / "Plotting"
+    / "program_html"
+)
 
 
 # Sample names match the per-sample perturb TSVs produced by the U-test pipeline.
@@ -51,6 +65,7 @@ def html_share_path():
 def test_mdata():
     """Real k=5 MuData from batch inference output."""
     import mudata
+
     h5mu_path = DEFAULT_INFERENCE_PATH / "adata" / "cNMF_5_2_0.h5mu"
     if not h5mu_path.exists():
         pytest.skip(f"h5mu not found: {h5mu_path}")
@@ -91,14 +106,20 @@ def perturbed_gene_found(test_mdata):
 @pytest.fixture(scope="session")
 def program_correlation(test_mdata):
     """Real program x program correlation matrix from cNMF loadings."""
-    from Stage3_Interpretation.A_Plotting.src.Program_QC_plots import compute_program_correlation_matrix
+    from Stage3_Interpretation.A_Plotting.src.Program_QC_plots import (
+        compute_program_correlation_matrix,
+    )
+
     return compute_program_correlation_matrix(test_mdata)
 
 
 @pytest.fixture(scope="session")
 def waterfall_correlation(perturb_path_base):
     """Real per-sample waterfall correlation matrices computed from perturb TSVs."""
-    from Stage3_Interpretation.A_Plotting.src.Program_QC_plots import compute_program_waterfall_cor
+    from Stage3_Interpretation.A_Plotting.src.Program_QC_plots import (
+        compute_program_waterfall_cor,
+    )
+
     out = {}
     for samp in SAMPLES:
         path = f"{perturb_path_base}_{samp}.txt"

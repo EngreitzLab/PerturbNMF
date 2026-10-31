@@ -23,70 +23,235 @@ import numpy as np
 
 # Change path to wherever you have repo locally
 from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
+
+sys.path.append(str(Path(__file__).resolve().parents[4] / "src"))
 
 from Stage1_Inference.src import (
-    run_cnmf_consensus, get_top_indices_fast, annotate_genes_to_excel, \
-    rename_and_move_files_NMF, rename_all_NMF, compile_results, \
-    filter_noncoding_genes, filter_noncoding_genes_gtf, \
-    add_gene_names_from_gtf
+    run_cnmf_consensus,
+    get_top_indices_fast,
+    annotate_genes_to_excel,
+    rename_and_move_files_NMF,
+    rename_all_NMF,
+    compile_results,
+    filter_noncoding_genes,
+    filter_noncoding_genes_gtf,
+    add_gene_names_from_gtf,
 )
 from Stage1_Inference.src.plot_diagnostics import generate_all_plots
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="sk-cNMF inference pipeline"
+    parser = argparse.ArgumentParser(description="sk-cNMF inference pipeline")
+
+    # IO
+    parser.add_argument(
+        "--counts_fn",
+        type=str,
+        required=True,
+        help="Path to input counts file (e.g., .h5mu or .h5ad)",
+    )
+    parser.add_argument(
+        "--output_directory",
+        type=str,
+        required=True,
+        help="Directory where all outputs will be saved",
+    )
+    parser.add_argument(
+        "--run_name",
+        type=str,
+        required=True,
+        help="Name for this cNMF run (used for output file naming)",
+    )
+    parser.add_argument(
+        "--nmf_seeds_path",
+        type=str,
+        help="Path to .npy file containing NMF random seeds",
+        default=None,
     )
 
-    #IO
-    parser.add_argument('--counts_fn', type=str, required=True, help='Path to input counts file (e.g., .h5mu or .h5ad)')
-    parser.add_argument('--output_directory', type=str, required=True, help='Directory where all outputs will be saved')
-    parser.add_argument('--run_name', type=str, required=True, help='Name for this cNMF run (used for output file naming)')
-    parser.add_argument('--nmf_seeds_path', type=str, help='Path to .npy file containing NMF random seeds', default = None)
-
-
     # cNMF parameters
-    parser.add_argument('--numiter', type = int, default = 10, help='Number of NMF replicates to run (default: 10)')
-    parser.add_argument('--numhvgenes', type = int, default = 5451, help='Number of highly variable genes to use (default: 5451)')
-    parser.add_argument('--seed', type = int, default = 14, help='Random seed for reproducibility (default: 14)')
-    parser.add_argument('--K', nargs='*', type=int, default=[30, 50, 70, 80, 100, 200, 300], help='List of K values (number of components) to test')
-    parser.add_argument('--init', type = str, default = 'random', help='Initialization method for NMF (default: random)')
-    parser.add_argument('--loss', default = 'frobenius', help='Loss function for NMF (default: frobenius)')
-    parser.add_argument('--algo', type = str, default = 'mu', help='Algorithm for NMF optimization (default: mu - multiplicative update)')
-    parser.add_argument('--max_NMF_iter', type = int , default = 500, help='Maximum number of iterations for NMF (default: 500)')
-    parser.add_argument('--tol', type = float , default = 1e4, help='Tolerance for NMF convergence (default: 1e4)')
-    parser.add_argument('--sel_threshs', nargs='*', type=float, default=[0.2, 2.0], help='Density threshold(s) for consensus matrix filtering')
+    parser.add_argument(
+        "--numiter",
+        type=int,
+        default=10,
+        help="Number of NMF replicates to run (default: 10)",
+    )
+    parser.add_argument(
+        "--numhvgenes",
+        type=int,
+        default=5451,
+        help="Number of highly variable genes to use (default: 5451)",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=14,
+        help="Random seed for reproducibility (default: 14)",
+    )
+    parser.add_argument(
+        "--K",
+        nargs="*",
+        type=int,
+        default=[30, 50, 70, 80, 100, 200, 300],
+        help="List of K values (number of components) to test",
+    )
+    parser.add_argument(
+        "--init",
+        type=str,
+        default="random",
+        help="Initialization method for NMF (default: random)",
+    )
+    parser.add_argument(
+        "--loss", default="frobenius", help="Loss function for NMF (default: frobenius)"
+    )
+    parser.add_argument(
+        "--algo",
+        type=str,
+        default="mu",
+        help="Algorithm for NMF optimization (default: mu - multiplicative update)",
+    )
+    parser.add_argument(
+        "--max_NMF_iter",
+        type=int,
+        default=500,
+        help="Maximum number of iterations for NMF (default: 500)",
+    )
+    parser.add_argument(
+        "--tol",
+        type=float,
+        default=1e4,
+        help="Tolerance for NMF convergence (default: 1e4)",
+    )
+    parser.add_argument(
+        "--sel_threshs",
+        nargs="*",
+        type=float,
+        default=[0.2, 2.0],
+        help="Density threshold(s) for consensus matrix filtering",
+    )
 
     # annotation parameters
-    parser.add_argument('--species', type=str, required=True, help='Species for gene annotation (e.g., human, mouse)')
-    parser.add_argument('--parallel_running', action="store_true", help='If set, enables parallel processing mode for combining results from multiple K values')
-    parser.add_argument('--num_gene', type = int, default = 300, help='Number of top genes to use for program annotation (default: 300)')
-    parser.add_argument('--run_refit', action="store_true", help='If set, run the combine and consensus steps after factorization')
-    parser.add_argument('--run_complie_annotation', action="store_true", help='If set, compile results and generate gene annotations for all K values')
-    parser.add_argument('--run_gene_annotation', action="store_true", help='If set, run MyGene annotation (needs network)')
-    parser.add_argument('--run_factorize', action="store_true", help='If set, run the NMF factorization step')
-    parser.add_argument('--run_diagnostic_plots', action="store_true", help='Generate diagnostic plots (elbow curves, usage heatmaps, loading violins)')
-    parser.add_argument('--skip_existing', action="store_true", help='If set, skip NMF replicates already completed on disk (pause/resume mode). Default: re-run all replicates from scratch.')
+    parser.add_argument(
+        "--species",
+        type=str,
+        required=True,
+        help="Species for gene annotation (e.g., human, mouse)",
+    )
+    parser.add_argument(
+        "--parallel_running",
+        action="store_true",
+        help="If set, enables parallel processing mode for combining results from multiple K values",
+    )
+    parser.add_argument(
+        "--num_gene",
+        type=int,
+        default=300,
+        help="Number of top genes to use for program annotation (default: 300)",
+    )
+    parser.add_argument(
+        "--run_refit",
+        action="store_true",
+        help="If set, run the combine and consensus steps after factorization",
+    )
+    parser.add_argument(
+        "--run_complie_annotation",
+        action="store_true",
+        help="If set, compile results and generate gene annotations for all K values",
+    )
+    parser.add_argument(
+        "--run_gene_annotation",
+        action="store_true",
+        help="If set, run MyGene annotation (needs network)",
+    )
+    parser.add_argument(
+        "--run_factorize",
+        action="store_true",
+        help="If set, run the NMF factorization step",
+    )
+    parser.add_argument(
+        "--run_diagnostic_plots",
+        action="store_true",
+        help="Generate diagnostic plots (elbow curves, usage heatmaps, loading violins)",
+    )
+    parser.add_argument(
+        "--skip_existing",
+        action="store_true",
+        help="If set, skip NMF replicates already completed on disk (pause/resume mode). Default: re-run all replicates from scratch.",
+    )
 
     # keys
-    parser.add_argument('--data_key', help='Key to access gene expression data in MuData object (default: rna)', type=str, default="rna")
-    parser.add_argument('--prog_key', help='Key to store cNMF programs in MuData object (default: cNMF)', type=str, default="cNMF")
-    parser.add_argument('--categorical_key', help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample", type=str, default="sample")
-    parser.add_argument('--guide_names_key', help='Key in .uns to access guide names (default: guide_names)', type=str, default="guide_names")
-    parser.add_argument('--guide_targets_key', help='Key in .uns to access guide target genes (default: guide_targets)', type=str, default="guide_targets")
-    parser.add_argument('--guide_assignment_key', help='Key in .obsm to access guide assignment matrix (default: guide_assignment)', type=str, default="guide_assignment")
-    parser.add_argument('--gene_names_key', type=str, default=None,
-                        help="Column in adata.var with gene names to use in compiled results (e.g. 'symbol'). If None, uses var_names.")
+    parser.add_argument(
+        "--data_key",
+        help="Key to access gene expression data in MuData object (default: rna)",
+        type=str,
+        default="rna",
+    )
+    parser.add_argument(
+        "--prog_key",
+        help="Key to store cNMF programs in MuData object (default: cNMF)",
+        type=str,
+        default="cNMF",
+    )
+    parser.add_argument(
+        "--categorical_key",
+        help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample",
+        type=str,
+        default="sample",
+    )
+    parser.add_argument(
+        "--guide_names_key",
+        help="Key in .uns to access guide names (default: guide_names)",
+        type=str,
+        default="guide_names",
+    )
+    parser.add_argument(
+        "--guide_targets_key",
+        help="Key in .uns to access guide target genes (default: guide_targets)",
+        type=str,
+        default="guide_targets",
+    )
+    parser.add_argument(
+        "--guide_assignment_key",
+        help="Key in .obsm to access guide assignment matrix (default: guide_assignment)",
+        type=str,
+        default="guide_assignment",
+    )
+    parser.add_argument(
+        "--gene_names_key",
+        type=str,
+        default=None,
+        help="Column in adata.var with gene names to use in compiled results (e.g. 'symbol'). If None, uses var_names.",
+    )
 
     # preprocessing
-    parser.add_argument('--remove_noncoding', action='store_true', help='If set, remove non-coding genes before factorization. With --gtf_path, keeps only genes annotated as protein_coding in the GTF (matched by Ensembl ID); otherwise falls back to the Ensembl-prefix heuristic on --gene_names_key.')
-    parser.add_argument('--ensembl_prefix', type=str, default='ENSG', help='Ensembl ID prefix used by the (fallback) prefix-based non-coding filter (default: ENSG)')
-    parser.add_argument('--gtf_path', type=str, default=None, help='Path to a GENCODE/Ensembl GTF(.gz). Enables GTF-based --remove_noncoding and --add_gene_names_from_gtf.')
-    parser.add_argument('--gene_id_key', type=str, default='gene_id', help='Column in adata.var holding Ensembl gene IDs (used for GTF-based filtering / gene-name annotation)')
-    parser.add_argument('--add_gene_names_from_gtf', action='store_true', help='Populate adata.var[gene_names_key] with gene symbols looked up from --gtf_path by Ensembl ID (from --gene_id_key). Requires --gtf_path.')
-
-
+    parser.add_argument(
+        "--remove_noncoding",
+        action="store_true",
+        help="If set, remove non-coding genes before factorization. With --gtf_path, keeps only genes annotated as protein_coding in the GTF (matched by Ensembl ID); otherwise falls back to the Ensembl-prefix heuristic on --gene_names_key.",
+    )
+    parser.add_argument(
+        "--ensembl_prefix",
+        type=str,
+        default="ENSG",
+        help="Ensembl ID prefix used by the (fallback) prefix-based non-coding filter (default: ENSG)",
+    )
+    parser.add_argument(
+        "--gtf_path",
+        type=str,
+        default=None,
+        help="Path to a GENCODE/Ensembl GTF(.gz). Enables GTF-based --remove_noncoding and --add_gene_names_from_gtf.",
+    )
+    parser.add_argument(
+        "--gene_id_key",
+        type=str,
+        default="gene_id",
+        help="Column in adata.var holding Ensembl gene IDs (used for GTF-based filtering / gene-name annotation)",
+    )
+    parser.add_argument(
+        "--add_gene_names_from_gtf",
+        action="store_true",
+        help="Populate adata.var[gene_names_key] with gene symbols looked up from --gtf_path by Ensembl ID (from --gene_id_key). Requires --gtf_path.",
+    )
 
     args = parser.parse_args()
 
@@ -96,37 +261,36 @@ def main():
     else:
         nmf_seeds = None
 
-
     # create output directory
-    run_dir = f'{args.output_directory}/{args.run_name}'
-    inference_dir = f'{run_dir}/Inference'
+    run_dir = f"{args.output_directory}/{args.run_name}"
+    inference_dir = f"{run_dir}/Inference"
     os.makedirs(inference_dir, exist_ok=True)
 
     # --- Save config (incl. SLURM info) ---
     slurm_info = {
-        'job_id': os.environ.get('SLURM_JOB_ID'),
-        'job_name': os.environ.get('SLURM_JOB_NAME'),
-        'partition': os.environ.get('SLURM_JOB_PARTITION'),
-        'node_list': os.environ.get('SLURM_JOB_NODELIST'),
-        'num_nodes': os.environ.get('SLURM_JOB_NUM_NODES'),
-        'ntasks': os.environ.get('SLURM_NTASKS'),
-        'cpus_per_task': os.environ.get('SLURM_CPUS_PER_TASK'),
-        'mem_per_node': os.environ.get('SLURM_MEM_PER_NODE'),
-        'mem_per_cpu': os.environ.get('SLURM_MEM_PER_CPU'),
-        'gres': os.environ.get('SLURM_JOB_GRES'),
-        'gpu_device_ids': os.environ.get('SLURM_GPUS_ON_NODE'),
-        'gpu_type': os.environ.get('SLURM_JOB_GPUS'),
-        'time_limit': os.environ.get('SLURM_JOB_TIMELIMIT'),
-        'time_remaining': os.environ.get('SLURM_TIMELIMIT'),
-        'submit_dir': os.environ.get('SLURM_SUBMIT_DIR'),
-        'submit_host': os.environ.get('SLURM_SUBMIT_HOST'),
-        'constraint': os.environ.get('SLURM_JOB_CONSTRAINT'),
-        'array_task_id': os.environ.get('SLURM_ARRAY_TASK_ID'),
+        "job_id": os.environ.get("SLURM_JOB_ID"),
+        "job_name": os.environ.get("SLURM_JOB_NAME"),
+        "partition": os.environ.get("SLURM_JOB_PARTITION"),
+        "node_list": os.environ.get("SLURM_JOB_NODELIST"),
+        "num_nodes": os.environ.get("SLURM_JOB_NUM_NODES"),
+        "ntasks": os.environ.get("SLURM_NTASKS"),
+        "cpus_per_task": os.environ.get("SLURM_CPUS_PER_TASK"),
+        "mem_per_node": os.environ.get("SLURM_MEM_PER_NODE"),
+        "mem_per_cpu": os.environ.get("SLURM_MEM_PER_CPU"),
+        "gres": os.environ.get("SLURM_JOB_GRES"),
+        "gpu_device_ids": os.environ.get("SLURM_GPUS_ON_NODE"),
+        "gpu_type": os.environ.get("SLURM_JOB_GPUS"),
+        "time_limit": os.environ.get("SLURM_JOB_TIMELIMIT"),
+        "time_remaining": os.environ.get("SLURM_TIMELIMIT"),
+        "submit_dir": os.environ.get("SLURM_SUBMIT_DIR"),
+        "submit_host": os.environ.get("SLURM_SUBMIT_HOST"),
+        "constraint": os.environ.get("SLURM_JOB_CONSTRAINT"),
+        "array_task_id": os.environ.get("SLURM_ARRAY_TASK_ID"),
     }
-    job_id = slurm_info['job_id'] or 'no_jobid'
+    job_id = slurm_info["job_id"] or "no_jobid"
 
-    config_to_save = {'script_args': vars(args), 'slurm_info': slurm_info}
-    with open(f'{inference_dir}/config_{job_id}.yml', 'w') as f:
+    config_to_save = {"script_args": vars(args), "slurm_info": slurm_info}
+    with open(f"{inference_dir}/config_{job_id}.yml", "w") as f:
         yaml.dump(config_to_save, f, default_flow_style=False, width=1000)
 
     # --- Optionally filter non-coding genes ---
@@ -161,59 +325,86 @@ def main():
         )
 
     # running cnmf
-    cnmf_obj = cnmf.cNMF(output_dir=run_dir, name='Inference')
+    cnmf_obj = cnmf.cNMF(output_dir=run_dir, name="Inference")
 
-    cnmf_obj.prepare(counts_fn= args.counts_fn, components= args.K, n_iter= args.numiter,  densify=False, tpm_fn=None, seed= args.seed,
-            beta_loss = args.loss,num_highvar_genes=args.numhvgenes, genes_file=None,
-            alpha_usage=0.0, alpha_spectra=0.0, init=args.init, max_NMF_iter=args.max_NMF_iter, algo = args.algo, tol = args.tol, nmf_seeds = nmf_seeds)
+    cnmf_obj.prepare(
+        counts_fn=args.counts_fn,
+        components=args.K,
+        n_iter=args.numiter,
+        densify=False,
+        tpm_fn=None,
+        seed=args.seed,
+        beta_loss=args.loss,
+        num_highvar_genes=args.numhvgenes,
+        genes_file=None,
+        alpha_usage=0.0,
+        alpha_spectra=0.0,
+        init=args.init,
+        max_NMF_iter=args.max_NMF_iter,
+        algo=args.algo,
+        tol=args.tol,
+        nmf_seeds=nmf_seeds,
+    )
 
     if args.run_factorize:
-
-        cnmf_obj.factorize(total_workers = 1, skip_completed_runs=args.skip_existing)
-        # the original cNMF parallelism needs additional indexing of worker id and total worker 
-        # here we just use default 
+        cnmf_obj.factorize(total_workers=1, skip_completed_runs=args.skip_existing)
+        # the original cNMF parallelism needs additional indexing of worker id and total worker
+        # here we just use default
 
     if args.run_refit:
-
         cnmf_obj.combine()
 
         cnmf_obj.k_selection_plot()
 
         # Consensus plots with all k to choose thresh
-        run_cnmf_consensus(cnmf_obj,
-                            components=args.K,
-                            density_thresholds=args.sel_threshs)
+        run_cnmf_consensus(
+            cnmf_obj, components=args.K, density_thresholds=args.sel_threshs
+        )
 
     if args.run_complie_annotation:
-
         # Save all cNMF scores in separate mudata objects
-        compile_results(run_dir, 'Inference', components= args.K, sel_threshs = args.sel_threshs,
-        guide_names_key = args.guide_names_key, guide_targets_key = args.guide_targets_key, categorical_key= args.categorical_key,
-        guide_assignment_key = args.guide_assignment_key, gene_names_key = args.gene_names_key )
+        compile_results(
+            run_dir,
+            "Inference",
+            components=args.K,
+            sel_threshs=args.sel_threshs,
+            guide_names_key=args.guide_names_key,
+            guide_targets_key=args.guide_targets_key,
+            categorical_key=args.categorical_key,
+            guide_assignment_key=args.guide_assignment_key,
+            gene_names_key=args.gene_names_key,
+        )
 
-    #---annotate ----
+    # ---annotate ----
     if args.run_gene_annotation:
         print("Annotating top genes per program via MyGene...")
-        os.makedirs(f'{inference_dir}/Annotation', exist_ok=True)
+        os.makedirs(f"{inference_dir}/Annotation", exist_ok=True)
 
         # annotation for all K
         for i in args.sel_threshs:
             for k in args.K:
-                df = pd.read_csv('{inference_dir}/Inference.gene_spectra_score.k_{k}.dt_{sel_thresh}.txt'.format(
-                                                                                        inference_dir=inference_dir,
-                                                                                        k=k,
-                                                                                        sel_thresh = str(i).replace('.','_')),
-                                                                                        sep='\t', index_col=0)
+                df = pd.read_csv(
+                    "{inference_dir}/Inference.gene_spectra_score.k_{k}.dt_{sel_thresh}.txt".format(
+                        inference_dir=inference_dir,
+                        k=k,
+                        sel_thresh=str(i).replace(".", "_"),
+                    ),
+                    sep="\t",
+                    index_col=0,
+                )
                 overlap = get_top_indices_fast(df, gene_num=args.num_gene)
-                annotate_genes_to_excel(overlap, species = args.species, output_file= f"{inference_dir}/Annotation/{k}_{str(i).replace('.','_')}.xlsx")
-
+                annotate_genes_to_excel(
+                    overlap,
+                    species=args.species,
+                    output_file=f"{inference_dir}/Annotation/{k}_{str(i).replace('.', '_')}.xlsx",
+                )
 
     # --- Diagnostic plots ---
     if args.run_diagnostic_plots:
         print("Generating diagnostic plots...")
         generate_all_plots(
             run_dir=run_dir,
-            run_name='Inference',
+            run_name="Inference",
             K_list=args.K,
             sel_thresh_list=args.sel_threshs,
             categorical_key=args.categorical_key,
@@ -226,7 +417,7 @@ def main():
         rename_all_NMF(
             source_folder=f"{args.output_directory}/{args.run_name}/{args.run_name}",
             destination_folder=f"{args.output_directory}/{args.run_name}/{args.run_name}_all/Inference/cnmf_tmp",
-            file_name_input='Inference',
+            file_name_input="Inference",
             file_name_output="Inference_all",
             len=args.numiter,
             components=args.K,
@@ -236,10 +427,5 @@ def main():
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
-
-
-
-
-

@@ -93,8 +93,8 @@ import pandas as pd
 # Libraries label alternative TSSs differently: `-P1`, `-TSS`, `-TSS2`, `-alt-TSS`. Detect
 # which convention (if any) this library uses rather than assuming one and dying on the rest.
 PROMOTER_SUFFIX_PATTERNS = [
-    ("-P<n>",    re.compile(r"-P\d+$")),
-    ("-TSS<n>",  re.compile(r"-(?:alt-)?TSS\d*$", re.IGNORECASE)),
+    ("-P<n>", re.compile(r"-P\d+$")),
+    ("-TSS<n>", re.compile(r"-(?:alt-)?TSS\d*$", re.IGNORECASE)),
     ("-prom<n>", re.compile(r"-prom(?:oter)?\d*$", re.IGNORECASE)),
 ]
 # Anything else trailing a hyphen that looks like a systematic suffix, used only to decide
@@ -102,8 +102,22 @@ PROMOTER_SUFFIX_PATTERNS = [
 TRAILING_TOKEN = re.compile(r"-[A-Za-z]{1,6}\d*$")
 DUAL_GENE = re.compile(r"-and-", re.IGNORECASE)
 
-PVAL_CANDIDATES = ["p-value_raw", "pval_raw", "p_value_raw", "p-value", "pval", "p_value"]
-ADJ_CANDIDATES = ["adj_pval_raw", "adj_p_value_raw", "adj_pval", "adj_p_value", "padj", "FDR"]
+PVAL_CANDIDATES = [
+    "p-value_raw",
+    "pval_raw",
+    "p_value_raw",
+    "p-value",
+    "pval",
+    "p_value",
+]
+ADJ_CANDIDATES = [
+    "adj_pval_raw",
+    "adj_p_value_raw",
+    "adj_pval",
+    "adj_p_value",
+    "padj",
+    "FDR",
+]
 EFFECT_CANDIDATES = ["log2FC", "approx_log2FC", "beta_hat", "logFC"]
 
 # Two independent tests for "the control arm is showing structure, not noise". Both are
@@ -124,20 +138,27 @@ def die(msg: str) -> None:
     sys.exit(f"ERROR: {msg}")
 
 
-def pick_column(df: pd.DataFrame, candidates: list[str], override: str | None,
-                label: str) -> tuple[str, str]:
+def pick_column(
+    df: pd.DataFrame, candidates: list[str], override: str | None, label: str
+) -> tuple[str, str]:
     """Return (column, why). Prefers a *_raw variant where the run ships both."""
     if override:
         if override not in df.columns:
-            die(f"--{label}-column {override!r} not in the table. Present: {sorted(df.columns)}")
+            die(
+                f"--{label}-column {override!r} not in the table. Present: {sorted(df.columns)}"
+            )
         return override, "set explicitly on the command line"
     present = [c for c in candidates if c in df.columns]
     if not present:
-        die(f"no {label} column found. Tried {candidates}. Present: {sorted(df.columns)}")
+        die(
+            f"no {label} column found. Tried {candidates}. Present: {sorted(df.columns)}"
+        )
     chosen = present[0]
     if len(present) > 1 and chosen.endswith("_raw"):
-        why = (f"the run ships both {present}; the _raw pair is used because the other is "
-               f"typically a q-value-style transform never validated against the control arm")
+        why = (
+            f"the run ships both {present}; the _raw pair is used because the other is "
+            f"typically a q-value-style transform never validated against the control arm"
+        )
     elif len(present) > 1:
         why = f"the run ships {present}; the first was taken -- CHECK this is the one you want"
     else:
@@ -148,6 +169,7 @@ def pick_column(df: pd.DataFrame, candidates: list[str], override: str | None,
 # ---------------------------------------------------------------------------
 # Load
 # ---------------------------------------------------------------------------
+
 
 def load_table(path: Path, pval_col, adj_col, effect_col, target_col, program_col):
     df = pd.read_csv(path, sep=None, engine="python")
@@ -186,35 +208,50 @@ def collapse_target_names(df: pd.DataFrame, allow_no_suffix: bool) -> pd.DataFra
             matched_name, matched_re, n_matched = label, rx, n
 
     if n_matched:
-        print(f"  promoter-suffix convention detected: {matched_name} "
-              f"({n_matched} of {len(names)} target labels)")
+        print(
+            f"  promoter-suffix convention detected: {matched_name} "
+            f"({n_matched} of {len(names)} target labels)"
+        )
         df["gene"] = df["target_name"].str.replace(matched_re, "", regex=True)
     else:
-        suspicious = sorted({t for t in names if TRAILING_TOKEN.search(t)
-                             and not DUAL_GENE.search(t)})
+        suspicious = sorted(
+            {t for t in names if TRAILING_TOKEN.search(t) and not DUAL_GENE.search(t)}
+        )
         if suspicious and not allow_no_suffix:
-            die("no known alternative-TSS convention matched, but these labels look like they "
+            die(
+                "no known alternative-TSS convention matched, but these labels look like they "
                 f"carry one: {suspicious[:8]}. Either add the pattern to "
                 "PROMOTER_SUFFIX_PATTERNS or pass --allow-no-promoter-suffix if they are "
-                "genuinely whole-gene targets.")
-        print(f"  no promoter-suffix convention in this library "
-              f"({len(names)} target labels, none suffixed)")
+                "genuinely whole-gene targets."
+            )
+        print(
+            f"  no promoter-suffix convention in this library "
+            f"({len(names)} target labels, none suffixed)"
+        )
         df["gene"] = df["target_name"]
 
-    dual = sorted(df.loc[df["target_name"].str.contains(DUAL_GENE), "target_name"].unique())
+    dual = sorted(
+        df.loc[df["target_name"].str.contains(DUAL_GENE), "target_name"].unique()
+    )
     if dual:
-        print(f"  NOTE: {len(dual)} dual-gene targets left uncollapsed, e.g. {dual[:3]}. "
-              f"A hit on one of these is a claim about the PAIR, not either gene alone.")
+        print(
+            f"  NOTE: {len(dual)} dual-gene targets left uncollapsed, e.g. {dual[:3]}. "
+            f"A hit on one of these is a claim about the PAIR, not either gene alone."
+        )
 
     suffixed = df.loc[df["transcript_id"] != df["gene"], "transcript_id"].unique()
 
     before = len(df)
-    df = (df.sort_values("adj_pval")
-            .drop_duplicates(subset=["gene", "program"], keep="first")
-            .reset_index(drop=True))
+    df = (
+        df.sort_values("adj_pval")
+        .drop_duplicates(subset=["gene", "program"], keep="first")
+        .reset_index(drop=True)
+    )
     if len(suffixed):
-        print(f"  collapsed {before} -> {len(df)} rows "
-              f"({len(suffixed)} suffixed labels over {df['gene'].nunique()} genes)")
+        print(
+            f"  collapsed {before} -> {len(df)} rows "
+            f"({len(suffixed)} suffixed labels over {df['gene'].nunique()} genes)"
+        )
     return df
 
 
@@ -222,10 +259,13 @@ def collapse_target_names(df: pd.DataFrame, allow_no_suffix: bool) -> pd.DataFra
 # Calibration against whatever control arm the run has
 # ---------------------------------------------------------------------------
 
-def measure_control_arm_call_rate(ctrl: pd.DataFrame, threshold: float,
-                                  min_conditions: int,
-                                  grid=(0.01, 0.05, 0.10, 0.20)
-                                  ) -> tuple[pd.DataFrame, list[str]]:
+
+def measure_control_arm_call_rate(
+    ctrl: pd.DataFrame,
+    threshold: float,
+    min_conditions: int,
+    grid=(0.01, 0.05, 0.10, 0.20),
+) -> tuple[pd.DataFrame, list[str]]:
     """Per-condition empirical FPR over the control arm, plus loud caveats.
 
     Returns (table, caveats). The caveats are not decoration -- they decide whether the
@@ -239,7 +279,8 @@ def measure_control_arm_call_rate(ctrl: pd.DataFrame, threshold: float,
         caveats.append(
             f"The control arm is {n_ctrl} pooled pseudo-target over {len(ctrl)} tests. That "
             f"cannot distinguish a 5% from a 10% false-positive rate. Treat the numbers below "
-            f"as a DIAGNOSTIC, not a calibrated null, and say so in Methods.")
+            f"as a DIAGNOSTIC, not a calibrated null, and say so in Methods."
+        )
 
     rows = []
     for thr in grid:
@@ -250,10 +291,14 @@ def measure_control_arm_call_rate(ctrl: pd.DataFrame, threshold: float,
             per_cond[cond] = f"{len(s)}/{len(g)}"
         n_by_pair = sig.groupby(["gene", "program"])["condition"].nunique()
         called = n_by_pair[n_by_pair >= min(min_conditions, n_cond)].index
-        rows.append({"threshold": thr,
-                     "ctrl_per_test_fpr": round(len(sig) / max(len(ctrl), 1), 5),
-                     "ctrl_pairs_called": len(called),
-                     **{f"ctrl_sig_{c}": v for c, v in per_cond.items()}})
+        rows.append(
+            {
+                "threshold": thr,
+                "ctrl_per_test_fpr": round(len(sig) / max(len(ctrl), 1), 5),
+                "ctrl_pairs_called": len(called),
+                **{f"ctrl_sig_{c}": v for c, v in per_cond.items()},
+            }
+        )
     cal = pd.DataFrame(rows)
 
     # Is the control arm actually null? A library selected for one phenotype can move its
@@ -273,21 +318,30 @@ def measure_control_arm_call_rate(ctrl: pd.DataFrame, threshold: float,
             deep = float(sub["adj_pval"].min()) < threshold / DEPTH_FACTOR
             note = ""
             if coherent and deep:
-                note = (" The effects are sign-coherent AND reach q = "
-                        f"{sub['adj_pval'].min():.1e}.")
+                note = (
+                    " The effects are sign-coherent AND reach q = "
+                    f"{sub['adj_pval'].min():.1e}."
+                )
             elif coherent:
                 note = " The effects are sign-coherent."
             elif deep:
-                note = (f" The effects are mixed in sign but reach q = "
-                        f"{sub['adj_pval'].min():.1e} -- structured, not noise. Bidirectional "
-                        "non-nullity is still non-nullity.")
+                note = (
+                    f" The effects are mixed in sign but reach q = "
+                    f"{sub['adj_pval'].min():.1e} -- structured, not noise. Bidirectional "
+                    "non-nullity is still non-nullity."
+                )
             caveats.append(
                 f"The control arm is NOT null in condition {worst!r}: {by_cond.max()} of "
                 f"{len(ctrl[ctrl['condition'] == worst])} tests significant at {threshold} "
-                f"({frac:.0%})." + note +
-                (" This looks like real signal the controls also feel, e.g. a library selected "
-                 "for one phenotype. Do not use this arm as a null."
-                 if (coherent or deep) else ""))
+                f"({frac:.0%})."
+                + note
+                + (
+                    " This looks like real signal the controls also feel, e.g. a library selected "
+                    "for one phenotype. Do not use this arm as a null."
+                    if (coherent or deep)
+                    else ""
+                )
+            )
     return cal, caveats
 
 
@@ -295,38 +349,68 @@ def measure_control_arm_call_rate(ctrl: pd.DataFrame, threshold: float,
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     src = ap.add_argument_group("input (either a per-condition set, or one table)")
     src.add_argument("--crt-dir", type=Path)
-    src.add_argument("--crt-glob", help="filename pattern with a literal {cond} placeholder")
+    src.add_argument(
+        "--crt-glob", help="filename pattern with a literal {cond} placeholder"
+    )
     src.add_argument("--conditions", nargs="+", default=None)
-    src.add_argument("--effects", type=Path, help="a single effects table (one condition)")
-    src.add_argument("--condition-name", default="all",
-                     help="label for the single-table case (default: all)")
+    src.add_argument(
+        "--effects", type=Path, help="a single effects table (one condition)"
+    )
+    src.add_argument(
+        "--condition-name",
+        default="all",
+        help="label for the single-table case (default: all)",
+    )
 
-    ap.add_argument("--ntc-in-table", default=None,
-                    help="control target name inside the main table, e.g. non-targeting")
-    ap.add_argument("--ntc-glob", default=None,
-                    help="separate control table pattern with {cond}, if the run ships one")
+    ap.add_argument(
+        "--ntc-in-table",
+        default=None,
+        help="control target name inside the main table, e.g. non-targeting",
+    )
+    ap.add_argument(
+        "--ntc-glob",
+        default=None,
+        help="separate control table pattern with {cond}, if the run ships one",
+    )
     ap.add_argument("--n-programs", type=int, required=True)
-    ap.add_argument("--exclude-programs", nargs="*", default=[],
-                    help="technical programs (CNV, cell cycle, ambient) to drop entirely")
+    ap.add_argument(
+        "--exclude-programs",
+        nargs="*",
+        default=[],
+        help="technical programs (CNV, cell cycle, ambient) to drop entirely",
+    )
     ap.add_argument("--target-column", default="target_name")
     ap.add_argument("--program-column", default="program_name")
     ap.add_argument("--pval-column", default=None)
     ap.add_argument("--adj-pval-column", default=None)
     ap.add_argument("--log2fc-column", default=None)
     ap.add_argument("--threshold", type=float, default=0.05)
-    ap.add_argument("--min-conditions", type=int, default=2,
-                    help="clamped to the number of conditions actually present")
-    ap.add_argument("--ordered", action="store_true",
-                    help="the conditions are an ORDERED series (a time course), given in order "
-                         "via --conditions. Changes the gate: see the module docstring.")
-    ap.add_argument("--endpoint-min-programs", type=int, default=5,
-                    help="with --ordered, a target significant only at the terminal condition is "
-                         "admitted if it moves at least this many programs there (default 5)")
+    ap.add_argument(
+        "--min-conditions",
+        type=int,
+        default=2,
+        help="clamped to the number of conditions actually present",
+    )
+    ap.add_argument(
+        "--ordered",
+        action="store_true",
+        help="the conditions are an ORDERED series (a time course), given in order "
+        "via --conditions. Changes the gate: see the module docstring.",
+    )
+    ap.add_argument(
+        "--endpoint-min-programs",
+        type=int,
+        default=5,
+        help="with --ordered, a target significant only at the terminal condition is "
+        "admitted if it moves at least this many programs there (default 5)",
+    )
     ap.add_argument("--allow-no-promoter-suffix", action="store_true")
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
@@ -340,7 +424,9 @@ def main() -> None:
     if args.effects:
         sources = [(args.condition_name, args.effects)]
     elif args.crt_dir and args.crt_glob and args.conditions:
-        sources = [(c, args.crt_dir / args.crt_glob.format(cond=c)) for c in args.conditions]
+        sources = [
+            (c, args.crt_dir / args.crt_glob.format(cond=c)) for c in args.conditions
+        ]
     else:
         die("give either --effects, or --crt-dir + --crt-glob + --conditions")
 
@@ -349,8 +435,14 @@ def main() -> None:
         if not path.exists():
             die(f"missing table for {cond}: {path}")
         print(f"[{cond}] {path.name}")
-        d, prov = load_table(path, args.pval_column, args.adj_pval_column,
-                             args.log2fc_column, args.target_column, args.program_column)
+        d, prov = load_table(
+            path,
+            args.pval_column,
+            args.adj_pval_column,
+            args.log2fc_column,
+            args.target_column,
+            args.program_column,
+        )
         provenance = provenance or prov
         d = collapse_target_names(d, args.allow_no_promoter_suffix)
         d["condition"] = cond
@@ -358,7 +450,9 @@ def main() -> None:
         if args.ntc_in_table:
             mask = d["gene"] == args.ntc_in_table
             if not mask.any():
-                die(f"--ntc-in-table {args.ntc_in_table!r} is not a target in {path.name}")
+                die(
+                    f"--ntc-in-table {args.ntc_in_table!r} is not a target in {path.name}"
+                )
             ntc_frames.append(d[mask].copy())
             d = d[~mask]
         frames.append(d)
@@ -367,8 +461,14 @@ def main() -> None:
             npath = args.crt_dir / args.ntc_glob.format(cond=cond)
             if not npath.exists():
                 die(f"missing control table for {cond}: {npath}")
-            n, _ = load_table(npath, args.pval_column, args.adj_pval_column,
-                              args.log2fc_column, args.target_column, args.program_column)
+            n, _ = load_table(
+                npath,
+                args.pval_column,
+                args.adj_pval_column,
+                args.log2fc_column,
+                args.target_column,
+                args.program_column,
+            )
             n = collapse_target_names(n, allow_no_suffix=True)
             n["condition"] = cond
             ntc_frames.append(n)
@@ -400,11 +500,15 @@ def main() -> None:
     conditions = list(dict.fromkeys(crt["condition"]))
     min_cond = min(args.min_conditions, len(conditions))
     if min_cond < args.min_conditions:
-        print(f"\n  NOTE: --min-conditions {args.min_conditions} clamped to {min_cond} -- this "
-              f"run has {len(conditions)} condition(s).")
+        print(
+            f"\n  NOTE: --min-conditions {args.min_conditions} clamped to {min_cond} -- this "
+            f"run has {len(conditions)} condition(s)."
+        )
         if len(conditions) == 1:
-            print("  Cross-condition replication is UNAVAILABLE. The report must name what is "
-                  "carrying that weight instead (see references/failure-modes.md).")
+            print(
+                "  Cross-condition replication is UNAVAILABLE. The report must name what is "
+                "carrying that weight instead (see references/failure-modes.md)."
+            )
 
     # --- calibrate ---------------------------------------------------------------
     if ntc_frames:
@@ -416,8 +520,10 @@ def main() -> None:
         for c in caveats:
             print(f"\n  ** {c}")
     else:
-        print("\nWARNING: no control arm supplied (--ntc-in-table / --ntc-glob). The threshold "
-              "is ASSUMED, not calibrated. Say so in Methods.")
+        print(
+            "\nWARNING: no control arm supplied (--ntc-in-table / --ntc-glob). The threshold "
+            "is ASSUMED, not calibrated. Say so in Methods."
+        )
 
     # --- the gate ----------------------------------------------------------------
     crt["sig"] = crt["adj_pval"] < args.threshold
@@ -427,17 +533,29 @@ def main() -> None:
     # does not distinguish early, late, and split.
     def sign_pattern(g):
         by_cond = {c: np.sign(v) for c, v in zip(g["condition"], g["effect"])}
-        return ",".join(f"{'+' if by_cond[c] > 0 else '-'}" for c in conditions if c in by_cond)
+        return ",".join(
+            f"{'+' if by_cond[c] > 0 else '-'}" for c in conditions if c in by_cond
+        )
 
-    per_pair = (sig.groupby(["gene", "program"])
-                   .apply(lambda g: pd.Series({
-                       "n_conditions": g["condition"].nunique(),
-                       "conditions": ",".join(c for c in conditions if c in set(g["condition"])),
-                       "signs": sign_pattern(g),
-                   }), include_groups=False)
-                   .reset_index())
-    per_pair["sign_flips"] = per_pair["signs"].str.contains(r"\+") & \
-                             per_pair["signs"].str.contains("-")
+    per_pair = (
+        sig.groupby(["gene", "program"])
+        .apply(
+            lambda g: pd.Series(
+                {
+                    "n_conditions": g["condition"].nunique(),
+                    "conditions": ",".join(
+                        c for c in conditions if c in set(g["condition"])
+                    ),
+                    "signs": sign_pattern(g),
+                }
+            ),
+            include_groups=False,
+        )
+        .reset_index()
+    )
+    per_pair["sign_flips"] = per_pair["signs"].str.contains(r"\+") & per_pair[
+        "signs"
+    ].str.contains("-")
 
     # Classify rather than filter. A time course makes two things look like failures that are
     # not: an effect present only at the endpoint, and an effect that changes sign partway.
@@ -467,18 +585,25 @@ def main() -> None:
         if args.ordered and r["conditions"] == terminal:
             return "endpoint_only"
         return "transient"
+
     per_pair["pair_class"] = per_pair.apply(classify, axis=1)
 
     # endpoint_only is admitted on BREADTH: one program at the last timepoint is noise, but a
     # target moving many programs there is the endpoint biology this design exists to capture.
-    endpoint_breadth = (per_pair[per_pair["pair_class"] == "endpoint_only"]
-                        .groupby("gene")["program"].nunique())
-    admitted_endpoint = set(endpoint_breadth[
-        endpoint_breadth >= args.endpoint_min_programs].index)
-    per_pair["admitted"] = (
-        per_pair["pair_class"].isin(["persistent", "persistent_gapped", "sign_flip"])
-        | ((per_pair["pair_class"] == "endpoint_only")
-           & per_pair["gene"].isin(admitted_endpoint)))
+    endpoint_breadth = (
+        per_pair[per_pair["pair_class"] == "endpoint_only"]
+        .groupby("gene")["program"]
+        .nunique()
+    )
+    admitted_endpoint = set(
+        endpoint_breadth[endpoint_breadth >= args.endpoint_min_programs].index
+    )
+    per_pair["admitted"] = per_pair["pair_class"].isin(
+        ["persistent", "persistent_gapped", "sign_flip"]
+    ) | (
+        (per_pair["pair_class"] == "endpoint_only")
+        & per_pair["gene"].isin(admitted_endpoint)
+    )
 
     print("\nPair classes (counts of target x program pairs):")
     for k, v in per_pair["pair_class"].value_counts().items():
@@ -486,66 +611,108 @@ def main() -> None:
         print(f"  {k:14s} {v:6d}   admitted {adm}")
     n_gapped = int((per_pair["pair_class"] == "persistent_gapped").sum())
     if n_gapped:
-        print(f"  NOTE: {n_gapped} admitted pairs are `persistent_gapped` -- significant in two "
-              f"or more NON-ADJACENT conditions. Admitted, but they carry NO replication "
-              f"control: on a real run this class was statistically indistinguishable from two "
-              f"independent per-condition draws. Label them on the hypothesis card; do not pool "
-              f"them with the contiguous pairs.")
+        print(
+            f"  NOTE: {n_gapped} admitted pairs are `persistent_gapped` -- significant in two "
+            f"or more NON-ADJACENT conditions. Admitted, but they carry NO replication "
+            f"control: on a real run this class was statistically indistinguishable from two "
+            f"independent per-condition draws. Label them on the hypothesis card; do not pool "
+            f"them with the contiguous pairs."
+        )
     if per_pair["sign_flips"].any():
-        print(f"  NOTE: {int(per_pair['sign_flips'].sum())} pairs change sign across conditions. "
-              f"These are ADMITTED and labelled, not dropped -- a sign flip across an ordered "
-              f"series is a temporal switch, which is a finding.")
-    if args.ordered and not admitted_endpoint and (per_pair["pair_class"] == "endpoint_only").any():
-        print(f"  NOTE: endpoint-only pairs exist but no target reaches "
-              f"--endpoint-min-programs {args.endpoint_min_programs}; none admitted.")
+        print(
+            f"  NOTE: {int(per_pair['sign_flips'].sum())} pairs change sign across conditions. "
+            f"These are ADMITTED and labelled, not dropped -- a sign flip across an ordered "
+            f"series is a temporal switch, which is a finding."
+        )
+    if (
+        args.ordered
+        and not admitted_endpoint
+        and (per_pair["pair_class"] == "endpoint_only").any()
+    ):
+        print(
+            f"  NOTE: endpoint-only pairs exist but no target reaches "
+            f"--endpoint-min-programs {args.endpoint_min_programs}; none admitted."
+        )
 
     robust = per_pair[per_pair["admitted"]]
 
-    per_gene = (robust.groupby("gene")
-                      .agg(n_programs_robust=("program", "nunique"),
-                           conditions_hit=("conditions", lambda s: ";".join(sorted(set(s))[:3])),
-                           pair_classes=("pair_class", lambda s: ";".join(sorted(set(s)))))
-                      .reset_index())
-    breadth = sig.groupby("gene")["program"].nunique().rename("n_programs_any").reset_index()
-    top = (crt.assign(abs_eff=crt["effect"].abs())
-              .sort_values("abs_eff", ascending=False)
-              .drop_duplicates("gene")
-              [["gene", "program", "effect", "abs_eff", "condition"]]
-              .rename(columns={"program": "top_program", "effect": "top_effect",
-                               "abs_eff": "max_abs_effect", "condition": "top_condition"}))
+    per_gene = (
+        robust.groupby("gene")
+        .agg(
+            n_programs_robust=("program", "nunique"),
+            conditions_hit=("conditions", lambda s: ";".join(sorted(set(s))[:3])),
+            pair_classes=("pair_class", lambda s: ";".join(sorted(set(s)))),
+        )
+        .reset_index()
+    )
+    breadth = (
+        sig.groupby("gene")["program"].nunique().rename("n_programs_any").reset_index()
+    )
+    top = (
+        crt.assign(abs_eff=crt["effect"].abs())
+        .sort_values("abs_eff", ascending=False)
+        .drop_duplicates("gene")[["gene", "program", "effect", "abs_eff", "condition"]]
+        .rename(
+            columns={
+                "program": "top_program",
+                "effect": "top_effect",
+                "abs_eff": "max_abs_effect",
+                "condition": "top_condition",
+            }
+        )
+    )
 
     # EVERY target gets a row, including those with no significant call -- the report owes a
     # reader the denominator, and a table built only from survivors cannot supply it.
     table = pd.DataFrame({"gene": sorted(set(crt["gene"]))})
-    table = (table.merge(breadth, on="gene", how="left")
-                  .merge(per_gene, on="gene", how="left")
-                  .merge(top, on="gene", how="left"))
+    table = (
+        table.merge(breadth, on="gene", how="left")
+        .merge(per_gene, on="gene", how="left")
+        .merge(top, on="gene", how="left")
+    )
     table["n_programs_any"] = table["n_programs_any"].fillna(0).astype(int)
     table["n_programs_robust"] = table["n_programs_robust"].fillna(0).astype(int)
     table["is_dual_gene"] = table["gene"].str.contains(DUAL_GENE)
-    table["top_direction"] = np.where(table["top_effect"].isna(), None,
-                                      np.where(table["top_effect"] > 0, "brake", "driver"))
+    table["top_direction"] = np.where(
+        table["top_effect"].isna(),
+        None,
+        np.where(table["top_effect"] > 0, "brake", "driver"),
+    )
     table["passes_gate"] = table["n_programs_robust"] >= 1
     table["excluded_because"] = np.where(
-        table["passes_gate"], "",
-        np.where(table["n_programs_any"] == 0,
-                 f"no program significant at adj < {args.threshold}",
-                 f"significant, but no pair admitted (see pair_class in the pairs file)"))
-    table = table.sort_values(["passes_gate", "max_abs_effect"], ascending=[False, False])
+        table["passes_gate"],
+        "",
+        np.where(
+            table["n_programs_any"] == 0,
+            f"no program significant at adj < {args.threshold}",
+            f"significant, but no pair admitted (see pair_class in the pairs file)",
+        ),
+    )
+    table = table.sort_values(
+        ["passes_gate", "max_abs_effect"], ascending=[False, False]
+    )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(args.out, index=False)
     robust.to_csv(args.out.with_name("significant_pairs_by_condition.csv"), index=False)
 
     n_pass = int(table["passes_gate"].sum())
-    print(f"\n{n_pass} of {len(table)} targets pass "
-          f"(adj < {args.threshold} in >= {min_cond} of {len(conditions)}) -> {args.out}")
-    print(f"  the other {len(table) - n_pass} rows carry `excluded_because` and are the "
-          f"denominator table the report needs")
-    print(f"  per-pair condition membership -> {args.out.with_name('significant_pairs_by_condition.csv').name}")
+    print(
+        f"\n{n_pass} of {len(table)} targets pass "
+        f"(adj < {args.threshold} in >= {min_cond} of {len(conditions)}) -> {args.out}"
+    )
+    print(
+        f"  the other {len(table) - n_pass} rows carry `excluded_because` and are the "
+        f"denominator table the report needs"
+    )
+    print(
+        f"  per-pair condition membership -> {args.out.with_name('significant_pairs_by_condition.csv').name}"
+    )
     if table["is_dual_gene"].any():
-        print(f"  {int(table['is_dual_gene'].sum())} passing rows are dual-gene targets -- a hit "
-              f"is a claim about the pair")
+        print(
+            f"  {int(table['is_dual_gene'].sum())} passing rows are dual-gene targets -- a hit "
+            f"is a claim about the pair"
+        )
 
     print("\nNEXT, before any hypothesis is written:")
     print("  1. check_cis_neighbours.py     -- no locus claim without it")

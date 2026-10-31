@@ -76,7 +76,9 @@ def row_normalize_usage(Usage: Any) -> np.ndarray:
     """
     Usage = np.asarray(Usage, dtype=np.float64)
     if (Usage < 0).any():
-        raise ValueError("Usage matrix has negative entries; expected non-negative usage.")
+        raise ValueError(
+            "Usage matrix has negative entries; expected non-negative usage."
+        )
     row_sums = Usage.sum(axis=1, keepdims=True)
     n_empty = int((row_sums <= 0).sum())
     if n_empty:
@@ -237,39 +239,59 @@ def prepare_crt_inputs(
             f"normalization must be one of {NORMALIZATIONS}; got {normalization!r}."
         )
     if pvalue_method not in ("empirical", "skew_normal"):
-        raise ValueError(f'pvalue_method must be "empirical" or "skew_normal"; got {pvalue_method!r}.')
+        raise ValueError(
+            f'pvalue_method must be "empirical" or "skew_normal"; got {pvalue_method!r}.'
+        )
     if moi not in ("high", "low"):
         raise ValueError(f'moi must be "high" or "low"; got {moi!r}.')
     if propensity_penalty not in (None, "l2", "old_perturbnmf"):
-        raise ValueError(f'propensity_penalty must be None, "l2" or "old_perturbnmf"; got {propensity_penalty!r}.')
+        raise ValueError(
+            f'propensity_penalty must be None, "l2" or "old_perturbnmf"; got {propensity_penalty!r}.'
+        )
     if not propensity_C > 0:
         raise ValueError(f"propensity_C must be > 0; got {propensity_C}.")
     if propensity_tol is not None and not propensity_tol > 0:
         raise ValueError(f"propensity_tol must be > 0; got {propensity_tol}.")
     if propensity_max_iter is not None and propensity_max_iter < 1:
-        raise ValueError(f"propensity_max_iter must be >= 1; got {propensity_max_iter}.")
+        raise ValueError(
+            f"propensity_max_iter must be >= 1; got {propensity_max_iter}."
+        )
     if moi == "low" and not non_targeting_guide_names:
-        raise ValueError('moi="low" needs non_targeting_guide_names (e.g. ["non-targeting"]).')
+        raise ValueError(
+            'moi="low" needs non_targeting_guide_names (e.g. ["non-targeting"]).'
+        )
     if control_group not in ("all", "ntc_cells", "matched"):
-        raise ValueError(f'control_group must be "all", "ntc_cells" or "matched"; got {control_group!r}.')
+        raise ValueError(
+            f'control_group must be "all", "ntc_cells" or "matched"; got {control_group!r}.'
+        )
     if control_group == "ntc_cells" and moi == "low":
-        raise ValueError('control_group="ntc_cells" is for moi="high"; moi="low" controls already are the control-guide cells.')
+        raise ValueError(
+            'control_group="ntc_cells" is for moi="high"; moi="low" controls already are the control-guide cells.'
+        )
     if control_group == "ntc_cells" and not non_targeting_guide_names:
-        raise ValueError('control_group="ntc_cells" needs non_targeting_guide_names (e.g. ["non-targeting"]).')
+        raise ValueError(
+            'control_group="ntc_cells" needs non_targeting_guide_names (e.g. ["non-targeting"]).'
+        )
     if matching_ratio < 1:
         raise ValueError(f"matching_ratio must be >= 1; got {matching_ratio}.")
     if matching_caliper is not None and not matching_caliper > 0:
         raise ValueError(f"matching_caliper must be > 0; got {matching_caliper}.")
     if matching_distance not in ("propensity", "logit"):
-        raise ValueError(f'matching_distance must be "propensity" or "logit"; got {matching_distance!r}.')
+        raise ValueError(
+            f'matching_distance must be "propensity" or "logit"; got {matching_distance!r}.'
+        )
     if number_guide is not None and number_guide < 1:
         raise ValueError(f"number_guide must be >= 1; got {number_guide}.")
-    if resampled_rounds < 1 or extra_resampled_rounds < 0 or stage3_resampled_rounds < 0:
+    if (
+        resampled_rounds < 1
+        or extra_resampled_rounds < 0
+        or stage3_resampled_rounds < 0
+    ):
         raise ValueError(
             "resampled_rounds must be >= 1; extra_resampled_rounds and stage3_resampled_rounds >= 0."
         )
 
-    # get adata    
+    # get adata
     if usage_key not in mdata.mod:
         raise KeyError(f"Modality `{usage_key}` not in mdata.mod ({list(mdata.mod)}).")
     adata = mdata.mod[usage_key]
@@ -289,14 +311,18 @@ def prepare_crt_inputs(
         Usage = Usage.toarray()
 
     # keep only the selected programs (default: all), then normalize
-    program_names = [str(k + 1) for k in range(Usage.shape[1])]   # "1".."K", as cNMF program labels / Stage 3 program_name
+    program_names = [
+        str(k + 1) for k in range(Usage.shape[1])
+    ]  # "1".."K", as cNMF program labels / Stage 3 program_name
     if selected_program_names is None:
         selected_program_names = program_names
     else:
         selected_program_names = [str(p) for p in selected_program_names]
         missing = [p for p in selected_program_names if p not in program_names]
         if missing:
-            raise KeyError(f"Programs not found: {missing}; expected names like '1' (1-based).")
+            raise KeyError(
+                f"Programs not found: {missing}; expected names like '1' (1-based)."
+            )
         program_idx = [program_names.index(p) for p in selected_program_names]
         Usage = Usage[:, program_idx]
 
@@ -319,39 +345,52 @@ def prepare_crt_inputs(
 
     # get guide to gene pairs
     if guide_targets_key not in adata.uns:
-        raise KeyError(f"uns['{guide_targets_key}'] not found in modality `{usage_key}`.")
+        raise KeyError(
+            f"uns['{guide_targets_key}'] not found in modality `{usage_key}`."
+        )
     guide2gene = dict(zip(guide_names, adata.uns[guide_targets_key]))
     guide_targets = build_gene_to_guide(guide_names, guide2gene)
 
     if not guide_targets:
         raise ValueError("No guides mapped to genes; check guide2gene and guide names.")
 
-    if Covariates.shape[0] != Usage_norm.shape[0] or Covariates.shape[0] != Guide_assignment.shape[0]:
+    if (
+        Covariates.shape[0] != Usage_norm.shape[0]
+        or Covariates.shape[0] != Guide_assignment.shape[0]
+    ):
         raise ValueError(
             f"Cell counts mismatch: Covariates {Covariates.shape[0]}, Usage_norm {Usage_norm.shape[0]}, "
             f"Guide_assignment {Guide_assignment.shape[0]}"
         )
 
     # control cells: any cell carrying a control guide (needed for moi="low")
-    non_targeting_guide_names = list(non_targeting_guide_names) if non_targeting_guide_names else None
+    non_targeting_guide_names = (
+        list(non_targeting_guide_names) if non_targeting_guide_names else None
+    )
     control_obs_idx = None
     if non_targeting_guide_names:
         missing = [g for g in non_targeting_guide_names if g not in guide_targets]
         if missing:
-            raise KeyError(f"Control genes not found in uns['{guide_targets_key}']: {missing}")
+            raise KeyError(
+                f"Control genes not found in uns['{guide_targets_key}']: {missing}"
+            )
         control_cols = [j for g in non_targeting_guide_names for j in guide_targets[g]]
         control_obs_idx = np.flatnonzero(
             np.asarray(Guide_assignment[:, control_cols].sum(axis=1)).ravel() > 0
         ).astype(np.int32)
         if (moi == "low" or control_group == "ntc_cells") and control_obs_idx.size == 0:
-            raise ValueError(f"No cells carry a guide for control genes {non_targeting_guide_names}.")
+            raise ValueError(
+                f"No cells carry a guide for control genes {non_targeting_guide_names}."
+            )
 
     # cells with at least one guide (control_group="matched" pool, moi="high")
     guide_cell_obs_idx = np.unique(Guide_assignment.indices).astype(np.int32)
 
     # genes to test (default: every gene with guides, minus control genes)
     if selected_gene_names is None:
-        selected_gene_names = sorted(g for g in guide_targets if g not in (non_targeting_guide_names or []))
+        selected_gene_names = sorted(
+            g for g in guide_targets if g not in (non_targeting_guide_names or [])
+        )
     else:
         selected_gene_names = list(selected_gene_names)
         missing = [g for g in selected_gene_names if g not in guide_targets]
@@ -370,7 +409,9 @@ def prepare_crt_inputs(
     # cannot be stratified on, so the shuffle ignores them (still in the regression)
     covariate_strata, has_continuous_covariates = None, False
     if moi == "low":
-        covariate_strata, has_continuous_covariates = covariate_strata_from_design(Covariates)
+        covariate_strata, has_continuous_covariates = covariate_strata_from_design(
+            Covariates
+        )
         if has_continuous_covariates:
             warnings.warn(
                 'moi="low": continuous covariates are not used to form permutation strata, '

@@ -1,4 +1,3 @@
-
 """
 torch-cNMF Inference Pipeline (Updated for torch_cnmf)
 
@@ -23,17 +22,22 @@ import numpy as np
 
 # Change path to wherever you have repo locally
 from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parents[4] / 'src'))
+
+sys.path.append(str(Path(__file__).resolve().parents[4] / "src"))
 
 from torch_cnmf import cNMF
 
 from Stage1_Inference.src import (
-    run_cnmf_consensus, get_top_indices_fast, annotate_genes_to_excel,
-    rename_and_move_files_NMF, rename_all_NMF, compile_results,
-    filter_noncoding_genes, filter_noncoding_genes_gtf,
+    run_cnmf_consensus,
+    get_top_indices_fast,
+    annotate_genes_to_excel,
+    rename_and_move_files_NMF,
+    rename_all_NMF,
+    compile_results,
+    filter_noncoding_genes,
+    filter_noncoding_genes_gtf,
 )
 from Stage1_Inference.src.plot_diagnostics import generate_all_plots
-
 
 
 def main():
@@ -42,139 +46,249 @@ def main():
     )
 
     # --- I/O ---
-    parser.add_argument('--counts_fn', type=str, required=True,
-                        help="Path to gene expression data (.h5ad)")
-    parser.add_argument('--output_directory', type=str, required=True,
-                        help="Output directory for results")
-    parser.add_argument('--run_name', type=str, required=True,
-                        help="Name for this cNMF run")
-    parser.add_argument('--nmf_seeds_path', type=str, default=None,
-                        help="Path to text file with custom NMF seeds (one integer per line)")
+    parser.add_argument(
+        "--counts_fn",
+        type=str,
+        required=True,
+        help="Path to gene expression data (.h5ad)",
+    )
+    parser.add_argument(
+        "--output_directory",
+        type=str,
+        required=True,
+        help="Output directory for results",
+    )
+    parser.add_argument(
+        "--run_name", type=str, required=True, help="Name for this cNMF run"
+    )
+    parser.add_argument(
+        "--nmf_seeds_path",
+        type=str,
+        default=None,
+        help="Path to text file with custom NMF seeds (one integer per line)",
+    )
 
     # --- cNMF parameters ---
-    parser.add_argument('--K', nargs='*', type=int, default=[30, 50, 70, 80, 100, 200, 300],
-                        help="K values to test")
-    parser.add_argument('--sel_threshs', nargs='*', type=float, default=[0.2, 2.0],
-                        help="Density thresholds for consensus")
-    parser.add_argument('--numiter', type=int, default=10,
-                        help="NMF iterations per K")
-    parser.add_argument('--densify', action='store_true',
-                        help="Densify sparse matrix before factorization")
-    parser.add_argument('--tpm_fn', type=str, default=None,
-                        help="Pre-computed TPM file path. Default: this run's own "
-                             "cnmf_tmp/Inference.tpm.h5ad if a previous run finished writing it, "
-                             "else computed from --counts_fn")
-    parser.add_argument('--numhvgenes', type=int, default=2000,
-                        help="Number of highly variable genes")
-    parser.add_argument('--genes_file', type=str, default=None,
-                        help="File with gene list (overrides HVG selection)")
-    parser.add_argument('--loss', default='frobenius',
-                        help="NMF loss function")
-    parser.add_argument('--algo', type=str, default='halsvar',
-                        help="NMF algorithm: mu | hals | halsvar | bpp")
-    parser.add_argument('--mode', type=str, default='batch',
-                        help="Learning mode: batch | minibatch | dataloader")
-    parser.add_argument('--tol', type=float, default=1e-7,
-                        help="Convergence tolerance")
-    parser.add_argument('--n_jobs', type=int, default=-1,
-                        help="Number of parallel jobs")
-    parser.add_argument('--init', type=str, default='random',
-                        help="Initialisation: random | nndsvd")
-    parser.add_argument('--seed', type=int, default=14,
-                        help="Random seed")
-    parser.add_argument('--use_gpu', action='store_true',
-                        help="Use GPU acceleration")
+    parser.add_argument(
+        "--K",
+        nargs="*",
+        type=int,
+        default=[30, 50, 70, 80, 100, 200, 300],
+        help="K values to test",
+    )
+    parser.add_argument(
+        "--sel_threshs",
+        nargs="*",
+        type=float,
+        default=[0.2, 2.0],
+        help="Density thresholds for consensus",
+    )
+    parser.add_argument("--numiter", type=int, default=10, help="NMF iterations per K")
+    parser.add_argument(
+        "--densify",
+        action="store_true",
+        help="Densify sparse matrix before factorization",
+    )
+    parser.add_argument(
+        "--tpm_fn",
+        type=str,
+        default=None,
+        help="Pre-computed TPM file path. Default: this run's own "
+        "cnmf_tmp/Inference.tpm.h5ad if a previous run finished writing it, "
+        "else computed from --counts_fn",
+    )
+    parser.add_argument(
+        "--numhvgenes", type=int, default=2000, help="Number of highly variable genes"
+    )
+    parser.add_argument(
+        "--genes_file",
+        type=str,
+        default=None,
+        help="File with gene list (overrides HVG selection)",
+    )
+    parser.add_argument("--loss", default="frobenius", help="NMF loss function")
+    parser.add_argument(
+        "--algo",
+        type=str,
+        default="halsvar",
+        help="NMF algorithm: mu | hals | halsvar | bpp",
+    )
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="batch",
+        help="Learning mode: batch | minibatch | dataloader",
+    )
+    parser.add_argument("--tol", type=float, default=1e-7, help="Convergence tolerance")
+    parser.add_argument(
+        "--n_jobs", type=int, default=-1, help="Number of parallel jobs"
+    )
+    parser.add_argument(
+        "--init", type=str, default="random", help="Initialisation: random | nndsvd"
+    )
+    parser.add_argument("--seed", type=int, default=14, help="Random seed")
+    parser.add_argument("--use_gpu", action="store_true", help="Use GPU acceleration")
 
     # Regularisation
-    parser.add_argument('--alpha_usage', type=float, default=0.0)
-    parser.add_argument('--alpha_spectra', type=float, default=0.0)
-    parser.add_argument('--l1_ratio_usage', type=float, default=0.0)
-    parser.add_argument('--l1_ratio_spectra', type=float, default=0.0)
+    parser.add_argument("--alpha_usage", type=float, default=0.0)
+    parser.add_argument("--alpha_spectra", type=float, default=0.0)
+    parser.add_argument("--l1_ratio_usage", type=float, default=0.0)
+    parser.add_argument("--l1_ratio_spectra", type=float, default=0.0)
 
     # Batch-mode NMF
-    parser.add_argument('--batch_max_epoch', type=int, default=1000)
-    parser.add_argument('--batch_hals_tol', type=float, default=0.005)
-    parser.add_argument('--batch_hals_max_iter', type=int, default=1000)
+    parser.add_argument("--batch_max_epoch", type=int, default=1000)
+    parser.add_argument("--batch_hals_tol", type=float, default=0.005)
+    parser.add_argument("--batch_hals_max_iter", type=int, default=1000)
 
     # Mini-batch / dataloader mode NMF
-    parser.add_argument('--minibatch_max_epoch', type=int, default=1000)
-    parser.add_argument('--minibatch_size', type=int, default=100000)
-    parser.add_argument('--minibatch_max_iter', type=int, default=1000)
-    parser.add_argument('--minibatch_usage_tol', type=float, default=0.005)
-    parser.add_argument('--minibatch_spectra_tol', type=float, default=0.005)
-    parser.add_argument('--minibatch_shuffle', action='store_true',
-                        help="Shuffle cells in minibatch mode (default: off)")
-    parser.add_argument('--minibatch_rescale', action=argparse.BooleanOptionalAction, default=True,
-                        help="Rescale spectra rows to unit norm after each epoch in minibatch/dataloader mode, "
-                             "so drifting rows cannot overflow float32 (default: on; --no-minibatch_rescale to turn off). "
-                             "Ignored when regularization is on.")
-    parser.add_argument('--minibatch_patience', type=int, default=10,
-                        help="Epochs without a new best loss before stopping in minibatch/dataloader mode; the loss is "
-                             "checked every epoch and W/H are restored to the best epoch (default: 10). "
-                             "0 = original rule: loss every 10 epochs, stop on the first increase.")
-    parser.add_argument('--minibatch_persistent_stats', action=argparse.BooleanOptionalAction, default=True,
-                        help="Keep the spectra sufficient statistics (HᵀH, HᵀX) over all cells across epochs in "
-                             "minibatch/dataloader HALS, so the solver reaches the batch-HALS fixed point "
-                             "(default: on; --no-minibatch_persistent_stats for the original per-epoch reset, "
-                             "which biases spectra toward the first mini-batches).")
+    parser.add_argument("--minibatch_max_epoch", type=int, default=1000)
+    parser.add_argument("--minibatch_size", type=int, default=100000)
+    parser.add_argument("--minibatch_max_iter", type=int, default=1000)
+    parser.add_argument("--minibatch_usage_tol", type=float, default=0.005)
+    parser.add_argument("--minibatch_spectra_tol", type=float, default=0.005)
+    parser.add_argument(
+        "--minibatch_shuffle",
+        action="store_true",
+        help="Shuffle cells in minibatch mode (default: off)",
+    )
+    parser.add_argument(
+        "--minibatch_rescale",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Rescale spectra rows to unit norm after each epoch in minibatch/dataloader mode, "
+        "so drifting rows cannot overflow float32 (default: on; --no-minibatch_rescale to turn off). "
+        "Ignored when regularization is on.",
+    )
+    parser.add_argument(
+        "--minibatch_patience",
+        type=int,
+        default=10,
+        help="Epochs without a new best loss before stopping in minibatch/dataloader mode; the loss is "
+        "checked every epoch and W/H are restored to the best epoch (default: 10). "
+        "0 = original rule: loss every 10 epochs, stop on the first increase.",
+    )
+    parser.add_argument(
+        "--minibatch_persistent_stats",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Keep the spectra sufficient statistics (HᵀH, HᵀX) over all cells across epochs in "
+        "minibatch/dataloader HALS, so the solver reaches the batch-HALS fixed point "
+        "(default: on; --no-minibatch_persistent_stats for the original per-epoch reset, "
+        "which biases spectra toward the first mini-batches).",
+    )
 
     # Precision
-    parser.add_argument('--fp_precision', type=str, default='float',
-                        help="Floating-point precision: float | double")
+    parser.add_argument(
+        "--fp_precision",
+        type=str,
+        default="float",
+        help="Floating-point precision: float | double",
+    )
 
     # Refit
-    parser.add_argument('--sk_cd_refit', action='store_true',
-                        help="Use sklearn coordinate descent for refitting")
+    parser.add_argument(
+        "--sk_cd_refit",
+        action="store_true",
+        help="Use sklearn coordinate descent for refitting",
+    )
 
     # --- Annotation ---
-    parser.add_argument('--species', type=str, required=True,
-                        help="Species for gene annotation: human | mouse")
-    parser.add_argument('--num_gene', type=int, default=300,
-                        help="Number of top genes for annotation")
-    parser.add_argument('--parallel_running', action='store_true',
-                        help="Enable parallel processing mode for multiple K values on when using parallel.sh")
+    parser.add_argument(
+        "--species",
+        type=str,
+        required=True,
+        help="Species for gene annotation: human | mouse",
+    )
+    parser.add_argument(
+        "--num_gene", type=int, default=300, help="Number of top genes for annotation"
+    )
+    parser.add_argument(
+        "--parallel_running",
+        action="store_true",
+        help="Enable parallel processing mode for multiple K values on when using parallel.sh",
+    )
 
     # --- Preprocessing ---
-    parser.add_argument('--remove_noncoding', action='store_true',
-                        help="Remove non-coding genes. With --gtf_path, keeps only genes annotated "
-                             "as protein_coding in the GTF; otherwise falls back to the Ensembl-prefix heuristic.")
-    parser.add_argument('--ensembl_prefix', type=str, default='ENSG',
-                        help="Ensembl ID prefix for the (fallback) prefix-based non-coding filter")
-    parser.add_argument('--gtf_path', type=str, default=None,
-                        help="Path to a GENCODE/Ensembl GTF(.gz). When set with --remove_noncoding, "
-                             "genes whose Ensembl ID is not a protein_coding 'gene' in the GTF are removed.")
-    parser.add_argument('--gene_id_key', type=str, default='gene_id',
-                        help="Column in adata.var holding Ensembl gene IDs (used for the GTF-based non-coding filter)")
-    parser.add_argument('--add_gene_names_from_gtf', action='store_true',
-                        help="Populate adata.var[gene_names_key] with gene symbols looked up from --gtf_path "
-                             "by Ensembl ID (from gene_id_key). Requires --gtf_path.")
-    parser.add_argument('--gene_names_key', type=str, default='symbol',
-                        help="Column in adata.var with gene names (used for non-coding filter, GTF gene-name "
-                             "annotation, and compiled results)")
+    parser.add_argument(
+        "--remove_noncoding",
+        action="store_true",
+        help="Remove non-coding genes. With --gtf_path, keeps only genes annotated "
+        "as protein_coding in the GTF; otherwise falls back to the Ensembl-prefix heuristic.",
+    )
+    parser.add_argument(
+        "--ensembl_prefix",
+        type=str,
+        default="ENSG",
+        help="Ensembl ID prefix for the (fallback) prefix-based non-coding filter",
+    )
+    parser.add_argument(
+        "--gtf_path",
+        type=str,
+        default=None,
+        help="Path to a GENCODE/Ensembl GTF(.gz). When set with --remove_noncoding, "
+        "genes whose Ensembl ID is not a protein_coding 'gene' in the GTF are removed.",
+    )
+    parser.add_argument(
+        "--gene_id_key",
+        type=str,
+        default="gene_id",
+        help="Column in adata.var holding Ensembl gene IDs (used for the GTF-based non-coding filter)",
+    )
+    parser.add_argument(
+        "--add_gene_names_from_gtf",
+        action="store_true",
+        help="Populate adata.var[gene_names_key] with gene symbols looked up from --gtf_path "
+        "by Ensembl ID (from gene_id_key). Requires --gtf_path.",
+    )
+    parser.add_argument(
+        "--gene_names_key",
+        type=str,
+        default="symbol",
+        help="Column in adata.var with gene names (used for non-coding filter, GTF gene-name "
+        "annotation, and compiled results)",
+    )
 
     # --- Metadata keys ---
-    parser.add_argument('--data_key', type=str, default='rna')
-    parser.add_argument('--prog_key', type=str, default='cNMF')
-    parser.add_argument('--categorical_key', type=str, default='sample',
-                        help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample")
-    parser.add_argument('--guide_names_key', type=str, default='guide_names')
-    parser.add_argument('--guide_targets_key', type=str, default='guide_targets')
-    parser.add_argument('--guide_assignment_key', type=str, default='guide_assignment')
+    parser.add_argument("--data_key", type=str, default="rna")
+    parser.add_argument("--prog_key", type=str, default="cNMF")
+    parser.add_argument(
+        "--categorical_key",
+        type=str,
+        default="sample",
+        help="Key in .obs holding each cell's condition label (e.g. timepoint, stimulus, donor); default: sample",
+    )
+    parser.add_argument("--guide_names_key", type=str, default="guide_names")
+    parser.add_argument("--guide_targets_key", type=str, default="guide_targets")
+    parser.add_argument("--guide_assignment_key", type=str, default="guide_assignment")
 
     # --- Step selection ---
-    parser.add_argument('--run_factorize', action='store_true',
-                        help="Run the factorization step")
-    parser.add_argument('--run_refit', action='store_true',
-                        help="Run combine + k_selection + consensus")
-    parser.add_argument('--run_compile_annotation', action='store_true',
-                        help="Run result compilation and gene annotation")
-    parser.add_argument('--run_gene_annotation', action='store_true',
-                        help="Run MyGene annotation (needs network)")
-    parser.add_argument('--run_diagnostic_plots', action='store_true',
-                        help="Generate diagnostic plots (elbow curves, usage heatmaps, loading violins)")
-    parser.add_argument('--skip_existing', action='store_true',
-                        help="If set, skip NMF replicates already completed on disk (pause/resume mode). "
-                             "Default: re-run all replicates from scratch.")
+    parser.add_argument(
+        "--run_factorize", action="store_true", help="Run the factorization step"
+    )
+    parser.add_argument(
+        "--run_refit", action="store_true", help="Run combine + k_selection + consensus"
+    )
+    parser.add_argument(
+        "--run_compile_annotation",
+        action="store_true",
+        help="Run result compilation and gene annotation",
+    )
+    parser.add_argument(
+        "--run_gene_annotation",
+        action="store_true",
+        help="Run MyGene annotation (needs network)",
+    )
+    parser.add_argument(
+        "--run_diagnostic_plots",
+        action="store_true",
+        help="Generate diagnostic plots (elbow curves, usage heatmaps, loading violins)",
+    )
+    parser.add_argument(
+        "--skip_existing",
+        action="store_true",
+        help="If set, skip NMF replicates already completed on disk (pause/resume mode). "
+        "Default: re-run all replicates from scratch.",
+    )
 
     args = parser.parse_args()
 
@@ -184,35 +298,35 @@ def main():
         nmf_seeds = np.load(args.nmf_seeds_path)
 
     # --- Create output directory ---
-    run_dir = f'{args.output_directory}/{args.run_name}'
-    inference_dir = f'{run_dir}/Inference'
+    run_dir = f"{args.output_directory}/{args.run_name}"
+    inference_dir = f"{run_dir}/Inference"
     os.makedirs(inference_dir, exist_ok=True)
 
     # --- Save config (incl. SLURM info) ---
     slurm_info = {
-        'job_id': os.environ.get('SLURM_JOB_ID'),
-        'job_name': os.environ.get('SLURM_JOB_NAME'),
-        'partition': os.environ.get('SLURM_JOB_PARTITION'),
-        'node_list': os.environ.get('SLURM_JOB_NODELIST'),
-        'num_nodes': os.environ.get('SLURM_JOB_NUM_NODES'),
-        'ntasks': os.environ.get('SLURM_NTASKS'),
-        'cpus_per_task': os.environ.get('SLURM_CPUS_PER_TASK'),
-        'mem_per_node': os.environ.get('SLURM_MEM_PER_NODE'),
-        'mem_per_cpu': os.environ.get('SLURM_MEM_PER_CPU'),
-        'gres': os.environ.get('SLURM_JOB_GRES'),
-        'gpu_device_ids': os.environ.get('SLURM_GPUS_ON_NODE'),
-        'gpu_type': os.environ.get('SLURM_JOB_GPUS'),
-        'time_limit': os.environ.get('SLURM_JOB_TIMELIMIT'),
-        'time_remaining': os.environ.get('SLURM_TIMELIMIT'),
-        'submit_dir': os.environ.get('SLURM_SUBMIT_DIR'),
-        'submit_host': os.environ.get('SLURM_SUBMIT_HOST'),
-        'constraint': os.environ.get('SLURM_JOB_CONSTRAINT'),
-        'array_task_id': os.environ.get('SLURM_ARRAY_TASK_ID'),
+        "job_id": os.environ.get("SLURM_JOB_ID"),
+        "job_name": os.environ.get("SLURM_JOB_NAME"),
+        "partition": os.environ.get("SLURM_JOB_PARTITION"),
+        "node_list": os.environ.get("SLURM_JOB_NODELIST"),
+        "num_nodes": os.environ.get("SLURM_JOB_NUM_NODES"),
+        "ntasks": os.environ.get("SLURM_NTASKS"),
+        "cpus_per_task": os.environ.get("SLURM_CPUS_PER_TASK"),
+        "mem_per_node": os.environ.get("SLURM_MEM_PER_NODE"),
+        "mem_per_cpu": os.environ.get("SLURM_MEM_PER_CPU"),
+        "gres": os.environ.get("SLURM_JOB_GRES"),
+        "gpu_device_ids": os.environ.get("SLURM_GPUS_ON_NODE"),
+        "gpu_type": os.environ.get("SLURM_JOB_GPUS"),
+        "time_limit": os.environ.get("SLURM_JOB_TIMELIMIT"),
+        "time_remaining": os.environ.get("SLURM_TIMELIMIT"),
+        "submit_dir": os.environ.get("SLURM_SUBMIT_DIR"),
+        "submit_host": os.environ.get("SLURM_SUBMIT_HOST"),
+        "constraint": os.environ.get("SLURM_JOB_CONSTRAINT"),
+        "array_task_id": os.environ.get("SLURM_ARRAY_TASK_ID"),
     }
-    job_id = slurm_info['job_id'] or 'no_jobid'
+    job_id = slurm_info["job_id"] or "no_jobid"
 
-    config_to_save = {'script_args': vars(args), 'slurm_info': slurm_info}
-    with open(f'{inference_dir}/config_{job_id}.yml', 'w') as f:
+    config_to_save = {"script_args": vars(args), "slurm_info": slurm_info}
+    with open(f"{inference_dir}/config_{job_id}.yml", "w") as f:
         yaml.dump(config_to_save, f, default_flow_style=False, width=1000)
 
     # --- Optionally filter non-coding genes ---
@@ -249,17 +363,23 @@ def main():
     # ======================================================================
     # Initialise cNMF (torch_cnmf)
     # ======================================================================
-    cnmf_obj = cNMF(output_dir=run_dir, name='Inference')
+    cnmf_obj = cNMF(output_dir=run_dir, name="Inference")
 
-    # reuse normalized h5ad 
+    # reuse normalized h5ad
     if args.tpm_fn is None:
-        default_tpm = cnmf_obj.paths['tpm']
-        if os.path.exists(default_tpm) and os.path.exists(cnmf_obj.paths['tpm_stats']):
+        default_tpm = cnmf_obj.paths["tpm"]
+        if os.path.exists(default_tpm) and os.path.exists(cnmf_obj.paths["tpm_stats"]):
             args.tpm_fn = default_tpm
     elif not os.path.exists(args.tpm_fn):
-        print(f"WARNING: --tpm_fn {args.tpm_fn} does not exist; computing TPM from --counts_fn")
+        print(
+            f"WARNING: --tpm_fn {args.tpm_fn} does not exist; computing TPM from --counts_fn"
+        )
         args.tpm_fn = None
-    print(f"TPM: reusing {args.tpm_fn}" if args.tpm_fn else "TPM: computing from --counts_fn")
+    print(
+        f"TPM: reusing {args.tpm_fn}"
+        if args.tpm_fn
+        else "TPM: computing from --counts_fn"
+    )
 
     # --- Prepare ---
     cnmf_obj.prepare(
@@ -307,9 +427,9 @@ def main():
     if args.run_refit:
         cnmf_obj.combine()
         cnmf_obj.k_selection_plot()
-        run_cnmf_consensus(cnmf_obj,
-                           components=args.K,
-                           density_thresholds=args.sel_threshs)
+        run_cnmf_consensus(
+            cnmf_obj, components=args.K, density_thresholds=args.sel_threshs
+        )
         # One PNG per k: density_filtering_plot() refuses to autodetect k when more
         # than one is cached, so loop explicitly. Purely diagnostic -- never let a
         # plotting failure abort compilation/annotation downstream.
@@ -321,34 +441,45 @@ def main():
 
     # --- Compile results ---
     if args.run_compile_annotation:
-        compile_results(run_dir, 'Inference',
-                        components=args.K, sel_threshs=args.sel_threshs,
-                        guide_names_key=args.guide_names_key,
-                        guide_targets_key=args.guide_targets_key,
-                        categorical_key=args.categorical_key,
-                        guide_assignment_key=args.guide_assignment_key,
-                        gene_names_key=args.gene_names_key)
-    #---annotate ----
+        compile_results(
+            run_dir,
+            "Inference",
+            components=args.K,
+            sel_threshs=args.sel_threshs,
+            guide_names_key=args.guide_names_key,
+            guide_targets_key=args.guide_targets_key,
+            categorical_key=args.categorical_key,
+            guide_assignment_key=args.guide_assignment_key,
+            gene_names_key=args.gene_names_key,
+        )
+    # ---annotate ----
     if args.run_gene_annotation:
         print("Annotating top genes per program via MyGene...")
-        os.makedirs(f'{inference_dir}/Annotation', exist_ok=True)
+        os.makedirs(f"{inference_dir}/Annotation", exist_ok=True)
         for i in args.sel_threshs:
             for k in args.K:
-                df = pd.read_csv('{inference_dir}/Inference.gene_spectra_score.k_{k}.dt_{sel_thresh}.txt'.format(
-                                    inference_dir=inference_dir,
-                                    k=k,
-                                    sel_thresh=str(i).replace('.', '_')),
-                                    sep='\t', index_col=0)
+                df = pd.read_csv(
+                    "{inference_dir}/Inference.gene_spectra_score.k_{k}.dt_{sel_thresh}.txt".format(
+                        inference_dir=inference_dir,
+                        k=k,
+                        sel_thresh=str(i).replace(".", "_"),
+                    ),
+                    sep="\t",
+                    index_col=0,
+                )
                 overlap = get_top_indices_fast(df, gene_num=args.num_gene)
-                annotate_genes_to_excel(overlap, species=args.species,
-                                        output_file=f"{inference_dir}/Annotation/{k}_{str(i).replace('.','_')}.xlsx")
+                annotate_genes_to_excel(
+                    overlap,
+                    species=args.species,
+                    output_file=f"{inference_dir}/Annotation/{k}_{str(i).replace('.', '_')}.xlsx",
+                )
 
     # --- Diagnostic plots ---
     if args.run_diagnostic_plots:
         print("Generating diagnostic plots...")
         generate_all_plots(
             run_dir=run_dir,
-            run_name='Inference',
+            run_name="Inference",
             K_list=args.K,
             sel_thresh_list=args.sel_threshs,
             categorical_key=args.categorical_key,
@@ -361,7 +492,7 @@ def main():
         rename_all_NMF(
             source_folder=f"{args.output_directory}/{args.run_name}/{args.run_name}",
             destination_folder=f"{args.output_directory}/{args.run_name}/{args.run_name}_all/Inference/cnmf_tmp",
-            file_name_input='Inference',
+            file_name_input="Inference",
             file_name_output="Inference_all",
             len=args.numiter,
             components=args.K,
@@ -371,5 +502,5 @@ def main():
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

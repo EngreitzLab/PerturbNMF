@@ -40,14 +40,19 @@ from .resample import _bernoulli_rounds, _permutation_rounds, _strata_layout
 from .skew_normal import skew_normal_pvals
 
 
-
 @nb.njit(cache=True)
 def _null_betas(Covariates, Usage_norm, CtC_inv, CtU_norm, indptr, indices):
     """One beta row per resampling round; round b's treated cells are indices[indptr[b]:indptr[b+1]]."""
     n_rounds = indptr.shape[0] - 1
     out = np.empty((n_rounds, Usage_norm.shape[1]))
     for b in range(n_rounds):
-        out[b] = OLS_solver(Covariates, Usage_norm, CtC_inv, CtU_norm, indices[indptr[b]:indptr[b + 1]])
+        out[b] = OLS_solver(
+            Covariates,
+            Usage_norm,
+            CtC_inv,
+            CtU_norm,
+            indices[indptr[b] : indptr[b + 1]],
+        )
     return out
 
 
@@ -82,24 +87,35 @@ def _analysis_obs_idx(gene: str, CRT_obj: CRT_obj, treated_obs_idx: np.ndarray):
         treated_obs_idx: treated cells in the analysis (fewer than given only
             for control_group="matched" with a caliper).
     """
-    control_group = getattr(CRT_obj, "control_group", "all")   # getattr: CRT_obj pickled before this field existed
+    control_group = getattr(
+        CRT_obj, "control_group", "all"
+    )  # getattr: CRT_obj pickled before this field existed
     if control_group == "matched":
         if treated_obs_idx.size == 0:
             return None, treated_obs_idx
         matched = select_matched_cells(
-            gene, CRT_obj, ratio=CRT_obj.matching_ratio, caliper=CRT_obj.matching_caliper,
+            gene,
+            CRT_obj,
+            ratio=CRT_obj.matching_ratio,
+            caliper=CRT_obj.matching_caliper,
             distance=CRT_obj.matching_distance,
         )
         return matched.matched_obs_idx, matched.treated_obs_idx
     if control_group == "ntc_cells" or CRT_obj.moi == "low":
-        return np.union1d(treated_obs_idx, CRT_obj.control_obs_idx).astype(np.int32), treated_obs_idx
+        return np.union1d(treated_obs_idx, CRT_obj.control_obs_idx).astype(
+            np.int32
+        ), treated_obs_idx
     return None, treated_obs_idx
 
 
 def _treated_obs_idx(CRT_obj: CRT_obj, gene: str) -> np.ndarray:
     """Cells carrying any of the gene's guides (union), int32 sorted."""
-    G = CRT_obj.Guide_assignment                # CSC with explicit zeros removed (to_csc_matrix), so the
-    guide_cols = CRT_obj.guide_targets[gene]    # stored entries of column j are exactly the cells that carry guide j
+    G = (
+        CRT_obj.Guide_assignment
+    )  # CSC with explicit zeros removed (to_csc_matrix), so the
+    guide_cols = CRT_obj.guide_targets[
+        gene
+    ]  # stored entries of column j are exactly the cells that carry guide j
     chunks = [G.indices[G.indptr[j] : G.indptr[j + 1]] for j in guide_cols]
     return np.unique(np.concatenate(chunks)).astype(np.int32)
 
@@ -144,7 +160,9 @@ def conditional_randomized_test_per_gene(
     if analysis_idx is not None:
         Covariates = np.ascontiguousarray(CRT_obj.Covariates[analysis_idx])
         Usage_norm = np.ascontiguousarray(CRT_obj.Usage_norm[analysis_idx])
-        CtC_inv = np.linalg.pinv(Covariates.T @ Covariates)   # pinv: a stratum may be absent from the subset
+        CtC_inv = np.linalg.pinv(
+            Covariates.T @ Covariates
+        )  # pinv: a stratum may be absent from the subset
         CtU_norm = Covariates.T @ Usage_norm
         treated_pos = np.searchsorted(analysis_idx, treated_obs_idx).astype(np.int32)
     else:
@@ -164,7 +182,9 @@ def conditional_randomized_test_per_gene(
             betas=np.zeros(n_programs),
         )
 
-    treated_mask = np.zeros(n_analysis, dtype=np.int8)     # 0/1 treated indicator on the analysed cells
+    treated_mask = np.zeros(
+        n_analysis, dtype=np.int8
+    )  # 0/1 treated indicator on the analysed cells
     treated_mask[treated_pos] = 1
     control_means = Usage_norm[treated_mask == 0].mean(axis=0)
 
@@ -172,22 +192,37 @@ def conditional_randomized_test_per_gene(
     beta_obs = OLS_solver(Covariates, Usage_norm, CtC_inv, CtU_norm, treated_pos)
 
     # null treated-set sampler for this gene
-    seed = (zlib.crc32(gene.encode()) ^ CRT_obj.seed) & 0xFFFFFFFF   # per-gene seed, stable across runs (unlike hash())
+    seed = (
+        zlib.crc32(gene.encode()) ^ CRT_obj.seed
+    ) & 0xFFFFFFFF  # per-gene seed, stable across runs (unlike hash())
     propensity_n_iter, propensity_sum_ratio = np.nan, np.nan
     if CRT_obj.moi == "low":
         strata = CRT_obj.covariate_strata[analysis_idx]
-        stratum_cells, stratum_ptr, stratum_n_treated = _strata_layout(strata, treated_mask)
+        stratum_cells, stratum_ptr, stratum_n_treated = _strata_layout(
+            strata, treated_mask
+        )
+
         def draw(n_rounds, stage_seed):
-            return _permutation_rounds(stratum_cells, stratum_ptr, stratum_n_treated, n_rounds, stage_seed)
+            return _permutation_rounds(
+                stratum_cells, stratum_ptr, stratum_n_treated, n_rounds, stage_seed
+            )
     else:
-        p, model = propensity_model(Covariates, treated_mask, has_intercept=CRT_obj.has_intercept,
-                                    penalty=CRT_obj.propensity_penalty, C=CRT_obj.propensity_C,
-                                    # getattr: CRT_obj pickled before these fields existed
-                                    tol=getattr(CRT_obj, "propensity_tol", None),
-                                    max_iter=getattr(CRT_obj, "propensity_max_iter", None))
+        p, model = propensity_model(
+            Covariates,
+            treated_mask,
+            has_intercept=CRT_obj.has_intercept,
+            penalty=CRT_obj.propensity_penalty,
+            C=CRT_obj.propensity_C,
+            # getattr: CRT_obj pickled before these fields existed
+            tol=getattr(CRT_obj, "propensity_tol", None),
+            max_iter=getattr(CRT_obj, "propensity_max_iter", None),
+        )
         # convergence record: n_iter == max_iter means lbfgs hit its cap; sum(p) / n_treated is 1 at the MLE
-        propensity_n_iter = 0.0 if model is None else float(np.max(model.n_iter_))   # float: NaN when no fit
+        propensity_n_iter = (
+            0.0 if model is None else float(np.max(model.n_iter_))
+        )  # float: NaN when no fit
         propensity_sum_ratio = float(p.sum()) / n_treated
+
         def draw(n_rounds, stage_seed):
             return _bernoulli_rounds(p, n_rounds, stage_seed)
 
@@ -195,12 +230,19 @@ def conditional_randomized_test_per_gene(
     indptr, indices = draw(CRT_obj.resampled_rounds, seed)
     beta_null = _null_betas(Covariates, Usage_norm, CtC_inv, CtU_norm, indptr, indices)
     pvalue_empirical = _empirical_pvals(beta_obs, beta_null)
-    flagged = np.flatnonzero(pvalue_empirical < CRT_obj.extra_rounds_p_threshold)    # programs that look significant
+    flagged = np.flatnonzero(
+        pvalue_empirical < CRT_obj.extra_rounds_p_threshold
+    )  # programs that look significant
 
     # stage 2.A: more rounds only if some program looks significant
     if CRT_obj.extra_resampled_rounds > 0 and flagged.size:
         indptr, indices = draw(CRT_obj.extra_resampled_rounds, (seed + 1) & 0xFFFFFFFF)
-        beta_null = np.vstack([beta_null, _null_betas(Covariates, Usage_norm, CtC_inv, CtU_norm, indptr, indices)])
+        beta_null = np.vstack(
+            [
+                beta_null,
+                _null_betas(Covariates, Usage_norm, CtC_inv, CtU_norm, indptr, indices),
+            ]
+        )
         pvalue_empirical = _empirical_pvals(beta_obs, beta_null)
 
     # stage 2.B: skew-normal tail fit for the flagged programs (sceptre-style); rejected fits keep the empirical p
@@ -211,16 +253,35 @@ def conditional_randomized_test_per_gene(
         # stage 2.B1: if any flagged fit was rejected, draw more rounds before using its empirical p (sceptre B3)
         rejected = flagged[~np.isfinite(pvalue_skewnorm[flagged])]
         if CRT_obj.stage3_resampled_rounds > 0 and rejected.size:
-            indptr, indices = draw(CRT_obj.stage3_resampled_rounds, (seed + 2) & 0xFFFFFFFF)
-            beta_null = np.vstack([beta_null, _null_betas(Covariates, Usage_norm, CtC_inv, CtU_norm, indptr, indices)])
+            indptr, indices = draw(
+                CRT_obj.stage3_resampled_rounds, (seed + 2) & 0xFFFFFFFF
+            )
+            beta_null = np.vstack(
+                [
+                    beta_null,
+                    _null_betas(
+                        Covariates, Usage_norm, CtC_inv, CtU_norm, indptr, indices
+                    ),
+                ]
+            )
             pvalue_empirical = _empirical_pvals(beta_obs, beta_null)
 
-        pvalue = np.where(np.isfinite(pvalue_skewnorm), pvalue_skewnorm, pvalue_empirical)
+        pvalue = np.where(
+            np.isfinite(pvalue_skewnorm), pvalue_skewnorm, pvalue_empirical
+        )
 
     if beta_resample_plot:
-        plot_beta_null(gene, beta_obs, beta_null, pvalue_empirical, plot_dir,
-                       program_names=CRT_obj.selected_program_names,
-                       pvalue_skewnorm=pvalue_skewnorm, skew_params=skew_params, flagged=flagged)
+        plot_beta_null(
+            gene,
+            beta_obs,
+            beta_null,
+            pvalue_empirical,
+            plot_dir,
+            program_names=CRT_obj.selected_program_names,
+            pvalue_skewnorm=pvalue_skewnorm,
+            skew_params=skew_params,
+            flagged=flagged,
+        )
 
     return CRT_gene_result(
         gene=gene,
@@ -269,10 +330,18 @@ def conditional_randomized_test(
     genes = list(CRT_obj.selected_gene_names)
     plot_kw = dict(beta_resample_plot=beta_resample_plot, plot_dir=plot_dir)
     if n_jobs == 1:
-        results = [conditional_randomized_test_per_gene(g, CRT_obj, propensity_model, **plot_kw) for g in genes]
+        results = [
+            conditional_randomized_test_per_gene(
+                g, CRT_obj, propensity_model, **plot_kw
+            )
+            for g in genes
+        ]
     else:
         results = Parallel(n_jobs=n_jobs, backend=backend)(
-            delayed(conditional_randomized_test_per_gene)(g, CRT_obj, propensity_model, **plot_kw) for g in genes
+            delayed(conditional_randomized_test_per_gene)(
+                g, CRT_obj, propensity_model, **plot_kw
+            )
+            for g in genes
         )
     for result in results:
         CRT_obj.gene_results[result.gene] = result

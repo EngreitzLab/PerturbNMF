@@ -86,14 +86,21 @@ def read_tss(gtf: Path) -> pd.DataFrame:
                 i = attrs.find(key)
                 if i != -1:
                     j = attrs.find('"', i + len(key))
-                    name = attrs[i + len(key):j]
+                    name = attrs[i + len(key) : j]
                     break
             if name is None:
                 continue
             start, end, strand = int(f[3]), int(f[4]), f[6]
-            rows.append({"gene": name, "chrom": f[0], "strand": strand,
-                         "tss": start if strand == "+" else end,
-                         "start": start, "end": end})
+            rows.append(
+                {
+                    "gene": name,
+                    "chrom": f[0],
+                    "strand": strand,
+                    "tss": start if strand == "+" else end,
+                    "start": start,
+                    "end": end,
+                }
+            )
     tss = pd.DataFrame(rows)
     if tss.empty:
         die(f"no gene features parsed from {gtf}")
@@ -129,27 +136,47 @@ def read_candidates(path: Path) -> list[str]:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--gtf", type=Path, required=True)
     ap.add_argument("--responses", type=Path, required=True)
     ap.add_argument("--candidates", type=Path, required=True)
-    ap.add_argument("--window", type=int, default=200_000,
-                    help="bp around the candidate TSS to call a neighbour (default 200 kb)")
-    ap.add_argument("--bidirectional-bp", type=int, default=1000,
-                    help="TSS separation on opposite strands that counts as a shared "
-                         "bidirectional promoter (default 1 kb)")
+    ap.add_argument(
+        "--window",
+        type=int,
+        default=200_000,
+        help="bp around the candidate TSS to call a neighbour (default 200 kb)",
+    )
+    ap.add_argument(
+        "--bidirectional-bp",
+        type=int,
+        default=1000,
+        help="TSS separation on opposite strands that counts as a shared "
+        "bidirectional promoter (default 1 kb)",
+    )
     ap.add_argument("--perturbed-col", default="perturbed_gene")
     ap.add_argument("--measured-col", default="measured_gene")
     ap.add_argument("--effect-col", default="log2FC")
     ap.add_argument("--padj-col", default=None)
-    ap.add_argument("--flag-effect", type=float, default=0.1,
-                    help="|effect| on a neighbour at or above which the candidate is flagged")
-    ap.add_argument("--min-neighbour-expression", type=float, default=None,
-                    help="neighbours below this expression are UNADJUDICABLE, not clean. The "
-                         "floor is applied AFTER the confounded test, never before it.")
-    ap.add_argument("--expression-col", default="neighbour_expression",
-                    help="column in --responses carrying the neighbour's expression level")
+    ap.add_argument(
+        "--flag-effect",
+        type=float,
+        default=0.1,
+        help="|effect| on a neighbour at or above which the candidate is flagged",
+    )
+    ap.add_argument(
+        "--min-neighbour-expression",
+        type=float,
+        default=None,
+        help="neighbours below this expression are UNADJUDICABLE, not clean. The "
+        "floor is applied AFTER the confounded test, never before it.",
+    )
+    ap.add_argument(
+        "--expression-col",
+        default="neighbour_expression",
+        help="column in --responses carrying the neighbour's expression level",
+    )
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
 
@@ -158,23 +185,32 @@ def main() -> None:
     resp = pd.read_csv(args.responses, sep=None, engine="python")
     for col in (args.perturbed_col, args.measured_col, args.effect_col):
         if col not in resp.columns:
-            die(f"{args.responses.name}: no column {col!r}. Present: {sorted(resp.columns)}")
+            die(
+                f"{args.responses.name}: no column {col!r}. Present: {sorted(resp.columns)}"
+            )
 
     candidates = read_candidates(args.candidates)
     print(f"  {len(candidates)} candidates, {len(resp)} response rows")
 
-    missing = [g for g in candidates
-               if not ({g} | set(g.split("-and-"))) & set(by_symbol.index)]
+    missing = [
+        g
+        for g in candidates
+        if not ({g} | set(g.split("-and-"))) & set(by_symbol.index)
+    ]
     if missing:
-        print(f"  WARNING: {len(missing)} candidates absent from the GTF "
-              f"(symbol drift or build mismatch?): {missing[:10]}")
+        print(
+            f"  WARNING: {len(missing)} candidates absent from the GTF "
+            f"(symbol drift or build mismatch?): {missing[:10]}"
+        )
 
     rows = []
     for gene in candidates:
         # A dual-gene `X-and-Y` construct has no GTF entry under its full label, so looking
         # it up whole silently skips it. Anchor on each half and keep the construct's name
         # in the output, so the pair stays auditable.
-        anchors = [a for a in ({gene} | set(gene.split("-and-"))) if a in by_symbol.index]
+        anchors = [
+            a for a in ({gene} | set(gene.split("-and-"))) if a in by_symbol.index
+        ]
         if not anchors:
             continue
         for anchor in anchors:
@@ -186,21 +222,34 @@ def main() -> None:
             # inflating its published confounded count by 20% and removing five candidates
             # for a reason that was not a reason.
             self_names = {gene, anchor, *gene.split("-and-")}
-            near = tss[(tss["chrom"] == me["chrom"])
-                       & (~tss["gene"].isin(self_names))
-                       & ((tss["tss"] - me["tss"]).abs() <= args.window)]
+            near = tss[
+                (tss["chrom"] == me["chrom"])
+                & (~tss["gene"].isin(self_names))
+                & ((tss["tss"] - me["tss"]).abs() <= args.window)
+            ]
             if near.empty:
-                rows.append({"gene": gene, "neighbour": None, "distance_bp": None,
-                             "bidirectional": False, "measured": False,
-                             "neighbour_effect_signed": None, "neighbour_effect_abs": None,
-                             "neighbour_direction": None, "neighbour_padj": None,
-                             "verdict": "no neighbour within window"})
+                rows.append(
+                    {
+                        "gene": gene,
+                        "neighbour": None,
+                        "distance_bp": None,
+                        "bidirectional": False,
+                        "measured": False,
+                        "neighbour_effect_signed": None,
+                        "neighbour_effect_abs": None,
+                        "neighbour_direction": None,
+                        "neighbour_padj": None,
+                        "verdict": "no neighbour within window",
+                    }
+                )
                 continue
 
             obs = resp[resp[args.perturbed_col] == gene]
             for _, nb in near.iterrows():
                 dist = int(nb["tss"] - me["tss"])
-                bidir = (abs(dist) <= args.bidirectional_bp) and (nb["strand"] != me["strand"])
+                bidir = (abs(dist) <= args.bidirectional_bp) and (
+                    nb["strand"] != me["strand"]
+                )
                 hit = obs[obs[args.measured_col] == nb["gene"]]
                 if hit.empty:
                     eff = signed = padj = None
@@ -221,10 +270,16 @@ def main() -> None:
                     signed = float(hit.loc[idx, args.effect_col])
                     eff = abs(signed)
                     direction = "down" if signed < 0 else "up"
-                    padj = (float(hit[args.padj_col].min())
-                            if args.padj_col and args.padj_col in hit.columns else None)
-                    verdict = (f"CONFOUNDED — neighbour moves {direction}"
-                               if eff >= args.flag_effect else "clean")
+                    padj = (
+                        float(hit[args.padj_col].min())
+                        if args.padj_col and args.padj_col in hit.columns
+                        else None
+                    )
+                    verdict = (
+                        f"CONFOUNDED — neighbour moves {direction}"
+                        if eff >= args.flag_effect
+                        else "clean"
+                    )
                     # A low-expression neighbour is UNADJUDICABLE, not clean -- and the order of
                     # these two tests matters. Put an expression floor ahead of the confounded
                     # test and a neighbour that moves hard but sits near the detection floor can
@@ -232,69 +287,127 @@ def main() -> None:
                     # rows exceeded |0.75| and every one was on a shortlisted candidate. So:
                     # confounded first, floor second, and the floor yields `unadjudicable`.
                     if verdict == "clean" and args.min_neighbour_expression is not None:
-                        expr = hit[args.expression_col].max() if args.expression_col in hit else None
-                        if expr is not None and float(expr) < args.min_neighbour_expression:
+                        expr = (
+                            hit[args.expression_col].max()
+                            if args.expression_col in hit
+                            else None
+                        )
+                        if (
+                            expr is not None
+                            and float(expr) < args.min_neighbour_expression
+                        ):
                             verdict = "unadjudicable - neighbour below expression floor"
-                rows.append({"gene": gene, "neighbour": nb["gene"], "distance_bp": dist,
-                             "bidirectional": bool(bidir), "measured": not hit.empty,
-                             "neighbour_effect_signed": signed, "neighbour_effect_abs": eff,
-                             "neighbour_direction": direction, "neighbour_padj": padj,
-                             "verdict": verdict})
+                rows.append(
+                    {
+                        "gene": gene,
+                        "neighbour": nb["gene"],
+                        "distance_bp": dist,
+                        "bidirectional": bool(bidir),
+                        "measured": not hit.empty,
+                        "neighbour_effect_signed": signed,
+                        "neighbour_effect_abs": eff,
+                        "neighbour_direction": direction,
+                        "neighbour_padj": padj,
+                        "verdict": verdict,
+                    }
+                )
 
     out = pd.DataFrame(rows)
     # A neighbour in range of both halves of a dual-gene target appears once per anchor.
     # Keep the strongest observation per (candidate, neighbour) so counts are per pair.
     if not out.empty and out.duplicated(["gene", "neighbour"]).any():
-        out = (out.sort_values("neighbour_effect_abs", ascending=False, na_position="last")
-                  .drop_duplicates(["gene", "neighbour"], keep="first")
-                  .sort_values(["gene", "distance_bp"]).reset_index(drop=True))
+        out = (
+            out.sort_values("neighbour_effect_abs", ascending=False, na_position="last")
+            .drop_duplicates(["gene", "neighbour"], keep="first")
+            .sort_values(["gene", "distance_bp"])
+            .reset_index(drop=True)
+        )
     if out.empty:
-        die("no candidate resolved to a GTF entry -- check the symbol vocabulary of "
-            "--candidates against the GTF (aliases, read-through and dual-gene names).")
+        die(
+            "no candidate resolved to a GTF entry -- check the symbol vocabulary of "
+            "--candidates against the GTF (aliases, read-through and dual-gene names)."
+        )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out, index=False)
 
     # Per-candidate adjudicability. A candidate whose neighbours are ALL unadjudicable has not
     # passed the check -- it was never tested. Reporting that as a pass is absence of evidence
     # dressed as evidence of absence, and on a real run 24 of 71 candidates passed that way.
-    adjud = (~out["verdict"].str.startswith("unadjudicable", na=False)) & out["neighbour"].notna()
-    per_cand = out.assign(adjudicable=adjud).groupby("gene").agg(
-        n_neighbours=("neighbour", "count"),
-        n_adjudicable=("adjudicable", "sum"),
-        n_confounded=("verdict", lambda v: int(v.str.startswith("CONFOUNDED", na=False).sum())))
+    adjud = (~out["verdict"].str.startswith("unadjudicable", na=False)) & out[
+        "neighbour"
+    ].notna()
+    per_cand = (
+        out.assign(adjudicable=adjud)
+        .groupby("gene")
+        .agg(
+            n_neighbours=("neighbour", "count"),
+            n_adjudicable=("adjudicable", "sum"),
+            n_confounded=(
+                "verdict",
+                lambda v: int(v.str.startswith("CONFOUNDED", na=False).sum()),
+            ),
+        )
+    )
     per_cand["cis_verdict"] = np.where(
-        per_cand["n_confounded"] > 0, "confounded",
-        np.where(per_cand["n_adjudicable"] > 0, "clean", "UNADJUDICABLE - never tested"))
+        per_cand["n_confounded"] > 0,
+        "confounded",
+        np.where(
+            per_cand["n_adjudicable"] > 0, "clean", "UNADJUDICABLE - never tested"
+        ),
+    )
     per_cand.to_csv(args.out.with_name(args.out.stem + "_by_candidate.csv"))
 
-    flagged = sorted(out.loc[out["verdict"].str.startswith("CONFOUNDED", na=False), "gene"].unique())
+    flagged = sorted(
+        out.loc[out["verdict"].str.startswith("CONFOUNDED", na=False), "gene"].unique()
+    )
     bidir = sorted(out.loc[out["bidirectional"], "gene"].unique())
-    unmeasured = sorted(out.loc[out["verdict"] == "neighbour not measured", "gene"].unique())
+    unmeasured = sorted(
+        out.loc[out["verdict"] == "neighbour not measured", "gene"].unique()
+    )
 
     print(f"\n-> {args.out}")
     print(f"  CONFOUNDED (a neighbour moves >= {args.flag_effect}): {len(flagged)}")
     for g in flagged:
         sub = out[(out.gene == g) & out.verdict.str.startswith("CONFOUNDED", na=False)]
         for _, r in sub.iterrows():
-            print(f"    {g}: {r.neighbour} at {int(r.distance_bp):+,} bp, "
-                  f"effect {r.neighbour_effect_signed:+.3f} ({r.neighbour_direction})"
-                  + ("  [bidirectional promoter]" if r.bidirectional else ""))
+            print(
+                f"    {g}: {r.neighbour} at {int(r.distance_bp):+,} bp, "
+                f"effect {r.neighbour_effect_signed:+.3f} ({r.neighbour_direction})"
+                + ("  [bidirectional promoter]" if r.bidirectional else "")
+            )
     print(f"  shares a bidirectional promoter: {len(bidir)} {bidir[:10]}")
-    never = per_cand.index[per_cand["cis_verdict"].str.startswith("UNADJUDICABLE")].tolist()
-    print(f"  clean (at least one adjudicable neighbour, none moving): "
-          f"{int((per_cand['cis_verdict'] == 'clean').sum())}")
-    print(f"  **UNADJUDICABLE — every neighbour untestable, so NOT a pass: {len(never)}** "
-          f"{never[:8]}")
-    print(f"  -> per-candidate verdicts: {args.out.with_name(args.out.stem + '_by_candidate.csv').name}")
-    print("  A candidate in the UNADJUDICABLE set must not carry a locus-level claim, and its "
-          "hypothesis card must say the cis check was uninformative -- not that it was clean.")
-    up = out[out["neighbour_direction"].eq("up") & out["verdict"].str.startswith("CONFOUNDED", na=False)]
+    never = per_cand.index[
+        per_cand["cis_verdict"].str.startswith("UNADJUDICABLE")
+    ].tolist()
+    print(
+        f"  clean (at least one adjudicable neighbour, none moving): "
+        f"{int((per_cand['cis_verdict'] == 'clean').sum())}"
+    )
+    print(
+        f"  **UNADJUDICABLE — every neighbour untestable, so NOT a pass: {len(never)}** "
+        f"{never[:8]}"
+    )
+    print(
+        f"  -> per-candidate verdicts: {args.out.with_name(args.out.stem + '_by_candidate.csv').name}"
+    )
+    print(
+        "  A candidate in the UNADJUDICABLE set must not carry a locus-level claim, and its "
+        "hypothesis card must say the cis check was uninformative -- not that it was clean."
+    )
+    up = out[
+        out["neighbour_direction"].eq("up")
+        & out["verdict"].str.startswith("CONFOUNDED", na=False)
+    ]
     if len(up):
-        print(f"  of those, {up['gene'].nunique()} have a neighbour moving UP -- not repression "
-              f"spread. Explain it as something else, or drop the locus claim; do not write it "
-              f"up as the guide silencing the neighbour.")
-    print("\nReport the clean results too. 'Its neighbours move < 0.09' is evidence a reader "
-          "needs, not boilerplate.")
+        print(
+            f"  of those, {up['gene'].nunique()} have a neighbour moving UP -- not repression "
+            f"spread. Explain it as something else, or drop the locus claim; do not write it "
+            f"up as the guide silencing the neighbour."
+        )
+    print(
+        "\nReport the clean results too. 'Its neighbours move < 0.09' is evidence a reader "
+        "needs, not boilerplate."
+    )
 
 
 if __name__ == "__main__":
