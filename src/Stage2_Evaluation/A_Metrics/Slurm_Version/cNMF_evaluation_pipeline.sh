@@ -65,7 +65,7 @@ python3 "${PIPELINE_ROOT}/src/Stage2_Evaluation/A_Metrics/Slurm_Version/cNMF_eva
         --data_key 'rna' \
         --prog_key 'cNMF' \
         --categorical_key 'batch' \
-        --organism 'human' \
+        --species 'human' \
         --gene_names_key "symbol" \
         --guide_annotation_path "/path/to/guide_annotation.tsv" \
         --gwas_data_path "${PIPELINE_ROOT}/src/Stage2_Evaluation/Resources/OpenTargets_L2G_Filtered.csv.gz" \

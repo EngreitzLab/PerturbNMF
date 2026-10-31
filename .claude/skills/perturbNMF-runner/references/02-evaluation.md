@@ -8,7 +8,27 @@
 cat <out_dir>/<run_name>/Inference/config_*.yml
 ```
 
-Extract: `K`, `sel_thresh`, `categorical_key`, `gene_names_key`, `species` -> `organism`, `data_key`, `prog_key`.
+Extract: `K`, `sel_thresh`, `categorical_key`, `gene_names_key`, `species`, `data_key`, `prog_key`.
+
+## Step A2: Validate the evaluation input
+
+Once K, `sel_thresh` and the keys are known (and which metrics will run), check the inference
+h5mu files the evaluation will read. It only checks that keys exist, so it takes seconds even on
+large files:
+
+```bash
+eval "$(conda shell.bash hook)" && conda activate NMF_Benchmarking && python3 SKILL_DIR/scripts/validate_data.py \
+  --stage evaluation --out_dir <out_dir> --run_name <run_name> --K <K...> --sel_threshs <thresholds...> \
+  --data_key <data_key> --prog_key <prog_key> --categorical_key <categorical_key> \
+  [--gene_names_key <key>] [--Perform_categorical] [--Perform_perturbation]
+```
+
+Pass `--Perform_categorical` / `--Perform_perturbation` exactly when the evaluation will use them,
+plus any non-default `--guide_*_key`. It fails (exit 1) on a missing file or modality,
+`varm['loadings']`, the condition column, or, with `--Perform_perturbation`, the guide information
+in `mdata[prog_key]` (`uns` guide names/targets, `obsm` guide assignment). Without
+`--Perform_perturbation` it reports whether the data has guides. If it has none, leave
+`--Perform_perturbation` out (non-perturbed data). Resolve every issue before generating the script.
 
 ## Step B: Construct paths
 
@@ -39,7 +59,8 @@ Reconstruction error and stability are computed automatically.
 | `--FDR_method` | `StoreyQ` | FDR correction: `StoreyQ` or `BH` |
 | `--balanced` | off | Subsample each target's U-test reference to the target's cell count (all kept if fewer) |
 | `--balanced_seed` | `0` | Seed for the `--balanced` subsample |
-| `--organism` | `human` | Species for enrichment |
+| `--species` | `human` | Species for enrichment (`human` or `mouse`; mouse genes are mapped to human orthologs) |
+| `--ortholog_table` | None | Mouse-human ortholog TSV; default MGI + Ensembl, cached in `Resources/` |
 | `--n_top` | `300` | Top genes for enrichment tests |
 | `--guide_annotation_key` | `["non-targeting"]` | Non-targeting guide identifiers (accepts multiple values) |
 | `--use_cache` | flag | Load enrichr gene set libraries from cached JSON in `Resources/` instead of downloading; falls back to download + cache on miss |

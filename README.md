@@ -87,6 +87,29 @@ See [`src/Stage2_Evaluation/B_Calibration/README.md`](src/Stage2_Evaluation/B_Ca
 
 See [`src/Stage3_Interpretation/README.md`](src/Stage3_Interpretation/README.md) for detailed parameters and output format.
 
+## Non-perturbed and mouse data
+
+The pipeline also runs on scRNA-seq data without perturbations (no guide information in the
+input) and on mouse data. Per stage:
+
+| Stage | Non-perturbed data (no guides) | Mouse data |
+|---|---|---|
+| 1. Inference | Leave out the `--guide_*` options | `--species mouse` |
+| 2a. Metrics | Leave out `--Perform_perturbation` and `--guide_annotation_path` | `--species mouse`: genes are mapped to human orthologs for gene set and GO enrichment. Trait (GWAS) enrichment is human-only and is skipped with a message if requested |
+| 2b. Calibration | Not applicable (needs non-targeting guides); skip | No change |
+| 3a. K-selection plots | `--no_perturbation` | `--no_trait` |
+| 3a. Program plots | Leave out `--perturb_path_base` and use `--output_format PDF` or `SVG` (HTML requires `--perturb_path_base`); perturbed-gene annotations are left empty | No change |
+| 3a. Perturbed-gene plots | Not applicable; skip | No change |
+| 3b. Excel summary | The Targets Summary sheet is skipped automatically | `--species mouse`: genes are annotated with their human orthologs' summaries |
+| 3c. Annotation | No change | `--taxid 10090` (NCBI, UniProt, OmniPath search), `--species mouse` (MyGene search and program extraction) |
+
+Mouse genes are matched to human gene-set libraries and gene summaries through curated
+orthologs (union of MGI and Ensembl), not by upper-casing symbols. The table is downloaded
+on first use and cached in `src/Stage2_Evaluation/Resources/orthologs_mouse_human.tsv`;
+pass `--ortholog_table` to use a fixed copy. Mouse genes without a human ortholog are left
+out of enrichment, and a gene with several human orthologs contributes to all of them.
+Custom gene sets used with mouse data must therefore use human gene symbols.
+
 ## Claude Code Skills
 
 This repo ships four Claude Code skills under `.claude/skills/` for guided pipeline execution, validation, and maintenance. Open the linked `SKILL.md` for trigger phrases, detailed usage, and helper script references.

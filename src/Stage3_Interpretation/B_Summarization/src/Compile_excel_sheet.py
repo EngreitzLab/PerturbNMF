@@ -112,8 +112,19 @@ def add_specificity_scores_file(
 
 # -------------- helper methods for loading sheets--------------
 def compile_Program_loading_score_sheet_long(
-    mdata, num_gene=300, data_key="rna", gene_names_key=None
+    mdata,
+    num_gene=300,
+    data_key="rna",
+    gene_names_key=None,
+    species="human",
+    ortholog_table=None,
 ):
+    """Top genes per program with MyGene summaries (long form).
+
+    For species='mouse', each gene is annotated with the summaries of its human
+    orthologs (MGI + Ensembl table, see Stage2 orthologs.py), listed in a 'Human
+    ortholog' column; ortholog_table is an optional path to a pre-built table.
+    """
 
     print("Load program loadings data in long form")
 
@@ -124,7 +135,9 @@ def compile_Program_loading_score_sheet_long(
     )
 
     # Rename columns to curated gene names
-    if gene_names_key is not None:
+    # Fall back to var_names when the symbol column is absent (e.g. var_names are
+    # already symbols), as compute_kd_efficiency does.
+    if gene_names_key is not None and gene_names_key in mdata[data_key].var.columns:
         rename_map = dict(
             zip(mdata[data_key].var_names, mdata[data_key].var[gene_names_key])
         )
@@ -146,6 +159,17 @@ def compile_Program_loading_score_sheet_long(
     mg = MyGeneInfo()
     long_data = []
 
+    use_orthologs = species == "mouse"
+    if use_orthologs:
+        from Stage2_Evaluation.A_Metrics.src.orthologs import (
+            load_ortholog_table,
+            map_mouse_to_human,
+        )
+
+        # Map all top genes at once (building the lookup is the slow part).
+        all_genes = pd.unique(result_df.stack().dropna().astype(str).str.strip())
+        orthologs = map_mouse_to_human(all_genes, load_ortholog_table(ortholog_table))
+
     for program_idx, row in result_df.iterrows():
         # Query all genes for this program at once
         genes_list = row.dropna().astype(str).str.strip().tolist()
@@ -154,13 +178,23 @@ def compile_Program_loading_score_sheet_long(
         if not genes_list:
             continue
 
+        if use_orthologs:
+            query_genes = sorted({h for g in genes_list for h in orthologs.get(g, [])})
+            query_species = "human"
+        else:
+            query_genes, query_species = genes_list, species
+
         # Get results for all genes in this program
-        results = mg.querymany(
-            genes_list,
-            scopes="symbol",
-            fields="summary",
-            species="human",
-            verbose=False,
+        results = (
+            mg.querymany(
+                query_genes,
+                scopes="symbol",
+                fields="summary",
+                species=query_species,
+                verbose=False,
+            )
+            if query_genes
+            else []
         )
 
         # Create a lookup dictionary for faster access
@@ -175,16 +209,23 @@ def compile_Program_loading_score_sheet_long(
             # Skip NaN values
             if pd.notna(gene) and gene != "":
                 gene_clean = str(gene).strip()
-                annotation = summary_dict.get(gene_clean, "N/A")
-
-                long_data.append(
-                    {
-                        "Program": program_idx,
-                        "Rank": rank,
-                        "Gene": gene_clean,
-                        "Annotation": annotation,
-                    }
-                )
+                record = {
+                    "Program": program_idx,
+                    "Rank": rank,
+                    "Gene": gene_clean,
+                }
+                if use_orthologs:
+                    human = orthologs.get(gene_clean, [])
+                    summaries = [
+                        f"{h}: {summary_dict[h]}"
+                        for h in human
+                        if summary_dict.get(h, "N/A") != "N/A"
+                    ]
+                    record["Human ortholog"] = ";".join(human)
+                    record["Annotation"] = " | ".join(summaries) or "N/A"
+                else:
+                    record["Annotation"] = summary_dict.get(gene_clean, "N/A")
+                long_data.append(record)
 
     # Convert to DataFrame
     annotation_df = pd.DataFrame(long_data)
@@ -205,7 +246,9 @@ def compile_Program_loading_score_sheet_flat(
     )
 
     # Rename columns to curated gene names
-    if gene_names_key is not None:
+    # Fall back to var_names when the symbol column is absent (e.g. var_names are
+    # already symbols), as compute_kd_efficiency does.
+    if gene_names_key is not None and gene_names_key in mdata[data_key].var.columns:
         rename_map = dict(
             zip(mdata[data_key].var_names, mdata[data_key].var[gene_names_key])
         )

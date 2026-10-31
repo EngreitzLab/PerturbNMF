@@ -64,6 +64,8 @@ Generates a multi-panel figure to guide K selection. Reads pre-computed Stage 2 
 | `--variance_col` | str | `Total` | Column name for variance values. Use `Total` for summary files, or a per-program column name (will be summed) |
 | `--stability_file` | str | `None` | Path to a pre-computed stability/error file (TSV or NPZ). Bypasses `cnmf.consensus()` — useful for torch-cNMF runs where the cnmf package isn't installed |
 | `--run_program_dotplot` | flag | off | If set, also generate per-(K, sel_thresh) program dotplots. Requires the inference `cNMF_{K}_{thresh}.h5mu` to exist for each pair; off by default because the loop is slow |
+| `--no_trait` | flag | off | Do not require or read trait (GWAS) enrichment files and drop the trait plots. Use when evaluation ran without trait enrichment (e.g. mouse data) |
+| `--no_perturbation` | flag | off | Do not require or read perturbation association files and drop the regulator plots. Use for non-perturbed data (no guides); `--Conditions` is then not needed |
 
 ### Outputs
 

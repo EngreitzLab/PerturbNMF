@@ -22,7 +22,7 @@ This Python pipeline performs Mann-Whitney U-test on program scores to identify 
 | sel_threshs | list of float | [0.2, 2.0] | Density threshold values for consensus selection |
 | guide_annotation_path | str | None | Path to tab-separated file with guide annotations including "targeting" column (True/False) |
 | guide_annotation_key | str | ["non-targeting"] | Name of target label for non-targeting/safe-targeting guides |
-| organism | str | "human" | Organism/species for analysis |
+| species | str | "human" | Species of the data (`human` or `mouse`) |
 | FDR_method | str | "StoreyQ" | FDR correction method for perturbation tests |
 
 ### Data Access Keys

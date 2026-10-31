@@ -70,7 +70,7 @@ Ask which stage to run (or infer from context). Then **read the matching referen
 ## Steps 2-4: Stage-Specific Configuration
 
 Read the reference file listed above for the selected stage. It contains:
-- Data validation steps (inference only)
+- Data validation steps (inference and evaluation)
 - Parameter tables (required + optional)
 - Resource estimation guidelines (memory, CPUs, GPUs, time, partitions)
 

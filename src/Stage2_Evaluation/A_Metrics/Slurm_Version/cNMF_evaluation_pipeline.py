@@ -205,10 +205,20 @@ def main():
     )
 
     parser.add_argument(
-        "--organism",
-        help="Organism/species for enrichment analysis (default: human)",
-        type=str,
+        "--species",
+        help="Species for enrichment analysis: human or mouse (default: human)",
+        type=str.lower,
+        choices=["human", "mouse"],
         default="human",
+    )
+    parser.add_argument(
+        "--ortholog_table",
+        type=str,
+        default=None,
+        help="For --species mouse: TSV of mouse-human orthologs used to match genes "
+        "to the human gene-set libraries (columns: mouse_symbol, mouse_ensembl, "
+        "human_symbol, source). Default: MGI + Ensembl table, downloaded once and "
+        "cached in src/Stage2_Evaluation/Resources/",
     )
     parser.add_argument(
         "--FDR_method",
@@ -257,6 +267,15 @@ def main():
     run_motif_enrichment.add_motif_arguments(parser)
 
     args = parser.parse_args()
+
+    # The bundled GWAS resource (OpenTargets L2G) is human-only.
+    if args.Perform_trait and args.species != "human":
+        print(
+            f"--species {args.species}: skipping trait (GWAS) enrichment, which is "
+            "only available for human data. Pass --no_trait to K-selection plotting.",
+            flush=True,
+        )
+        args.Perform_trait = False
 
     if args.Perform_trait and args.gwas_data_path is None:
         parser.error("--gwas_data_path is required when --Perform_trait is set")
@@ -474,7 +493,8 @@ def main():
                         prog_key=args.prog_key,
                         data_key=args.data_key,
                         prog_name=None,
-                        organism=args.organism,
+                        organism=args.species,
+                        ortholog_table=args.ortholog_table,
                         library="Reactome_2022",
                         method="fisher",
                         database="enrichr",
@@ -494,7 +514,8 @@ def main():
                         prog_key=args.prog_key,
                         data_key=args.data_key,
                         prog_name=None,
-                        organism=args.organism,
+                        organism=args.species,
+                        ortholog_table=args.ortholog_table,
                         library="GO_Biological_Process_2023",
                         method="fisher",
                         database="enrichr",

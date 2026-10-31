@@ -155,7 +155,7 @@ def build_parser():
     p.add_argument(
         "--cell_type", default="", help="Cell type, e.g. 'aortic endothelial cell'."
     )
-    p.add_argument("--organism", default="human")
+    p.add_argument("--species", default="human")
     p.add_argument(
         "--n_genes",
         type=int,
@@ -329,7 +329,7 @@ def main():
             json.dumps(
                 {
                     "program_id": f"P{pid}",
-                    "organism": args.organism,
+                    "organism": args.species,
                     "cell_type": args.cell_type,
                     "conditions": conditions,
                     "program_specificity": cond_stats[pid],
@@ -392,7 +392,7 @@ def main():
                         "taxid",
                     )
                 },
-                "organism": args.organism,
+                "organism": args.species,
                 "cell_type": args.cell_type,
                 "conditions": conditions,
                 "programs": [f"P{p}" for p in available],

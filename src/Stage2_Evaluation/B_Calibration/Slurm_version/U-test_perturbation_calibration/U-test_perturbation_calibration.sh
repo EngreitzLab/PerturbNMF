@@ -64,7 +64,7 @@ python3 "${PIPELINE_ROOT}/src/Stage2_Evaluation/B_Calibration/Slurm_version/U-te
         --guide_names_key 'guide_names' \
         --guide_targets_key 'guide_targets' \
         --guide_assignment_key 'guide_assignment' \
-        --organism 'human' \
+        --species 'human' \
         --FDR_method "StoreyQ" \
         --number_run 10 \
         --number_guide 6 \
