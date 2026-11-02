@@ -26,6 +26,8 @@
 | max_NMF_iter | int | 500 | Maximum number of iterations per individual NMF run |
 | tol | float | 1e4 | Tolerance for NMF convergence |
 | sel_threshs | list of float | [0.2, 2.0] | Density threshold(s) for consensus selection |
+| densify | flag | False | Densify the sparse counts matrix before TPM normalization (default keeps it sparse) |
+| tpm_fn | str | None | Pre-computed TPM file. Default: reuse this run's own `cnmf_tmp/Inference.tpm.h5ad` if a previous run finished writing it (its `tpm_stats` file exists), else compute TPM from `counts_fn` |
 | nmf_seeds_path | str | None | Path to .npy file containing custom NMF seeds for reproducibility |
 
 ## Annotation and Compilation Parameters

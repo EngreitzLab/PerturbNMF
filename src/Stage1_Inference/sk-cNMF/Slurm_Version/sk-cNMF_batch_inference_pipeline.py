@@ -129,6 +129,18 @@ def main():
         default=[0.2, 2.0],
         help="Density threshold(s) for consensus matrix filtering",
     )
+    parser.add_argument(
+        "--densify",
+        action="store_true",
+        help="Densify the sparse counts matrix before TPM normalization (default: off, keep sparse)",
+    )
+    parser.add_argument(
+        "--tpm_fn",
+        type=str,
+        default=None,
+        help="Pre-computed TPM file path. Default: this run's own cnmf_tmp/Inference.tpm.h5ad if a previous run "
+        "finished writing it, else computed from --counts_fn",
+    )
 
     # annotation parameters
     parser.add_argument(
@@ -327,12 +339,28 @@ def main():
     # running cnmf
     cnmf_obj = cnmf.cNMF(output_dir=run_dir, name="Inference")
 
+    # reuse normalized h5ad: tpm_stats is written after tpm, so both existing means the previous write finished
+    if args.tpm_fn is None:
+        default_tpm = cnmf_obj.paths["tpm"]
+        if os.path.exists(default_tpm) and os.path.exists(cnmf_obj.paths["tpm_stats"]):
+            args.tpm_fn = default_tpm
+    elif not os.path.exists(args.tpm_fn):
+        print(
+            f"WARNING: --tpm_fn {args.tpm_fn} does not exist; computing TPM from --counts_fn"
+        )
+        args.tpm_fn = None
+    print(
+        f"TPM: reusing {args.tpm_fn}"
+        if args.tpm_fn
+        else f"TPM: computing from --counts_fn (densify={args.densify})"
+    )
+
     cnmf_obj.prepare(
         counts_fn=args.counts_fn,
         components=args.K,
         n_iter=args.numiter,
-        densify=False,
-        tpm_fn=None,
+        densify=args.densify,
+        tpm_fn=args.tpm_fn,
         seed=args.seed,
         beta_loss=args.loss,
         num_highvar_genes=args.numhvgenes,
