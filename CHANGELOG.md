@@ -29,6 +29,22 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
   repo from their own location instead of a hardcoded checkout path.
 - Annotation defaults are cell-type neutral; the PubMed keyword is optional, and
   Vertex AI project/bucket come from env vars (`VERTEX_PROJECT_ID`, `VERTEX_BUCKET`).
+- `run_add_umap.sh` takes its partition and optional email from `SLURM_PARTITION` /
+  `SLURM_MAIL_USER` (it exits early if no partition is set), and the
+  `perturbNMF-runner` skill asks for these and the log directory before running it.
+- The annotation viewer (`C_Annotation/2.Synthesis/program_viewer.py`) no longer draws the
+  interactive regulator–gene interaction graph (Cytoscape.js); the STRING links among the
+  significant regulators are kept as their own table card. Viewers are about 1 MB smaller.
+- `2.Synthesis/generate_hypotheses.py`: one Claude call reads every annotated program together (labels, findings,
+  regulator effects from `build_ledgers.py`) and writes the screen's top hypotheses (claim, programs, regulators,
+  cited findings, experiment, caveat) to `Synthesis/hypotheses.json`. Hypotheses naming a gene that was not a
+  perturbed regulator are dropped. The viewer shows them as a "Top hypotheses" page after the last program.
+- `build_ledgers.py` reads the numbered evidence from the agent's `evidence.json` (it previously stopped on runs
+  whose interpretation cites evidence ids kept there).
+- `prepare_programs.py` accepts a GO table without an Enrichr `Combined Score` (e.g. clusterProfiler
+  results reformatted to the Stage 2 columns); `go_sig.tsv` then leaves `combined_score` empty.
+- The viewer's regulator "Table view" is now a spreadsheet: one row per regulator with a
+  coloured log2FC and an adj p column per condition, # significant conditions, and role.
 - `setup_sterile_run.sh` (perturbseq-hypotheses skill): remote inputs use a `remote:`
   manifest prefix (was `sherlock:`), and `fetch_inputs.sh` reads the host from
   `STERILE_RUN_REMOTE` instead of a hardcoded login.
