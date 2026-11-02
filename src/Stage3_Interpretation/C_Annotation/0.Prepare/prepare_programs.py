@@ -98,7 +98,9 @@ def significant_go(go_df, pid, fdr):
                 "term": re.sub(r"\s*\([^)]*\)", "", str(r["Term"])).strip(),
                 "go_id": m.group(1) if m else "",
                 "adj_p": f"{r['Adjusted P-value']:.3g}",
-                "combined_score": f"{r['Combined Score']:.4g}",
+                "combined_score": ""
+                if r["Combined Score"] != r["Combined Score"]
+                else f"{r['Combined Score']:.4g}",
                 "overlap": f"{int(r['overlap_numerator'])}/{int(r['overlap_denominator'])}",
                 "genes": ",".join(g for g in str(r["Genes"]).split(";") if g),
             }

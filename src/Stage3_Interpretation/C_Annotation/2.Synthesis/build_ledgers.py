@@ -9,7 +9,8 @@ and writes <run_dir>/Synthesis/:
     findings.jsonl            one row per interpretation claim (the three slots) and module, with a stable id
                               ("P10:coregulation_mechanism", "P10:module:2"), its support genes / regulators / PMIDs
                               and, for interpretations made with numbered evidence, its evidence ids ("P10:E07")
-    evidence.jsonl            the numbered evidence lines of every program ("P10:E07" -> text), when present
+    evidence.jsonl            the numbered evidence lines of every program ("P10:E07" -> text; from interpretation.json
+                              or the agent's evidence.json), when present
     regulator_effects.tsv     regulator x program: condition, log2FC, adj p, activator / repressor, and the
                               finding ids that name the regulator as support
     regulator_reports.jsonl   one row per regulator over every program it significantly moves, with flags
@@ -152,6 +153,16 @@ def main():
         rows = program_findings(pid, current) if current else []
         findings += rows
         cited_ev = {e for f in rows for e in f["evidence_ids"]}
+        ledger = (current or {}).get("evidence")
+        if (
+            current and not ledger
+        ):  # the agent writes the numbered evidence to evidence.json beside the interpretation
+            ev_file = read(d / "evidence.json")
+            if ev_file and ev_file.get("label") == labels[pid]:
+                ledger = ev_file.get("evidence")
+                inputs[str((d / "evidence.json").relative_to(run_dir))] = sha256(
+                    d / "evidence.json"
+                )
         evidence += [
             {
                 "evidence_id": f"P{pid}:{eid}",
@@ -163,7 +174,7 @@ def main():
                     if f"P{pid}:{eid}" in f["evidence_ids"]
                 ),
             }
-            for eid, text in ((current or {}).get("evidence") or {}).items()
+            for eid, text in (ledger or {}).items()
         ]
         missing = cited_ev - {e["evidence_id"] for e in evidence}
         if missing:  # program_interpretation.clean drops such ids, so this is a corrupted or hand-edited record

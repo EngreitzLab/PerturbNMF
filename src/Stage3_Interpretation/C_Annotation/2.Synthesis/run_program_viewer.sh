@@ -12,8 +12,8 @@
 # self-contained HTML (no external files) with every labelled program of <RUN_DIR>/Programs: a searchable rail grouped
 # by the pre-annotation family label, and per program label + function sentence, program activity per condition,
 # top genes + unique genes, driving genes (when the optional driver_genes step ran), significant regulators (inline
-# SVG volcano per condition + log2FC table with --perturbation_path_base), regulator-gene interaction graph
-# (interactions.jsonl), TF motif enrichment (with --motif_enrichment_path), confounder rule-outs, layered
+# SVG volcano per condition + log2FC table with --perturbation_path_base), STRING links among the regulators,
+# TF motif enrichment (with --motif_enrichment_path), confounder rule-outs, layered
 # interpretation and modules, top GO terms.
 # Drop the --perturbation_path_base / --motif_* blocks for a viewer without them (standard library only).
 

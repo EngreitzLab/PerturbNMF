@@ -12,6 +12,9 @@
 # regulator reports, program neighborhoods; no model calls), then synthesize_regulators.py asks Claude, per
 # regulator cited in 2+ programs, whether its per-program mechanisms are consistent. The session backend (default)
 # writes requests to <RUN_DIR>/Session_LLM/regulator_synthesis: answer them in Claude Code and run this again.
+# generate_hypotheses.py then reads every program together and writes the screen's top hypotheses to
+# <RUN_DIR>/Synthesis/hypotheses.json (one call; the viewer shows them after the last program). It needs the
+# anthropic package (e.g. the geneqa env) and ANTHROPIC_API_KEY in C_Annotation/.env, or --llm_backend session.
 
 set -euo pipefail
 : "${PIPELINE_ROOT:?set PIPELINE_ROOT to the PerturbNMF repo root}"
@@ -35,3 +38,10 @@ python $SCRIPT_DIR/synthesize_regulators.py \
   --effort medium \
   --max_tokens 6000 \
   --llm_backend session
+python $SCRIPT_DIR/generate_hypotheses.py \
+  --run_dir $RUN_DIR \
+  --n_hypotheses 10 \
+  --model claude-sonnet-5 \
+  --effort high \
+  --max_tokens 32000 \
+  --llm_backend api

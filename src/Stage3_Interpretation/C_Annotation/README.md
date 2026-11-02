@@ -13,7 +13,8 @@ C_Annotation/
   agent/         skills, Claude format: <name>-skill/{SKILL.md, scripts/, references/}
   1.Annotate/    run_program_agent.py (one agent per program), sandbox.py (Bubblewrap sandbox per agent),
                  validate_program.py (the step checks)
-  2.Synthesis/   build_ledgers.py, synthesize_regulators.py, program_viewer.py (the viewer), publish_viewer.py,
+  2.Synthesis/   build_ledgers.py, synthesize_regulators.py, generate_hypotheses.py, program_viewer.py (the viewer),
+                 publish_viewer.py,
                  html_report.py, program_site.py (helpers the viewer imports)
   api/           Claude API / session backends, budget ledger, run records, prompt loader, .env reader
   prompts/       prompts of the pipeline's own LLM calls (regulator synthesis)
@@ -28,10 +29,10 @@ C_Annotation/
 | 2 | Confounder screens (no LLM) | `0.Prepare/build_confounder_screens.py` | `confounder_screens.json` |
 | 3 | Annotation agents | `1.Annotate/run_program_agent.py` | per program: gene info, interactions, literature, label, interpretation |
 | 4 | Status | `status.py` (with its recheck option) | `<run>/Annotation_status.tsv` |
-| 5 | Programs together | `2.Synthesis/build_ledgers.py`, `synthesize_regulators.py` | `<run>/Synthesis/` |
+| 5 | Programs together | `2.Synthesis/build_ledgers.py`, `synthesize_regulators.py`, `generate_hypotheses.py` (top hypotheses of the screen, one call; shown after the last program in the viewer) | `<run>/Synthesis/` (`hypotheses.json`) |
 | 6 | Viewer (default output) | `2.Synthesis/program_viewer.py`, then `publish_viewer.py` to put it on a site | `<run>/Report/program_viewer.html`; `<site>/<dataset>/viewer.html` + root index |
 | — | STRING refresh (existing runs) | `0.Prepare/refresh_string.py` | `string_sig.tsv`, `string_genes.json` (+ `regulator_context.md` / evidence where not yet interpreted) |
-| — | Hypotheses (optional) | `agent/perturbseq-hypotheses-skill` (Claude Code skill) | its own run folder |
+| — | Tested hypotheses (optional) | `agent/perturbseq-hypotheses-skill` (Claude Code skill; tests each candidate against the data, unlike `generate_hypotheses.py`) | its own run folder |
 
 `<run>` is the annotation run folder, e.g. `<out_dir>/<run_name>/Interpretation/Annotation`. SLURM runners sit next
 to the scripts; set `PIPELINE_ROOT` and the placeholders before submitting.

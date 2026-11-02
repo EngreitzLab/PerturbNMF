@@ -13,12 +13,12 @@ inline SVG volcano per condition and a regulator x condition log2FC table, with 
 then the top regulators given to the annotator); TF motif enrichment (with --motif_enrichment_path: per
 element type and motif source, the top significant motif families with logos and candidate TFs, selected
 by motif_selection.py); confounder rule-outs and layered interpretation when interpretation.json was made
-for the current label; regulator-gene interactions (an interactive Cytoscape.js graph, inlined, of the top
-regulators x top and unique genes; edges = every OmniPath interaction found between them, from interactions.jsonl,
-and the STRING links among the shown regulators, dotted and colored by type, with a table of the links among all
-significant regulators, from string_genes.json); the interpretation's modules; top GO terms (a bar plot of -log10 adjusted p per term
+for the current label; the STRING links among all significant regulators (a table typed experimental / curated /
+predicted, with the PPI enrichment, from the bundle's STRING regulator network); the interpretation's modules; top GO terms (a bar plot of -log10 adjusted p per term
 from the GO enrichment table, --GO_path or the run's Programs/meta.json). A regulator with negative log2FC on knockdown is an
 activator (knocking it down lowers the program); positive is a repressor.
+After the last program, the rail's "Top hypotheses" page shows <run_dir>/Synthesis/hypotheses.json
+(generate_hypotheses.py) when it exists; a hypothesis citing a program whose label changed since is hidden.
 With --home_url the top bar links back to every project (publish_viewer.py sets it).
 Programs without label.json are skipped. Without --perturbation_path_base / --motif_enrichment_path only
 the standard library is needed (pandas otherwise).
@@ -36,16 +36,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from html_report import (
-    CYTOSCAPE_PATH,
-    _js_safe,
-    gene_card,
-    gene_entries,
-    gene_name,
-    literature_edge,  # noqa: E402
-    omnipath_edge,
-    select_regulators,
-)
+from html_report import _js_safe, gene_card, gene_entries, gene_name, select_regulators  # noqa: E402
 from program_bundle import load_run  # noqa: E402
 from program_site import (
     CELL_TYPE_TEXT,
@@ -217,101 +208,21 @@ def regulator_plots(pid, tables, names, index, args):
     return volcano, rows
 
 
-def string_edge(e):
-    """One STRING link between two regulators (undirected, unsigned; sign = its interaction type)."""
-    return {
-        "id": f"e_st_{e['a']}_{e['b']}",
-        "source": f"n_{e['a']}",
-        "target": f"n_{e['b']}",
-        "kind": "string",
-        "sign": e["type"],
-        "tarrow": "none",
-        "sarrow": "none",
-        "lstyle": "dotted",
-        "width": round(1.2 + 3 * max(e["score"] - 0.7, 0) / 0.3, 2),
-        "regulator": e["a"],
-        "gene": e["b"],
-        "score": e["score"],
-        "channels": e.get("channels", []),
-        "channel_scores": e.get("channel_scores", {}),
-    }
-
-
-def interaction_network(bundle, regs, genes, uniq):
-    """Nodes = the shown top regulators, top genes and unique genes; edges = every found OmniPath pair and paper-qa
-    relation between a regulator and one of these genes (html_report's edge records), and the STRING links among the
-    shown regulators. regulator_links = the STRING links among all significant regulators (the card's table). None
-    without gene_interactions or a STRING regulator network."""
-    gi = bundle.get("gene_interactions") or {}
-    omnipath, literature = gi.get("OmniPath"), gi.get("Literature")
+def string_links(bundle):
+    """The STRING links among all significant regulators (the card's table) and their PPI enrichment, from the
+    bundle's STRING regulator network. None without one."""
     rn = ((bundle.get("program_enrichment") or {}).get("STRING") or {}).get(
         "regulator_network"
     )
-    if not omnipath and not literature and not rn:
+    if not rn:
         return None
-    reg_names = [r["gene"] for r in regs]
-    kind = {g: "gene" for g in genes}
-    for g in uniq:
-        kind.setdefault(g, "distinctive")
-    nodes = [
-        {
-            "id": f"n_{r['gene']}",
-            "label": r["gene"],
-            "kind": "regulator",
-            "log2fc": r["log2fc"],
-            "adj_p": "" if r.get("adj_pval") is None else f"{r['adj_pval']:.2g}",
-            "condition": r["condition"],
-            "in_program": r["gene"] in kind,
-        }
-        for r in regs
-    ]
-    for g, k in kind.items():
-        if (
-            g not in reg_names
-        ):  # a regulator that is also a shown gene is drawn once, as a regulator
-            nodes.append(
-                {
-                    "id": f"n_{g}",
-                    "label": g,
-                    "kind": k,
-                    "rank": (genes if k == "gene" else uniq).index(g) + 1,
-                }
-            )
-
-    included = [
-        p
-        for p in ((omnipath or {}).get("pairs") or {}).values()
-        if p["regulator"] in reg_names and p["gene"] in kind
-    ]
-    edges = [omnipath_edge(p) for p in included if p["found"]]
-    edges += [
-        literature_edge(p)
-        for p in ((literature or {}).get("pairs") or {}).values()
-        if p.get("source") == "paper-qa"
-        and p.get("category")
-        and p["regulator"] in reg_names
-        and p["gene"] in kind
-    ]
-    links = (rn or {}).get("edges") or []
-    edges += [
-        string_edge(e) for e in links if e["a"] in reg_names and e["b"] in reg_names
-    ]
     return {
-        "nodes": nodes,
-        "edges": edges,
-        "has_omnipath": omnipath is not None,
-        "has_literature": literature is not None,
-        "has_string": rn is not None,
-        "n_tested": len(included),
-        "n_found": sum(p["found"] for p in included),
-        "regulator_links": links,
+        "regulator_links": rn.get("edges") or [],
         "regulator_ppi": {
-            **((rn or {}).get("ppi_enrichment") or {}),
-            "background": (rn or {}).get("background"),
-            "n_mapped": (rn or {}).get("n_mapped"),
-        }
-        if rn
-        else None,
+            **(rn.get("ppi_enrichment") or {}),
+            "background": rn.get("background"),
+            "n_mapped": rn.get("n_mapped"),
+        },
     }
 
 
@@ -446,13 +357,40 @@ def program_data(
         "volcano": volcano,
         "grid": grid,
         "n_sig_by_condition": [sum(v["s"]) for v in volcano],
-        "network": interaction_network(bundle, regs, genes, uniq),
+        "string_links": string_links(bundle),
         "activity": (bundle.get("program_specificity") or {}).get("per_condition")
         or {},
         "motifs": program_motifs(pid, motif_tables),
         "interpretation": interpretation,
         "label_model": label.get("model", ""),
         "source": f"{Path(args.run_dir).resolve().name}/Programs/P{pid}",
+    }
+
+
+def load_hypotheses(path, labels):
+    """generate_hypotheses.py output for the viewer, or None without one; hypotheses citing a program that is not
+    shown or whose label changed since they were made are left out."""
+    path = Path(path)
+    if not path.exists():
+        return None
+    record = json.loads(path.read_text())
+    current = {f"P{pid}": label["program_name"] for pid, label in labels.items()}
+    made_for = record.get("labels") or {}
+    kept = [
+        h
+        for h in record["hypotheses"]
+        if all(current.get(p) and made_for.get(p) == current[p] for p in h["programs"])
+    ]
+    if len(kept) < len(record["hypotheses"]):
+        print(
+            f"  [warn] {len(record['hypotheses']) - len(kept)} hypothesis(es) cite a program not shown or relabelled "
+            f"since {path.name} was made; hidden (rerun generate_hypotheses.py)"
+        )
+    return {
+        "items": kept,
+        "model": record.get("model", ""),
+        "created": (record.get("created") or "")[:10],
+        "n_requested": record.get("n_requested"),
     }
 
 
@@ -575,6 +513,11 @@ def build_parser():
         help="Stage 2 motif logos (<K>_motif_logos.json); adds a sequence logo per motif.",
     )
     p.add_argument(
+        "--hypotheses_path",
+        default=None,
+        help="generate_hypotheses.py output shown as the last rail entry. Default: <run_dir>/Synthesis/hypotheses.json when it exists.",
+    )
+    p.add_argument(
         "--motif_source_label",
         default="",
         help="Free-text provenance of the motif results, shown under the motif card (e.g. motif database, promoter window, enhancer links).",
@@ -632,13 +575,12 @@ def main():
             motif_tables,
             go_table,
         )
-        net = programs[pid]["network"]
+        links = programs[pid]["string_links"]
         print(
             f"  P{pid}: {labels[pid]['program_name']}"
             + (
-                f" ({sum(e['kind'] != 'string' for e in net['edges'])} regulator-gene interactions, "
-                f"{len(net['regulator_links'])} regulator-regulator STRING links)"
-                if net
+                f" ({len(links['regulator_links'])} regulator-regulator STRING links)"
+                if links
                 else ""
             )
         )
@@ -668,18 +610,15 @@ def main():
             else {}
         ),
         "motif_source": args.motif_source_label,
+        "hypotheses": load_hypotheses(
+            args.hypotheses_path
+            or Path(args.run_dir) / "Synthesis" / "hypotheses.json",
+            labels,
+        ),
     }
     out = Path(args.out or Path(args.run_dir) / "Report" / "program_viewer.html")
     out.parent.mkdir(parents=True, exist_ok=True)
-    cyto = ""
-    if any(
-        p["network"] for p in programs.values()
-    ):  # inline Cytoscape.js only when a graph is drawn
-        lib = CYTOSCAPE_PATH.read_text()
-        if "</script" in lib.lower():
-            raise ValueError(f"{CYTOSCAPE_PATH} contains '</script'; cannot inline it")
-        cyto = f"<script>{lib}</script>"
-    # small placeholders first, then the data and library blobs (never re-scanned)
+    # small placeholders first, then the data blobs (never re-scanned)
     html = (
         TEMPLATE_PATH.read_text()
         .replace(
@@ -693,7 +632,6 @@ def main():
             "__PROGRAMS_JSON__", _js_safe(json.dumps(programs, separators=(",", ":")))
         )
     )
-    html = html.replace("__CYTOSCAPE_TAG__", cyto, 1)
     out.write_text(html)
     print(
         f"[done] {len(programs)} program(s) -> {out} ({out.stat().st_size / 1e6:.1f} MB)"
