@@ -8,7 +8,8 @@
 
 # Usage: export PIPELINE_ROOT=/path/to/PerturbNMF; sbatch run_synthesis.sh
 # Edit RESULT and the args below; every arg is listed, defaults included.
-# Reads the programs together: build_ledgers.py writes <RUN_DIR>/Synthesis/ (findings, evidence, regulator effects,
+# Reads the programs together: resolve_label_collisions.py first makes the labels distinguishable (one call per
+# group of colliding labels; it rewrites label.json and the label strings that must match it), build_ledgers.py writes <RUN_DIR>/Synthesis/ (findings, evidence, regulator effects,
 # regulator reports, program neighborhoods; no model calls), then synthesize_regulators.py asks Claude, per
 # regulator cited in 2+ programs, whether its per-program mechanisms are consistent. The session backend (default)
 # writes requests to <RUN_DIR>/Session_LLM/regulator_synthesis: answer them in Claude Code and run this again.
@@ -25,6 +26,14 @@ SCRIPT_DIR=$PIPELINE_ROOT/src/Stage3_Interpretation/C_Annotation/2.Synthesis
 RESULT=/path/to/out_dir/run_name
 RUN_DIR=$RESULT/Interpretation/Annotation
 
+python $SCRIPT_DIR/resolve_label_collisions.py \
+  --run_dir $RUN_DIR \
+  --min_jaccard 0.6 \
+  --n_genes 12 \
+  --model claude-sonnet-5 \
+  --effort medium \
+  --max_tokens 4000 \
+  --llm_backend session
 python $SCRIPT_DIR/build_ledgers.py \
   --run_dir $RUN_DIR \
   --top_gene 15 \

@@ -5,11 +5,19 @@ evidence when the step is ticked.
 
 ## label.json
 ```json
-{"program_name": "Mitochondrial OXPHOS and Cytoplasmic Translation",
- "function_sentence": "One sentence naming 2-4 anchor genes such as MT-CO1, TFAM and RPL7.",
- "anchor_genes": ["MT-CO1", "TFAM", "RPL7"],
+{"program_name": "Cell cycle - G2M",
+ "label_family": "Cell cycle",
+ "label_distinguisher": "G2M",
+ "distinguisher_evidence": "CCNB1, CDK1, TOP2A among the top 10; CENPF distinctive",
+ "function_sentence": "One sentence naming 2-4 anchor genes such as CCNB1, CDK1 and TOP2A.",
+ "anchor_genes": ["CCNB1", "CDK1", "TOP2A"],
  "basis": "Which files decided the label."}
 ```
+`program_name` is `<label_family> - <label_distinguisher>`, the bare family, or (with both empty) a comma list of
+2-3 processes; at most 6 words, not counting the ` - `. At least two `anchor_genes` are top-10 genes. The set-level
+pass (2.Synthesis/resolve_label_collisions.py) may rewrite `program_name` and `label_distinguisher`; it then keeps
+the agent's name as `program_name_before_disambiguation` and rewrites the label strings of interpretation.json,
+evidence.json and driver_genes.json to match.
 
 ## driver_genes.json (optional step; references/driver_genes.md)
 ```json
