@@ -18,8 +18,16 @@ from program_dir import STEP_IDS, read_json, read_jsonl, read_plan, read_tsv  # 
 
 LABEL_MAX_WORDS = 6  # the " - " between family and distinguisher is not counted
 LABEL_BANNED_WORDS = (
-    "program", "process", "regulation of", "signature", "module", "mixed", "heterogeneous",
-    "unclear", "miscellaneous", "grab bag",
+    "program",
+    "process",
+    "regulation of",
+    "signature",
+    "module",
+    "mixed",
+    "heterogeneous",
+    "unclear",
+    "miscellaneous",
+    "grab bag",
 )  # references/label.md
 
 TABLE_COLUMNS = {
@@ -186,7 +194,9 @@ def check_label(d):
     if banned:
         errors.append(f"program_name uses banned word(s): {', '.join(banned)}")
     if re.search(r"\([^)]*\)", name):
-        errors.append("program_name carries a parenthesized tag; name the process, not a gene")
+        errors.append(
+            "program_name carries a parenthesized tag; name the process, not a gene"
+        )
     if family and name != (f"{family} - {distinguisher}" if distinguisher else family):
         errors.append(
             "program_name must be '<label_family> - <label_distinguisher>' (or the bare family)"

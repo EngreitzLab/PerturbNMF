@@ -19,7 +19,8 @@ Detection always reads the agent's own names (program_name_before_disambiguation
 the same groups and reuses each cached answer while its input is unchanged. Answers and run records go to
 <run_dir>/Synthesis/Label_collisions/{group<NN>.json, _runs/}. Claude answers through a Claude Code session by
 default (--llm_backend session, two passes; no API cost); --llm_backend api needs ANTHROPIC_API_KEY.
---detect_only prints the groups and stops.
+--detect_only prints the groups and stops. While any group's answer is pending the step exits 2, so
+run_synthesis.sh (set -e) stops before the steps that read the labels.
 """
 
 import argparse
@@ -35,7 +36,11 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 HERE = Path(__file__).resolve().parent
-sys.path[:0] = [str(HERE.parent / "api"), str(HERE.parent / "0.Prepare"), str(HERE.parent / "1.Annotate")]
+sys.path[:0] = [
+    str(HERE.parent / "api"),
+    str(HERE.parent / "0.Prepare"),
+    str(HERE.parent / "1.Annotate"),
+]
 from budget import add_budget_args, attach, resolve_budget_dir  # noqa: E402
 from manifest import StepRun  # noqa: E402
 from program_dir import list_programs, read_json, read_tsv  # noqa: E402
@@ -139,8 +144,12 @@ def check_resolution(result, members):
         errors.append(f"answer covers {sorted(got)}, the group is {sorted(members)}")
     for p in result.programs:
         if len(p.label.replace(" - ", " ").split()) > LABEL_MAX_WORDS:
-            errors.append(f"{p.program_id}: label has more than {LABEL_MAX_WORDS} words")
-        banned = [w for w in LABEL_BANNED_WORDS if re.search(rf"\b{w}\b", p.label, re.I)]
+            errors.append(
+                f"{p.program_id}: label has more than {LABEL_MAX_WORDS} words"
+            )
+        banned = [
+            w for w in LABEL_BANNED_WORDS if re.search(rf"\b{w}\b", p.label, re.I)
+        ]
         if banned:
             errors.append(f"{p.program_id}: label uses {', '.join(banned)}")
         if re.search(r"\([^)]*\)", p.label):
@@ -160,13 +169,23 @@ def apply_label(program_dir, label, new_name, resolved):
     """Write new_name into label.json and the label strings of the files made for the old name."""
     old = label["program_name"]
     label.setdefault("program_name_before_disambiguation", old)
-    label.setdefault("before_disambiguation", {
-        k: label.get(k) for k in ("program_name", "label_family", "label_distinguisher", "distinguisher_evidence")
-    })
+    label.setdefault(
+        "before_disambiguation",
+        {
+            k: label.get(k)
+            for k in (
+                "program_name",
+                "label_family",
+                "label_distinguisher",
+                "distinguisher_evidence",
+            )
+        },
+    )
     label["program_name"] = new_name
     label["label_family"], label["label_distinguisher"] = split_label(new_name)
     label["distinguisher_evidence"] = (
-        resolved.evidence if resolved.evidence and not resolved.kept_verbatim
+        resolved.evidence
+        if resolved.evidence and not resolved.kept_verbatim
         else label["before_disambiguation"]["distinguisher_evidence"]
     )
     label["disambiguation"] = {
@@ -174,34 +193,75 @@ def apply_label(program_dir, label, new_name, resolved):
         "belongs_to_family": resolved.belongs_to_family,
         "used_bare_number": resolved.used_bare_number,
     }
-    (program_dir / "label.json").write_text(json.dumps(label, indent=2, ensure_ascii=False))
-    for name, key in (("interpretation.json", "label"), ("evidence.json", "label"), ("driver_genes.json", "annotation")):
+    (program_dir / "label.json").write_text(
+        json.dumps(label, indent=2, ensure_ascii=False)
+    )
+    for name, key in (
+        ("interpretation.json", "label"),
+        ("evidence.json", "label"),
+        ("driver_genes.json", "annotation"),
+    ):
         block = read_json(program_dir / name)
         if block is not None and block.get(key) == old and old != new_name:
             block[key] = new_name
-            (program_dir / name).write_text(json.dumps(block, indent=2, ensure_ascii=False))
+            (program_dir / name).write_text(
+                json.dumps(block, indent=2, ensure_ascii=False)
+            )
 
 
 def build_parser():
-    p = argparse.ArgumentParser(description="Make a run's program labels distinguishable from each other.")
-    p.add_argument("--run_dir", required=True, help="Folder holding Programs/P<k>/label.json.")
-    p.add_argument("--out_dir", default=None, help="Default: <run_dir>/Synthesis/Label_collisions.")
+    p = argparse.ArgumentParser(
+        description="Make a run's program labels distinguishable from each other."
+    )
     p.add_argument(
-        "--min_jaccard", type=float, default=0.6,
+        "--run_dir", required=True, help="Folder holding Programs/P<k>/label.json."
+    )
+    p.add_argument(
+        "--out_dir", default=None, help="Default: <run_dir>/Synthesis/Label_collisions."
+    )
+    p.add_argument(
+        "--min_jaccard",
+        type=float,
+        default=0.6,
         help="Two names collide at this word-token Jaccard (stop words dropped) or above.",
     )
-    p.add_argument("--n_genes", type=int, default=12, help="Top-loading and distinctive genes shown per program.")
-    p.add_argument("--detect_only", action="store_true", help="Print the colliding groups and stop.")
-    p.add_argument("--model", default="claude-sonnet-5", help="Anthropic model id.")
-    p.add_argument("--effort", default="medium", help="Effort level: low | medium | high | xhigh | max.")
-    p.add_argument("--max_tokens", type=int, default=4000, help="Answer token limit.")
-    p.add_argument("--overwrite", action="store_true", help="Redo groups whose cached answer had the same input.")
     p.add_argument(
-        "--llm_backend", default="session", choices=["api", "session"],
+        "--n_genes",
+        type=int,
+        default=12,
+        help="Top-loading and distinctive genes shown per program.",
+    )
+    p.add_argument(
+        "--detect_only",
+        action="store_true",
+        help="Print the colliding groups and stop.",
+    )
+    p.add_argument("--model", default="claude-sonnet-5", help="Anthropic model id.")
+    p.add_argument(
+        "--effort",
+        default="medium",
+        help="Effort level: low | medium | high | xhigh | max.",
+    )
+    p.add_argument("--max_tokens", type=int, default=4000, help="Answer token limit.")
+    p.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Redo groups whose cached answer had the same input.",
+    )
+    p.add_argument(
+        "--llm_backend",
+        default="session",
+        choices=["api", "session"],
         help="Default session (no API cost): write each prompt to --session_dir, answer it in Claude Code, run again.",
     )
-    p.add_argument("--session_dir", default=None, help="Default: <run_dir>/Session_LLM.")
-    p.add_argument("--session_model", default="claude-code-session", help="Model name recorded for session answers.")
+    p.add_argument(
+        "--session_dir", default=None, help="Default: <run_dir>/Session_LLM."
+    )
+    p.add_argument(
+        "--session_model",
+        default="claude-code-session",
+        help="Model name recorded for session answers.",
+    )
     add_budget_args(p, reserve_default=0.0)
     return p
 
@@ -218,9 +278,14 @@ def main():
         sys.exit(f"no Programs/P<k>/label.json under {run_dir}")
     groups = find_collisions(labels, args.min_jaccard)
     n_colliding = sum(len(g) for g in groups)
-    print(f"{len(labels)} labels, {len(groups)} colliding group(s) covering {n_colliding} programs")
+    print(
+        f"{len(labels)} labels, {len(groups)} colliding group(s) covering {n_colliding} programs"
+    )
     for i, members in enumerate(groups, 1):
-        print(f"  group{i:02d}: " + "; ".join(f"{p} {agent_name(labels[p])!r}" for p in members))
+        print(
+            f"  group{i:02d}: "
+            + "; ".join(f"{p} {agent_name(labels[p])!r}" for p in members)
+        )
     if args.detect_only or not groups:
         return 0
 
@@ -230,7 +295,11 @@ def main():
     if args.llm_backend == "session":
         from session_llm import session_llm
 
-        handler = session_llm(args.session_dir or run_dir / "Session_LLM", "label_collisions", args.session_model)
+        handler = session_llm(
+            args.session_dir or run_dir / "Session_LLM",
+            "label_collisions",
+            args.session_model,
+        )
     else:
         handler = make_handler(args.model)
     model = getattr(handler, "model_label", args.model)
@@ -238,14 +307,25 @@ def main():
     n_fail, n_rewritten, n_pending = 0, 0, 0
     for i, members in enumerate(groups, 1):
         key = f"group{i:02d}"
-        cell_type = (read_json(dirs[members[0]] / "program.json") or {}).get("cell_type", "")
+        cell_type = (read_json(dirs[members[0]] / "program.json") or {}).get(
+            "cell_type", ""
+        )
         text = (
             f"Cell type: {cell_type}\n{len(members)} colliding programs.\n\n"
-            + "\n".join(program_block(dirs[p], labels[p], args.n_genes) for p in members)
+            + "\n".join(
+                program_block(dirs[p], labels[p], args.n_genes) for p in members
+            )
         )
         input_sha = hashlib.sha256(text.encode()).hexdigest()
         out = out_dir / f"{key}.json"
-        run = StepRun(out_dir, key, "label_collisions", model, prompts, attach(handler, args, key, "label_collisions"))
+        run = StepRun(
+            out_dir,
+            key,
+            "label_collisions",
+            model,
+            prompts,
+            attach(handler, args, key, "label_collisions"),
+        )
         cached = json.loads(out.read_text()) if out.exists() else None
         if cached and not args.overwrite and cached.get("input_sha256") == input_sha:
             result = GroupResolution.model_validate(cached["answer"])
@@ -253,28 +333,48 @@ def main():
         else:
             handler.key = key
             result = handler.get_json(
-                SYSTEM.text, f"{text}\n\n---\n\n{TASK.text}", GroupResolution,
-                effort=args.effort, max_tokens=args.max_tokens,
+                SYSTEM.text,
+                f"{text}\n\n---\n\n{TASK.text}",
+                GroupResolution,
+                effort=args.effort,
+                max_tokens=args.max_tokens,
             )
             if result is None:
                 if getattr(handler, "last_status", None) == "pending":
                     run.finish("pending_session")
                     n_pending += 1
                     continue
-                run.finish("failed", errors=[getattr(handler, "last_error", None) or "no answer returned"])
+                run.finish(
+                    "failed",
+                    errors=[
+                        getattr(handler, "last_error", None) or "no answer returned"
+                    ],
+                )
                 print(f"  {key}: [fail] no answer returned")
                 n_fail += 1
                 continue
             errors = check_resolution(result, members)
             if errors:
-                run.finish("failed_validation", errors=errors, raw_answer=result.model_dump())
+                run.finish(
+                    "failed_validation", errors=errors, raw_answer=result.model_dump()
+                )
                 print(f"  {key}: [fail] " + "; ".join(errors))
                 n_fail += 1
                 continue
-            out.write_text(json.dumps({
-                "members": members, "answer": result.model_dump(), "input_sha256": input_sha,
-                "model": model, "prompts": prompts, "created": datetime.now().isoformat(timespec="seconds"),
-            }, indent=2, ensure_ascii=False))
+            out.write_text(
+                json.dumps(
+                    {
+                        "members": members,
+                        "answer": result.model_dump(),
+                        "input_sha256": input_sha,
+                        "model": model,
+                        "prompts": prompts,
+                        "created": datetime.now().isoformat(timespec="seconds"),
+                    },
+                    indent=2,
+                    ensure_ascii=False,
+                )
+            )
             run.finish("completed", {"family": result.family, "members": members})
         for resolved in result.programs:
             pid = resolved.program_id
@@ -286,15 +386,24 @@ def main():
 
     if n_pending:
         handler.report()
-        return 0
-    final = {pid: read_json(d / "label.json")["program_name"] for pid, d in dirs.items()}
+        print(
+            "[stop] labels are not final until every group is answered; the later synthesis steps would read old names"
+        )
+        return 2
+    final = {
+        pid: read_json(d / "label.json")["program_name"] for pid, d in dirs.items()
+    }
     still = [
-        (a, b) for i, a in enumerate(final) for b in list(final)[i + 1 :]
+        (a, b)
+        for i, a in enumerate(final)
+        for b in list(final)[i + 1 :]
         if final[a] == final[b] or jaccard(final[a], final[b]) >= args.min_jaccard
     ]
     for a, b in still:
         print(f"  [warn] still close: {a} {final[a]!r} / {b} {final[b]!r}")
-    print(f"[done] {len(groups) - n_fail}/{len(groups)} group(s) resolved, {n_rewritten} label(s) rewritten -> {out_dir}")
+    print(
+        f"[done] {len(groups) - n_fail}/{len(groups)} group(s) resolved, {n_rewritten} label(s) rewritten -> {out_dir}"
+    )
     if args.llm_backend == "session":
         handler.report()
     return 1 if n_fail else 0
