@@ -5,8 +5,9 @@
 Each program agent labels its program alone (1.Annotate, references/label.md), so nothing stops two agents from
 choosing near-duplicate names for sibling programs. This step reads every Programs/P<k>/label.json together:
 
-  detect  (no model call) groups programs whose labels collide: the same label_family (normalised), or a word-token
-          Jaccard >= --min_jaccard between their names. Groups are joined by union-find.
+  detect  (no model call) groups programs whose labels collide: the same or a near-variant label_family (one
+          family's words, plurals dropped, contain the other's: Cytoskeleton / Cytoskeleton organization), or a
+          word-token Jaccard >= --min_jaccard between their names. Groups are joined by union-find.
   resolve one call per group. The prompt holds only each member's label fields, function sentence, top-loading and
           distinctive genes; no regulators, interpretation or other programs. The answer standardises the shared
           family and rewrites only the colliding labels (prompts/label_collisions/).
@@ -84,6 +85,17 @@ def jaccard(a, b):
     return len(ta & tb) / len(ta | tb) if ta and tb else 0.0
 
 
+def family_words(family):
+    """Words of a family name with a plural 's' dropped, so 'Ribosomal proteins' and 'Ribosomal protein genes' meet."""
+    return {w[:-1] if len(w) > 3 and w.endswith("s") else w for w in tokens(family)}
+
+
+def same_family(a, b):
+    """True when one family's words contain the other's: 'Cytoskeleton' and 'Cytoskeleton organization'."""
+    wa, wb = family_words(a), family_words(b)
+    return bool(wa and wb) and (wa <= wb or wb <= wa)
+
+
 def agent_field(label, key):
     """The agent's own value of a label field, before this step rewrote it."""
     before = label.get("before_disambiguation") or {}
@@ -95,7 +107,8 @@ def agent_name(label):
 
 
 def find_collisions(labels, min_jaccard):
-    """[[pid, ...], ...]: programs joined by an equal normalised label_family or a near-duplicate agent name."""
+    """[[pid, ...], ...]: programs joined by the same or a near-variant label_family (same_family) or a near-duplicate
+    agent name."""
     parent = {pid: pid for pid in labels}
 
     def find(x):
@@ -104,18 +117,14 @@ def find_collisions(labels, min_jaccard):
             x = parent[x]
         return x
 
-    by_family = defaultdict(list)
-    for pid, label in labels.items():
-        family = normalize(agent_field(label, "label_family") or "")
-        if family:
-            by_family[family].append(pid)
-    for members in by_family.values():
-        for other in members[1:]:
-            parent[find(other)] = find(members[0])
     ids = list(labels)
+    families = {pid: agent_field(labels[pid], "label_family") or "" for pid in ids}
     for i, a in enumerate(ids):
         for b in ids[i + 1 :]:
-            if jaccard(agent_name(labels[a]), agent_name(labels[b])) >= min_jaccard:
+            if (
+                same_family(families[a], families[b])
+                or jaccard(agent_name(labels[a]), agent_name(labels[b])) >= min_jaccard
+            ):
                 parent[find(b)] = find(a)
     groups = defaultdict(list)
     for pid in ids:
@@ -167,6 +176,13 @@ def split_label(name):
         family, distinguisher = name.split(" - ", 1)
         return family.strip(), distinguisher.strip()
     return ("", "") if "," in name else (name.strip(), "")
+
+
+def same_distinguisher(a, b):
+    """True when two names share a distinguisher across families: 'Angiogenesis - Basement membrane' and
+    'Extracellular matrix - Basement membrane' (groups are resolved apart, so no answer sees both)."""
+    da, db = split_label(a)[1], split_label(b)[1]
+    return bool(da) and normalize(da) == normalize(db)
 
 
 def apply_label(program_dir, label, new_name, resolved):
@@ -402,7 +418,9 @@ def main():
         (a, b)
         for i, a in enumerate(final)
         for b in list(final)[i + 1 :]
-        if final[a] == final[b] or jaccard(final[a], final[b]) >= args.min_jaccard
+        if final[a] == final[b]
+        or jaccard(final[a], final[b]) >= args.min_jaccard
+        or same_distinguisher(final[a], final[b])
     ]
     for a, b in still:
         print(f"  [warn] still close: {a} {final[a]!r} / {b} {final[b]!r}")

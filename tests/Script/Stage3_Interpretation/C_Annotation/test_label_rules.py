@@ -150,6 +150,55 @@ def test_find_collisions_groups_by_family_and_near_name():
     assert groups == [["P1", "P2"], ["P3", "P4"]]
 
 
+@pytest.mark.parametrize(
+    "a, b, expected",
+    [
+        ("Cytoskeleton", "Cytoskeleton organization", True),
+        ("Actin cytoskeleton", "Cytoskeleton", True),
+        ("Ribosomal proteins", "Ribosomal protein genes", True),
+        ("Extracellular matrix", "extracellular matrix", True),
+        ("Interferon response", "Unfolded protein response", False),
+        ("Polycomb target genes", "X-linked genes", False),
+        ("Cell cycle", "Cell migration", False),
+        ("", "Cell cycle", False),
+    ],
+)
+def test_same_family(a, b, expected):
+    assert resolve.same_family(a, b) is expected
+
+
+def test_find_collisions_joins_near_variant_families():
+    labels = {
+        "P1": make_label(
+            "Cytoskeleton - Stress fibers", "Cytoskeleton", "Stress fibers"
+        ),
+        "P2": make_label("Cytoskeleton organization", "Cytoskeleton organization", ""),
+        "P3": make_label(
+            "Actin cytoskeleton - Lamellipodia", "Actin cytoskeleton", "Lamellipodia"
+        ),
+        "P4": make_label("Unfolded protein response", "Unfolded protein response", ""),
+    }
+    assert [sorted(g) for g in resolve.find_collisions(labels, 0.6)] == [
+        ["P1", "P2", "P3"]
+    ]
+
+
+@pytest.mark.parametrize(
+    "a, b, expected",
+    [
+        (
+            "Angiogenesis - Basement membrane",
+            "Extracellular matrix - basement membrane",
+            True,
+        ),
+        ("Cell cycle - G2M", "Cell cycle - S phase", False),
+        ("Translation", "Translation", False),
+    ],
+)
+def test_same_distinguisher(a, b, expected):
+    assert resolve.same_distinguisher(a, b) is expected
+
+
 def resolved(pid, label, **kw):
     fields = dict(
         program_id=pid,
