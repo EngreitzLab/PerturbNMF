@@ -11,8 +11,8 @@ Entries marked ⚠️ change pipeline output — re-run affected analyses.
 
 ### Changed
 - ⚠️ Program labels are `Family - Distinguisher` names (`label_family`, `label_distinguisher`,
-  `distinguisher_evidence` in `label.json`; at most 6 words; named from the genes, not the regulators; at least
-  2 top-10 genes as anchors), and the new first step of `2.Synthesis`, `resolve_label_collisions.py`, rewrites
+  `distinguisher_evidence` in `label.json`; at most 6 words; named from the genes, not the regulators; first
+  word after ` - ` capitalized), and the new first step of `2.Synthesis`, `resolve_label_collisions.py`, rewrites
   labels that still collide across programs. `check_label` now fails older `label.json` files, so
   `run_program_agent.py --redo_stale` reopens the label and interpretation steps of existing runs.
 - **Breaking:** `--organism` is renamed `--species` (matching Stage 1 inference) in

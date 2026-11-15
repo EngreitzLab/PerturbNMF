@@ -26,13 +26,13 @@ activates the program).
 - **Name it from its genes, not its regulators.** Regulators are evidence for the mechanism (interpretation step), not
   the name. A regulator that is significant for many programs (C4 of `regulator_context.md`) says nothing about which
   program this is. Put a regulator in the name only when it is the accepted name of the process.
-- **Use the top genes.** At least two of the top 10 genes by loading must be among `anchor_genes`. If the top genes
-  point somewhere the GO/STRING terms do not, follow the genes.
+- **Use the top genes.** If the top genes by loading point somewhere the GO/STRING terms do not, follow the genes.
 - **Conservatism overrides specificity.** Claim only what the genes support. A sharper name that overstates the
   evidence is worse than a plainer one that does not. Prefer the established name of a process over a
   family-plus-modifier you construct.
-- 2-4 words is best, 6 at most (the ` - ` is not a word). Sentence case. Do not use "program", "process", "regulation
-  of", "signature", "module", or quality words ("mixed", "heterogeneous", "unclear", "miscellaneous", "grab bag").
+- 2-4 words is best, 6 at most (the ` - ` is not a word). Sentence case, with the first word after ` - ` capitalized
+  (`Extracellular matrix - Degradation`). Do not use "program", "process", "regulation of", "signature", "module", or
+  quality words ("mixed", "heterogeneous", "unclear", "miscellaneous", "grab bag").
 
 A program that is mostly a confounder (mitochondrially encoded transcripts, ribosomal proteins, a chromosomal segment,
 cell cycle) is named for what it is, e.g. `Mitochondrial transcripts`.

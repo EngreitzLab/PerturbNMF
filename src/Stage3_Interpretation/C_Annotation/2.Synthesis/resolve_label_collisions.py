@@ -45,7 +45,11 @@ from budget import add_budget_args, attach, resolve_budget_dir  # noqa: E402
 from manifest import StepRun  # noqa: E402
 from program_dir import list_programs, read_json, read_tsv  # noqa: E402
 from prompts import load as load_prompt, record as prompt_record  # noqa: E402
-from validate_program import LABEL_BANNED_WORDS, LABEL_MAX_WORDS  # noqa: E402
+from validate_program import (  # noqa: E402
+    LABEL_BANNED_WORDS,
+    LABEL_MAX_WORDS,
+    capitalize_distinguisher,
+)
 
 SYSTEM = load_prompt("label_collisions/system.md")
 TASK = load_prompt("label_collisions/task.md")
@@ -378,6 +382,7 @@ def main():
             run.finish("completed", {"family": result.family, "members": members})
         for resolved in result.programs:
             pid = resolved.program_id
+            resolved.label = capitalize_distinguisher(resolved.label)
             label = read_json(dirs[pid] / "label.json")
             if label["program_name"] != resolved.label:
                 n_rewritten += 1

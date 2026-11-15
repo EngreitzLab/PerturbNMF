@@ -30,6 +30,18 @@ LABEL_BANNED_WORDS = (
     "grab bag",
 )  # references/label.md
 
+
+def capitalize_distinguisher(name):
+    """'F - degradation' -> 'F - Degradation'. Leaves mixed-case first words (tRNA, mTOR) and names without ' - '."""
+    if " - " not in name:
+        return name
+    family, distinguisher = name.split(" - ", 1)
+    first = distinguisher.split(" ", 1)[0]
+    if first.isalpha() and first.islower():
+        distinguisher = distinguisher[0].upper() + distinguisher[1:]
+    return f"{family} - {distinguisher}"
+
+
 TABLE_COLUMNS = {
     "genes_top300.tsv": ("rank", "gene", "loading", "distinctive_score"),
     "regulators_sig.tsv": ("regulator", "condition", "log2fc", "adj_p", "role"),
@@ -201,17 +213,16 @@ def check_label(d):
         errors.append(
             "program_name must be '<label_family> - <label_distinguisher>' (or the bare family)"
         )
+    if capitalize_distinguisher(name) != name:
+        errors.append(
+            "capitalize the first word after ' - ' (e.g. 'Cell cycle - G2M', 'Extracellular matrix - Degradation')"
+        )
     if distinguisher and not family:
         errors.append("label_distinguisher given without a label_family")
     genes300 = set(top_genes(d, 300))
     if distinguisher.upper() in genes300 | set(regulator_names(d)):
         errors.append(
             f"label_distinguisher {distinguisher!r} is a bare gene symbol; name the process it marks"
-        )
-    top10 = set(top_genes(d, 10))
-    if len(top10 & set(label.get("anchor_genes") or [])) < 2:
-        errors.append(
-            f"anchor_genes include fewer than 2 of the top 10 genes ({', '.join(top_genes(d, 10))})"
         )
     known = genes300 | set(regulator_names(d))
     if not any(

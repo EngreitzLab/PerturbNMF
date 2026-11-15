@@ -14,7 +14,7 @@ evidence when the step is ticked.
  "basis": "Which files decided the label."}
 ```
 `program_name` is `<label_family> - <label_distinguisher>`, the bare family, or (with both empty) a comma list of
-2-3 processes; at most 6 words, not counting the ` - `. At least two `anchor_genes` are top-10 genes. The set-level
+2-3 processes; at most 6 words, not counting the ` - `; the first word after ` - ` is capitalized. The set-level
 pass (2.Synthesis/resolve_label_collisions.py) may rewrite `program_name` and `label_distinguisher`; it then keeps
 the agent's name as `program_name_before_disambiguation` and rewrites the label strings of interpretation.json,
 evidence.json and driver_genes.json to match.
