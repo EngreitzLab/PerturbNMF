@@ -1,0 +1,22 @@
+{#- Navbar links with icons, like a pkgdown navbar. Replaces pydata's navbar-nav,
+    which builds labels from the toctree and cannot carry icons. -#}
+{%- set links = [
+  ("Get started", "quickstart", "fa-solid fa-play"),
+  ("Installation", "installation", "fa-solid fa-download"),
+  ("Tutorials", "tutorials/index", "fa-solid fa-graduation-cap"),
+  ("User guide", "guide/index", "fa-solid fa-book"),
+  ("Explorer", "explorer", "fa-solid fa-chart-column"),
+  ("Changelog", "changelog", "fa-solid fa-clock-rotate-left"),
+  ("Citation", "citation", "fa-solid fa-quote-right"),
+] -%}
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    {%- for title, doc, icon in links %}
+    {%- set section = doc.split("/")[0] if "/" in doc else doc %}
+    {%- set active = pagename == doc or pagename.startswith(section ~ "/") %}
+    <li class="nav-item{% if active %} current active{% endif %}">
+      <a class="nav-link nav-internal" href="{{ pathto(doc) }}"><i class="{{ icon }}"></i> {{ title }}</a>
+    </li>
+    {%- endfor %}
+  </ul>
+</nav>

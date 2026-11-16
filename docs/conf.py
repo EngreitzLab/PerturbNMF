@@ -61,9 +61,10 @@ html_show_sourcelink = False
 html_context = {"default_mode": "light", "github_repo_url": GITHUB_REPO}
 html_theme_options = {
     "navbar_start": ["navbar-logo", "pkg-version"],
-    "navbar_center": ["navbar-nav"],
-    "navbar_end": ["navbar-icon-links"],
-    "header_links_before_dropdown": 7,
+    "navbar_align": "left",
+    "navbar_center": ["pkg-navbar"],
+    "navbar_end": ["search-field", "navbar-icon-links"],
+    "search_bar_text": "Search for",
     "navigation_with_keys": False,
     "show_toc_level": 2,
     "secondary_sidebar_items": {"**": ["page-toc"], "index": ["home-sidebar"]},  # last match wins
@@ -71,11 +72,6 @@ html_theme_options = {
     "footer_end": ["theme-version"],
     "icon_links": [
         {"name": "GitHub", "url": GITHUB_REPO, "icon": "fa-brands fa-github"},
-        {
-            "name": "Zenodo DOI",
-            "url": "https://doi.org/10.5281/zenodo.21878267",
-            "icon": "fa-solid fa-quote-right",
-        },
     ],
 }
 # Left section nav only inside the multi-page sections (guide/, tutorials/).
