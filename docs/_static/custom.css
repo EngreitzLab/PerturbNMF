@@ -1,0 +1,42 @@
+/* pkgdown (Bootstrap 5) look on top of pydata-sphinx-theme. */
+:root {
+  --pst-font-family-base: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --pst-font-family-heading: var(--pst-font-family-base);
+  --pst-font-size-base: 1rem;
+  --pst-color-primary: #0d6efd;
+  --pst-color-secondary: #0d6efd;
+  --pst-color-link: #0d6efd;
+  --pst-color-link-hover: #0a58ca;
+  --pst-color-on-background: #f8f9fa;
+}
+
+/* Navbar: light grey bar, bold name, small muted version beside it. */
+.bd-header {
+  background-color: #f8f9fa !important;
+  border-bottom: 1px solid #dee2e6;
+  box-shadow: none !important;
+}
+.bd-header .navbar-brand .title { font-weight: 600; font-size: 1.25rem; color: #212529; }
+.bd-header .navbar-header-items__start { gap: 0.5rem; align-items: baseline; }
+.pkg-version { font-size: 0.85rem; color: #6c757d; }
+.bd-header .navbar-nav .nav-link { color: #212529; }
+.bd-header .navbar-nav .nav-link:hover,
+.bd-header .navbar-nav .current > .nav-link { color: #0d6efd; border-bottom: none; }
+.bd-header .navbar-nav li a.nav-link::before { display: none; } /* no underline marker */
+
+/* Content: readable column, plain headings. */
+.bd-article-container { max-width: 50rem; }
+.bd-content h1 { font-weight: 500; margin-bottom: 1.5rem; }
+.bd-content h2 { font-weight: 500; margin-top: 2rem; }
+
+/* Home-page right sidebar, like pkgdown's Links / License / Citation blocks. */
+.home-sidebar section { margin-bottom: 1.5rem; }
+.home-sidebar h2 {
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin: 0 0 0.4rem;
+}
+.home-sidebar ul { list-style: none; padding-left: 0; margin: 0; font-size: 0.95rem; }
+.home-sidebar li { margin: 0.15rem 0; }
+
+.bd-footer { background-color: #f8f9fa; border-top: 1px solid #dee2e6; }

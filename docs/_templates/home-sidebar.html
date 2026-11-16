@@ -1,0 +1,39 @@
+{#- Right sidebar on the landing page, in the style of a pkgdown home page. -#}
+{%- set repo = github_repo_url -%}
+<div class="home-sidebar">
+  <section>
+    <h2>Links</h2>
+    <ul>
+      <li><a href="{{ repo }}">Browse source code</a></li>
+      <li><a href="{{ repo }}/issues">Report a bug</a></li>
+      <li><a href="https://ymo6.github.io/program-reports/">Program explorer</a></li>
+    </ul>
+  </section>
+  <section>
+    <h2>License</h2>
+    <ul>
+      <li><a href="{{ repo }}/blob/main/LICENSE">MIT</a></li>
+    </ul>
+  </section>
+  <section>
+    <h2>Citation</h2>
+    <ul>
+      <li><a href="{{ pathto('citation') }}">Citing PerturbNMF</a></li>
+      <li><a href="https://doi.org/10.5281/zenodo.21878267">DOI 10.5281/zenodo.21878267</a></li>
+    </ul>
+  </section>
+  <section>
+    <h2>Developers</h2>
+    <ul>
+      <li><a href="https://github.com/EngreitzLab">Engreitz Lab</a></li>
+      <li><a href="{{ repo }}/blob/main/CITATION.cff">Authors</a></li>
+    </ul>
+  </section>
+  <section>
+    <h2>Dev status</h2>
+    <ul>
+      <li>Version {{ release }}</li>
+      <li><a href="{{ pathto('changelog') }}">Changelog</a></li>
+    </ul>
+  </section>
+</div>
