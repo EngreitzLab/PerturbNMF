@@ -68,6 +68,8 @@ html_theme_options = {
     "search_bar_text": "Search for",
     "navigation_with_keys": False,
     "show_toc_level": 2,
+    "article_header_start": [],  # no breadcrumb strip (pkgdown has none)
+    "article_header_end": [],
     "secondary_sidebar_items": {"**": ["page-toc"], "index": ["home-sidebar"]},  # last match wins
     "footer_start": ["copyright"],
     "footer_end": ["theme-version"],
@@ -75,10 +77,11 @@ html_theme_options = {
         {"name": "GitHub", "url": GITHUB_REPO, "icon": "fa-brands fa-github"},
     ],
 }
-# Left section nav only inside the multi-page sections (guide/, tutorials/).
+# Left section nav only inside the multi-page sections (guide/, tutorials/),
+# without pydata's "Collapse Sidebar" button.
 html_sidebars = {
     page: [] for page in ("index", "quickstart", "installation", "explorer", "changelog", "citation")
-}
+} | {"guide/**": ["sidebar-nav-bs"], "tutorials/**": ["sidebar-nav-bs"]}
 
 # -- Generated content ------------------------------------------------------
 
