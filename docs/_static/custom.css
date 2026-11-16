@@ -36,7 +36,8 @@
   text-decoration: none;
 }
 .bd-header .navbar-nav li a.nav-link::before { display: none; } /* no underline marker */
-.bd-header .navbar-header-items__end { gap: 0.5rem; }
+.bd-header .navbar-header-items { flex-grow: 1; }
+.bd-header .navbar-header-items__end { gap: 0.5rem; margin-left: auto; } /* search + GitHub flush right */
 .bd-header .navbar-icon-links .nav-link { color: rgba(0, 0, 0, 0.65); font-size: 1.25rem; }
 
 /* Search box styled as a Bootstrap .form-control. */

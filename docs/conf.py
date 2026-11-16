@@ -64,6 +64,7 @@ html_theme_options = {
     "navbar_align": "left",
     "navbar_center": ["pkg-navbar"],
     "navbar_end": ["search-field", "navbar-icon-links"],
+    "navbar_persistent": [],  # drop the default search button; search-field replaces it
     "search_bar_text": "Search for",
     "navigation_with_keys": False,
     "show_toc_level": 2,
