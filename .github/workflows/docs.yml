@@ -1,12 +1,12 @@
 name: docs
 
 # Build the Sphinx site on every PR (catches broken docs before merge) and
-# publish it to GitHub Pages on every push to main. A manual run (Actions →
-# docs → Run workflow) also publishes, from whichever branch it is run on.
+# publish it to GitHub Pages on every push to main.
+# TODO: drop docs-site from the push branches once it is merged (preview only).
 
 on:
   push:
-    branches: [main]
+    branches: [main, docs-site]
   pull_request:
   workflow_dispatch:
 
@@ -34,7 +34,7 @@ jobs:
           path: docs/_build/html
 
   deploy:
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
     permissions:
