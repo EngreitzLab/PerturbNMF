@@ -140,7 +140,7 @@ fields in `CITATION.cff` in sync when cutting a new release.
 
 **Previous studies**
 
-- Schnitzler *et al.*, 2024. [“Convergence of coronary artery disease genes onto endothelial cell programs.”](https://www.nature.com/articles/s41586-024-07022-x) *Nature*.
+- Schnitzler & Kang *et al.*, 2024. [“Convergence of coronary artery disease genes onto endothelial cell programs.”](https://www.nature.com/articles/s41586-024-07022-x) *Nature*.
 
 ## License
 
