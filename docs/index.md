@@ -16,6 +16,7 @@ It runs on a single machine. SLURM runner scripts are included for clusters.
 ```{figure} _static/perturbnmf_overview.svg
 :alt: PerturbNMF overview: input data, inference, evaluation and interpretation
 :target: _static/perturbnmf_overview.pdf
+:width: 100%
 
 Overview of PerturbNMF. Click the figure for the full-resolution PDF.
 ```
