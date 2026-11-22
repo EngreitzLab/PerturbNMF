@@ -1,7 +1,24 @@
 # User guide
 
-The reference for each stage: its inputs, parameters and outputs. These pages are built from
-the README in each stage's folder, so they always match the code.
+Start with the input data format and the recommended workflow, then the guides to choosing K and the density
+threshold. The stage reference pages after that cover each stage's inputs, parameters and outputs; they are built
+from the README in each stage's folder, so they always match the code.
+
+```{toctree}
+:maxdepth: 1
+:caption: Before you start
+
+data_format
+workflow
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Choosing parameters
+
+choosing_k
+density_threshold
+```
 
 ```{toctree}
 :maxdepth: 1

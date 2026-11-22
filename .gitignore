@@ -44,5 +44,9 @@ docs/_build/
 docs/guide/*
 !docs/guide/index.md
 !docs/guide/hpc.md
+!docs/guide/data_format.md
+!docs/guide/workflow.md
+!docs/guide/choosing_k.md
+!docs/guide/density_threshold.md
 docs/tutorials/*
 !docs/tutorials/index.md

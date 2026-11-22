@@ -49,8 +49,8 @@ See {doc}`installation` for the other environments and the Stage 2 reference dat
 ## Documentation
 
 New to PerturbNMF? {doc}`quickstart` runs Stage 1 on PBMC3k in a few minutes. The
-{doc}`tutorials/index` go through each stage step by step, the {doc}`guide/index` lists every
-parameter and output, and the [program reports](https://ymo6.github.io/program-reports/) show programs from the paper datasets.
+{doc}`tutorials/index` go through each stage step by step, the {doc}`guide/index` covers the
+{doc}`input data format <guide/data_format>`, {doc}`how to choose K <guide/choosing_k>` and every parameter and output, and the [program reports](https://ymo6.github.io/program-reports/) show programs from the paper datasets.
 
 ## Citation
 
