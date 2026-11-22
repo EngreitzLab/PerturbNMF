@@ -6,7 +6,7 @@
 <a href="docs/_static/perturbnmf_overview.pdf">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/_static/perturbnmf_overview_dark.svg">
-    <img alt="PerturbNMF overview: input data, inference, evaluation and interpretation" src="docs/_static/perturbnmf_overview.svg">
+    <img alt="PerturbNMF overview: input data, inference, evaluation and interpretation" src="docs/_static/perturbnmf_overview.svg" width="100%">
   </picture>
 </a>
 
