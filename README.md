@@ -3,25 +3,9 @@
 [![DOI](https://zenodo.org/badge/1219489031.svg)](https://zenodo.org/badge/latestdoi/1219489031)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-```mermaid
-flowchart TD
-    A["Input: counts.h5ad\n(cells x genes)"] --> B["Stage 1: Inference\n(sk-cNMF CPU or torch-cNMF GPU)"]
-    B --> D["Output: cNMF_{K}_{thresh}.h5mu\n(MuData with scores + loadings)"]
-    D --> E["Stage 2a: Metrics\n(9 metrics)"]
-    E --> F["Output: Evaluation/{K}_{thresh}/\n(CSV results per metric)"]
-    E --> G["Stage 2b: Perturbation Calibration\n(U-test, CRT, Matched DE)"]
-    G --> F
-    F --> I["Stage 3a: Plotting\n(K-selection, Program analysis, Perturbation analysis)"]
-    I --> L["Output: PDFs + HTML report"]
-    F --> S["Stage 3b: Excel Summarization"]
-    S --> L
-    F --> Q["Stage 3c: Annotation\n(LLM-driven gene program annotation)"]
-    Q --> L
-    M["Guide Annotation TSV"] --> E
-    N["GWAS Data (OpenTargets)"] --> E
-    O["Normalized Counts .h5ad"] --> E
-    P["Reference GTF (optional)"] -.-> B
-```
+[![PerturbNMF overview: input data, inference, evaluation and interpretation](docs/_static/perturbnmf_overview.png)](docs/_static/perturbnmf_overview.pdf)
+
+*Click the figure for the full-resolution PDF.*
 
 ## 📖 Detailed user guide
 
