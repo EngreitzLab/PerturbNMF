@@ -131,6 +131,17 @@ it under "Cite this repository") and [`.zenodo.json`](.zenodo.json) (used by
 Zenodo when it archives a release). Keep the `version` and `date-released`
 fields in `CITATION.cff` in sync when cutting a new release.
 
+## Featured publications
+
+**Studies using PerturbNMF**
+
+- Nguyen *et al.*, 2026. [“Mapping the regulatory wiring of endothelial cell differentiation reveals a critical role for Hippo mechanosignaling.”](https://www.biorxiv.org/content/10.64898/2026.11.04.763740v1) *bioRxiv*.
+- Ma *et al.*, 2024. [“Interpreting variants associated with congenital heart disease with a regulatory map of the human fetal heart.”](https://www.medrxiv.org/content/10.1101/2024.11.20.24317557v3) *medRxiv*.
+
+**Previous studies**
+
+- Schnitzler *et al.*, 2024. [“Convergence of coronary artery disease genes onto endothelial cell programs.”](https://www.nature.com/articles/s41586-024-07022-x) *Nature*.
+
 ## License
 
 MIT — see [LICENSE](LICENSE). Copyright (c) 2026 Alexandra Mo, Engreitz Lab.
