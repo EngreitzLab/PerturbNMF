@@ -5,17 +5,18 @@
   ("Installation", "installation", "fa-solid fa-download"),
   ("Tutorials", "tutorials/index", "fa-solid fa-graduation-cap"),
   ("User guide", "guide/index", "fa-solid fa-book"),
-  ("Explorer", "explorer", "fa-solid fa-chart-column"),
+  ("Program reports", "https://ymo6.github.io/program-reports/", "fa-solid fa-chart-column"),
   ("Changelog", "changelog", "fa-solid fa-clock-rotate-left"),
   ("Citation", "citation", "fa-solid fa-quote-right"),
 ] -%}
 <nav>
   <ul class="bd-navbar-elements navbar-nav">
     {%- for title, doc, icon in links %}
+    {%- set external = doc.startswith("http") %}
     {%- set section = doc.split("/")[0] if "/" in doc else doc %}
-    {%- set active = pagename == doc or pagename.startswith(section ~ "/") %}
+    {%- set active = not external and (pagename == doc or pagename.startswith(section ~ "/")) %}
     <li class="nav-item{% if active %} current active{% endif %}">
-      <a class="nav-link nav-internal" href="{{ pathto(doc) }}"><i class="{{ icon }}"></i> {{ title }}</a>
+      <a class="nav-link {{ 'nav-external' if external else 'nav-internal' }}" href="{{ doc if external else pathto(doc) }}"><i class="{{ icon }}"></i> {{ title }}</a>
     </li>
     {%- endfor %}
   </ul>

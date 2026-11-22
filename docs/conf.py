@@ -80,7 +80,7 @@ html_theme_options = {
 # Left section nav only inside the multi-page sections (guide/, tutorials/),
 # without pydata's "Collapse Sidebar" button.
 html_sidebars = {
-    page: [] for page in ("index", "quickstart", "installation", "explorer", "changelog", "citation")
+    page: [] for page in ("index", "quickstart", "installation", "changelog", "citation")
 } | {"guide/**": ["sidebar-nav-bs"], "tutorials/**": ["sidebar-nav-bs"]}
 
 # -- Generated content ------------------------------------------------------
