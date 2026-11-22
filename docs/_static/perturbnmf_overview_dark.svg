@@ -1,7 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" version="1.1" width="587.0353" height="325.39735" viewBox="0 0 587.0353 325.39735">
 <defs><filter id="pnmf-dark" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="-1 0 0 0 1  0 -1 0 0 1  0 0 -1 0 1  0 0 0 1 0"/><feColorMatrix type="hueRotate" values="180"/></filter></defs>
 <g filter="url(#pnmf-dark)">
-<rect x="-10%" y="-10%" width="120%" height="120%" fill="#f2f4f7"/>
 
 <defs>
 <clipPath id="clip_1">
