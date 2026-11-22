@@ -61,8 +61,8 @@ If you use PerturbNMF, cite the concept DOI
 
 **Studies using PerturbNMF**
 
-- Nguyen *et al.*, 2026. [“Mapping the regulatory wiring of endothelial cell differentiation reveals a critical role for Hippo mechanosignaling.”](https://www.biorxiv.org/content/10.64898/2026.11.04.763740v1) *bioRxiv*.
-- Ma *et al.*, 2024. [“Interpreting variants associated with congenital heart disease with a regulatory map of the human fetal heart.”](https://www.medrxiv.org/content/10.1101/2024.11.20.24317557v3) *medRxiv*.
+- Nguyen & King *et al.*, 2026. [“Mapping the regulatory wiring of endothelial cell differentiation reveals a critical role for Hippo mechanosignaling.”](https://www.biorxiv.org/content/10.64898/2026.11.04.763740v1) *bioRxiv*.
+- Ma, Conley & Chen *et al.*, 2024. [“Interpreting variants associated with congenital heart disease with a regulatory map of the human fetal heart.”](https://www.medrxiv.org/content/10.1101/2024.11.20.24317557v3) *medRxiv*.
 
 **Previous studies**
 
