@@ -3,7 +3,12 @@
 [![DOI](https://zenodo.org/badge/1219489031.svg)](https://zenodo.org/badge/latestdoi/1219489031)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[![PerturbNMF overview: input data, inference, evaluation and interpretation](docs/_static/perturbnmf_overview.png)](docs/_static/perturbnmf_overview.pdf)
+<a href="docs/_static/perturbnmf_overview.pdf">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/_static/perturbnmf_overview_dark.svg">
+    <img alt="PerturbNMF overview: input data, inference, evaluation and interpretation" src="docs/_static/perturbnmf_overview.svg">
+  </picture>
+</a>
 
 *Click the figure for the full-resolution PDF.*
 
