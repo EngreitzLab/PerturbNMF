@@ -13,11 +13,11 @@ change them and helps you interpret the results. It is built around three stages
 
 It runs on a single machine. SLURM runner scripts are included for clusters.
 
-```mermaid
-flowchart LR
-    A["counts.h5ad"] --> B["1 · Inference<br/>sk-cNMF (CPU) / torch-cNMF (GPU)"]
-    B --> C["2 · Evaluation<br/>9 metrics + perturbation calibration"]
-    C --> D["3 · Interpretation<br/>plots · Excel · LLM annotation"]
+```{figure} _static/perturbnmf_overview.png
+:alt: PerturbNMF overview: input data, inference, evaluation and interpretation
+:target: _static/perturbnmf_overview.pdf
+
+Overview of PerturbNMF. Click the figure for the full-resolution PDF.
 ```
 
 ## Installation
