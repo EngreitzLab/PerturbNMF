@@ -53,7 +53,7 @@ If you use PerturbNMF, cite the concept DOI
 
 **Previous studies**
 
-- Schnitzler *et al.*, 2024. [“Convergence of coronary artery disease genes onto endothelial cell programs.”](https://www.nature.com/articles/s41586-024-07022-x) *Nature*.
+- Schnitzler & Kang *et al.*, 2024. [“Convergence of coronary artery disease genes onto endothelial cell programs.”](https://www.nature.com/articles/s41586-024-07022-x) *Nature*.
 
 ```{toctree}
 :hidden:
