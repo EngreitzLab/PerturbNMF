@@ -44,6 +44,17 @@ parameter and output, and the {doc}`explorer` shows programs from the paper data
 If you use PerturbNMF, cite the concept DOI
 [10.5281/zenodo.21878267](https://doi.org/10.5281/zenodo.21878267). See {doc}`citation`.
 
+## Featured publications
+
+**Studies using PerturbNMF**
+
+- Nguyen *et al.*, 2026. [“Mapping the regulatory wiring of endothelial cell differentiation reveals a critical role for Hippo mechanosignaling.”](https://www.biorxiv.org/content/10.64898/2026.11.04.763740v1) *bioRxiv*.
+- Ma *et al.*, 2024. [“Interpreting variants associated with congenital heart disease with a regulatory map of the human fetal heart.”](https://www.medrxiv.org/content/10.1101/2024.11.20.24317557v3) *medRxiv*.
+
+**Previous studies**
+
+- Schnitzler *et al.*, 2024. [“Convergence of coronary artery disease genes onto endothelial cell programs.”](https://www.nature.com/articles/s41586-024-07022-x) *Nature*.
+
 ```{toctree}
 :hidden:
 
