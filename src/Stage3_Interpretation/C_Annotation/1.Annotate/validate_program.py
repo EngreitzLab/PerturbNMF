@@ -16,6 +16,32 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "0.Prepare"))
 from program_dir import STEP_IDS, read_json, read_jsonl, read_plan, read_tsv  # noqa: E402
 
+LABEL_MAX_WORDS = 6  # the " - " between family and distinguisher is not counted
+LABEL_BANNED_WORDS = (
+    "program",
+    "process",
+    "regulation of",
+    "signature",
+    "module",
+    "mixed",
+    "heterogeneous",
+    "unclear",
+    "miscellaneous",
+    "grab bag",
+)  # references/label.md
+
+
+def capitalize_distinguisher(name):
+    """'F - degradation' -> 'F - Degradation'. Leaves mixed-case first words (tRNA, mTOR) and names without ' - '."""
+    if " - " not in name:
+        return name
+    family, distinguisher = name.split(" - ", 1)
+    first = distinguisher.split(" ", 1)[0]
+    if first.isalpha() and first.islower():
+        distinguisher = distinguisher[0].upper() + distinguisher[1:]
+    return f"{family} - {distinguisher}"
+
+
 TABLE_COLUMNS = {
     "genes_top300.tsv": ("rank", "gene", "loading", "distinctive_score"),
     "regulators_sig.tsv": ("regulator", "condition", "log2fc", "adj_p", "role"),
@@ -165,11 +191,40 @@ def check_label(d):
         for k in ("program_name", "function_sentence")
         if not label.get(k)
     ]
+    errors += [
+        f"label.json lacks {k} (an empty string when there is none)"
+        for k in ("label_family", "label_distinguisher")
+        if not isinstance(label.get(k), str)
+    ]
     if errors:
         return errors
-    if len(label["program_name"].split()) > 8:
-        errors.append("program_name has more than 8 words")
-    known = set(top_genes(d, 300)) | set(regulator_names(d))
+    name, family = label["program_name"], label["label_family"].strip()
+    distinguisher = label["label_distinguisher"].strip()
+    if len(name.replace(" - ", " ").split()) > LABEL_MAX_WORDS:
+        errors.append(f"program_name has more than {LABEL_MAX_WORDS} words")
+    banned = [w for w in LABEL_BANNED_WORDS if re.search(rf"\b{w}\b", name, re.I)]
+    if banned:
+        errors.append(f"program_name uses banned word(s): {', '.join(banned)}")
+    if re.search(r"\([^)]*\)", name):
+        errors.append(
+            "program_name carries a parenthesized tag; name the process, not a gene"
+        )
+    if family and name != (f"{family} - {distinguisher}" if distinguisher else family):
+        errors.append(
+            "program_name must be '<label_family> - <label_distinguisher>' (or the bare family)"
+        )
+    if capitalize_distinguisher(name) != name:
+        errors.append(
+            "capitalize the first word after ' - ' (e.g. 'Cell cycle - G2M', 'Extracellular matrix - Degradation')"
+        )
+    if distinguisher and not family:
+        errors.append("label_distinguisher given without a label_family")
+    genes300 = set(top_genes(d, 300))
+    if distinguisher.upper() in genes300 | set(regulator_names(d)):
+        errors.append(
+            f"label_distinguisher {distinguisher!r} is a bare gene symbol; name the process it marks"
+        )
+    known = genes300 | set(regulator_names(d))
     if not any(
         g in known
         for g in re.findall(r"[A-Za-z0-9][A-Za-z0-9.-]+", label["function_sentence"])
