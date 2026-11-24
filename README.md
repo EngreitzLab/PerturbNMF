@@ -1,4 +1,4 @@
-# PerturbNMF Pipeline
+# PerturbNMF Pipeline <img src="docs/_static/pnmf-lavender-hex-inhibition.svg" align="right" height="138" alt="PerturbNMF logo" />
 
 [![DOI](https://zenodo.org/badge/1219489031.svg)](https://zenodo.org/badge/latestdoi/1219489031)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
