@@ -60,6 +60,8 @@ html[data-theme="dark"] {
 .bd-header .bd-header__inner { max-width: 1320px; margin: 0 auto; }
 .bd-header .navbar-brand .title { font-weight: 400; font-size: 1.25rem; color: var(--pnmf-brand); }
 .bd-header .navbar-header-items__start { gap: 0.5rem; align-items: center; }
+.bd-header .navbar-brand { gap: 0.5rem; }
+.bd-header .navbar-brand img.logo__image { height: 2rem; width: auto; }
 .pkg-version { font-size: 0.875em; color: var(--pnmf-muted); }
 .bd-header .navbar-header-items__center { margin-left: 1rem; }
 .bd-header ul.navbar-nav > li.nav-item { margin: 0 0.1rem; }
@@ -129,3 +131,7 @@ html[data-theme="dark"] {
 @media (max-width: 1140px) {
   .bd-header ul.navbar-nav > li.nav-item > .nav-link i { display: none; } /* drop icons before wrapping */
 }
+
+/* Home-page hex logo floats beside the title, as on pkgdown sites. */
+.bd-content img.pnmf-hex { float: right; margin: -5.5rem 0 1rem 1.5rem; }
+@media (max-width: 700px) { .bd-content img.pnmf-hex { float: none; display: block; margin: 0 auto 1rem; } }

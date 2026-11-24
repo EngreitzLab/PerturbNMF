@@ -53,6 +53,8 @@ suppress_warnings = ["myst.header", "myst.xref_missing", "misc.highlighting_fail
 # articles, and a right sidebar of project links on the home page.
 html_theme = "pydata_sphinx_theme"
 html_title = "PerturbNMF"
+LOGO = "_static/pnmf-lavender-hex-inhibition.svg"
+html_favicon = LOGO
 html_baseurl = "https://engreitzlab.github.io/PerturbNMF/"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
@@ -60,6 +62,7 @@ templates_path = ["_templates"]
 html_show_sourcelink = False
 html_context = {"default_mode": "light", "github_repo_url": GITHUB_REPO}
 html_theme_options = {
+    "logo": {"image_light": LOGO, "image_dark": LOGO, "text": "PerturbNMF", "alt_text": "PerturbNMF"},
     "navbar_start": ["navbar-logo", "pkg-version"],
     "navbar_align": "left",
     "navbar_center": ["pkg-navbar"],

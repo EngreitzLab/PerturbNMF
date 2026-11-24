@@ -1,5 +1,11 @@
 # PerturbNMF
 
+```{image} _static/pnmf-lavender-hex-inhibition.svg
+:alt: PerturbNMF logo
+:class: pnmf-hex dark-light
+:width: 150px
+```
+
 PerturbNMF runs consensus non-negative matrix factorization (cNMF) on Perturb-seq and other
 single-cell CRISPR screen data. It infers gene programs, scores them, tests which perturbations
 change them and helps you interpret the results. It is built around three stages:
